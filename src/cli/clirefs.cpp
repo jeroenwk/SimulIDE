@@ -14,6 +14,7 @@
 #include "pin.h"
 #include "comproperty.h"
 #include "simulator.h"
+#include "currentflow.h"
 
 namespace CliRefs
 {
@@ -131,7 +132,11 @@ QJsonObject pinJson( Pin* p, int index )
         Pin* other = ( con->startPin() == p ) ? con->endPin() : con->startPin();
         if( other ) o["to"] = pinRef( other );
     }
-    if( Simulator::self()->isRunning() && p->isConnected() ) o["voltage"] = p->getVoltage();
+    if( Simulator::self()->isRunning() && p->isConnected() )
+    {
+        o["voltage"] = p->getVoltage();
+        o["current"] = p->getCurrent();   // Into the component through this pin (A)
+    }
     return o;
 }
 

@@ -521,6 +521,40 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="currentFlow">
+           <property name="toolTip">
+            <string>Show current flowing through the wires as moving dots</string>
+           </property>
+           <property name="text">
+            <string>Show Current Flow</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="currentMinLayout">
+           <item>
+            <widget class="QLabel" name="currentMinLabel">
+             <property name="text">
+              <string>Current threshold</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="currentMin">
+             <property name="maximumSize">
+              <size>
+               <width>75</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="toolTip">
+              <string>Smallest current the flow dots show (e.g. 1u, 100n)</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
           <layout class="QHBoxLayout" name="horizontalLayout_12">
            <item>
             <widget class="QLabel" name="label_16">

@@ -11,6 +11,7 @@
 #include "circuit.h"
 #include "circuitview.h"
 #include "simulator.h"
+#include "currentflow.h"
 
 namespace
 {
@@ -88,6 +89,16 @@ QList<Setting>& settings()
     list.append({"animate", "circuit", "Animate (show pin states and wire voltages).",
         [](){ return QJsonValue( Circuit::self()->animate() ); },
         []( QString v ){ Circuit::self()->setAnimate( parseBool( v ) ); }});
+    list.append({"currentFlow", "circuit", "Show current flow: moving dots on the wires (see also wire current).",
+        [](){ return QJsonValue( CurrentFlow::self()->enabled() ); },
+        []( QString v ){ CurrentFlow::self()->setEnabled( parseBool( v ) ); }});
+    list.append({"currentMin", "circuit", "Smallest current the flow dots show (e.g. 1u, 100n).",
+        [](){ return QJsonValue( CurrentFlow::currentStr( CurrentFlow::self()->threshold() ) ); },
+        []( QString v ){
+            double amps;
+            if( !CurrentFlow::parseCurrent( v, amps ) || amps <= 0 ) throw CliError("invalid current: "+v+" (e.g. 1u, 100n)" );
+            CurrentFlow::self()->setThreshold( amps );
+        }});
     list.append({"fps", "circuit", "Screen refresh rate, frames per second.",
         [](){ return QJsonValue( (int)Simulator::self()->fps() ); },
         []( QString v ){ Simulator::self()->setFps( parseInt( v, "fps", 1, 100 ) ); }});

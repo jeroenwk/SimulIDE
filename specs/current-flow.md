@@ -1,6 +1,8 @@
 # Spec: current flow animation
 
-Status: draft, not implemented. Target: SimulIDE 1.1.0-SR2 (this fork).
+Status: **implemented** (all phases). The open questions below are decided:
+threshold adjustable (`currentMin`, default 1 µA), conventional current only,
+app setting. Target: SimulIDE 1.1.0-SR2 (this fork).
 
 ## 1. Goal
 
@@ -251,11 +253,9 @@ The tests go in `tests/cli/smoke.sh` and run headless through the CLI.
 
 ## 9. Open questions
 
-- **Direction:** conventional current is the default. Add an electron-flow
-  option?
-- **Scale:** log speed with a 1 µA threshold. Should the threshold be
-  adjustable for low-power circuits, e.g. 1 nA?
-- **Where the setting lives:** app setting, or per circuit like Animate?
+- **Direction:** conventional current (+ to −). Electron flow not added.
+- **Scale:** adjustable threshold, default 1 µA (`currentMin`).
+- **Where the setting lives:** app setting (`simulide.ini`).
 - **Later:** dots through two-pin components. The current is already known
   (`I(p)` at either pin), so this is mostly drawing.
 

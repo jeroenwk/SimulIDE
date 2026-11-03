@@ -123,6 +123,7 @@ Point at things instead of describing them:
 | Any add/remove | Stops the simulation. Restart it afterwards (`sim start` / `sim run`) |
 | Push | Pins `pinP0`, `switch0pinN`. Use `ui press` and `ui release`. A held press survives a simulation restart |
 | Switch | Use `ui set S on\|off` or `ui click` |
+| Current flow | `settings set currentFlow true` shows moving dots on the wires (direction = conventional current; `currentMin` sets the smallest current shown). Confirm with numbers via `wire current` |
 | LED | `MaxCurrent` defaults to 30 mA. SimulIDE flags `overloaded` only well above that, so check the current yourself. A dark (black) LED means it's off, not a drawing bug |
 | Wave Generator (`WaveGen`) | Its ground is internal unless `Floating=true`, so only `outnod` is visible. It has an on/off button: set `Always_On=true`. A sine is set with `Freq=50Hz Semi_Ampli=10V` |
 | Electrolytic (`elCapacitor`) | `lPin` is + (the straight plate) and `rPin` is − (the curved plate). With `--rot 90`, + is on top. Verify with `capture circuit C1 --scale 6 --margin 12` |

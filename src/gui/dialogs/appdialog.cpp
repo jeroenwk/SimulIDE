@@ -5,6 +5,7 @@
 
 #include <math.h>
 
+#include "currentflow.h"
 #include "appdialog.h"
 #include "mainwindow.h"
 #include "simulator.h"
@@ -33,6 +34,8 @@ AppDialog::AppDialog( QWidget* parent )
     drawGrid->setChecked( Circuit::self()->drawGrid() );
     showScroll->setChecked( CircuitView::self()->showScroll() );
     animate->setChecked( Circuit::self()->animate() );
+    currentFlow->setChecked( CurrentFlow::self()->enabled() );
+    currentMin->setText( CurrentFlow::currentStr( CurrentFlow::self()->threshold() ) );
     fps->setValue( Simulator::self()->fps() );
     backup->setValue( Circuit::self()->autoBck() );
 
@@ -142,6 +145,22 @@ void AppDialog::on_showScroll_toggled( bool show )
 void AppDialog::on_animate_toggled( bool ani )
 {
     Circuit::self()->setAnimate( ani );
+}
+
+void AppDialog::on_currentFlow_toggled( bool on )
+{
+    CurrentFlow::self()->setEnabled( on );
+}
+
+void AppDialog::on_currentMin_editingFinished()
+{
+    double amps;
+    if( !CurrentFlow::parseCurrent( currentMin->text(), amps ) || amps <= 0 ){
+        currentMin->setText( CurrentFlow::currentStr( CurrentFlow::self()->threshold() ) );
+        return;
+    }
+    CurrentFlow::self()->setThreshold( amps );
+    currentMin->setText( CurrentFlow::currentStr( amps ) );
 }
 
 void AppDialog::on_fps_valueChanged( int fps )

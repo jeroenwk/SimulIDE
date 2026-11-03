@@ -116,6 +116,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `wire add <pinA\|@x,y> <pinB\|@x,y> [--via x,y,...]` | Connect two pins, or a pin and a point on a wire (a new junction there). The route goes through the `--via` points and is always horizontal/vertical |
 | `wire list` | Wires and the pins they join |
 | `wire remove <wire> ...` | Remove wires. Prints the removed uids and any merged wires |
+| `wire current [wire ...]` | Current through wires (A), signed from the `from` pin to the `to` pin. Works paused. `flag` marks shared (`approximate`) or non-conserving (`inconsistent`) results |
 
 - `comp move`, `comp rotate` and `comp flip` also print the new pin positions.
 
@@ -126,6 +127,11 @@ else, name a point on the wire instead of the pin: `wire add U1.Trg @160,64`
 joins the wire that passes through 160,64. The point can be anywhere along a
 wire, corners included. It can't be where two wires cross (that's ambiguous)
 or at a wire's end (connect to that pin instead).
+
+**Current flow:** `settings set currentFlow true` shows moving dots on the
+wires (conventional current direction; the toolbar button does the same). The
+smallest current shown is adjustable: `settings set currentMin 100n`
+(default `1u`). `wire current` gives the numbers without the dots.
 
 Routing:
 - Where two consecutive points differ in both x and y, `wire add` adds a corner.

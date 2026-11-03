@@ -419,6 +419,7 @@ void CircuitWidget::powerCircDebug()
 
     m_infoWidget->setRate(-1 );  //m_rateLabel->setText( tr("Speed: Debugger") );
 
+    CurrentFlow::self()->attach();       // Debugger start has its own path
     Simulator::self()->startSim( true );
 }
 

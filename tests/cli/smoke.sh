@@ -100,6 +100,20 @@ check "release button"         'r["ok"]'                                  -- ui 
 check "run 20ms"                'r["ok"]'                                  -- sim run --for 20ms
 check "LED off again"           'abs(r["result"]["current"]) < 1e-6'      -- read D1
 
+echo "Current flow"
+cli ui press SW >/dev/null; cli sim run --for 20ms >/dev/null   # LED on again
+check "wire current ~14 mA"        '0.010 < [x for x in r["result"] if x["from"]=="R1.rPin"][0]["current"] < 0.020' -- wire current
+check "Kirchhoff at the junction"   'abs(sum(x["current"] for x in r["result"] if x["to"].startswith("Node-"))-sum(x["current"] for x in r["result"] if x["from"].startswith("Node-"))) < 1e-9' -- wire current
+check "no flagged wires"            'all("flag" not in x for x in r["result"])' -- wire current
+check "sign: battery out is +"      '[x for x in r["result"] if x["from"]=="B1.lPin"][0]["current"] > 0' -- wire current
+check "pin current in comp get"     'any("current" in p for p in r["result"]["pins"])' -- comp get R1
+check "flow off by default"         'r["result"] is False' -- settings get currentFlow
+check "flow on"                     'r["ok"]'                                  -- settings set currentFlow true
+check "...and off again"            'r["ok"]'                                  -- settings set currentFlow false
+check "threshold accepts 100n"      'r["ok"]'                                  -- settings set currentMin 100n
+check "...and reports it"           'r["result"]=="100 nA"'                    -- settings get currentMin
+check "bad threshold rejected"      'not r["ok"]'                              -- settings set currentMin banana
+
 echo "Capture and selection"
 check "capture circuit"         'r["result"]["width"] > 100 and __import__("os").path.getsize(r["result"]["file"]) > 1000' -- capture circuit --file "$TMP/cap.png"
 check "capture window"          'r["ok"]'                                  -- capture window view --file "$TMP/win.png"

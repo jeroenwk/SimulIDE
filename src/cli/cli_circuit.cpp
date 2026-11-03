@@ -13,6 +13,7 @@
 
 #include "cliapi.h"
 #include "clirefs.h"
+#include "currentflow.h"
 #include "mainwindow.h"
 #include "circuitwidget.h"
 #include "circuit.h"
@@ -161,5 +162,34 @@ void CliApi::registerCircuit()
         QJsonArray list;
         for( Connector* con : *Circuit::self()->conList() ) list.append( CliRefs::wireJson( con ) );
         return list;
+    });
+
+    add("wire current", "wire current [wire ...]",
+        "Current through wires (A), signed: positive flows from the 'from' pin to the 'to' pin. "
+        "Computed from the solved circuit; works paused. flag: approximate = shared between passive pins "
+        "(tunnels, subcircuit pins), inconsistent = current does not add up (bug).",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        if( !Simulator::self()->isRunning() ) throw CliError("simulation is not running");
+        QList<Connector*> wires;
+        for( QString ref : c.pos ) wires.append( CliRefs::wire( ref ) );   // Resolve all first
+        CliPendingPtr reply = c.defer();
+        CurrentFlow::self()->whenIdle( [wires, reply]()
+        {
+            QJsonArray rows;
+            QList<Connector*> list = wires.isEmpty() ? *Circuit::self()->conList() : wires;
+            for( Connector* con : list )
+            {
+                if( !Circuit::self()->conList()->contains( con ) ) continue;
+                QJsonObject o = CliRefs::wireJson( con );
+                o.remove("points");
+                o["current"] = con->flowCurrent;
+                if( con->flowFlag == 1 ) o["flag"] = "approximate";
+                if( con->flowFlag == 2 ) o["flag"] = "inconsistent";
+                rows.append( o );
+            }
+            reply->ok( rows );
+        });
+        return QJsonValue();
     });
 }
