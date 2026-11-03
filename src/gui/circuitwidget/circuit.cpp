@@ -155,6 +155,7 @@ void Circuit::loadCircuit( QString fileName )
     m_error = 0;
 
     QString doc = fileToString( fileName, "Circuit::loadCircuit" );
+    m_description = descriptionFromDoc( doc );
     loadStrDoc( doc );
 
     m_busy = false;
@@ -489,11 +490,42 @@ QString Circuit::circuitHeader()
     header += ">\n";
     return header;
 }
+// <description> sits between the header and the items, its text XML-escaped, so no line of it
+// looks like an item to the line-based loader (and older versions skip it)
+QString Circuit::descriptionToXml()
+{
+    QString d = m_description.trimmed();
+    if( d.isEmpty() ) return "";
+    d.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;");
+    return "<description>\n"+d+"\n</description>\n\n";
+}
+
+QString Circuit::descriptionFromDoc( const QString &doc )
+{
+    int start = doc.indexOf("<description>");
+    if( start < 0 ) return "";
+    int end = doc.indexOf("</description>", start );
+    if( end < 0 ) return "";
+    start += 13;
+    QString d = doc.mid( start, end-start ).trimmed();
+    d.replace("&lt;","<").replace("&gt;",">").replace("&quot;","\"").replace("&apos;","'").replace("&amp;","&");
+    return d;
+}
+
+void Circuit::setDescription( QString d )
+{
+    d = d.trimmed();
+    if( d == m_description ) return;
+    m_description = d;
+    setChanged();
+}
+
 QString Circuit::circuitToString()
 {
     if( m_board && m_board->m_boardMode ) m_board->setBoardMode( false );
 
     QString circuit = circuitHeader();
+    circuit += descriptionToXml();
     for( Component* comp : m_compList ) circuit += comp->toString();
     for( Node* node      : m_nodeList ) circuit += node->toString();
     for( Connector* conn : m_connList ) circuit += conn->toString();

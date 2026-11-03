@@ -142,6 +142,14 @@ closed, unless a file is given on the command line or a crash backup is
 restored. `settings set reopenLast false` turns it off (Settings > App). Headless
 instances never reopen a circuit, and never change which one the GUI reopens.
 
+**Circuit description:** a circuit file can carry a description (Markdown): what
+the circuit shows, how to use it, what to expect. It is saved as `<description>`
+after the `<circuit>` header and shown in the bottom pane's **Description** tab as
+soon as the circuit is loaded (circuits without one show the Messages tab). Edit it
+there (Edit / Done) or with `circuit description --set TEXT`, `--file notes.md` or
+`--clear`; `circuit description` alone reads it. Like any edit, save the circuit
+to keep it.
+
 **Interface theme:** `settings set uiTheme system|light|dark` (Settings > App >
 Interface). `system`, the default, follows the light or dark mode of the computer
 and switches with it (live on macOS; elsewhere the mode at start). It covers the

@@ -143,6 +143,11 @@ Point at things instead of describing them:
 - Save to `samples/<descriptive_snake_case>.sim1`, for example
   `samples/half_wave_rectifier_filtered.sim1`. Use `circuit save <path>`
   (relative to the shell's directory).
+- **Give it a description** before saving: `circuit description --file notes.md`
+  (Markdown). Say what the circuit models and where it comes from, what each part
+  stands for, how to use it (switches, speed, scope settings), what to expect, and
+  where the results are recorded. It shows in the bottom pane whenever the circuit
+  is opened.
 - **Verify a saved file** without touching the user's window: open it in a
   private headless instance (section 6), run it, and compare a key reading.
 - Commit or push only when the user asks.

@@ -4,12 +4,14 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QSplitter>
+#include <QTabWidget>
 #include <QToolButton>
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QDesktopServices>
 #include <QSettings>
 
+#include "descriptionwidget.h"
 #include "currentflow.h"
 #include "chargeview.h"
 #include "circuitwidget.h"
@@ -59,7 +61,14 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     m_panelSplitter->setObjectName("Panelplitter");
     m_panelSplitter->setOrientation( Qt::Horizontal );
     m_panelSplitter->addWidget( m_infoWidget );
-    m_panelSplitter->addWidget( &m_outPane );
+    m_descWidget = new DescriptionWidget( this );
+    m_bottomTabs = new QTabWidget( this );
+    m_bottomTabs->setObjectName("BottomTabs");
+    m_bottomTabs->setDocumentMode( true );
+    m_bottomTabs->addTab( m_descWidget, tr("Description") );
+    m_bottomTabs->addTab( &m_outPane, tr("Messages") );
+    m_bottomTabs->setCurrentWidget( &m_outPane );
+    m_panelSplitter->addWidget( m_bottomTabs );
     m_panelSplitter->setSizes( {170, 500} );
 
     m_mainSplitter->addWidget( &m_circView );
@@ -307,6 +316,7 @@ bool CircuitWidget::newCircuit()
     Simulator::self()->addToUpdateList( &m_outPane );
 
     MainWindow::self()->setFile( tr("New Circuit"));
+    showDescription();
     MainWindow::self()->settings()->setValue( "lastCircDir", m_lastCircDir );
     
     return true;
@@ -364,7 +374,15 @@ void CircuitWidget::loadCirc( QString path )
         updateRecentFiles();
 
         m_infoWidget->clearLastRun();
+        showDescription();
 }   }
+
+void CircuitWidget::showDescription()
+{
+    m_descWidget->showCircuit();
+    bool has = Circuit::self() && !Circuit::self()->description().isEmpty();
+    m_bottomTabs->setCurrentWidget( has ? (QWidget*)m_descWidget : (QWidget*)&m_outPane );
+}
 
 void CircuitWidget::saveCirc()
 {
