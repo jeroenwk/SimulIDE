@@ -6,6 +6,12 @@
 #include "e-pin.h"
 #include "circuit.h"
 
+double ePin::getCurrent()   // Into the element (A)
+{
+    if( hasTrueCurrent() ) return m_trueCurrent;      // Published by the model itself
+    return m_enode ? m_enode->pinCurrent( this ) : 0; // Reconstructed from the stamps
+}
+
 ePin::ePin( QString id, int index )
 {
     m_id    = id;

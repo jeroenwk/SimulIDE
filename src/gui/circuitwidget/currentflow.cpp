@@ -180,7 +180,7 @@ void CurrentFlow::solve()
             if( !p ) continue;
             eNode* enode = p->getEnode();
             if( !enode || !enode->hasStamps( p ) ) { passive.append( v ); continue; }
-            double j = -enode->pinCurrent( p );
+            double j = -p->getCurrent();      // True current if the model published one
             inj[ v ] = j;
             sum += j;
             maxJ = qMax( maxJ, qAbs( j ) );
@@ -188,10 +188,20 @@ void CurrentFlow::solve()
         int flag = 0;
         if( !passive.isEmpty() )
         {
+            // The residual flows through the pins that stamped nothing (tunnels,
+            // subcircuit package pins, comparator inputs): it is their current
             for( void* v : passive ) inj[ v ] = -sum/passive.size();
-            if( passive.size() > 1 && qAbs( sum ) > 1e-12 ) flag = 1;     // Split guessed: approximate
+            if( passive.size() > 1 && qAbs( sum ) > 0.01*maxJ+1e-9 ) flag = 1;   // Guessed split, and it matters
         }
-        else if( qAbs( sum ) > 0.01*maxJ+1e-9 ) flag = 2;               // Should not happen: inconsistent
+        else if( qAbs( sum ) > 0.03*maxJ+1e-8 )
+            flag = 2;    // Large imbalance with no pin to take it: bug signal
+        else if( sum != 0 )
+        {
+            // Small imbalance: currents published by element models (eBJT) lag the
+            // final solve by one non-linear iteration. Spread it over the pins.
+            double share = sum/piece.size();
+            for( void* v : piece ) inj[ v ] -= share;
+        }
 
         // Spanning tree from a root (a passive pin if any), then sums from the leaves up
         void* root = passive.isEmpty() ? piece.first() : passive.first();
@@ -218,6 +228,18 @@ void CurrentFlow::solve()
         for( const Edge& e : adj.value( root ) ) e.con->flowFlag = flag;
         for( void* v : piece ) for( const Edge& e : adj.value( v ) ) e.con->flowFlag = flag;
     }
+}
+
+// Brighter dots for more current, like EveryCircuit: fades in from the
+// threshold and saturates two decades above it
+double CurrentFlow::opacity( double amps, double threshold )
+{
+    double a = qAbs( amps );
+    if( a < threshold || threshold <= 0 ) return 0;
+    double o = 0.3 + 0.35*log10( a/threshold );
+    if( o < 0.3 ) o = 0.3;
+    if( o > 1.0 ) o = 1.0;
+    return o;
 }
 
 double CurrentFlow::speed( double amps, double threshold )

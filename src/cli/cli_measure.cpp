@@ -231,7 +231,11 @@ void CliApi::registerMeasure()
         {
             Pin* pin = CliRefs::pin( ref );
             QJsonObject o{ {"ref", CliRefs::pinRef( pin ) } };
-            if( pin->isConnected() ) o["voltage"] = num( pin->getVoltage() );
+            if( pin->isConnected() )
+            {
+                o["voltage"] = num( pin->getVoltage() );
+                o["current"] = num( pin->getCurrent() );   // Into the component (A)
+            }
             else                     o["voltage"] = QJsonValue();   // Not connected to any node
             list.append( o );
         }

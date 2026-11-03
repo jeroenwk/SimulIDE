@@ -394,8 +394,14 @@ void ConnectorLine::paintFlow( QPainter* p )
     double t0 = fmod( m_pConnector->flowPhase-offset, s );
     if( t0 < 0 ) t0 += s;
 
-    p->setPen( QPen( QColor( 60, 40, 0 ), 0.6 ) );
-    p->setBrush( QColor( 255, 190, 0 ) );
+    double op = CurrentFlow::opacity( m_pConnector->flowCurrent, CurrentFlow::self()->threshold() );
+    QColor fill( 255, 190, 0 );
+    QColor edge( 60, 40, 0 );
+    fill.setAlphaF( op );
+    edge.setAlphaF( 0.5*op );
+
+    p->setPen( QPen( edge, 0.6 ) );
+    p->setBrush( fill );
     for( double t = t0; t <= len; t += s )
         p->drawEllipse( QPointF( dx()*t/len, dy()*t/len ), 1.6, 1.6 );
 }

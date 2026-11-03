@@ -7,6 +7,8 @@
 #define EPIN_H
 
 #include <QString>
+#include <cmath>
+#include <limits>
 
 #include "e-node.h"
 
@@ -21,7 +23,14 @@ class ePin
 
         bool isConnected() { return (m_enode!=NULL); }
 
-        double getCurrent() { return m_enode ? m_enode->pinCurrent( this ) : 0; } // Into the element (A)
+        double getCurrent();                                   // Into the element (A)
+
+        // True terminal current published by the element's own model (e.g. eBJT,
+        // whose matrix stamps are a linearization with large cancelling terms).
+        // NaN means "not published": reconstruct it from the stamps.
+        void   setTrueCurrent( double a ) { m_trueCurrent = a; }
+        bool   hasTrueCurrent() { return !qIsNaN( m_trueCurrent ); }
+        double trueCurrent()    { return m_trueCurrent; }
 
         virtual double getVoltage();
 
@@ -57,6 +66,8 @@ class ePin
         int m_index;
 
         bool m_inverted;
+
+        double m_trueCurrent = std::numeric_limits<double>::quiet_NaN();
 };
 
 #endif

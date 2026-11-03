@@ -129,9 +129,10 @@ wire, corners included. It can't be where two wires cross (that's ambiguous)
 or at a wire's end (connect to that pin instead).
 
 **Current flow:** `settings set currentFlow true` shows moving dots on the
-wires (conventional current direction; the toolbar button does the same). The
-smallest current shown is adjustable: `settings set currentMin 100n`
-(default `1u`). `wire current` gives the numbers without the dots.
+wires (conventional current direction; the toolbar button does the same).
+Faster and brighter dots mean more current. The smallest current shown is
+adjustable: `settings set currentMin 100n` (default `1u`). `wire current`
+gives the numbers without the dots.
 
 Routing:
 - Where two consecutive points differ in both x and y, `wire add` adds a corner.

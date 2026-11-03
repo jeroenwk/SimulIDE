@@ -37,6 +37,7 @@ class CurrentFlow : public Updatable
         virtual void updateStep() override;
 
         static double  speed( double amps, double threshold ); // Dot speed, px/s (0 below threshold)
+        static double  opacity( double amps, double threshold ); // Dot opacity 0.3..1: brighter = more current
         static bool    parseCurrent( QString s, double& amps ); // "1u", "10 nA", "0.5mA", "1e-6"
         static QString currentStr( double amps );               // "1 µA"
 

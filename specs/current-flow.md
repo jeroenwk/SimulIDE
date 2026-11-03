@@ -172,8 +172,12 @@ The result is a signed current for each `Connector`, positive from
   segments. Each `ConnectorLine` knows its starting offset along the connector,
   so dots flow smoothly round corners. `ConnectorLine::paint` draws the dots
   that fall within its segment, at `offset + φ mod 16`.
+- **Opacity:** brighter dots mean more current, as in EveryCircuit
+  ("moving dots of various speed and brightness"). Opacity ramps from 0.3 at
+  the threshold to 1.0 two decades above it, so dots fade in near the
+  threshold instead of popping in.
 - **Speed:**
-  - Below 1 µA, nothing is drawn.
+  - Below the threshold, nothing is drawn.
   - Above that, `v = k·(1 + log10(|I| / 1 µA))` px/s, capped. With k ≈ 8 px/s,
     1 µA moves at 8 px/s, 1 mA at 32 px/s and 1 A at 56 px/s.
   - Tune k on the example circuits. Dots should never move more than half a

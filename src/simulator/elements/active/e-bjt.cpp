@@ -5,6 +5,7 @@
 // Based on Falstad Circuit Simulator BJT model: https://falstad.com
 
 #include <QtMath>
+#include <limits>
 
 #include "e-bjt.h"
 #include "e-pin.h"
@@ -51,6 +52,9 @@ void eBJT::initialize()
     m_voltBE = 0;
     m_voltBC = 0;
     m_baseCurr = 0;
+    BASE->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
+    COLL->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
+    EMIT->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
 }
 
 void eBJT::stamp()
@@ -123,6 +127,13 @@ void eBJT::voltChanged()
 
     Gcc -= gmin;
     Gee -= gmin;
+
+    // True terminal currents (into the device): the matrix stamps below are a
+    // linearization whose terms nearly cancel, so they can't be used to recover
+    // the currents (CurrentFlow, ePin::getCurrent)
+    BASE->setTrueCurrent( m_baseCurr );
+    COLL->setTrueCurrent( ic );
+    EMIT->setTrueCurrent( ie );
 
     // Admitance Matrix OK
     m_BC->stampAdmitance(-Gec-Gcc );
