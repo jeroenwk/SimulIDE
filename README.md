@@ -16,6 +16,25 @@ SimulIDE also features a code Editor and Debugger.
 Editor/Debugger is still in it's firsts stages of development, with basic functionalities, but it is possible to write, compile and basic debugging with breakpoints, watch registers and global variables.
 
 
+## Command line control
+
+Everything you can do in the GUI can also be done from the command line:
+building circuits, running simulations, reading meters and scopes, pressing
+buttons, loading firmware, serial I/O, compiling and debugging.
+`simulide cli` drives an open GUI window, or a windowless instance started
+with `simulide --headless`, which suits scripts, CI and AI agents.
+
+```
+$ simulide --headless &
+$ simulide cli comp add Resistor --label R1 Resistance=1k
+$ simulide cli sim run --for 10ms
+$ simulide cli help
+```
+
+See [docs/CLI.md](docs/CLI.md) for the full command list and the JSON socket
+protocol. `tests/cli/smoke.sh` runs an end-to-end test.
+
+
 ## Building SimulIDE:
 
 Build dependencies:

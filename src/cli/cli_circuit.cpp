@@ -8,6 +8,9 @@
 #include <QDir>
 #include <QTimer>
 
+#include <QDomDocument>
+#include <QFile>
+
 #include "cliapi.h"
 #include "clirefs.h"
 #include "mainwindow.h"
@@ -68,7 +71,10 @@ void CliApi::registerCircuit()
         bool headless = m_headless;
         QTimer::singleShot( 50, [headless]()   // Let the reply go out first
         {
-            if( headless ) qApp->quit();       // Don't save window settings of a hidden window
+            if( headless ){                    // Don't save window settings of a hidden window
+                CircuitWidget::self()->newCircuit(); // Tear the circuit down cleanly, as closeEvent() does
+                qApp->quit();
+            }
             else           MainWindow::self()->close();
         });
         return "bye";
@@ -91,6 +97,15 @@ void CliApi::registerCircuit()
         QString file = absPath( c.arg( 0, "file") );
         if( !QFileInfo::exists( file ) ) throw CliError("file not found: "+file );
         if( !file.endsWith(".sim1") && !file.endsWith(".simu") ) throw CliError("not a circuit file (.sim1/.simu): "+file );
+        {
+            QFile f( file );
+            QDomDocument doc;
+            QString err;
+            int line = 0;
+            if( !f.open( QIODevice::ReadOnly ) ) throw CliError("cannot read "+file );
+            if( !doc.setContent( &f, &err, &line ) )
+                throw CliError( QString("not a valid circuit file: %1 (line %2: %3)").arg( file ).arg( line ).arg( err ) );
+        }
         allowDiscard( c );
         CircuitWidget::self()->loadCirc( file );
         if( Circuit::self()->getFilePath() != file ) throw CliError("could not load circuit: "+file );

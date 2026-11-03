@@ -8,6 +8,7 @@
 
 #include <QObject>
 #include <QHash>
+#include <QSet>
 #include <QByteArray>
 
 class QLocalServer;
@@ -50,5 +51,6 @@ class CliServer : public QObject
         bool          m_headless;
 
         QHash<QLocalSocket*, QByteArray> m_buffers;
+        QSet<QLocalSocket*> m_busy;   // Connections with a request in progress (replies keep request order)
 };
 #endif

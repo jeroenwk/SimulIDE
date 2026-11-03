@@ -23,10 +23,10 @@ make -j8
   - The `baseOffset>>1` fix was applied in `as_callfunc.cpp`; without it, virtual methods crash.
   - The x86-only JIT (`src/angel/JIT`) is excluded on non-x86 via `SIMULIDE_NO_JIT`.
   - Known limitation: upstream's ARM64 code can't take a POD struct larger than 16 bytes **by value**. Use references or ref types in script APIs.
-- Source files are picked up by glob (`$$files(src/*.cpp, true)`), so new `.cpp`/`.h`/`.ui` files need no `.pro` edit. A **new subdirectory** must be added to `INCLUDEPATH` in `SimulIDE.pro`, because includes are written flat (`#include "resistor.h"`), without a path.
+- Source files are picked up by glob (`$$files(src/*.cpp, true)`), so new `.cpp`/`.h`/`.ui` files need no `.pro` edit, but **rerun `qmake`** so the Makefile picks them up (otherwise you get undefined-symbol link errors). A **new subdirectory** must be added to `INCLUDEPATH` in `SimulIDE.pro`, because includes are written flat (`#include "resistor.h"`), without a path.
 - Release flags include `-Ofast`. Debug builds use `-O0 -D_GLIBCXX_ASSERTIONS`.
 
-The repo has no test suite, linter or CI. To verify a change, build it and run the app, for example with circuits from `resources/examples`.
+The repo has no linter or CI. The only automated test is `tests/cli/smoke.sh` (needs `python3`). It starts a headless instance and drives it through the CLI: it builds a circuit, measures it, and runs the Arduino serial and scripted SPI examples. Otherwise, verify a change by building and running the app, for example with circuits from `resources/examples`. The CLI is also the easiest way to check behaviour without clicking through the GUI (see below).
 
 ## Architecture
 
@@ -58,6 +58,27 @@ The repo has no test suite, linter or CI. To verify a change, build it and run t
 - **MCUs**: `McuCreator::createMcu()` (`src/microsim/mcucreator.cpp`) parses the MCU's data XML. The root `core` attribute selects the CPU (`AVR`, `Pic12`, `Pic14`, `Pic14e`, `8051`, `6502`, `Z80`, `Z80ULA`, `scripted`). The XML elements then instantiate generic peripheral modules (ports, timers, UART, SPI, TWI, ADC, EEPROM, interrupts...) from `src/microsim/` and their core-specific subclasses from `src/microsim/cores/<arch>/`. Register writes reach peripherals through `watchRegister` callbacks on the `McuDataSpace`.
 - **Subcircuits** (`src/gui/circuitwidget/subcircuits/`): ICs, boards, shields and modules are defined as circuit files plus a package and need no C++. The subcircuit type (`Logic`, `Board`, `Shield`, `Module`) picks the subclass.
 - **Scripted devices**: `src/angel/` is a vendored AngelScript engine (it is the reason for several `-Wno-*` flags; don't modify it). `src/microsim/cores/scripted/` exposes CPU, ports, peripherals and displays to scripts, which live in `resources/data/scripted/`.
+
+### Command line interface (`src/cli/`, documented in `docs/CLI.md`)
+- **Entry points:**
+  - `simulide cli <cmd>` is a thin client (`cliclient.cpp`, no GUI). `main.cpp` dispatches to it when `argv[1]=="cli"`.
+  - `simulide --headless [--socket N]` sets `QT_QPA_PLATFORM=offscreen` and never shows the window.
+  - The GUI also listens on the default `simulide-cli` socket.
+- **Server** (`cliserver.cpp`):
+  - A `QLocalServer` that speaks newline-delimited JSON. Requests are handled one at a time per connection, on the GUI thread.
+  - In headless mode an app-wide event filter closes every `QDialog` as it is shown and returns its text as a reply `messages` note.
+- **Commands:** registered with `CliApi::add(name, usage, help, handler)` in the `cli_*.cpp` files by area.
+  - Handlers report errors with `throw CliError(...)`.
+  - A long-running command calls `c.defer()` and later completes the returned `CliPending`, usually from `Cli::pollUntil`.
+  - `CliRefs` (`clirefs.cpp`) resolves component, pin and wire references.
+- **Threading:**
+  - The simulation worker runs between GUI timer ticks, so CLI handlers can run while it is busy.
+  - Anything that touches the event queue or MCU state must run from an `Updatable::updateStep()`, which is called while the worker is idle. `cli_mcu.cpp` does this through `CliTicker::runIdle`.
+  - UART bytes are injected by an `eElement` that schedules simulation events, one frame each (`UartFeeder`).
+- **Lifetime:**
+  - `Simulator::self()` changes on every `circuit new` or `circuit open`, so re-register Updatables with the current simulator, as `frameCounter()` and `ticker()` do.
+  - Components are not QObjects. Check that they still exist through `Circuit::compList()`, not with `QPointer`.
+- **Edits go through the GUI's undo bookkeeping** (`beginUndoStep`, `addCompChange`, `endUndoStep`, ...). That keeps them undoable from both the GUI and the CLI.
 
 ### Other areas
 - `src/gui/editorwidget/` contains the code editor plus compiler/debugger integrations in `debuggers/`.

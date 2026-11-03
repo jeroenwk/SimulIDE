@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+# SimulIDE command line interface smoke test.
+#
+# Starts a headless SimulIDE on a private socket and drives it with
+# "simulide cli": builds a circuit from scratch, measures it, presses a button,
+# saves and reopens, runs Arduino and scripted-device examples, and checks
+# serial I/O. Needs python3 (JSON checks).
+#
+# Usage: tests/cli/smoke.sh [path/to/simulide]
+#        SIMULIDE=path/to/simulide tests/cli/smoke.sh
+
+set -u
+ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+EXAMPLES="$ROOT/resources/examples"
+
+BIN=${1:-${SIMULIDE:-}}
+if [ -z "$BIN" ]; then
+    BIN=$(find "$ROOT/build_XX/executables" -type f \( -path '*simulide.app/Contents/MacOS/simulide' -o -name simulide \) 2>/dev/null | head -1)
+fi
+if [ -z "$BIN" ] || [ ! -x "$BIN" ]; then
+    echo "simulide binary not found: build first or pass its path" >&2
+    exit 2
+fi
+
+SOCK="simulide-test-$$"
+TMP=$(mktemp -d)
+PASS=0
+FAIL=0
+
+cli()  { "$BIN" cli --socket "$SOCK" "$@"; }
+jcli() { "$BIN" cli --socket "$SOCK" --json "$@"; }
+
+# Extract a value from a JSON reply: json '<python expression on r>'
+json() { python3 -c "import json,sys; r=json.load(sys.stdin); print($1)"; }
+
+ok()   { PASS=$((PASS+1)); echo "  ok    $1"; }
+fail() { FAIL=$((FAIL+1)); echo "  FAIL  $1"; [ $# -gt 1 ] && echo "        $2"; }
+
+# check "description" <python boolean expression on r> -- command...
+check() {
+    local desc=$1 expr=$2; shift 3
+    local out
+    out=$(jcli "$@" 2>&1)
+    if echo "$out" | python3 -c "import json,sys; r=json.load(sys.stdin); sys.exit(0 if ($expr) else 1)" 2>/dev/null
+    then ok "$desc"
+    else fail "$desc" "$out"
+    fi
+}
+
+cleanup() {
+    kill "$PID" 2>/dev/null
+    rm -rf "$TMP"
+}
+
+echo "SimulIDE: $BIN"
+"$BIN" --headless --socket "$SOCK" > "$TMP/server.log" 2>&1 &
+PID=$!
+trap cleanup EXIT
+
+for _ in $(seq 50); do cli ping >/dev/null 2>&1 && break; sleep 0.2; done
+if ! cli ping >/dev/null 2>&1; then
+    echo "headless SimulIDE did not start; log:" >&2
+    cat "$TMP/server.log" >&2
+    exit 2
+fi
+
+echo "Basics"
+check "ping"              'r["ok"]'                                  -- ping
+check "unknown command"   'not r["ok"] and "valid" in r["error"]'    -- comp frobnicate
+
+echo "Build a circuit from scratch"
+cli - > "$TMP/build.out" 2>&1 <<'EOF'
+circuit new --discard
+comp add Battery  --label B1 --at 0,0     Voltage=9
+comp add Push     --label SW --at 40,-40
+comp add Resistor --label R1 --at 120,-40 Resistance=470
+comp add Led      --label D1 --at 200,0   --rot 90
+comp add Ground   --label G  --at 0,80
+wire add B1.lPin SW.pinP0
+wire add SW.switch0pinN R1.lPin
+wire add R1.rPin D1.lPin
+wire add D1.rPin G.Gnd
+wire add B1.rPin G.Gnd
+EOF
+if [ $? -eq 0 ]; then ok "build script"; else fail "build script" "$(cat "$TMP/build.out")"; fi
+# The second wire to G.Gnd splits the first one with a junction node: 6 wires
+check "5 components, 6 wires, 1 junction" 'r["result"]["components"]==5 and r["result"]["wires"]==6 and r["result"]["nodes"]==1' -- circuit info
+check "bad property is rejected atomically" 'not r["ok"]' -- comp add Resistor Bogus=1
+check "...and leaves nothing behind" 'r["result"]["components"]==5' -- circuit info
+
+echo "Simulate and measure"
+check "run 20ms"                'r["result"]["state"]=="paused"'          -- sim run --for 20ms
+check "LED off (button open)"   'abs(r["result"]["current"]) < 1e-6'      -- read D1
+check "press button"            'r["ok"]'                                  -- ui press SW
+check "run 20ms"                'r["ok"]'                                  -- sim run --for 20ms
+check "LED on (~14 mA)"         '0.010 < r["result"]["current"] < 0.020'   -- read D1
+check "Ohm's law across R1"     'abs(r["result"]["voltage"]/r["result"]["current"]-470) < 470*0.01' -- read R1
+check "probe pins"              'r["result"][0]["voltage"] > 8.9'          -- probe R1.lPin R1.rPin
+check "release button"         'r["ok"]'                                  -- ui release SW
+check "run 20ms"                'r["ok"]'                                  -- sim run --for 20ms
+check "LED off again"           'abs(r["result"]["current"]) < 1e-6'      -- read D1
+
+echo "Edit, undo, redo"
+check "set R1 = 1k"             'r["ok"]'                                  -- comp set R1 Resistance=1k
+check "R1 is 1000 Ohm"          'any(p["name"]=="Resistance" and p["value"].startswith("1 k") for p in r["result"]["properties"])' -- comp get R1
+check "undo"                    'r["ok"]'                                  -- undo
+check "R1 back to 470"          'any(p["name"]=="Resistance" and p["value"].startswith("470") for p in r["result"]["properties"])' -- comp get R1
+check "redo"                    'r["ok"]'                                  -- redo
+check "R1 is 1k again"          'any(p["name"]=="Resistance" and p["value"].startswith("1 k") for p in r["result"]["properties"])' -- comp get R1
+
+echo "Save and reopen"
+check "save"                    'r["ok"]'                                  -- circuit save "$TMP/led.sim1"
+check "new circuit"             'r["result"]["components"]==0'             -- circuit new
+check "reopen"                  'r["result"]["components"]==5 and r["result"]["wires"]==6 and r["result"]["nodes"]==1' -- circuit open "$TMP/led.sim1"
+check "R1 kept its value"       'any(p["name"]=="Resistance" and p["value"].startswith("1 k") for p in r["result"]["properties"])' -- comp get R1
+echo "not xml" > "$TMP/bad.sim1"
+check "invalid file rejected"   'not r["ok"] and "valid circuit" in r["error"]' -- circuit open "$TMP/bad.sim1" --discard
+
+echo "Arduino and serial"
+ECHO="$EXAMPLES/Micro/Arduino/arduino_serial_echo"
+check "open example (terminal window closed headless)" 'r["ok"] and any("dialog" in m for m in r.get("messages",[]))' \
+      -- circuit open "$ECHO/arduino_serial_echo.sim1" --discard
+check "load firmware"           'r["result"]["device"]=="mega328"'         -- mcu load Uno-1 "$ECHO/arduino_serial_echo.hex"
+check "run 200ms"               'r["ok"]'                                  -- sim run --for 200ms
+check "boot message"            'r["result"]["text"]=="Serial echo Test\n"' -- serial read Uno-1
+check "send to MCU"             'r["result"]["queued"]==6'                 -- serial send Uno-1 hello --lf
+check "run 50ms"                'r["ok"]'                                  -- sim run --for 50ms
+check "MCU echoes"              'r["result"]["text"]=="hello\n"'           -- serial read Uno-1
+check "terminal saw it all"     'r["result"]["text"]=="Serial echo Test\nhello\n"' -- serial read SerialTerm-2
+check "read a register"         'r["result"]["addr"]==0xc1'                -- mcu mem Uno-1 UCSR0B
+
+echo "Scripted device (AngelScript)"
+SPI="$EXAMPLES/Scripted/SPI_Digipot"
+check "open SPI digipot example" 'r["ok"]'                                 -- circuit open "$SPI/SPIDigipot-test.sim1" --discard
+check "run 300ms"               'r["result"]["state"]=="paused"'           -- sim run --for 300ms
+check "scope captured signal"   'max(p[1] for p in r["result"]["channels"][0]["samples"]) > 0.1' -- scope data Oscope-11
+
+echo "Quit"
+check "quit"                    'r["ok"]'                                  -- quit --discard
+wait "$PID"
+CODE=$?
+if [ $CODE -eq 0 ]; then ok "server exited cleanly"; else fail "server exited cleanly" "exit code $CODE"; fi
+
+echo
+echo "passed: $PASS  failed: $FAIL"
+[ "$FAIL" -eq 0 ]

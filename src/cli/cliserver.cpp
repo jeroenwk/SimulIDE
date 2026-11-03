@@ -13,6 +13,7 @@
 #include <QMessageBox>
 #include <QThread>
 #include <QEvent>
+#include <QTimer>
 
 #include "cliserver.h"
 #include "cliapi.h"
@@ -81,6 +82,7 @@ void CliServer::newConnection()
         connect( sock, &QLocalSocket::disconnected, this, [this, sock]()
         {
             m_buffers.remove( sock );
+            m_busy.remove( sock );
             sock->deleteLater();
         });
     }
@@ -88,22 +90,27 @@ void CliServer::newConnection()
 
 void CliServer::readSocket( QLocalSocket* sock )
 {
-    QByteArray& buf = m_buffers[sock];
-    buf.append( sock->readAll() );
+    if( !m_buffers.contains( sock ) && sock->state() != QLocalSocket::ConnectedState ) return;
+    m_buffers[sock].append( sock->readAll() );
 
     int nl;
-    while( (nl = buf.indexOf('\n')) >= 0 )
+    while( !m_busy.contains( sock ) && (nl = m_buffers[sock].indexOf('\n')) >= 0 )
     {
+        QByteArray& buf = m_buffers[sock];
         QByteArray line = buf.left( nl ).trimmed();
         buf.remove( 0, nl+1 );
         if( line.isEmpty() ) continue;
 
         QPointer<QLocalSocket> target( sock );
-        auto send = [target]( QJsonObject reply )
+        m_busy.insert( sock );
+        auto send = [this, target, sock]( QJsonObject reply )
         {
+            m_busy.remove( sock );
             if( !target ) return;
             target->write( QJsonDocument( reply ).toJson( QJsonDocument::Compact )+"\n" );
             target->flush();
+            // Requests that arrived meanwhile wait in the buffer
+            QTimer::singleShot( 0, this, [this, target](){ if( target ) readSocket( target ); } );
         };
         QJsonParseError err;
         QJsonDocument doc = QJsonDocument::fromJson( line, &err );

@@ -9,6 +9,6 @@
 Updatable::Updatable(){}
 Updatable::~Updatable()
 {
-    Simulator::self()->remFromUpdateList( this );
+    if( Simulator::self() ) Simulator::self()->remFromUpdateList( this );
 }
 

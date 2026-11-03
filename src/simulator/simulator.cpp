@@ -56,6 +56,7 @@ Simulator::~Simulator()
 {
     m_CircuitFuture.waitForFinished();
     delete m_matrix;
+    if( m_pSelf == this ) m_pSelf = NULL; // Elements destroyed later must not use a dangling pointer
 }
 
 inline void Simulator::solveMatrix()
