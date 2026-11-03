@@ -39,6 +39,7 @@ void ColorVal::setup( bool )
     QPalette pal = colorW->palette();
     pal.setColor( QPalette::Base, m_color );
     colorW->setPalette( pal );
+    colorW->setProperty("uiThemeKeep", true );   // A colour swatch: shown as is in dark mode
     //colorW->setText( m_color.name() );
     colorW->setReadOnly( true );
     colorW->installEventFilter(this);

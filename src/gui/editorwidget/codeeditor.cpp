@@ -59,6 +59,7 @@ CodeEditor::CodeEditor( QWidget* parent, OutPanelText* outPane )
     p.setColor( QPalette::Base, QColor( 255, 255, 249) );
     p.setColor( QPalette::Text, QColor( 0, 0, 0) );
     setPalette( p );
+    setProperty("uiThemeKeep", true );   // Light editor: the syntax colours are made for it
 
     connect( this, &CodeEditor::blockCountChanged,
              this, &CodeEditor::updateLineNumberAreaWidth, Qt::UniqueConnection );

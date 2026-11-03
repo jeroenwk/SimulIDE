@@ -176,6 +176,39 @@
           </widget>
          </item>
          <item>
+          <layout class="QHBoxLayout" name="uiThemeLayout">
+           <item>
+            <widget class="QLabel" name="uiThemeLabel">
+             <property name="text">
+              <string>Interface</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="uiTheme">
+             <property name="toolTip">
+              <string>Light or dark windows and panels. System follows the light or dark mode of the computer. The circuit colours are set in Circuit &gt; Colors.</string>
+             </property>
+             <item>
+              <property name="text">
+               <string>System</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Light</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Dark</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
           <layout class="QHBoxLayout" name="horizontalLayout_9">
            <property name="topMargin">
             <number>12</number>

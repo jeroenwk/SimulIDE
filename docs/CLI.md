@@ -142,6 +142,12 @@ closed, unless a file is given on the command line or a crash backup is
 restored. `settings set reopenLast false` turns it off (Settings > App). Headless
 instances never reopen a circuit, and never change which one the GUI reopens.
 
+**Interface theme:** `settings set uiTheme system|light|dark` (Settings > App >
+Interface). `system`, the default, follows the light or dark mode of the computer
+and switches with it (live on macOS; elsewhere the mode at start). It covers the
+windows and panels; the circuit canvas keeps its own colours (Settings > Circuit >
+Colors). The code editor stays light in both modes.
+
 **Capacitor charge:** `settings set capCharge true` shows how far each
 capacitor is charged (the toolbar button next to current flow does the same):
 - a gauge bar beside the part, filling upwards with |V| / Vref;

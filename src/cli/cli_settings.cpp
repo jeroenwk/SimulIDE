@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QMetaEnum>
 
+#include "uitheme.h"
 #include "cliapi.h"
 #include "mainwindow.h"
 #include "circuit.h"
@@ -76,6 +77,13 @@ QList<Setting>& settings()
     list.append({"reopenLast", "app", "On start, reopen the circuit that was open when the app was closed (default true).",
         [](){ return QJsonValue( MainWindow::self()->reopenLast() ); },
         []( QString v ){ MainWindow::self()->setReopenLast( parseBool( v ) ); }});
+    list.append({"uiTheme", "app", "Look of the windows and panels: system (follow the OS light/dark mode, default), light or dark.",
+        [](){ return QJsonValue( UiTheme::modeName( UiTheme::self()->mode() ) ); },
+        []( QString v ){
+            UiTheme::mode_t m;
+            if( !UiTheme::parseMode( v, m ) ) throw CliError("uiTheme must be system, light or dark");
+            UiTheme::self()->setMode( m );
+        }});
     list.append({"userPath", "app", "User data folder (extra components, examples).",
         [](){ return QJsonValue( MainWindow::self()->userPath() ); },
         []( QString v ){
