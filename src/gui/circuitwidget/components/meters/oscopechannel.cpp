@@ -25,6 +25,7 @@ void OscopeChannel::initialize()
     m_falling  = false;
 
     m_simTime = -1;
+    m_slotStart = 0;
     m_period  = 0;
     m_risEdge = 0;
     m_nCycles = 0;
@@ -145,7 +146,18 @@ void OscopeChannel::voltChanged()
     if( m_simTime != simTime )
     {
         m_simTime = simTime;
-        if( ++m_bufferCounter >= m_buffer.size() ) m_bufferCounter = 0;
+        // A slowly changing voltage (an RC decay) changes on every reactive step, so storing
+        // every change fills the buffer with a fraction of a second. Like a real scope, sample
+        // at a rate set by the timebase: at most one slot per 1/50000 of the screen. Changes
+        // closer together update the current slot (latest value), so the buffer holds about
+        // 12 screens whatever the timebase.
+        uint64_t minDt = m_oscope->timeDiv()*10/50000;
+        if( m_bufferCounter == 0 && m_time[0] == 0 ) m_slotStart = simTime;   // First sample
+        else if( simTime-m_slotStart >= minDt )
+        {
+            if( ++m_bufferCounter >= m_buffer.size() ) m_bufferCounter = 0;
+            m_slotStart = simTime;
+        }
     }
     m_buffer[m_bufferCounter] = data;
     m_time[m_bufferCounter] = simTime;
