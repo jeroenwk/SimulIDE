@@ -143,6 +143,10 @@ Point at things instead of describing them:
 - Save to `samples/<descriptive_snake_case>.sim1`, for example
   `samples/half_wave_rectifier_filtered.sim1`. Use `circuit save <path>`
   (relative to the shell's directory).
+- **Scenario scripts** (a sequence of steps with checks, e.g. a bench test) go
+  next to the circuit as a `.py` file using `tools/simctl.py`, starting with a
+  docstring that says what it does, its steps and its arguments: the Scripts tab
+  lists it, shows that docstring and runs it in the window.
 - **Give it a description** before saving: `circuit description --file notes.md`
   (Markdown). Say what the circuit models and where it comes from, what each part
   stands for, how to use it (switches, speed, scope settings), what to expect, and

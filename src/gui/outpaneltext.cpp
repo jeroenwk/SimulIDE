@@ -122,6 +122,11 @@ OutHighlighter::OutHighlighter( QTextDocument* parent )
     rule.format = format;
     highlightingRules.append(rule);
 
+    format.setForeground( QColor(255, 120, 120) );
+    rule.pattern = QRegExp("\\bFAIL\\b");
+    rule.format = format;
+    highlightingRules.append(rule);
+
     format.setForeground( QColor(100, 50, 0) );
     format.setBackground( QColor(255, 255, 100) );
     rule.pattern = QRegExp("\\bERROR\\b");

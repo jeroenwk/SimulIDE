@@ -120,6 +120,10 @@ void setSimSpeed( uint64_t psPerSec, uint64_t stepSize )
     sim->setPsPerSec( psPerSec );
 }
 
+static int s_runGeneration = 0;
+int  runGeneration() { return s_runGeneration; }
+void cancelRuns()    { ++s_runGeneration; }
+
 void pollUntil( std::function<bool()> fn, int ms )
 {
     QTimer* timer = new QTimer();
@@ -148,6 +152,7 @@ CliApi::CliApi()
     registerEdit();
     registerMeasure();
     registerSim();
+    registerScript();
     registerMcu();
     registerEditor();
     registerSettings();
