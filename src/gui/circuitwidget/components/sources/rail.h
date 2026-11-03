@@ -22,6 +22,7 @@ class Rail : public Component, public eElement
  static LibraryItem* libraryItem();
 
         double volt() { return m_volt; }
+        virtual double nominalVolt() override { return m_volt; }
         void setVolt( double v );
 
         virtual void stamp() override;

@@ -11,6 +11,7 @@
 #include <QSettings>
 
 #include "currentflow.h"
+#include "chargeview.h"
 #include "circuitwidget.h"
 #include "editorwindow.h"
 #include "mainwindow.h"
@@ -163,6 +164,13 @@ void CircuitWidget::createActions()
     connect( currentFlowAct, &QAction::toggled,
              []( bool on ){ CurrentFlow::self()->setEnabled( on ); } );
 
+    capChargeAct = new QAction( QIcon(":/capcharge.svg"),tr("Show Capacitor Charge"), this);
+    capChargeAct->setStatusTip(tr("Show how far each capacitor is charged: a gauge beside it and its plates coloured by voltage"));
+    capChargeAct->setCheckable( true );
+    capChargeAct->setChecked( ChargeView::self()->enabled() );
+    connect( capChargeAct, &QAction::toggled,
+             []( bool on ){ ChargeView::self()->setEnabled( on ); } );
+
     settAppAct = new QAction( QIcon(":/config.svg"),tr("Settings"), this);
     settAppAct->setStatusTip(tr("Settings"));
     connect( settAppAct, &QAction::triggered,
@@ -248,6 +256,7 @@ void CircuitWidget::createToolBars()
     m_circToolBar.addAction( powerCircAct );
     m_circToolBar.addAction( pauseSimAct );
     m_circToolBar.addAction( currentFlowAct );
+    m_circToolBar.addAction( capChargeAct );
     m_circToolBar.addSeparator();//..........................
 
     spacer = new QWidget();
@@ -408,6 +417,7 @@ void CircuitWidget::powerCircOn()
     setMsg( " "+tr("Running")+" ", 0 );
 
     CurrentFlow::self()->attach();       // Each circuit has a new Simulator
+    ChargeView::self()->attach();
     m_infoWidget->setSimState( InfoWidget::shownRunning );
     Simulator::self()->startSim();
 }
@@ -429,6 +439,7 @@ void CircuitWidget::powerCircOff()
     m_infoWidget->setRate( 0, 0 );
     m_infoWidget->setSimState( InfoWidget::shownStopped );
     CurrentFlow::self()->clear();
+    ChargeView::self()->clear();
     Circuit::self()->update();
 }
 
@@ -446,6 +457,7 @@ void CircuitWidget::powerCircDebug()
     m_infoWidget->setRate(-1 );  //m_rateLabel->setText( tr("Speed: Debugger") );
 
     CurrentFlow::self()->attach();       // Debugger start has its own path
+    ChargeView::self()->attach();
     m_infoWidget->setSimState( InfoWidget::shownPaused );
     Simulator::self()->startSim( true );
 }

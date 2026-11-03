@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+  <!-- Capacitor charge: a capacitor with a gauge bar beside it, half full -->
+  <path d="M7 2 V8 M7 14 V20" fill="none" stroke="#28283c" stroke-width="1.6"/>
+  <path d="M2.5 8 H11.5" stroke="#d04040" stroke-width="2.2"/>
+  <path d="M2.5 14 H11.5" stroke="#28283c" stroke-width="2.2"/>
+  <rect x="15" y="4" width="4.5" height="14" fill="none" stroke="#28283c" stroke-width="1"/>
+  <rect x="15.5" y="10" width="3.5" height="7.5" fill="#ffbe00"/>
+</svg>

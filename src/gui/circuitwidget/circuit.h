@@ -38,6 +38,9 @@ class Circuit : public QGraphicsScene
         void setDrawGrid( bool draw );
 
         bool animate() { return m_animate; }
+        // Charge display reference voltage (V), 0 = auto (largest source voltage)
+        double chargeScale() { return m_chargeScale; }
+        void setChargeScale( double v );
         void setAnimate( bool an );
 
         int autoBck();
@@ -169,6 +172,7 @@ class Circuit : public QGraphicsScene
 
         bool m_compRemoved;
         bool m_animate;
+        double m_chargeScale;
         bool m_changed;
         bool m_busy;
         bool m_undo;

@@ -101,6 +101,9 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
         void setCircHflip( int hf ) { m_circHflip = hf; }
 
         int  hflip() { return m_Hflip; }
+
+        // Voltage a source is set to (V), 0 for anything else: the charge display's 100 %
+        virtual double nominalVolt() { return 0; }
         virtual void setHflip( int hf );
 
         int  vflip() { return m_Vflip; }

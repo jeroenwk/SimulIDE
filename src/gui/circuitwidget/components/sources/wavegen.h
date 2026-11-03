@@ -49,6 +49,9 @@ class WaveGen : public ClockBase
         void setSemiAmpli( double v );
 
         double midVolt() { return m_voltMid; }
+        virtual double nominalVolt() override
+        {   if( m_bipolar ) return qAbs( m_voltMid )+m_voltage/2;
+            return qMax( qAbs( m_voltBase ), qAbs( m_voltBase+m_voltage ) ); }
         void setMidVolt( double v );
 
         QString fileName() { return m_fileName; }

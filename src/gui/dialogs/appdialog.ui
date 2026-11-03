@@ -578,6 +578,60 @@
           </layout>
          </item>
          <item>
+          <layout class="QHBoxLayout" name="capChargeLayout">
+           <item>
+            <widget class="QCheckBox" name="capCharge">
+             <property name="toolTip">
+              <string>A gauge beside each capacitor shows how far it is charged; its plates are coloured by node voltage</string>
+             </property>
+             <property name="text">
+              <string>Show Capacitor Charge</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="capLabelLabel">
+             <property name="text">
+              <string>Label</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="capLabel">
+             <property name="toolTip">
+              <string>Live text beside each capacitor</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="chargeScaleLabel">
+             <property name="text">
+              <string>100 % at</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="chargeScale">
+             <property name="toolTip">
+              <string>Voltage shown as a full gauge, saved in the circuit. Auto = the largest source voltage.</string>
+             </property>
+             <property name="specialValueText">
+              <string>Auto</string>
+             </property>
+             <property name="suffix">
+              <string> V</string>
+             </property>
+             <property name="decimals">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <double>100000.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
           <widget class="QGroupBox" name="colorsBox">
            <property name="title">
             <string>Colors</string>

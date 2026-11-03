@@ -12,6 +12,7 @@
 #include "circuitview.h"
 #include "simulator.h"
 #include "currentflow.h"
+#include "chargeview.h"
 #include "theme.h"
 
 namespace
@@ -106,6 +107,23 @@ QList<Setting>& settings()
             bool ok; double d = v.toDouble( &ok );
             if( !ok || d < 1 || d > 6 ) throw CliError("invalid range: "+v+" (1..6 decades)" );
             CurrentFlow::self()->setRange( d );
+        }});
+    list.append({"capCharge", "circuit", "Show capacitor charge: a gauge beside each capacitor and its plates coloured by voltage (see also read Cx).",
+        [](){ return QJsonValue( ChargeView::self()->enabled() ); },
+        []( QString v ){ ChargeView::self()->setEnabled( parseBool( v ) ); }});
+    list.append({"capLabel", "circuit", "Live label beside each capacitor while the charge display is on: off, volt, percent or both.",
+        [](){ return QJsonValue( ChargeView::labelModes().at( ChargeView::self()->labelMode() ) ); },
+        []( QString v ){
+            int i = ChargeView::labelModes().indexOf( v.toLower() );
+            if( i < 0 ) throw CliError("invalid label mode: "+v+" ("+ChargeView::labelModes().join(", ")+")" );
+            ChargeView::self()->setLabelMode( i );
+        }});
+    list.append({"chargeScale", "circuit", "Charge display 100 % in volts, saved in the circuit; 0 = auto (largest source voltage).",
+        [](){ return QJsonValue( Circuit::self()->chargeScale() ); },
+        []( QString v ){
+            bool ok; double d = v.toDouble( &ok );
+            if( !ok || d < 0 ) throw CliError("invalid voltage: "+v+" (0 = auto)" );
+            Circuit::self()->setChargeScale( d );
         }});
     list.append({"colorTheme", "circuit", "Color preset: Classic, Light or Dark (EveryCircuit style). Reads Custom when colors were changed.",
         [](){ return QJsonValue( Theme::currentPreset() ); },

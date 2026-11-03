@@ -31,6 +31,8 @@ class SubCircuit : public Chip
 
         virtual void contextMenu( QGraphicsSceneContextMenuEvent* event, QMenu* menu ) override;
 
+        QList<Component*>* compList() { return &m_compList; }
+
     protected:
         void loadSubCircuit( QString file );
 

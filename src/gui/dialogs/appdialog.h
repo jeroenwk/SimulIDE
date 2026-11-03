@@ -50,6 +50,9 @@ class AppDialog : public QDialog, private Ui::AppDialog
         void on_currentFlow_toggled( bool on );
         void on_currentMin_editingFinished();
         void on_currentRange_valueChanged( int decades );
+        void on_capCharge_toggled( bool on );
+        void on_capLabel_currentIndexChanged( int i );
+        void on_chargeScale_valueChanged( double v );
         void on_fps_valueChanged( int fps );
         void on_backup_valueChanged( int secs );
 
@@ -70,6 +73,7 @@ class AppDialog : public QDialog, private Ui::AppDialog
         void on_fontName_currentFontChanged( const QFont &f );
 
     private:
+        void syncCharge();
         void buildColors();
         void updateColorButtons();
         QPushButton* m_colorButtons[Theme::numRoles];

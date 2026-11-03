@@ -21,6 +21,7 @@ class Battery : public Comp2Pin, public eResistor
  static LibraryItem* libraryItem();
 
         double volt() { return m_volt; }
+        virtual double nominalVolt() override { return m_volt; }
         void setVolt( double volt );
 
         virtual void setRes( double resist ) override;

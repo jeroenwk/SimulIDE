@@ -34,6 +34,8 @@ elCapacitor::~elCapacitor(){}
 
 void elCapacitor::updateStep()
 {
+    CapacitorBase::updateStep();
+
     double volt = m_ePin[0]->getVoltage() - m_ePin[1]->getVoltage();
     bool crashed = ( volt < -1e-6 );
     if( crashed || (crashed != m_crashed) )
@@ -50,9 +52,13 @@ void elCapacitor::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QW
     pen.setWidth(3);
     p->setPen(pen);
     
+    QPen base = pen;
+    setPlatePen( p, 1 );                // − plate (the cup), coloured by node potential while shown
     p->drawLine( 3,-7, 3, 7 );
     p->drawLine(-3,-7, 3,-7 );
     p->drawLine(-3, 7, 3, 7 );
+    p->setPen( base );
+    setPlatePen( p, 0 );                // + plate
     p->drawLine(-3,-3,-3, 3 );
 
     Component::paintSelected( p );

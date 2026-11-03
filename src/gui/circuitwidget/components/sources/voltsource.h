@@ -15,6 +15,8 @@ class VoltSource : public VarSource
 {
     public:
         VoltSource( QString type, QString id );
+
+        virtual double nominalVolt() override { return qMax( qAbs( m_maxValue ), qAbs( m_minValue ) ); }
         ~VoltSource();
 
         static Component* construct( QString type, QString id );

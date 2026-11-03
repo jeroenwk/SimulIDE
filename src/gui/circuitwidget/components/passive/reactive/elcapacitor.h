@@ -21,6 +21,10 @@ class elCapacitor : public CapacitorBase
 
         virtual void updateStep() override;
 
+    protected:
+        virtual bool isReversed() override { return m_crashed; }
+
+    public:
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
 };
 
