@@ -129,13 +129,16 @@ by tunnels, subcircuit pins or hidden pins.
    *into* the net from its element. Junction pins inject nothing.
 3. **Residual:** `R = Σ J` over the piece. If the piece is the whole net and
    every pin is visible, `R ≈ 0`. If not, the missing current flows through
-   passive pins in the piece (tunnels, subcircuit package pins), so `R` goes
-   to them:
-   - **One passive pin:** it gets `J = −R`. That's exact.
-   - **Several passive pins:** split `−R` evenly among them and flag the piece
-     as *approximate*. The CLI reports the flag.
-   - **None, and |R| is above 1 % of the largest |J| plus 1 nA:** flag the
-     piece as *inconsistent*. That's a bug signal, logged once.
+   passive pins in the piece (tunnels, subcircuit package pins, comparator
+   inputs), so `R` goes to them:
+   - **One passive pin:** it gets `J = −R`. That's exact. (The LM555's divider
+     return lands on its Gnd pin this way; Vcc stamps visibly and Rst gets 0.)
+   - **Several passive pins:** split `−R` evenly among them; flag the piece
+     *approximate* when the split is significant (> 1 % of the largest |J|).
+   - **No passive pin and |R| > 3 % of the largest |J|:** flag *inconsistent*
+     (bug signal). Below that, spread `R` over the pins: currents published by
+     element models (eBJT) lag the final solve by one non-linear iteration
+     (~1 % during transients), and the spread is invisible.
 4. **Spanning tree:** pick a root (a passive pin if there is one, otherwise
    any leaf), then breadth-first search.
    - The current through a tree edge, from parent to child, is the sum of `J`

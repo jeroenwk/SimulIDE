@@ -164,7 +164,7 @@ Removing wires around a junction works as in the GUI:
 
 | Command | |
 |---|---|
-| `probe <pin> ...` | Voltage at pins |
+| `probe <pin> ...` | Voltage and current (into the component) at pins |
 | `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors (voltage, current, power), plus pin voltages |
 | `scope data <comp> [--ch N] [--last TIME] [--max N]` | Oscilloscope or logic analyzer samples as `[time_s, value]`, oldest first |
 | `scope get <comp>` | Display settings: time/div, trigger, auto-scale, and per channel volts/div and positions |
