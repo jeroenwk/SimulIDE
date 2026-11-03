@@ -1,4 +1,4 @@
-<circuit version="1.1.0-SR2" rev="261103" stepSize="1000000" stepsPS="500000" NLsteps="100000" reaStep="1000000" animate="1" >
+<circuit version="1.1.0-SR2" rev="261103" stepSize="1000000" stepsPS="500000" NLsteps="100000" reaStep="1000000" animate="0" >
 
 <item itemtype="Lm555" CircId="Lm555-1" mainComp="false" Show_id="false" Show_Val="false" Pos="0,-24" rotation="0" hflip="1" vflip="1" label="U1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" />
 
