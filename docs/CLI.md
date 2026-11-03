@@ -103,11 +103,18 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `comp rotate <comp> [cw\|ccw\|180]` | Rotate |
 | `comp flip <comp> <h\|v>` | Flip |
 | `comp remove <comp> ...` | Remove parts and their wires |
+| `comp link <comp> [target ...] [--clear]` | Links of a linker part (scripted core, MCU): the parts it drives, in order (index 0, 1, ... of `component.setLinkedValue` in a script). Targets are appended, `--clear` removes all first, no target lists them. Like the GUI's Link mode, not undoable |
 
 - `comp add` is atomic: if a property is invalid, nothing is added.
 - Hidden properties (shown by `comp get --all`) can be changed with `comp set`
   too. For scope settings, `scope set` is easier.
 - Adding or removing parts stops a running simulation, as it does in the GUI.
+- `comp add` also takes a device from the open circuit's `data/<name>/` folder
+  (`<name>.mcu`: a scripted or MCU chip; `<name>.sim1` with a package: a
+  subcircuit), as SimulIDE loads them inside subcircuits. That is how the inside
+  of a datasheet part is built (`electronics/components/README.md`).
+- Parts in the user data folder (`settings set userPath DIR`, then restart) are
+  listed by `lib list` like built-in ones.
 
 ### Wires
 
@@ -235,7 +242,7 @@ Removing wires around a junction works as in the GUI:
 | Command | |
 |---|---|
 | `probe <pin> ...` | Voltage and current (into the component) at pins |
-| `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors (voltage, current, power), capacitors (voltage, charge level, reference, flags), plus pin voltages |
+| `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors (voltage, current, power), capacitors (voltage, charge level, reference, flags), subcircuits with a scripted core (`state`: the text the script shows with `component.showValue`), plus pin voltages |
 | `scope data <comp> [--ch N] [--last TIME] [--max N]` | Oscilloscope or logic analyzer samples as `[time_s, value]`, oldest first |
 | `scope get <comp>` | Display settings: time/div, trigger, auto-scale, and per channel volts/div and positions |
 | `scope set <comp> [--timediv T] [--trigger CH\|none] [--voltdiv V\|a,b,c,d] [--voltpos ...] [--timepos ...] [--ch CH] [--autoscale CH\|none]` | Change display settings, as in the Expand panel |
@@ -363,7 +370,8 @@ Timing:
 - `run --wait T` replies when a breakpoint is hit, or after `T`.
 - Compiling needs the toolchain installed (avr-gcc, Arduino, gputils, SDCC, ...)
   and configured, as in the GUI. Scripted (AngelScript) devices compile with
-  no external tools.
+  no external tools; their compile errors (file, line, message) appear in
+  Messages and in the reply of the command that loaded them.
 
 ### Settings
 

@@ -6,6 +6,8 @@
 #include <QTreeWidgetItem>
 #include <QRegularExpression>
 #include <QSet>
+#include <QDir>
+#include <QFileInfo>
 
 #include "cliapi.h"
 #include "clirefs.h"
@@ -17,6 +19,7 @@
 #include "node.h"
 #include "pin.h"
 #include "subcircuit.h"
+#include "linker.h"
 #include "comproperty.h"
 #include "componentselector.h"
 #include "simulator.h"
@@ -54,6 +57,17 @@ CatalogItem findItem( QString name )
     for( CatalogItem& it : items ) if( it.name == name ) return it;
     for( CatalogItem& it : items ) if( it.name.compare( name, Qt::CaseInsensitive ) == 0 ) return it;
     for( CatalogItem& it : items ) if( it.caption.compare( name, Qt::CaseInsensitive ) == 0 ) return it;
+
+    // A device in the open circuit's data/<name>/ folder (as SimulIDE loads them inside
+    // subcircuits): <name>.mcu = scripted or MCU chip, <name>.sim1 + package = subcircuit
+    QString circPath = Circuit::self() ? Circuit::self()->getFilePath() : QString();
+    if( !circPath.isEmpty() )
+    {
+        QDir dir( QFileInfo( circPath ).absoluteDir().absoluteFilePath("data/"+name ) );
+        if( dir.exists( name+".mcu" ) ) return { name, "MCU", name, "circuit data" };
+        if( dir.exists( name+".sim1" ) && ( dir.exists( name+".package") || dir.exists( name+"_LS.package") ) )
+            return { name, "Subcircuit", name, "circuit data" };
+    }
 
     QStringList similar;
     for( CatalogItem& it : items )
@@ -419,6 +433,48 @@ void CliApi::registerEdit()
         QJsonObject res{ {"uid", uid } };
         for( QString k : changes.keys() ) res[k] = CliRefs::propValue( now, k );
         return res;
+    });
+
+    add("comp link", "comp link <comp> [target ...] [--clear]",
+        "Links of a linker component (scripted chips, MCUs): the components it drives, in order "
+        "(index 0, 1, ... in the script's component.setLinkedValue). Targets are appended; --clear "
+        "removes all links first. No target: list the links. Like the GUI's Link mode (not undoable).",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        Component* comp = CliRefs::comp( c.arg( 0, "component") );
+        Linker* linker = dynamic_cast<Linker*>( comp );
+        if( !linker ) throw CliError( comp->getUid()+" can't link to other components");
+
+        QList<Component*> targets;
+        for( int i=1; i<c.pos.size(); ++i )
+        {
+            Component* t = CliRefs::comp( c.pos.at( i ) );
+            if( t == comp ) throw CliError("a component can't link to itself");
+            targets.append( t );
+        }
+        bool changed = false;
+        if( c.flag("clear") )
+        {
+            while( Component* t = linker->getLinkedComp( 0 ) ) { linker->compSelected( t ); changed = true; }
+        }
+        for( Component* t : targets )
+        {
+            bool found = false;
+            for( int i=0; Component* l = linker->getLinkedComp( i ); ++i ) if( l == t ) found = true;
+            if( found ) continue;
+            linker->compSelected( t );                 // Adds the link (if the target accepts one)
+            bool now = false;
+            for( int i=0; Component* l = linker->getLinkedComp( i ); ++i ) if( l == t ) now = true;
+            if( !now ) throw CliError( t->getUid()+" can't be linked (no linkable value)");
+            changed = true;
+        }
+        linker->compSelected( nullptr );               // Leave link mode, hide the numbers
+        if( changed ) Circuit::self()->setChanged();
+
+        QJsonArray links;
+        for( int i=0; Component* l = linker->getLinkedComp( i ); ++i )
+            links.append( QJsonObject{ {"index", i}, {"uid", l->getUid()}, {"label", l->idLabel()} } );
+        return QJsonObject{ {"uid", comp->getUid()}, {"links", links} };
     });
 
     add("comp move", "comp move <comp> <x,y>", "Move a component to a position (snapped to grid).",

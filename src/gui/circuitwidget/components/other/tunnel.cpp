@@ -47,7 +47,7 @@ Tunnel::Tunnel( QString type, QString id )
 
     m_pin.resize( 1 );
     m_pin[0] = new Pin( 0, QPoint(0,0), id+"-pin", 0, this);
-    m_pin[0]->setLabelColor( Qt::black );
+    m_pin[0]->setLabelColor( QColor( 20, 20, 20 ) ); // Dark on the light body in every theme (black would follow the theme)
     m_pin[0]->setLength( 5 );
     m_pin[0]->setSpace( 4 );
 

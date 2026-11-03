@@ -344,6 +344,66 @@ check "open SPI digipot example" 'r["ok"]'                                 -- ci
 check "run 300ms"               'r["result"]["state"]=="paused"'           -- sim run --for 300ms
 check "scope captured signal"   'max(p[1] for p in r["result"]["channels"][0]["samples"]) > 0.1' -- scope data Oscope-11
 
+echo "Datasheet part: scripted core from the circuit's data folder, with links"
+mkdir -p "$TMP/part/data/TCORE" "$TMP/part/data/TBAD"
+cat > "$TMP/part/data/TCORE/TCORE.mcu" <<'XEOF'
+<iou name="TCORE" core="scripted" script="TCORE.as" linker="true" >
+  <ioport name="PORTA" pins="IN,GND" />
+</iou>
+XEOF
+cat > "$TMP/part/data/TCORE/TCORE.package" <<'XEOF'
+<packageB name="TCORE" width="4" height="3" background="" type="None" >
+    <pin type="" xpos="-8" ypos="8"  angle="180" length="8" id="IN"  label="IN"  />
+    <pin type="" xpos="-8" ypos="16" angle="180" length="8" id="GND" label="GND" />
+</packageB>
+XEOF
+cat > "$TMP/part/data/TCORE/TCORE.as" <<'XEOF'
+// Test core: drives linked source 0 with 1 mA per volt on IN (relative to GND)
+IoPin@ inPin  = component.getPin("IN");
+IoPin@ gndPin = component.getPin("GND");
+int events = 0;
+void reset()
+{
+    inPin.setPinMode( 1 ); gndPin.setPinMode( 1 );
+    inPin.changeCallBack( element, true );
+    events = 0;
+    component.addEvent( 1000000 );
+}
+void voltChanged()
+{
+    double v = inPin.getVoltage() - gndPin.getVoltage();
+    component.setLinkedValue( 0, v*1e-3, 0 );
+}
+void runEvent()
+{
+    events++;
+    component.showValue( "EVENTS "+events );
+    if( events < 5 ) component.addEvent( 1000000 );
+}
+XEOF
+cp "$TMP/part/data/TCORE/TCORE.mcu" "$TMP/part/data/TBAD/TBAD.mcu"; sed -i.bak 's/TCORE/TBAD/g' "$TMP/part/data/TBAD/TBAD.mcu"
+cp "$TMP/part/data/TCORE/TCORE.package" "$TMP/part/data/TBAD/TBAD.package"
+echo 'void reset() { undefinedCall(); }' > "$TMP/part/data/TBAD/TBAD.as"
+check "save next to the data folder" 'r["ok"]'                             -- circuit new --discard
+check "...as part.sim1"         'r["ok"]'                                  -- circuit save "$TMP/part/part.sim1"
+check "comp add from data/"     'r["ok"] and r["result"]["type"]=="MCU"'   -- comp add TCORE --at 0,0 --label CORE
+check "compile error reported"  'r["ok"] and any("TBAD.as line: 1" in m and "ERROR" in m for m in r.get("messages",[]))' -- comp add TBAD --at 0,80 --label BAD
+check "comp remove BAD"         'r["ok"]'                                  -- comp remove BAD
+cli comp add Csource --at 120,0 --label SRC Control_Pins=false CurrSource=true >/dev/null
+cli comp add Resistor --at 160,40 --label RL Resistance=1000 --rot 90 >/dev/null
+cli comp add Battery --at -80,40 --label VIN Voltage=2 --rot 90 >/dev/null
+cli comp add Ground --at 40,120 --label G >/dev/null
+for w in "VIN.lPin CORE.PORTAIN" "VIN.rPin G.Gnd" "CORE.PORTAGND G.Gnd" "SRC.s1Pin RL.lPin" "SRC.s2Pin G.Gnd" "RL.rPin G.Gnd"; do cli wire add $w >/dev/null 2>&1; done
+check "comp link: not a linker" 'not r["ok"] and "can'"'"'t link" in r["error"]' -- comp link RL SRC
+check "comp link CORE SRC"      'r["ok"] and [l["label"] for l in r["result"]["links"]]==["SRC"]' -- comp link CORE SRC
+check "comp link lists"         'r["result"]["links"][0]["index"]==0'      -- comp link CORE
+check "run 10ms (voltChanged, runEvent)" 'r["result"]["state"]=="paused"'  -- sim run --for 10ms
+check "linked source driven: 2 V -> 2 mA -> 2 V" 'abs(abs(r["result"]["pins"]["lPin"])-2) < 0.01' -- read RL
+check "read: core state"        'r["result"].get("state")=="EVENTS 5"'      -- read CORE
+check "links saved"             'r["ok"]'                                  -- circuit save
+if grep -q 'Links="Csource-' "$TMP/part/part.sim1"; then ok "Links in the file"; else fail "Links in the file"; fi
+check "comp link --clear"       'r["result"]["links"]==[]'                 -- comp link CORE --clear
+
 echo "Quit"
 check "quit"                    'r["ok"]'                                  -- quit --discard
 wait "$PID"
