@@ -4,6 +4,11 @@
     <itemset type="diode">
         <item name="1N5711 Schottky" satCurr_nA="315" resist="2.8" emCoef="2.03" brkDown="70" />
         <item name="1N34 germanium" satCurr_nA="0.2" resist="0.084" emCoef="2.19" brkDown="60" />
+        <!-- ES1J: 1 A 600 V superfast rectifier (trr 35 ns; transient time not modelled).
+             Is and n fit 0.495 V at ~1 mA (a real ES1J measured with a 34401A diode test,
+             led_driver test 13) with nA reverse leakage; 0.5 Ohm gives ~1.25 V at 1 A
+             (datasheet max 1.7 V). Breakdown = VRRM. -->
+        <item name="ES1J superfast" satCurr_nA="1" resist="0.5" emCoef="1.39" brkDown="600" />
     </itemset>
     <itemset type="zener">
         <item name="Zener Default 3.3V" satCurr_nA="171.4352819281" resist="0" emCoef="2" brkDown="3.3" />
