@@ -8,6 +8,7 @@
 
 #include "node.h"
 #include "connector.h"
+#include "connectorline.h"
 #include "circuit.h"
 
 #include "doubleprop.h"
@@ -122,7 +123,13 @@ void Node::joinConns( int c0, int c1 )
 
         con->setPointList( plist );
         con->closeCon( pin1->conPin() );
-        if( this->isSelected() ) con->setSelected( true );
+        // Keep a pending removal: if either joined wire is selected (being deleted
+        // together with other wires), the merged wire must be deleted too.
+        auto selected = []( Connector* c ){
+            for( ConnectorLine* l : *c->lineList() ) if( l->isSelected() ) return true;
+            return false;
+        };
+        if( this->isSelected() || selected( con0 ) || selected( con1 ) ) con->setSelected( true );
     }
     con0->setStartPin( NULL );
     con0->setEndPin( NULL );

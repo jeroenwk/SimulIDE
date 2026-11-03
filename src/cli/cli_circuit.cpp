@@ -146,10 +146,11 @@ void CliApi::registerCircuit()
         return list;
     });
 
-    add("comp get", "comp get <comp>", "Component details: properties (with units) and pins (with connections).",
+    add("comp get", "comp get <comp> [--all]", "Component details: properties (with units or options) and pins (with connections). "
+        "--all also lists hidden properties (e.g. scope settings), which comp set can change.",
         []( CliCtx& c ) -> QJsonValue
     {
-        return CliRefs::compJson( CliRefs::comp( c.arg( 0, "component") ), true );
+        return CliRefs::compJson( CliRefs::comp( c.arg( 0, "component") ), true, c.flag("all") );
     });
 
     //--- Wires ---------------------------------------------------------------

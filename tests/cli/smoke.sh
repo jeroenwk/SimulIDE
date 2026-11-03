@@ -124,6 +124,32 @@ check "R1 kept its value"       'any(p["name"]=="Resistance" and p["value"].star
 echo "not xml" > "$TMP/bad.sim1"
 check "invalid file rejected"   'not r["ok"] and "valid circuit" in r["error"]' -- circuit open "$TMP/bad.sim1" --discard
 
+echo "Removing wires around a junction"
+JW=$(jcli wire list | json '" ".join(w["uid"] for w in r["result"] if "Node-" in w["from"]+w["to"])')
+if [ "$(echo $JW | wc -w)" -eq 3 ]; then ok "3 wires at the junction"; else fail "3 wires at the junction" "$JW"; fi
+check "remove one: the other two merge" 'len(r["result"]["removed"])==3 and len(r["result"]["merged"])==1' -- wire remove ${JW%% *}
+check "junction dissolved"      'r["result"]["wires"]==4 and r["result"]["nodes"]==0' -- circuit info
+check "undo"                    'r["ok"]'                                  -- undo
+check "junction back"           'r["result"]["wires"]==6 and r["result"]["nodes"]==1' -- circuit info
+# shellcheck disable=SC2086
+check "remove all three at once" 'r["result"].get("merged",[])==[]'             -- wire remove $JW
+check "nothing left behind"     'r["result"]["wires"]==3 and r["result"]["nodes"]==0' -- circuit info
+check "undo"                    'r["ok"]'                                  -- undo
+check "all restored"            'r["result"]["wires"]==6 and r["result"]["nodes"]==1' -- circuit info
+
+echo "Properties and scope settings"
+check "add wave generator"      'r["ok"]'                                  -- comp add WaveGen --label AC --at -200,0
+check "choices listed as options" 'any(p["name"]=="Wave_Type" and "Sine" in p["options"] and "unit" not in p for p in r["result"]["properties"])' -- comp get AC
+check "no unit-prefix marker"   'r["result"]["Phase"]=="90 º"'             -- comp set AC Phase=90
+check "add scope"               'r["ok"]'                                  -- comp add Oscope --label S --at 200,-160
+check "hidden props not listed" 'not any(p["name"]=="TimDiv" for p in r["result"]["properties"])' -- comp get S
+check "...but listed with --all" 'any(p["name"]=="TimDiv" and p.get("hidden") for p in r["result"]["properties"])' -- comp get S --all
+check "scope set"               'r["result"]["timeDiv"]=="5 ms" and r["result"]["trigger"]==0 and all(c["voltDiv"]==5 for c in r["result"]["channels"])' \
+      -- scope set S --timediv 5ms --voltdiv 5 --trigger 0
+check "scope set one channel"   '[c["voltDiv"] for c in r["result"]["channels"]]==[5,2,5,5]' -- scope set S --ch 1 --voltdiv 2
+check "bad value rejected"      'not r["ok"]'                              -- scope set S --timediv 1s --trigger 9
+check "...and nothing changed"  'r["result"]["timeDiv"]=="5 ms" and r["result"]["trigger"]==0' -- scope get S
+
 echo "Arduino and serial"
 ECHO="$EXAMPLES/Micro/Arduino/arduino_serial_echo"
 check "open example (terminal window closed headless)" 'r["ok"] and any("dialog" in m for m in r.get("messages",[]))' \

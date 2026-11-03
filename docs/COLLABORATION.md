@@ -96,8 +96,9 @@ Point at things instead of describing them:
   its left edge (`Pin0` … `Pin3`, and `PinG` for ground).
 - **Inserting a part into an existing wire:** remove that one wire with
   `wire remove Connector-N`, add the part, and wire both sides. Removing a wire
-  can dissolve a junction (the remaining pieces merge into one new wire), so
-  run `wire list` after each removal and remove wires one at a time.
+  can dissolve a junction: the two remaining pieces merge into one new wire,
+  which `wire remove` reports under `merged`. Use that new uid from then on.
+  Removing several wires in one command is safe.
 - **After moving parts**, re-check the picture. Re-routing is often cleaner than
   keeping the old wires.
 
@@ -111,9 +112,10 @@ Point at things instead of describing them:
 | LED | `MaxCurrent` defaults to 30 mA. SimulIDE flags `overloaded` only well above that, so check the current yourself. A dark (black) LED means it's off, not a drawing bug |
 | Wave Generator (`WaveGen`) | Its ground is internal unless `Floating=true`, so only `outnod` is visible. It has an on/off button: set `Always_On=true`. A sine is set with `Freq=50Hz Semi_Ampli=10V` |
 | Electrolytic (`elCapacitor`) | `lPin` is + (the straight plate) and `rPin` is − (the curved plate). With `--rot 90`, + is on top. Verify with `capture circuit C1 --scale 6 --margin 12` |
-| Oscope | The timebase and volts/div are hidden properties: `comp set SCOPE TimDiv=5000000000 VolDiv=5,5,1,1, Trigger=0`. `TimDiv` is in ps per division; `Trigger` is the channel, and 4 means none. The default (1 ms, 1 V) clips most signals. Check the trace in a capture, then set it |
+| Oscope | The default display (1 ms/div, 1 V/div) clips most signals. Set it with `scope set SCOPE --timediv 5ms --voltdiv 5 --trigger 0`, then check the trace in `capture circuit SCOPE`. `scope get SCOPE` shows the settings |
 | Labels with spaces (e.g. "Arduino Uno") | Use the uid instead (`Uno-1`) |
-| Values | Use engineering notation (`220u`, `4k7`, `1M`). A wrong unit is an error, which is good |
+| Values | Use engineering notation (`220u`, `4k7`, `1M`). A wrong unit is an error, which is good. Choice properties list their `options` in `comp get` |
+| Hidden properties | `comp get X --all` lists them; `comp set` changes them |
 
 ## 5. Saving
 
@@ -136,7 +138,4 @@ $B cli --socket verify quit --discard; wait $P
 
 ## 7. Known CLI gaps (fix candidates)
 
-- **Removing several wires around junctions** leaves merged wires behind,
-  under new ids. Remove wires one at a time and re-list them.
-- **Hidden properties** (scope `TimDiv`/`VolDiv`) don't appear in `comp get`.
-- **`comp get` shows enum options in the unit column.**
+None known. Add any you find here, with a workaround.

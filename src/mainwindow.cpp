@@ -26,9 +26,10 @@
 
 MainWindow* MainWindow::m_pSelf = NULL;
 
-MainWindow::MainWindow()
+MainWindow::MainWindow( bool headless )
           : QMainWindow()
 {
+    m_headless = headless;
     setWindowIcon( QIcon(":/simulide.png") );
     m_pSelf   = this;
     m_circuit = nullptr;
@@ -99,7 +100,7 @@ MainWindow::MainWindow()
 
 
     QString backPath = getConfigPath( "backup.sim1" );
-    if( QFile::exists( backPath ) )
+    if( !m_headless && QFile::exists( backPath ) ) // Headless instances never touch the GUI's backup
     {
         QMessageBox msgBox;
         msgBox.setText( tr("Looks like SimulIDE crashed...")+"\n\n"

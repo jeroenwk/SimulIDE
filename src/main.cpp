@@ -93,7 +93,7 @@ int main( int argc, char *argv[] )
     app.installTranslator( &translator );
     app.setApplicationVersion( APP_VERSION );
 
-    MainWindow window;
+    MainWindow window( headless );
     window.setLoc( locale );
 
     CliServer* server = nullptr;

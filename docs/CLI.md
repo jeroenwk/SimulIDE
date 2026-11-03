@@ -97,7 +97,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `lib list [--search TEXT] [--category CAT]` | Everything that can be added: built-in parts, MCUs, ICs, boards |
 | `comp add <name> [--at x,y] [--label L] [--rot DEG] [prop=value ...]` | Add a part. Prints its uid |
 | `comp list [--type TYPE]` | Components in the circuit |
-| `comp get <comp>` | Properties (with units) and pins (with connections, and voltages while running) |
+| `comp get <comp> [--all]` | Properties (with units, or the allowed options for choice properties) and pins (with connections, and voltages while running). `--all` adds hidden properties, marked `hidden` |
 | `comp set <comp> prop=value ...` | Change properties. `label=` renames. Undoable |
 | `comp move <comp> <x,y>` | Move (snapped to the grid) |
 | `comp rotate <comp> [cw\|ccw\|180]` | Rotate |
@@ -105,6 +105,8 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `comp remove <comp> ...` | Remove parts and their wires |
 
 - `comp add` is atomic: if a property is invalid, nothing is added.
+- Hidden properties (shown by `comp get --all`) can be changed with `comp set`
+  too. For scope settings, `scope set` is easier.
 - Adding or removing parts stops a running simulation, as it does in the GUI.
 
 ### Wires
@@ -113,10 +115,18 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 |---|---|
 | `wire add <pinA> <pinB> [--via x,y,...]` | Connect two pins (L-shaped route, or through the `--via` points) |
 | `wire list` | Wires and the pins they join |
-| `wire remove <wire> ...` | Remove wires |
+| `wire remove <wire> ...` | Remove wires. Prints the removed uids and any merged wires |
 
 Connecting to a pin that already has a wire inserts a junction node on that
 wire, as clicking on a wire does in the GUI.
+
+Removing wires around a junction works as in the GUI:
+- A junction left with two wires is dissolved, and the two merge into one new
+  wire with a new uid. `wire remove` reports it under `merged`.
+- A wire left alone on a junction is removed with it.
+- When you remove several wires in one command, a merged wire made from wires
+  you named is removed too, so `wire remove` of all the wires around a
+  junction leaves nothing behind.
 
 ### Simulation
 
@@ -135,6 +145,15 @@ wire, as clicking on a wire does in the GUI.
 | `probe <pin> ...` | Voltage at pins |
 | `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors (voltage, current, power), plus pin voltages |
 | `scope data <comp> [--ch N] [--last TIME] [--max N]` | Oscilloscope or logic analyzer samples as `[time_s, value]`, oldest first |
+| `scope get <comp>` | Display settings: time/div, trigger, auto-scale, and per channel volts/div and positions |
+| `scope set <comp> [--timediv T] [--trigger CH\|none] [--voltdiv V\|a,b,c,d] [--voltpos ...] [--timepos ...] [--ch CH] [--autoscale CH\|none]` | Change display settings, as in the Expand panel |
+
+For `scope set`, channels are 0..3 (`Pin0`..`Pin3`). A single
+`--voltdiv`/`--voltpos`/`--timepos` value applies to the channel given with
+`--ch`, or to all channels; a comma list sets each channel. All values are
+checked before anything changes. For example,
+`scope set SCOPE --timediv 5ms --voltdiv 5 --trigger 0` shows a 50 Hz, 10 V
+sine. The defaults (1 ms, 1 V/div) clip most signals.
 
 `sim run` waits for one display frame after pausing, so `read` returns values
 that match the end of the run.

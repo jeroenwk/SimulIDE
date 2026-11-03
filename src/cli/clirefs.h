@@ -21,7 +21,8 @@ namespace CliRefs
     Pin*       pin( QString ref );               // "R1.lPin", "U1.PB5", "R1.0"; throws
     Connector* wire( QString ref );              // Connector uid; throws
 
-    QJsonObject compJson( Component* comp, bool detail );
+    QJsonObject compJson( Component* comp, bool detail, bool all=false ); // all: include hidden properties
+    QString propValue( Component* comp, QString name );                   // Value as comp get shows it
     QJsonObject pinJson( Pin* pin, int index );
     QJsonObject wireJson( Connector* con );
 

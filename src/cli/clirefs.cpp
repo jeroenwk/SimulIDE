@@ -122,7 +122,27 @@ QJsonObject pinJson( Pin* p, int index )
     return o;
 }
 
-QJsonObject compJson( Component* c, bool detail )
+// A leading "_" marks units without SI prefixes ("_º", "_Steps"): show them without it
+static QString shownValue( ComProperty* p )
+{
+    QString unit  = p->unit();
+    QString value = p->getValStr();
+    if( unit.startsWith('_') && value.endsWith(" "+unit) ){
+        value.chop( unit.size() );
+        value.append( unit.mid( 1 ) );
+    }
+    return value;
+}
+
+QString propValue( Component* comp, QString name )
+{
+    for( propGroup& group : *comp->properties() )
+        for( ComProperty* p : group.propList )
+            if( p->name() == name ) return shownValue( p );
+    return comp->getPropStr( name );
+}
+
+QJsonObject compJson( Component* c, bool detail, bool all )
 {
     QJsonObject o{
         {"uid",   c->getUid() },
@@ -138,17 +158,33 @@ QJsonObject compJson( Component* c, bool detail )
     QJsonArray props;
     for( propGroup& group : *c->properties() )
     {
-        if( group.flags & groupHidden ) continue;
+        bool hiddenGroup = group.flags & groupHidden;
+        if( hiddenGroup && !all ) continue;
+        // Generic bookkeeping of every component (uid, position, label placement,
+        // board placement): covered by other commands, not useful to list
+        if( hiddenGroup && ( group.name == "CompBase" || group.name == "CompGraphic" || group.name == "Board") ) continue;
         for( ComProperty* p : group.propList )
         {
-            if( p->flags() & propHidden ) continue;
+            bool hidden = hiddenGroup || ( p->flags() & propHidden );
+            if( hidden && !all ) continue;
+            if( p->name().isEmpty() ) continue;
+            QString unit = p->unit();
+            QString value = shownValue( p );
+            if( unit.startsWith('_') ) unit = unit.mid( 1 );
             QJsonObject po{
                 {"name",  p->name() },
-                {"value", p->getValStr() },
+                {"value", value },
                 {"group", group.name } };
             if( !p->capt().isEmpty() ) po["caption"] = p->capt();
-            if( !p->unit().isEmpty() ) po["unit"]    = p->unit();
             if( !p->type().isEmpty() ) po["type"]    = p->type();
+            if( p->type() == "enum" )                    // unit holds "values;captions"
+            {
+                QJsonArray opts;
+                for( QString v : p->unit().split(';').first().split(',', QString::SkipEmptyParts ) ) opts.append( v );
+                po["options"] = opts;
+            }
+            else if( !unit.isEmpty() ) po["unit"] = unit;
+            if( hidden ) po["hidden"] = true;
             props.append( po );
     }   }
     o["properties"] = props;

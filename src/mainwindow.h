@@ -40,7 +40,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
     public:
-        MainWindow();
+        MainWindow( bool headless=false );
         ~MainWindow();
 
  static MainWindow* self() { return m_pSelf; }
@@ -65,6 +65,7 @@ class MainWindow : public QMainWindow
         float fontScale() { return m_fontScale; }
         void setFontScale( float scale )  { m_fontScale = scale; }
 
+        bool headless() { return m_headless; }   // No window, no auto-backup (CLI --headless)
         int autoBck() { return m_autoBck; }
         void setAutoBck( int secs ) { m_autoBck = secs; }
 
@@ -101,6 +102,7 @@ class MainWindow : public QMainWindow
         QString m_fontName;
         float m_fontScale;
         int m_autoBck;
+        bool m_headless;
         
         QDir m_filesDir;
         QDir m_configDir;

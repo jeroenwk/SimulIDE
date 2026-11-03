@@ -16,7 +16,7 @@ description: Start a collaborative circuit session. The user watches the SimulID
 2. **Read the workflow spec** `docs/COLLABORATION.md` if it isn't already in context. It covers:
    - the per-instruction loop,
    - layout conventions,
-   - part-specific gotchas (WaveGen, electrolytic polarity, scope `TimDiv`/`VolDiv`, ...),
+   - part-specific gotchas (WaveGen, electrolytic polarity, scope display settings, ...),
    - saving to `samples/`.
 
    The command reference is `docs/CLI.md`; use `$B cli help <cmd>` for single commands.

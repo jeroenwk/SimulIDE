@@ -64,7 +64,8 @@ Circuit::Circuit( qreal x, qreal y, qreal width, qreal height, CircuitView*  par
     m_maxUndoSteps = 100;
     m_undoIndex = -1;
 
-    m_backupPath = MainWindow::self()->getConfigPath("backup.sim1");
+    // Headless (CLI) instances keep no backup: it would clash with the GUI's
+    if( !MainWindow::self()->headless() ) m_backupPath = MainWindow::self()->getConfigPath("backup.sim1");
     m_hideGrid   = MainWindow::self()->settings()->value( "Circuit/hideGrid" ).toBool();
     m_filePath   = "";//qApp->applicationDirPath()+"/new.simu"; // AppImage tries to write in read olny filesystem
 
@@ -82,6 +83,7 @@ Circuit::~Circuit()
     m_bckpTimer.stop();
     m_undoStack.clear();
 
+    if( m_backupPath.isEmpty() ) return;
     QFile file( m_backupPath );
     if( !file.exists() ) return;
     QFile::remove( m_backupPath ); // Remove backup file
@@ -528,7 +530,7 @@ bool Circuit::saveCircuit( QString filePath )
     {
         qDebug() << "\nCircuit Saved: \n" << filePath;
         QFile file( m_backupPath );
-        if( file.exists() ) QFile::remove( m_backupPath ); // Remove backup file
+        if( !m_backupPath.isEmpty() && file.exists() ) QFile::remove( m_backupPath ); // Remove backup file
     }
     else m_filePath = oldFilePath;
 
@@ -579,28 +581,39 @@ void Circuit::removeItems()                     // Remove Selected items
 
     beginUndoStep(); // Save current state
 
-    QList<Connector*> conns;
     QList<Component*> comps;
-
-    for( QGraphicsItem* item : selectedItems() )    // Find all items to be removed
+    for( QGraphicsItem* item : selectedItems() )    // Find all Components to be removed
     {
-        if( item->type() == QGraphicsItem::UserType+2 )      // ConnectorLine: add Connector to list
-        {
-            ConnectorLine* line = qgraphicsitem_cast<ConnectorLine*>( item );
-            Connector* con = line->connector();
-            if( !conns.contains( con ) && m_oldConns.contains( con ) ) conns.append( con );
-        }
-        else if( item->type() == QGraphicsItem::UserType+1 ) // Component: add Component to list
+        if( item->type() == QGraphicsItem::UserType+1 ) // Component: add Component to list
         {
             Component* comp = qgraphicsitem_cast<Component*>( item );
             if( m_oldComps.contains( comp ) ) comps.append( comp );
-        }
-    }
-    for( Connector* conn : conns ) removeConnector( conn );         // Remove Connectors (does not delete)
+    }   }
+
+    // Remove selected Connectors one at a time, scanning the selection again after
+    // each one: removing a wire can dissolve a junction Node, which merges its two
+    // remaining wires into a new Connector (selected if either was selected).
+    QList<Connector*> done;
+    auto removeSelectedConns = [&](){
+        while( true )
+        {
+            Connector* next = nullptr;
+            for( QGraphicsItem* item : selectedItems() )
+            {
+                if( item->type() != QGraphicsItem::UserType+2 ) continue; // ConnectorLine
+                Connector* con = qgraphicsitem_cast<ConnectorLine*>( item )->connector();
+                if( m_connList.contains( con ) && !done.contains( con ) ) { next = con; break; }
+            }
+            if( !next ) break;
+            done.append( next );
+            removeConnector( next );                                // Remove Connector (does not delete)
+    }   };
+    removeSelectedConns();
     for( Component* comp: comps ){
         if( comp->itemType() == "Node" ) removeNode( (Node*)comp ); // Remove Nodes (does not delete)
         else                             removeComp( comp );        // Remove Components (does not delete)
     }
+    removeSelectedConns();                                          // Wires merged while removing components
     endUndoStep();                                           // Calculates items actually created/removed
 
     for( QGraphicsItem* item : selectedItems() ) item->setSelected( false );
@@ -662,7 +675,7 @@ void Circuit::clearCircuit() // Remove everything ( Clear Circuit )
 
 void Circuit::saveBackup()
 {
-    if( m_simulator->isRunning() ) return;
+    if( m_simulator->isRunning() || m_backupPath.isEmpty() ) return;
     if( !m_changed || m_conStarted || m_busy || m_deleting ) return;
     m_changed = false;
 

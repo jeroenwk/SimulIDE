@@ -290,7 +290,7 @@ void CliApi::registerEdit()
 
         Component* now = CliRefs::comp( uid );   // Some properties recreate pins: reread
         QJsonObject res{ {"uid", uid } };
-        for( QString k : changes.keys() ) res[k] = now->getPropStr( k );
+        for( QString k : changes.keys() ) res[k] = CliRefs::propValue( now, k );
         return res;
     });
 
@@ -391,7 +391,8 @@ void CliApi::registerEdit()
         return CliRefs::wireJson( con );
     });
 
-    add("wire remove", "wire remove <wire> [wire ...]", "Remove wires (uids from wire list).",
+    add("wire remove", "wire remove <wire> [wire ...]", "Remove wires (uids from wire list). A junction left with two wires is "
+        "dissolved and they merge into one new wire (reported as merged); a wire left alone on a junction is removed too.",
         []( CliCtx& c ) -> QJsonValue
     {
         if( c.pos.isEmpty() ) throw CliError("missing wire");
@@ -400,14 +401,26 @@ void CliApi::registerEdit()
 
         stopSimForEdit();
         Circuit* circ = Circuit::self();
+        QStringList before;
+        for( Connector* con : *circ->conList() ) before.append( con->getUid() );
+
         circ->clearSelection();
-        QJsonArray removed;
-        for( Connector* con : cons ){
-            removed.append( con->getUid() );
-            for( ConnectorLine* line : *con->lineList() ) line->setSelected( true );
-        }
+        for( Connector* con : cons ) con->setSelected( true );
         circ->removeItems();
-        return removed;
+
+        // Junctions left with two wires are dissolved and those wires merged into a
+        // new one; a junction left with one wire takes that wire with it.
+        QStringList after;
+        QJsonArray created;
+        for( Connector* con : *circ->conList() ){
+            after.append( con->getUid() );
+            if( !before.contains( con->getUid() ) ) created.append( CliRefs::wireJson( con ) );
+        }
+        QJsonArray removed;
+        for( QString uid : before ) if( !after.contains( uid ) ) removed.append( uid );
+        QJsonObject o{ {"removed", removed } };
+        if( !created.isEmpty() ) o["merged"] = created;
+        return o;
     });
 
     //--- Undo / redo ---------------------------------------------------------
