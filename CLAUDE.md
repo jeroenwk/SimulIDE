@@ -59,6 +59,14 @@ The repo has no linter or CI. The only automated test is `tests/cli/smoke.sh` (n
 - **Subcircuits** (`src/gui/circuitwidget/subcircuits/`): ICs, boards, shields and modules are defined as circuit files plus a package and need no C++. The subcircuit type (`Logic`, `Board`, `Shield`, `Module`) picks the subclass.
 - **Scripted devices**: `src/angel/` is a vendored AngelScript engine (it is the reason for several `-Wno-*` flags; don't modify it). `src/microsim/cores/scripted/` exposes CPU, ports, peripherals and displays to scripts, which live in `resources/data/scripted/`.
 
+### Working on circuits together with the user
+When the user wants to build or try circuits together, follow **`docs/COLLABORATION.md`**. The user starts a session with `/collab`, a project skill in `.claude/skills/collab/` whose `start.sh` launches or reuses the GUI and prints the circuit state. In short:
+- Launch, or reuse, the visible GUI.
+- Drive it with `simulide cli`.
+- Check every step with `capture circuit` plus reading the PNG.
+- Leave the simulation running.
+- Save to `samples/`.
+
 ### Command line interface (`src/cli/`, documented in `docs/CLI.md`)
 - **Entry points:**
   - `simulide cli <cmd>` is a thin client (`cliclient.cpp`, no GUI). `main.cpp` dispatches to it when `argv[1]=="cli"`.
