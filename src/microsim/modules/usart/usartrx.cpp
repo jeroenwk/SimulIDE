@@ -111,7 +111,16 @@ void UartRx::byteReceived( uint16_t frame )
     m_fifo[m_fifoP] = frame;
     if( m_fifoP == 0 ) setRxFlags();                    // First byte received
 
+    m_usart->logByte( frame & mDATAMASK, true );
     m_usart->byteReceived( frame & mDATAMASK );
+}
+
+void UartRx::injectByte( uint8_t data )
+{
+    uint16_t frame = data & mDATAMASK;
+    if( mPARITY > parNONE && getParity( frame ) ) frame |= 1<<mDATABITS;
+    frame |= 1<<(mDATABITS+mPARITY);                    // Stop bit
+    byteReceived( frame );
 }
 
 uint8_t UartRx::getData()

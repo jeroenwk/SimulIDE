@@ -50,6 +50,7 @@ void UartSr::runEvent()
     {
         m_state = usartIDLE;
         m_ioPin->setOutState( true );
+        m_usart->logByte( m_data, false );
         m_usart->frameSent( m_data );
     }
 }

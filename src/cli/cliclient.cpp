@@ -138,6 +138,15 @@ void printHuman( QString cmd, QJsonValue result )
     if( result.isNull() || result.isUndefined() ) return;
     if( !result.isArray() && !result.isObject() ) { printOut( scalarStr( result ) ); return; }
 
+    if( cmd == "serial read" && result.isObject() )   // Raw data
+    {
+        QJsonObject o = result.toObject();
+        QString text = o.contains("hex") ? o.value("hex").toString() : o.value("text").toString();
+        fputs( text.toLocal8Bit().constData(), stdout );
+        if( !text.isEmpty() && !text.endsWith('\n') ) fputs("\n", stdout );
+        fflush( stdout );
+        return;
+    }
     if( cmd == "help" && result.isArray() )
     {
         int w = 0;
@@ -240,7 +249,8 @@ int runOne( Connection& conn, QStringList words, const Options& opt )
     }
     if( !opt.json )
     {
-        QString cmd = words.isEmpty() ? "" : words.first();
+        QString cmd = words.mid( 0, 2 ).join(" ");
+        if( cmd.startsWith("help") ) cmd = "help";
         printHuman( cmd, reply.value("result") );
     }
     return 0;

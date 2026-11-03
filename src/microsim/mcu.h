@@ -92,6 +92,7 @@ class Mcu : public Chip, public Linker
         QString device() { return m_device; }
         bool isScripted() { return m_scripted; }
         CpuBase* cpu() { return m_eMcu.cpu(); }
+        eMcu* getEmcu() { return &m_eMcu; }
 
         void reset() { m_eMcu.hardReset( true ); }
         void crash( bool c) { m_crashed = c; update(); }

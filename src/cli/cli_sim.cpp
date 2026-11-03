@@ -156,4 +156,3 @@ void CliApi::registerSim()
     });
 }
 
-void CliApi::registerMcu() {}

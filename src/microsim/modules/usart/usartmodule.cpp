@@ -69,6 +69,50 @@ void UsartModule::byteReceived( uint8_t data )
     if( m_monitor ) m_monitor->printIn( data );
 }
 
+void UsartModule::logByte( uint8_t data, bool rx )
+{
+    QMutexLocker lock( &m_logMutex );
+    QByteArray& log = rx ? m_rxLog : m_txLog;
+    if( log.size() >= 65536 ) log.remove( 0, 4096 );
+    log.append( (char)data );
+}
+
+QByteArray UsartModule::takeLog( bool rx, bool peek )
+{
+    QMutexLocker lock( &m_logMutex );
+    QByteArray& log = rx ? m_rxLog : m_txLog;
+    QByteArray data = log;
+    if( !peek ) log.clear();
+    return data;
+}
+
+void UsartModule::clearLogs()
+{
+    QMutexLocker lock( &m_logMutex );
+    m_txLog.clear();
+    m_rxLog.clear();
+}
+
+bool UsartModule::cliInjectRx( uint8_t data )
+{
+    if( !m_receiver->isEnabled() ) return false;
+    m_receiver->injectByte( data );
+    return true;
+}
+
+bool UsartModule::cliTransmit( uint8_t data )
+{
+    if( !m_sender->isEnabled() || m_sender->state() != UartTR::usartIDLE ) return false;
+    m_sender->processData( data );  // Not sendByte(): subclasses may queue it
+    return true;
+}
+
+uint64_t UsartModule::framePeriod()
+{
+    uint64_t bits = 1+m_dataBits+(m_parity > parNONE ? 1:0)+m_stopBits;
+    return m_receiver->period()*bits;
+}
+
 void UsartModule::openMonitor( QString id, int num, bool send )
 {
     if( !m_monitor )
@@ -107,6 +151,7 @@ UartTR::~UartTR( ){}
 void UartTR::initialize()
 {
     m_enabled = false;
+    m_usart->clearLogs();
 }
 
 void UartTR::configureA( uint8_t val ) // Select Pin

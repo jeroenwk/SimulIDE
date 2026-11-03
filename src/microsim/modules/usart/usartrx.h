@@ -24,6 +24,8 @@ class UartRx : public UartTR
         void ignoreData( bool i ) {m_ignoreData = i; }
         void setFifoSize( uint8_t s ) { m_fifoSize = s; }
 
+        void injectByte( uint8_t data ); // Receive a complete frame (command line interface)
+
     protected:
         void setRxFlags();
         void readBit();

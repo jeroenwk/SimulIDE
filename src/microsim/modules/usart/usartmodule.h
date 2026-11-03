@@ -7,6 +7,8 @@
 #define USARTMODULE_H
 
 #include<QList>
+#include<QByteArray>
+#include<QMutex>
 
 #include "mcumodule.h"
 #include "e-element.h"
@@ -67,6 +69,14 @@ class UsartModule
         virtual void byteReceived( uint8_t data );
         virtual void setRxFlags( uint16_t frame ){;}
 
+        // Command line interface: logs of transferred bytes and paced injection
+        void logByte( uint8_t data, bool rx );
+        QByteArray takeLog( bool rx, bool peek=false );
+        void clearLogs();
+        bool cliInjectRx( uint8_t data ); // Deliver data to receiver as if read at Rx pin
+        bool cliTransmit( uint8_t data ); // Transmit data if Tx is idle
+        uint64_t framePeriod();          // Duration of one frame in ps
+
         void openMonitor( QString id, int num=0, bool send=false );
         void setMonitorTittle( QString t );
         virtual void monitorClosed();
@@ -91,6 +101,10 @@ class UsartModule
         parity_t m_parity;
 
     private:
+        QByteArray m_txLog;
+        QByteArray m_rxLog;
+        QMutex     m_logMutex;
+
         uint8_t m_dataBits;
         uint8_t m_dataMask;
 };
@@ -125,6 +139,7 @@ class UartTR : public McuModule, public eElement
         bool getParity( uint16_t data );
 
         state_t state() { return m_state; }
+        uint64_t period() { return m_period; }
 
         void setPins( QList<IoPin*> pinList );
         IoPin* getPin() { return m_ioPin; }

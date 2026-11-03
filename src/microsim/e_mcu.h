@@ -97,6 +97,7 @@ class eMcu : public DataSpace, public eIou
         IoPin*  getIoPin( QString pinName );
 
         McuWdt* watchDog() { return m_wdt; }
+        std::vector<McuUsart*>* usarts() { return &m_usarts; }
         McuVref* vrefModule();
 
         bool setCfgWord( uint16_t addr, uint16_t data );

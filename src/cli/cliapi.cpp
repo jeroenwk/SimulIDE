@@ -170,14 +170,21 @@ bool CliApi::parseArgv( QJsonArray argv, QString& cmd, CliCtx& ctx, QString& err
     }
     else cmd = tokens.at(0);
 
+    // Options that never take a value (so a following positional is not consumed)
+    static const QStringList boolFlags = {"discard","hex","peek","cr","lf","crlf","rx","tx","all"};
+
+    bool optsEnded = false;
     for( int i=start; i<tokens.size(); ++i )
     {
         QString t = tokens.at(i);
+        if( optsEnded ) { ctx.pos.append( t ); continue; }
+        if( t == "--" ) { optsEnded = true; continue; }  // Everything after "--" is positional
         if( t.startsWith("--") && t.size() > 2 )
         {
             QString key = t.mid( 2 );
             int eq = key.indexOf('=');
             if( eq > 0 ) ctx.opts[key.left( eq )] = key.mid( eq+1 );
+            else if( boolFlags.contains( key ) ) ctx.opts[key] = true;
             else if( i+1 < tokens.size() && !tokens.at(i+1).startsWith("--") )
                 ctx.opts[key] = tokens.at( ++i );
             else ctx.opts[key] = true;
