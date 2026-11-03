@@ -375,9 +375,13 @@ void CircuitWidget::loadCirc( QString path )
 
         m_infoWidget->clearLastRun();
         showDescription();
-        QString desc = Circuit::self()->description();
-        if( !desc.isEmpty() ) m_outPane.appendPlain( "\n"+desc+"\n", Qt::white );
 }   }
+
+void CircuitWidget::printDescription()
+{
+    QString desc = Circuit::self() ? Circuit::self()->description() : QString();
+    if( !desc.isEmpty() ) m_outPane.appendPlain( desc+"\n", Qt::white );
+}
 
 void CircuitWidget::showDescription()
 {

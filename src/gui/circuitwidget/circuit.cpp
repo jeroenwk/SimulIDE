@@ -164,6 +164,7 @@ void Circuit::loadCircuit( QString fileName )
     if( m_error != 0 ) clearCircuit();
     else{
         m_graphicView->zoomToFit();
+        CircuitWidget::self()->printDescription();
         qDebug() << "Circuit Loaded: ";
         qDebug() << fileName;
 }   }

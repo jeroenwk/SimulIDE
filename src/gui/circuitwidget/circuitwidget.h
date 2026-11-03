@@ -52,6 +52,7 @@ class CircuitWidget : public QWidget
 
         QSplitter* splitter() { return m_mainSplitter; }
         void showDescription();       // Refresh the Description tab
+        void printDescription();      // Description in white in Messages (on load, before "Circuit Loaded")
         
     public slots:
         bool newCircuit();
