@@ -176,6 +176,36 @@ check "--clear removes it"      'r["result"]["description"]=="" and r["result"][
 echo "not xml" > "$TMP/bad.sim1"
 check "invalid file rejected"   'not r["ok"] and "valid circuit" in r["error"]' -- circuit open "$TMP/bad.sim1" --discard
 
+echo "Scripts pane"
+cat > "$TMP/count_parts.py" <<PYEOF
+#!/usr/bin/env python3
+"""Smoke test script: counts the parts of the open circuit."""
+import sys
+sys.path.insert(0, "$ROOT/tools")
+from simctl import Sim
+n = Sim(verbose=False).info()["components"]
+print("parts:", n, "args:", " ".join(sys.argv[1:]))
+sys.exit(0 if n == 5 else 3)
+PYEOF
+cat > "$TMP/sleeper.py" <<'PYEOF'
+# simulide-script
+# Sleeps until stopped.
+import time
+print("sleeping", flush=True)
+time.sleep(60)
+PYEOF
+echo 'print("not a scenario")' > "$TMP/other.py"
+check "lists scripts next to the circuit" 'sorted(x["file"].split("/")[-1] for x in r["result"])==["count_parts.py","sleeper.py"]' -- script list
+check "description is the docstring" '[x["description"] for x in r["result"] if x["file"].endswith("count_parts.py")]==["Smoke test script: counts the parts of the open circuit."]' -- script list
+check "...or the leading comments" '[x["description"] for x in r["result"] if x["file"].endswith("sleeper.py")]==["Sleeps until stopped."]' -- script list
+check "run --wait: drives this instance" 'r["result"]["state"]=="finished" and r["result"]["exitCode"]==0 and "parts: 5 args: --fast x" in r["result"]["output"]' -- script run "$TMP/count_parts.py" --args="--fast x" --wait
+check "run returns at once"     'r["result"]["state"]=="running"'          -- script run "$TMP/sleeper.py"
+check "one script at a time"    'not r["ok"] and "already running" in r["error"]' -- script run "$TMP/count_parts.py"
+check "stop"                    'r["ok"]'                                  -- script stop
+sleep 1
+check "...stopped"              'r["result"]["state"]=="stopped" and "sleeping" in r["result"]["output"]' -- script status
+check "stop with none running"  'not r["ok"]'                              -- script stop
+
 echo "Removing wires around a junction"
 JW=$(jcli wire list | json '" ".join(w["uid"] for w in r["result"] if "Node-" in w["from"]+w["to"])')
 if [ "$(echo $JW | wc -w)" -eq 3 ]; then ok "3 wires at the junction"; else fail "3 wires at the junction" "$JW"; fi

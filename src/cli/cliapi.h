@@ -101,6 +101,7 @@ class CliApi
         void registerEdit();      // cli_edit.cpp
         void registerMeasure();   // cli_measure.cpp
         void registerSim();       // cli_sim.cpp
+        void registerScript();    // cli_script.cpp
         void registerMcu();       // cli_mcu.cpp
         void registerEditor();    // cli_editor.cpp
         void registerSettings();  // cli_settings.cpp
@@ -127,5 +128,10 @@ namespace Cli
 
     // Call fn every ms milliseconds (GUI thread) until it returns true
     void pollUntil( std::function<bool()> fn, int ms=5 );
+
+    // Pending "sim run --for" calls: cancelRuns() makes them reply with an error and
+    // stop waiting (used when a script is stopped)
+    int  runGeneration();
+    void cancelRuns();
 }
 #endif

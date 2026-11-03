@@ -120,9 +120,15 @@ void CliApi::registerSim()
         CliPendingPtr reply = c.defer();
         frameCounter();
         auto pausedAtFrame = std::make_shared<int64_t>( -1 );
-        Cli::pollUntil( [reply, target, pausedAtFrame]() -> bool
+        int generation = Cli::runGeneration();
+        Cli::pollUntil( [reply, target, pausedAtFrame, generation]() -> bool
         {
             Simulator* sim = Simulator::self();
+            if( Cli::runGeneration() != generation ){
+                if( sim ) sim->setStopAt( 0 );
+                reply->fail("run cancelled");
+                return true;
+            }
             if( !sim->isRunning() ){
                 reply->fail("simulation stopped before reaching "+Cli::timeStr( target ) );
                 return true;

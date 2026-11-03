@@ -20,6 +20,7 @@ class AboutDialog;
 class AppDialog;
 class InfoWidget;
 class DescriptionWidget;
+class ScriptPane;
 class QTabWidget;
 
 class CircuitWidget : public QWidget
@@ -92,6 +93,7 @@ class CircuitWidget : public QWidget
         QLabel* m_msgLabel;
         InfoWidget* m_infoWidget;
         DescriptionWidget* m_descWidget;
+        ScriptPane* m_scriptPane;
         QTabWidget* m_bottomTabs;     // Description | Messages
 
         QSplitter* m_mainSplitter;

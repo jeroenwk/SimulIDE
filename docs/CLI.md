@@ -150,6 +150,21 @@ in the Messages tab, just before the "Circuit Loaded" line, and rendered in the
 `--clear`; `circuit description` alone reads it. Like any edit, save the circuit
 to keep it.
 
+**Scenario scripts:** the bottom pane's **Scripts** tab runs Python scripts that
+drive the window through this CLI (usually with `tools/simctl.py`), for example a
+bench scenario with checks. It lists the scripts next to the open circuit (its
+folder and a `scripts/` subfolder: `.py` files that use `simctl` or carry the line
+`# simulide-script`); **Open…** adds any other file. The left side shows the
+script's description, its module docstring (or its leading `#` comments); the
+right side its live output. **Run** starts it with `python3` (arguments in the
+field next to it), **Stop** ends it, cancels a `sim run --for` it was waiting on
+and pauses the simulation. One script runs at a time. The script gets
+`SIMULIDE` (this binary) and `SIMULIDE_SOCKET` (this window's socket) in its
+environment; `simctl.Sim()` uses both. From the CLI: `script list`,
+`script run file.py [--args="--fast"] [--wait]`, `script stop`, `script status`
+(state, exit code, run time, output). Write `--args=...` with `=`: a value that
+starts with `--` would otherwise be read as an option.
+
 **Interface theme:** `settings set uiTheme system|light|dark` (Settings > App >
 Interface). `system`, the default, follows the light or dark mode of the computer
 and switches with it (live on macOS; elsewhere the mode at start). It covers the

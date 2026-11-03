@@ -11,6 +11,7 @@
 #include <QDesktopServices>
 #include <QSettings>
 
+#include "scriptpane.h"
 #include "descriptionwidget.h"
 #include "currentflow.h"
 #include "chargeview.h"
@@ -67,6 +68,9 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     m_bottomTabs->setDocumentMode( true );
     m_bottomTabs->addTab( m_descWidget, tr("Description") );
     m_bottomTabs->addTab( &m_outPane, tr("Messages") );
+    m_scriptPane = new ScriptPane( this );
+    m_bottomTabs->addTab( m_scriptPane, tr("Scripts") );
+    connect( m_scriptPane, &ScriptPane::started, [this](){ m_bottomTabs->setCurrentWidget( m_scriptPane ); } );
     m_bottomTabs->setCurrentWidget( &m_outPane );
     m_panelSplitter->addWidget( m_bottomTabs );
     m_panelSplitter->setSizes( {170, 500} );
@@ -385,6 +389,7 @@ void CircuitWidget::printDescription()
 
 void CircuitWidget::showDescription()
 {
+    m_scriptPane->refresh();                     // Scripts next to this circuit
     m_descWidget->showCircuit();                 // The Messages tab stays in front: it prints the description too
 }
 

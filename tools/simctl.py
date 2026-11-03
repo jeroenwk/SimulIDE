@@ -15,7 +15,9 @@ PNGs and check values against expectations.
     sim.check("VDD final", v[-1], 19.6, tol=0.02)
     sim.report()
 
-See docs/CLI.md for the commands. Results tagged [SIMULATED] belong to the
+Run from the Scripts pane, a script gets SIMULIDE (the binary) and SIMULIDE_SOCKET
+(the window's socket) in its environment, and Sim() uses both. See docs/CLI.md for
+the commands. Results tagged [SIMULATED] belong to the
 model, not to the hardware.
 """
 
@@ -37,7 +39,7 @@ class SimError(RuntimeError):
 class Sim:
     def __init__(self, binary=None, socket=None, verbose=True):
         self.bin = os.path.abspath(binary or os.environ.get("SIMULIDE", DEFAULT_BIN))
-        self.socket = socket
+        self.socket = socket or os.environ.get("SIMULIDE_SOCKET")   # Set when run from the Scripts pane
         self.verbose = verbose
         self.results = []          # (name, value, expected, ok, note)
 
