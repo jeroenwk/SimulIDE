@@ -95,7 +95,7 @@ QString cellStr( QJsonValue v )
 
 void printTable( QJsonArray rows, QString indent="" )
 {
-    static const QStringList preferred = {"uid","ref","index","id","label","type","name","value","unit",
+    static const QStringList preferred = {"uid","ref","index","id","name","label","type","value","unit",
                                           "from","to","wire","pos","rotation","voltage","pins","group","caption"};
     QStringList cols;
     for( QString c : preferred )
