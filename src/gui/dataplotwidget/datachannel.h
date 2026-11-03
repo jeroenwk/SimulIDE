@@ -43,6 +43,12 @@ class DataChannel : public eElement, public Updatable
 
         QString getChName() { return m_chTunnel; }
 
+        // Sample ring buffer (used by the CLI): values, times (ps) and index of the newest sample
+        QVector<double>   buffer() { return m_buffer; }
+        QVector<uint64_t> times()  { return m_time; }
+        int bufferIndex() { return m_bufferCounter; }
+        bool connected() { return m_connected; }
+
     protected:
         QVector<double> m_buffer;
         QVector<uint64_t> m_time;

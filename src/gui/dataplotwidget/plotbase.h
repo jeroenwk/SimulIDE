@@ -17,6 +17,10 @@ class QGraphicsProxyWidget;
 class PlotBase : public Component, public ScriptModule
 {
     public:
+        // Accessors used by the CLI ("scope data")
+        int numChannels() { return m_numChannels; }
+        DataChannel* channel( int i ) { return ( i >= 0 && i < m_numChannels ) ? m_channel[i] : nullptr; }
+
         PlotBase( QString type, QString id );
         ~PlotBase();
 

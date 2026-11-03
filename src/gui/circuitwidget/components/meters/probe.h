@@ -21,6 +21,8 @@ class Probe : public Component, public eElement
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 
+        double voltage() { return m_voltIn; }    // Measured voltage (CLI)
+
         virtual void updateStep() override;
 
         void setVolt( double volt );

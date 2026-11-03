@@ -128,6 +128,7 @@ CliApi::CliApi()
     registerCore();
     registerCircuit();
     registerEdit();
+    registerMeasure();
     registerSim();
     registerMcu();
 }

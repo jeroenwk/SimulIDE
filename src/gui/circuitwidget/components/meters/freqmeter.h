@@ -20,6 +20,8 @@ class FreqMeter : public Component, public eElement
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 
+        double frequency() { return m_freq; }    // Measured frequency in Hz (CLI)
+
         virtual void initialize() override;
         virtual void stamp() override;
         virtual void updateStep() override;

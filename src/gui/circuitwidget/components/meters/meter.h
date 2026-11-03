@@ -20,6 +20,9 @@ class Meter : public Component, public eResistor
         virtual bool setPropStr( QString prop, QString val ) override;
 
         bool swithchPins() { return m_switchPins; }
+
+        double value() { return m_dispValue; }   // Measured value (CLI)
+        QString unit() { return m_unit; }
         void setSwitchPins( bool s );
 
         virtual void initialize() override { m_crashed = false;}

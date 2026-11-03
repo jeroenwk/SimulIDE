@@ -6,6 +6,7 @@
 #include "cliapi.h"
 #include "circuitwidget.h"
 #include "simulator.h"
+#include "updatable.h"
 
 namespace
 {
@@ -35,6 +36,24 @@ QJsonObject simStatus()
     if( sim->isRunning() && !sim->isPaused() )
         o["realSpeed"] = qRound( sim->realSpeed() )/100.0;     // Achieved speed, % of real time
     return o;
+}
+
+// Counts simulator GUI frames: values such as LED brightness or meter displays are
+// computed in updateStep(), so replies wait for one frame after pausing.
+class FrameCounter : public Updatable
+{
+    public:
+        virtual void updateStep() override { m_frames++; }
+        uint64_t frames() { return m_frames; }
+    private:
+        uint64_t m_frames = 0;
+};
+
+FrameCounter* frameCounter()
+{
+    static FrameCounter* fc = new FrameCounter();
+    Simulator::self()->addToUpdateList( fc );   // Each new circuit creates a new Simulator (no-op if listed)
+    return fc;
 }
 
 void startOrResume()
@@ -99,17 +118,25 @@ void CliApi::registerSim()
         sim->setStopAt( target );
 
         CliPendingPtr reply = c.defer();
-        Cli::pollUntil( [reply, target]() -> bool
+        frameCounter();
+        auto pausedAtFrame = std::make_shared<int64_t>( -1 );
+        Cli::pollUntil( [reply, target, pausedAtFrame]() -> bool
         {
             Simulator* sim = Simulator::self();
             if( !sim->isRunning() ){
                 reply->fail("simulation stopped before reaching "+Cli::timeStr( target ) );
                 return true;
             }
-            if( sim->circTime() < target ) return false;
+            if( *pausedAtFrame < 0 )
+            {
+                if( sim->circTime() < target ) return false;
+                if( !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
+                sim->setStopAt( 0 );
+                *pausedAtFrame = (int64_t)frameCounter()->frames();
+                return false;
+            }
+            if( (int64_t)frameCounter()->frames() <= *pausedAtFrame ) return false; // Let displays update
 
-            if( !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
-            sim->setStopAt( 0 );
             reply->ok( simStatus() );
             return true;
         });

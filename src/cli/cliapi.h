@@ -99,6 +99,7 @@ class CliApi
         void registerCore();
         void registerCircuit();   // cli_circuit.cpp
         void registerEdit();      // cli_edit.cpp
+        void registerMeasure();   // cli_measure.cpp
         void registerSim();       // cli_sim.cpp
         void registerMcu();       // cli_mcu.cpp
 
