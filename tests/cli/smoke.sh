@@ -100,6 +100,14 @@ check "release button"         'r["ok"]'                                  -- ui 
 check "run 20ms"                'r["ok"]'                                  -- sim run --for 20ms
 check "LED off again"           'abs(r["result"]["current"]) < 1e-6'      -- read D1
 
+echo "Capture and selection"
+check "capture circuit"         'r["result"]["width"] > 100 and __import__("os").path.getsize(r["result"]["file"]) > 1000' -- capture circuit --file "$TMP/cap.png"
+check "capture window"          'r["ok"]'                                  -- capture window view --file "$TMP/win.png"
+check "select parts"            '[c["label"] for c in r["result"]]==["R1","D1"] or sorted(c["label"] for c in r["result"])==["D1","R1"]' -- select R1 D1
+check "view show"               'r["result"]["zoom"] > 0'                  -- view show D1
+check "selection follows"       '[c["label"] for c in r["result"]]==["D1"]' -- select
+check "clear selection"         'r["result"]==[]'                          -- select --none
+
 echo "Edit, undo, redo"
 check "set R1 = 1k"             'r["ok"]'                                  -- comp set R1 Resistance=1k
 check "R1 is 1000 Ohm"          'any(p["name"]=="Resistance" and p["value"].startswith("1 k") for p in r["result"]["properties"])' -- comp get R1

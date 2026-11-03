@@ -15,6 +15,12 @@ PushBase::PushBase( QString type, QString id )
 }
 PushBase::~PushBase(){}
 
+void PushBase::stamp()
+{
+    MechContact::stamp();                          // Contacts to normal state
+    if( m_button->isChecked() ) setSwitch( !m_nClose ); // Button held when the simulation starts
+}
+
 void PushBase::onbuttonPressed()
 {
     m_closed = true;

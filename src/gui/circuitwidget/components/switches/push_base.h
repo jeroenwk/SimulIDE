@@ -14,6 +14,8 @@ class PushBase : public SwitchBase
         PushBase( QString type, QString id );
         ~PushBase();
 
+        virtual void stamp() override;
+
     public slots:
         void onbuttonPressed();
         void onbuttonReleased();

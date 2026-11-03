@@ -154,6 +154,42 @@ These commands work on any part with on-screen controls, including push
 buttons, switches, DIP switches, keypads, clocks, potentiometers, variable
 sources, rotary encoders and joysticks.
 
+### Seeing and pointing (working together)
+
+To work on a circuit together, run the GUI (`simulide`) and drive the same
+window from the CLI. You see every change as it happens, and the CLI side can
+look at the window and point at parts.
+
+| Command | |
+|---|---|
+| `capture circuit [comp ...] [--area x,y,w,h] [--margin PX] [--scale S] [--file F.png]` | Render the circuit, or just some parts, to a PNG |
+| `capture window [main\|view\|circuit\|editor] [--scale S] [--file F.png]` | Grab what the window shows |
+| `select` | List the selected components |
+| `select <comp ...> [--add]` / `select --none` | Select components (highlighted in the GUI), or clear the selection |
+| `view fit\|selected\|reset` | Zoom to everything, to the selection, or to 100% |
+| `view zoom <factor>` / `view center <comp\|x,y>` | Zoom by a factor, or center on a part or point |
+| `view show <comp ...>` | Select the parts and zoom to them |
+| `view raise` | Bring the window to the front |
+
+Capture details:
+
+- **`capture circuit`** renders the scene itself, so it also works headless and
+  doesn't depend on the window's zoom or scroll position.
+  - `--scale` defaults to 2, and the longest side is capped at 4000 px.
+  - The image shows live state: LEDs, switch positions, meter displays, scope
+    screens and the selection.
+- **`capture window`** captures:
+  - `main`: the whole window (the default),
+  - `view`: the circuit as you currently see it,
+  - `circuit`: the circuit panel with its toolbar,
+  - `editor`: the code editor.
+  - `--scale 1` (the default) gives logical pixels, which is half size on
+    HiDPI screens.
+- Without `--file`, images go to `$TMPDIR/simulide-capture/`. The reply gives
+  the path.
+- To show the other side what you mean, select parts in the GUI and they run
+  `select`, or they run `view show R1 D1` and you see the parts highlighted.
+
 ### Microcontrollers
 
 `<comp>` can be an MCU or a board that contains one, such as an Arduino.

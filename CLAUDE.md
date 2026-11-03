@@ -78,6 +78,7 @@ The repo has no linter or CI. The only automated test is `tests/cli/smoke.sh` (n
 - **Lifetime:**
   - `Simulator::self()` changes on every `circuit new` or `circuit open`, so re-register Updatables with the current simulator, as `frameCounter()` and `ticker()` do.
   - Components are not QObjects. Check that they still exist through `Circuit::compList()`, not with `QPointer`.
+- **Seeing the circuit:** `capture circuit` renders the scene to a PNG (it works headless and doesn't depend on the window's zoom). `capture window` grabs widgets. `select` and `view show` highlight parts in a shared GUI session. Read the resulting PNG to check visual state (LEDs, switches, scope screens).
 - **Edits go through the GUI's undo bookkeeping** (`beginUndoStep`, `addCompChange`, `endUndoStep`, ...). That keeps them undoable from both the GUI and the CLI.
 
 ### Other areas

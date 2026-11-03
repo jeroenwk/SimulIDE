@@ -40,6 +40,7 @@ class CircuitView : public QGraphicsView
         void overrideCursor( const QCursor &cursor );
 
         qreal getScale() { return m_scale; }
+        void zoomBy( qreal f ) { scale( f, f ); m_scale *= f; }   // Command line interface
 
     public slots:
         void saveImage();

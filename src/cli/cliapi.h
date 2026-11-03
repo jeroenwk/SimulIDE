@@ -104,6 +104,7 @@ class CliApi
         void registerMcu();       // cli_mcu.cpp
         void registerEditor();    // cli_editor.cpp
         void registerSettings();  // cli_settings.cpp
+        void registerView();      // cli_view.cpp
 
         QMap<QString, CliCommand> m_cmds;
 

@@ -151,6 +151,7 @@ CliApi::CliApi()
     registerMcu();
     registerEditor();
     registerSettings();
+    registerView();
 }
 CliApi::~CliApi(){ m_pSelf = nullptr; }
 
@@ -191,7 +192,7 @@ bool CliApi::parseArgv( QJsonArray argv, QString& cmd, CliCtx& ctx, QString& err
     else cmd = tokens.at(0);
 
     // Options that never take a value (so a following positional is not consumed)
-    static const QStringList boolFlags = {"discard","hex","peek","cr","lf","crlf","rx","tx","all"};
+    static const QStringList boolFlags = {"discard","hex","peek","cr","lf","crlf","rx","tx","all","add","none"};
 
     bool optsEnded = false;
     for( int i=start; i<tokens.size(); ++i )
