@@ -99,6 +99,8 @@ macx {
     OS = MacOs
     ICON = ../resources/icons/simulide.icns
     CONFIG += sdk_no_version_check
+    OBJECTIVE_SOURCES += $$PWD/src/gui/uitheme_mac.mm   # Light / dark appearance (UiTheme)
+    LIBS += -framework AppKit
 }
 
 # AngelScript JIT generates x86 machine code: exclude it on other architectures (e.g. Apple Silicon)

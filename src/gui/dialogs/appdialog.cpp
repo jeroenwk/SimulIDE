@@ -5,6 +5,7 @@
 
 #include <math.h>
 
+#include "uitheme.h"
 #include "currentflow.h"
 #include "chargeview.h"
 #include <QColorDialog>
@@ -186,6 +187,7 @@ void AppDialog::buildColors()
         b->setFixedSize( 44*m_scale, 20*m_scale );
         b->setToolTip( tr("Click to choose the %1 color").arg( Theme::caption( role ).toLower() ) );
         b->setAutoDefault( false );
+        b->setProperty("uiThemeKeep", true );   // Colour swatch
         m_colorButtons[i] = b;
         connect( b, &QPushButton::clicked, [this, role]()
         {
@@ -219,6 +221,7 @@ void AppDialog::showEvent( QShowEvent* e )
     currentRange->setValue( qRound( CurrentFlow::range() ) );
     syncCharge();
     { QSignalBlocker b( reopenLast ); reopenLast->setChecked( MainWindow::self()->reopenLast() ); }
+    { QSignalBlocker b( uiTheme ); uiTheme->setCurrentIndex( UiTheme::self()->mode() ); }
     QSignalBlocker b2( animate );
     animate->setChecked( Circuit::self()->animate() );
     refreshColors();
@@ -256,6 +259,11 @@ void AppDialog::syncCharge()
 void AppDialog::on_reopenLast_toggled( bool on )
 {
     MainWindow::self()->setReopenLast( on );
+}
+
+void AppDialog::on_uiTheme_activated( int i )
+{
+    if( i >= 0 ) UiTheme::self()->setMode( (UiTheme::mode_t)i );
 }
 
 void AppDialog::on_capCharge_toggled( bool on )

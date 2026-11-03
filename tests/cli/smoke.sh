@@ -213,6 +213,15 @@ check "reopenLast off"              'r["ok"]'                                  -
 check "...reads back"               'r["result"] is False'                     -- settings get reopenLast
 cli settings set reopenLast "$REOPEN_WAS" >/dev/null
 
+echo "Interface theme setting"
+UITHEME_WAS=$(jcli settings get uiTheme | json 'r["result"]')
+check "uiTheme dark"                'r["ok"]'                                  -- settings set uiTheme dark
+check "...reads back"               'r["result"]=="dark"'                      -- settings get uiTheme
+check "uiTheme light"               'r["ok"]'                                  -- settings set uiTheme light
+check "bad uiTheme rejected"        'not r["ok"]'                              -- settings set uiTheme purple
+check "...still light"              'r["result"]=="light"'                     -- settings get uiTheme
+cli settings set uiTheme "$UITHEME_WAS" >/dev/null
+
 echo "Capacitor charge display"
 cli - > "$TMP/rc.out" 2>&1 <<'EOF'
 circuit new --discard
