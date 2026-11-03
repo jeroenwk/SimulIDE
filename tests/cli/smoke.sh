@@ -344,6 +344,14 @@ check "open SPI digipot example" 'r["ok"]'                                 -- ci
 check "run 300ms"               'r["result"]["state"]=="paused"'           -- sim run --for 300ms
 check "scope captured signal"   'max(p[1] for p in r["result"]["channels"][0]["samples"]) > 0.1' -- scope data Oscope-11
 
+echo "Text with XML characters survives save and open"
+check "new circuit"             'r["ok"]'                                  -- circuit new --discard
+check "text with & < > = \""   'r["ok"]'                                  -- comp add TextComponent --label TXT "Text=a & b <c> = \"d\""
+check "save"                    'r["ok"]'                                  -- circuit save "$TMP/text.sim1"
+if python3 -c "import xml.dom.minidom as m; m.parse('$TMP/text.sim1')" 2>/dev/null; then ok "file is valid XML"; else fail "file is valid XML"; fi
+check "reopen"                  'r["ok"]'                                  -- circuit open "$TMP/text.sim1" --discard
+check "same text"               '[p["value"] for p in r["result"]["properties"] if p["name"]=="Text"]==["a & b <c> = \"d\""]' -- comp get TXT
+
 echo "Datasheet part: scripted core from the circuit's data folder, with links"
 mkdir -p "$TMP/part/data/TCORE" "$TMP/part/data/TBAD"
 cat > "$TMP/part/data/TCORE/TCORE.mcu" <<'XEOF'
