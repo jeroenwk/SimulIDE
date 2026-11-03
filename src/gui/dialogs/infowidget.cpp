@@ -38,6 +38,7 @@ InfoWidget::InfoWidget( QWidget* parent )
     mainMcuName->setFont( font );
 
     overLoadLabel->setVisible( false );
+    m_timePalette = simTime->palette();
     overLoadVal->setVisible( false );
 }
 
@@ -120,6 +121,8 @@ void InfoWidget::setRate( double rate, double simLoad, double guiLoad, int fps )
 
 void InfoWidget::setCircTime( uint64_t tStep )
 {
+    if( tStep ) m_lastTime = tStep;
+    if( m_shown == shownStopped && tStep ) return;   // Stopped: keep showing the reset state
     double step = tStep/1e6;
     int hours = step/3600e6;
     step -= hours*3600e6;
@@ -153,4 +156,25 @@ void InfoWidget::setCircTime( uint64_t tStep )
 
     simTime->setText( strH+":"+strM+":"+strS+" s  "
                      +strMS+" ms  "+strUS+" µs  "+strNS+" ns  "+strPS+" ps " );
+}
+
+// Make the simulation state obvious next to the time: after a stop the circuit is
+// reset, so the time shows 0 (greyed) with the time the last run reached
+void InfoWidget::setSimState( simShown state )
+{
+    m_shown = state;
+    if( state == shownStopped )
+    {
+        QPalette pal = m_timePalette;
+        pal.setColor( QPalette::WindowText, QColor( 120, 120, 120 ) );
+        simTime->setPalette( pal );
+        simTimeLabel->setText( tr("Simulation Time: stopped") );
+        QString last = m_lastTime ? QString("   (last run: %1 s)").arg( m_lastTime/1e12, 0, 'f', 3 ) : "";
+        simTime->setText( "00:00:00 s  -  next start from 0"+last );
+        simTime->setToolTip( tr("The circuit is reset. Power on starts again from 0 s.") );
+    }else{
+        simTime->setPalette( m_timePalette );
+        simTimeLabel->setText( state == shownPaused ? tr("Simulation Time: paused") : tr("Simulation Time:") );
+        simTime->setToolTip( state == shownPaused ? tr("Paused: Resume continues from here. Power off resets to 0 s.") : "" );
+    }
 }

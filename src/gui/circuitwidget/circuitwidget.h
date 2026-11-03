@@ -8,6 +8,7 @@
 
 #include <QMenu>
 #include <QToolBar>
+#include <QComboBox>
 #include <QVBoxLayout>
 
 #include "circuitview.h"
@@ -34,6 +35,7 @@ class CircuitWidget : public QWidget
         void setError( QString error );
         void setMsg(QString msg , int type);
 
+        void syncTimebase( uint64_t psPerSec );   // Show the simulation speed in the toolbar
         void syncCurrentFlow( bool on ) { if( currentFlowAct->isChecked() != on ) currentFlowAct->setChecked( on ); }
         void powerCircOn();
         void powerCircOff();
@@ -98,6 +100,7 @@ class CircuitWidget : public QWidget
         QAction* powerCircAct;
         QAction* pauseSimAct;
         QAction* currentFlowAct;
+        QComboBox* m_timebase = nullptr;   // Simulated time per real second
         QAction* settAppAct;
         QAction* infoAct;
         QAction* aboutAct;

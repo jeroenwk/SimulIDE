@@ -423,6 +423,7 @@ void Simulator::setPsPerSec( uint64_t psPs )
     m_timerTick_ms = 1000/fps;  // in ms
 
     InfoWidget::self()->setTargetSpeed( 100*m_psPerSec/1e12 );
+    if( CircuitWidget::self() ) CircuitWidget::self()->syncTimebase( m_psPerSec ); // Toolbar timebase
 }
 
 void Simulator::clearEventList()

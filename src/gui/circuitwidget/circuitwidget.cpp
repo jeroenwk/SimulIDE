@@ -21,6 +21,7 @@
 #include "infowidget.h"
 #include "about.h"
 #include "utils.h"
+#include "cliapi.h"
 
 CircuitWidget* CircuitWidget::m_pSelf = 0l;
 
@@ -96,7 +97,7 @@ void CircuitWidget::clear()
         m_appPropW = NULL;
     }
     m_circView.clear();
-    m_infoWidget->setCircTime( 0 );
+    m_infoWidget->clearLastRun();
 }
 
 void CircuitWidget::createActions()
@@ -144,13 +145,13 @@ void CircuitWidget::createActions()
     connect( zoomOneAct, &QAction::triggered,
              CircuitView::self(), &CircuitView::zoomOne, Qt::UniqueConnection );
 
-    powerCircAct = new QAction( QIcon(":/poweroff.png"),tr("Start Simulation"), this);
+    powerCircAct = new QAction( QIcon(":/simplay.svg"),tr("Start Simulation"), this);
     powerCircAct->setStatusTip(tr("Start Simulation"));
     powerCircAct->setIconText("Off");
     connect( powerCircAct, &QAction::triggered,
                      this, &CircuitWidget::powerCirc, Qt::UniqueConnection );
 
-    pauseSimAct = new QAction( QIcon(":/pausesim.png"),tr("Pause Simulation"), this);
+    pauseSimAct = new QAction( QIcon(":/simpause.svg"),tr("Pause Simulation"), this);
     pauseSimAct->setStatusTip(tr("Pause Simulation"));
     connect( pauseSimAct, &QAction::triggered,
              this, &CircuitWidget::pauseCirc, Qt::UniqueConnection );
@@ -221,6 +222,28 @@ void CircuitWidget::createToolBars()
     spacer->setFixedWidth( 20 );
     m_circToolBar.addWidget( spacer );
     m_circToolBar.addSeparator();//..........................
+
+    // Timebase: simulated time per real second (like a speed dial), before play
+    m_timebase = new QComboBox( this );
+    m_timebase->setToolTip( tr("Simulation speed: simulated time per real second.\n"
+                               "1 s/s is real time. Faster than the computer can manage\n"
+                               "runs as fast as it can (see Real Speed).") );
+    m_timebase->setSizeAdjustPolicy( QComboBox::AdjustToContents );
+    const QList<QPair<QString,double>> presets{
+        { "1 µs/s",   1e6  }, { "10 µs/s", 1e7  }, { "100 µs/s", 1e8  },
+        { "1 ms/s",   1e9  }, { "10 ms/s", 1e10 }, { "100 ms/s", 1e11 },
+        { "0.5 s/s",  5e11 }, { tr("1 s/s (real time)"), 1e12 },
+        { "2 s/s",    2e12 }, { "5 s/s",   5e12 }, { "10 s/s",  1e13 } };
+    for( auto& p : presets ) m_timebase->addItem( p.first, QVariant::fromValue( (qulonglong)p.second ) );
+    connect( m_timebase, QOverload<int>::of( &QComboBox::activated ), [this]( int i )
+    {
+        qulonglong ps = m_timebase->itemData( i ).toULongLong();
+        if( ps == 0 ) return;                          // The "custom" entry
+        Cli::setSimSpeed( ps );                        // Adjusts the step size if needed
+        Circuit::self()->setChanged();                 // Speed is saved in the circuit
+    });
+    m_circToolBar.addWidget( m_timebase );
+    syncTimebase( Simulator::self() ? Simulator::self()->psPerSec() : (uint64_t)1e12 );
 
     m_circToolBar.addAction( powerCircAct );
     m_circToolBar.addAction( pauseSimAct );
@@ -331,7 +354,7 @@ void CircuitWidget::loadCirc( QString path )
 
         updateRecentFiles();
 
-        m_infoWidget->setCircTime( 0 );
+        m_infoWidget->clearLastRun();
 }   }
 
 void CircuitWidget::saveCirc()
@@ -375,16 +398,17 @@ void CircuitWidget::powerCirc()
 
 void CircuitWidget::powerCircOn()
 {
-    powerCircAct->setIcon( QIcon(":/poweron.png") );
+    powerCircAct->setIcon( QIcon(":/simstop.svg") );
     powerCircAct->setText(tr("Stop Simulation"));
     powerCircAct->setEnabled( true );
     powerCircAct->setIconText("On");
-    pauseSimAct->setIcon( QIcon(":/pausesim.png") );
+    pauseSimAct->setIcon( QIcon(":/simpause.svg") );
     pauseSimAct->setEnabled( true );
     MainWindow::self()->setState("▶");
     setMsg( " "+tr("Running")+" ", 0 );
 
     CurrentFlow::self()->attach();       // Each circuit has a new Simulator
+    m_infoWidget->setSimState( InfoWidget::shownRunning );
     Simulator::self()->startSim();
 }
 
@@ -392,7 +416,8 @@ void CircuitWidget::powerCircOff()
 {
     if( Simulator::self()->isRunning() ) Simulator::self()->stopSim();
 
-    powerCircAct->setIcon( QIcon(":/poweroff.png") );
+    powerCircAct->setIcon( QIcon(":/simplay.svg") );
+    pauseSimAct->setIcon( QIcon(":/simpause.svg") );
     powerCircAct->setText(tr("Start Simulation"));
     powerCircAct->setIconText("Off");
     powerCircAct->setEnabled( true );
@@ -402,6 +427,7 @@ void CircuitWidget::powerCircOff()
     setMsg( " "+tr("Stopped")+" ", 1 );
 
     m_infoWidget->setRate( 0, 0 );
+    m_infoWidget->setSimState( InfoWidget::shownStopped );
     CurrentFlow::self()->clear();
     Circuit::self()->update();
 }
@@ -420,6 +446,7 @@ void CircuitWidget::powerCircDebug()
     m_infoWidget->setRate(-1 );  //m_rateLabel->setText( tr("Speed: Debugger") );
 
     CurrentFlow::self()->attach();       // Debugger start has its own path
+    m_infoWidget->setSimState( InfoWidget::shownPaused );
     Simulator::self()->startSim( true );
 }
 
@@ -453,9 +480,11 @@ void CircuitWidget::pauseCirc()
         setMsg( " "+tr("Paused")+" ", 1 );
         MainWindow::self()->setState("❚❚");
         pauseSimAct->setText(tr("Resume Simulation"));
-        pauseSimAct->setIcon( QIcon(":/simpaused.png") );
-        powerCircAct->setIcon( QIcon(":/poweroff.png") );
-        powerCircAct->setIconText("Off");
+        pauseSimAct->setIcon( QIcon(":/simresume.svg") );
+        powerCircAct->setIconText("Off");   // powerCirc(): power while paused stops (isPaused branch)
+        // The power icon stays on: paused is not stopped (the circuit keeps its state)
+        powerCircAct->setText(tr("Stop Simulation (resets to 0 s)"));
+        m_infoWidget->setSimState( InfoWidget::shownPaused );
     }
     else if( Simulator::self()->isPaused() )
     {
@@ -463,9 +492,11 @@ void CircuitWidget::pauseCirc()
         setMsg( " "+tr("Running")+" ", 0 );
         MainWindow::self()->setState("▶");
         pauseSimAct->setText(tr("Pause Simulation"));
-        pauseSimAct->setIcon( QIcon(":/pausesim.png") );
-        powerCircAct->setIcon( QIcon(":/poweron.png") );
+        pauseSimAct->setIcon( QIcon(":/simpause.svg") );
+        powerCircAct->setIcon( QIcon(":/simstop.svg") );
         powerCircAct->setIconText("On");
+        powerCircAct->setText(tr("Stop Simulation"));
+        m_infoWidget->setSimState( InfoWidget::shownRunning );
     }
 }
 
@@ -532,6 +563,37 @@ void CircuitWidget::updateRecentFileActions()
         recentFileActs[i]->setVisible( true );
     }
     for( int i=numRecentFiles; i<MaxRecentFiles; i++ ) recentFileActs[i]->setVisible(false);
+}
+
+void CircuitWidget::syncTimebase( uint64_t psPerSec )
+{
+    if( !m_timebase ) return;
+    m_timebase->blockSignals( true );
+    int custom = -1, preset = -1;
+    for( int i=0; i<m_timebase->count(); ++i )
+    {
+        qulonglong ps = m_timebase->itemData( i ).toULongLong();
+        if( ps == 0 ) custom = i;
+        else if( ps == psPerSec ) preset = i;
+    }
+    if( preset >= 0 )
+    {
+        if( custom >= 0 ) m_timebase->removeItem( custom );   // Back on a preset: drop the custom entry
+        m_timebase->setCurrentIndex( preset < custom || custom < 0 ? preset : preset-1 );
+        m_timebase->blockSignals( false );
+        return;
+    }
+    // Not a preset (set in Settings or by the CLI): show it as a custom entry
+    double s = psPerSec/1e12;
+    QString txt;
+    if     ( s >= 1    ) txt = QString::number( s, 'g', 3 )+" s/s";
+    else if( s >= 1e-3 ) txt = QString::number( s*1e3, 'g', 3 )+" ms/s";
+    else if( s >= 1e-6 ) txt = QString::number( s*1e6, 'g', 3 )+" µs/s";
+    else                 txt = QString::number( s*1e9, 'g', 3 )+" ns/s";
+    if( custom < 0 ) { m_timebase->addItem( txt, QVariant::fromValue( (qulonglong)0 ) ); custom = m_timebase->count()-1; }
+    else m_timebase->setItemText( custom, txt );
+    m_timebase->setCurrentIndex( custom );
+    m_timebase->blockSignals( false );
 }
 
 #include "moc_circuitwidget.cpp"

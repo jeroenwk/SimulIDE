@@ -76,6 +76,10 @@
         <file alias="powerdeb.png">../src/icons/mainwindow/powerdeb.png</file>
         <file alias="pausesim.png">../src/icons/mainwindow/pausesim.png</file>
         <file alias="simpaused.png">../src/icons/mainwindow/simpaused.png</file>
+        <file alias="simplay.svg">../src/icons/mainwindow/simplay.svg</file>
+        <file alias="simstop.svg">../src/icons/mainwindow/simstop.svg</file>
+        <file alias="simpause.svg">../src/icons/mainwindow/simpause.svg</file>
+        <file alias="simresume.svg">../src/icons/mainwindow/simresume.svg</file>
         <file alias="currentflow.svg">../src/icons/mainwindow/currentflow.svg</file>
         
         <file alias="remove.svg">../src/icons/mainwindow/remove.svg</file>
