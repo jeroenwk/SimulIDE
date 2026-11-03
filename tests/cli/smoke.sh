@@ -158,11 +158,21 @@ check "R1 back to 470"          'any(p["name"]=="Resistance" and p["value"].star
 check "redo"                    'r["ok"]'                                  -- redo
 check "R1 is 1k again"          'any(p["name"]=="Resistance" and p["value"].startswith("1 k") for p in r["result"]["properties"])' -- comp get R1
 
+echo "Circuit description"
+printf '# LED test\n\nR1 < 2 k & LED > 1.8 V\n<item itemtype="x">\n' > "$TMP/desc.md"
+check "no description yet"      'r["result"]["description"]==""'           -- circuit description
+check "set from a file"         'r["result"]["description"].startswith("# LED test") and r["result"]["modified"]' -- circuit description --file "$TMP/desc.md"
+
 echo "Save and reopen"
 check "save"                    'r["ok"]'                                  -- circuit save "$TMP/led.sim1"
+if grep -q '&lt;item itemtype' "$TMP/led.sim1"; then ok "description escaped in the file"; else fail "description escaped in the file"; fi
 check "new circuit"             'r["result"]["components"]==0'             -- circuit new
+check "no description after new" 'r["result"]["description"]==""'         -- circuit description
 check "reopen"                  'r["result"]["components"]==5 and r["result"]["wires"]==6 and r["result"]["nodes"]==1' -- circuit open "$TMP/led.sim1"
 check "R1 kept its value"       'any(p["name"]=="Resistance" and p["value"].startswith("1 k") for p in r["result"]["properties"])' -- comp get R1
+check "description round trip"  'r["result"]["description"]==open("'"$TMP"'/desc.md").read().strip() and not r["result"]["modified"]' -- circuit description
+check "--set replaces it"       'r["result"]["description"]=="Short"'      -- circuit description --set Short
+check "--clear removes it"      'r["result"]["description"]=="" and r["result"]["modified"]' -- circuit description --clear
 echo "not xml" > "$TMP/bad.sim1"
 check "invalid file rejected"   'not r["ok"] and "valid circuit" in r["error"]' -- circuit open "$TMP/bad.sim1" --discard
 

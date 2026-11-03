@@ -44,6 +44,26 @@ void OutPanelText::appendLine( const QString text )
     }
 }
 
+void OutPanelText::appendPlain( const QString text, QColor color )
+{
+    updateStep();                                  // Keep the order with buffered text
+    if( m_capture ) m_capture->append( text+"\n" );
+
+    QTextCursor cursor( document() );
+    cursor.movePosition( QTextCursor::End );
+    int first = cursor.blockNumber();
+    cursor.insertText( text+"\n" );
+    int last = cursor.blockNumber();
+    for( int i=first; i<last; ++i )               // Mark the blocks: the highlighter paints them in one colour
+    {
+        QTextBlock b = document()->findBlockByNumber( i );
+        b.setUserData( new PlainBlock( color ) );
+        m_highlighter->rehighlightBlock( b );
+    }
+    moveCursor( QTextCursor::End );
+    if( !Simulator::self() || !Simulator::self()->isRunning() ) repaint();
+}
+
 void OutPanelText::updateStep()
 {
     if( m_textBuffer.isEmpty() ) return;
@@ -112,6 +132,13 @@ OutHighlighter::~OutHighlighter(){}
 
 void OutHighlighter::highlightBlock( const QString &text )
 {
+    if( PlainBlock* p = dynamic_cast<PlainBlock*>( currentBlockUserData() ) )
+    {
+        QTextCharFormat f;
+        f.setForeground( p->color );
+        setFormat( 0, text.length(), f );
+        return;
+    }
     QString upText = text;
     upText = upText.toUpper(); // Do case insensitive
 

@@ -19,6 +19,8 @@ class QLabel;
 class AboutDialog;
 class AppDialog;
 class InfoWidget;
+class DescriptionWidget;
+class QTabWidget;
 
 class CircuitWidget : public QWidget
 {
@@ -49,6 +51,8 @@ class CircuitWidget : public QWidget
         void simDebugMessage( QString msg ) { m_outPane.appendLine( msg.remove("\"") ); }
 
         QSplitter* splitter() { return m_mainSplitter; }
+        void showDescription();       // Refresh the Description tab
+        void printDescription();      // Description in white in Messages (on load, before "Circuit Loaded")
         
     public slots:
         bool newCircuit();
@@ -87,6 +91,8 @@ class CircuitWidget : public QWidget
 
         QLabel* m_msgLabel;
         InfoWidget* m_infoWidget;
+        DescriptionWidget* m_descWidget;
+        QTabWidget* m_bottomTabs;     // Description | Messages
 
         QSplitter* m_mainSplitter;
         QSplitter* m_panelSplitter;

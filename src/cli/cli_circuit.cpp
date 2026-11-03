@@ -126,6 +126,26 @@ void CliApi::registerCircuit()
         return circuitInfo();
     });
 
+    add("circuit description", "circuit description [--set TEXT | --file F.md | --clear]",
+        "The circuit's description (Markdown), saved in the circuit file and shown in the bottom pane when it is loaded. "
+        "No option: read it. --set / --file replace it, --clear removes it (the circuit becomes modified: save it).",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        Circuit* circ = Circuit::self();
+        bool change = true;
+        if     ( c.flag("clear") ) circ->setDescription("");
+        else if( c.has("set")    ) circ->setDescription( c.opt("set") );
+        else if( c.has("file")   )
+        {
+            QFile f( absPath( c.opt("file") ) );
+            if( !f.open( QIODevice::ReadOnly | QIODevice::Text ) ) throw CliError("cannot read "+f.fileName() );
+            circ->setDescription( QString::fromUtf8( f.readAll() ) );
+        }
+        else change = false;
+        if( change ) CircuitWidget::self()->showDescription();
+        return QJsonObject{ {"description", circ->description() }, {"modified", isModified() } };
+    });
+
     add("circuit export", "circuit export", "Circuit contents in SimulIDE's .sim1 XML format.",
         []( CliCtx& ) -> QJsonValue
     {

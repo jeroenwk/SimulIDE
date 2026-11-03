@@ -41,6 +41,11 @@ class Circuit : public QGraphicsScene
         // Charge display reference voltage (V), 0 = auto (largest source voltage)
         double chargeScale() { return m_chargeScale; }
         void setChargeScale( double v );
+
+        // What the circuit shows and how to use it (Markdown), saved as <description> in the file
+        QString description() { return m_description; }
+        void setDescription( QString d );
+        static QString descriptionFromDoc( const QString &doc );
         void setAnimate( bool an );
 
         int autoBck();
@@ -148,6 +153,7 @@ class Circuit : public QGraphicsScene
         void loadStrDoc( QString &doc );
         bool saveString( QString &fileName, QString doc );
         QString circuitHeader();
+        QString descriptionToXml();
         QString circuitToString();
 
         void updatePinName( QString* name );
@@ -173,6 +179,7 @@ class Circuit : public QGraphicsScene
         bool m_compRemoved;
         bool m_animate;
         double m_chargeScale;
+        QString m_description;
         bool m_changed;
         bool m_busy;
         bool m_undo;
