@@ -93,12 +93,21 @@ QJsonObject readComp( Component* comp )
     else if( SubCircuit* sub = dynamic_cast<SubCircuit*>( comp ) )
     {
         // Scripted cores inside (datasheet parts): the state text they show (component.showValue)
+        // One core: its text; several (one per datasheet block): "LABEL: text | LABEL: text"
+        QStringList states;
+        int cores = 0;
         for( Component* inner : *sub->compList() )
         {
             if( inner->itemType() != "MCU" ) continue;
+            cores++;
             QString state = inner->getValLabelText();
-            if( !state.isEmpty() ) o["state"] = state;
+            // Inside a subcircuit the label is the uid ("MT7833A_supply-1"): keep "supply"
+            QString name = inner->getUid().section('-', 0, -2 );
+            if( name.contains('_') ) name = name.section('_', -1 );
+            if( !state.isEmpty() ) states.append( name+": "+state );
         }
+        if( cores == 1 && states.size() == 1 ) o["state"] = states.first().section(": ", 1 );
+        else if( !states.isEmpty() )           o["state"] = states.join(" | ");
     }
 
     QJsonObject volts;
