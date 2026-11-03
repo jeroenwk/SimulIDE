@@ -73,6 +73,9 @@ QList<Setting>& settings()
             MainWindow::self()->setDefaultFontName( v );
             CliApi::self()->addMessage("font applies after restart");
         }});
+    list.append({"reopenLast", "app", "On start, reopen the circuit that was open when the app was closed (default true).",
+        [](){ return QJsonValue( MainWindow::self()->reopenLast() ); },
+        []( QString v ){ MainWindow::self()->setReopenLast( parseBool( v ) ); }});
     list.append({"userPath", "app", "User data folder (extra components, examples).",
         [](){ return QJsonValue( MainWindow::self()->userPath() ); },
         []( QString v ){

@@ -218,6 +218,7 @@ void AppDialog::showEvent( QShowEvent* e )
     QSignalBlocker b3( currentRange );
     currentRange->setValue( qRound( CurrentFlow::range() ) );
     syncCharge();
+    { QSignalBlocker b( reopenLast ); reopenLast->setChecked( MainWindow::self()->reopenLast() ); }
     QSignalBlocker b2( animate );
     animate->setChecked( Circuit::self()->animate() );
     refreshColors();
@@ -250,6 +251,11 @@ void AppDialog::syncCharge()
     capCharge->setChecked( ChargeView::self()->enabled() );
     capLabel->setCurrentIndex( ChargeView::self()->labelMode() );
     chargeScale->setValue( Circuit::self()->chargeScale() );
+}
+
+void AppDialog::on_reopenLast_toggled( bool on )
+{
+    MainWindow::self()->setReopenLast( on );
 }
 
 void AppDialog::on_capCharge_toggled( bool on )

@@ -166,6 +166,16 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="reopenLast">
+           <property name="toolTip">
+            <string>On start, reopen the circuit that was open when SimulIDE was closed</string>
+           </property>
+           <property name="text">
+            <string>Reopen last circuit</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <layout class="QHBoxLayout" name="horizontalLayout_9">
            <property name="topMargin">
             <number>12</number>

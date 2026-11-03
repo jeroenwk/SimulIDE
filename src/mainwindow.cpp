@@ -119,11 +119,30 @@ MainWindow::~MainWindow(){ }
 
 void MainWindow::closeEvent( QCloseEvent *event )
 {
+    QString lastCirc = CircuitWidget::self()->curCirc();   // newCircuit() clears it
+
     if( !m_editor->close() )      { event->ignore(); return; }
     if( !m_circuit->newCircuit()) { event->ignore(); return; }
 
+    if( !m_headless )   // Headless instances share the settings: never change the GUI's last circuit
+    {
+        if( lastCirc.isEmpty() || lastCirc == getConfigPath("backup.sim1") ) m_settings->remove("lastCircuit");
+        else m_settings->setValue("lastCircuit", lastCirc );
+    }
+
     writeSettings();
     event->accept();
+}
+
+bool MainWindow::reopenLast() { return m_settings->value("reopenLast", true ).toBool(); }
+void MainWindow::setReopenLast( bool on ) { m_settings->setValue("reopenLast", on ); }
+
+void MainWindow::reopenLastCircuit()
+{
+    if( m_headless || !reopenLast() ) return;
+    if( !CircuitWidget::self()->curCirc().isEmpty() ) return;   // Crash backup restored
+    QString last = m_settings->value("lastCircuit").toString();
+    if( !last.isEmpty() && QFile::exists( last ) ) CircuitWidget::self()->loadCirc( last );
 }
 
 void MainWindow::readSettings()
