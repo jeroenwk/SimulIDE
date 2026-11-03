@@ -157,4 +157,10 @@ $B cli --socket verify quit --discard; wait $P
 
 ## 7. Known CLI gaps (fix candidates)
 
-None known. Add any you find here, with a workaround.
+- **`sim run --for T` survives its client.** If the client is killed or
+  times out, the server still pauses the simulation after T. Workaround: don't
+  cancel a long run; for watching something live, use `sim resume` and the
+  scope instead. Fix candidate: cancel the deferred run when its connection
+  closes.
+
+Add any others you find here, with a workaround.

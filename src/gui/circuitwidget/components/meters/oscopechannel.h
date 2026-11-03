@@ -31,6 +31,7 @@ class OscopeChannel : public DataChannel
         uint64_t m_numMax;       // Number of Maximum found
         uint64_t m_nCycles;
         uint64_t m_simTime;
+        uint64_t m_slotStart;    // Time the current buffer slot was opened (decimation)
 
         double m_lastValue;
         double m_freq;
