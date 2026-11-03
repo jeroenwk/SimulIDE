@@ -21,6 +21,8 @@ class ePin
 
         bool isConnected() { return (m_enode!=NULL); }
 
+        double getCurrent() { return m_enode ? m_enode->pinCurrent( this ) : 0; } // Into the element (A)
+
         virtual double getVoltage();
 
         eNode* getEnode() { return m_enode; }

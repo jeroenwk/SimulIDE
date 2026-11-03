@@ -68,6 +68,8 @@ class ConnectorLine : public QGraphicsItem
         void remove();
 
     private:
+        void paintFlow( QPainter* p );   // Current flow dots
+
         int myIndex();
         int m_p1X;
         int m_p1Y;

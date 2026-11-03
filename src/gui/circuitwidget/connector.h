@@ -33,6 +33,14 @@ class Connector : public CompBase
 
         double getVoltage();
 
+        // Current flow (CurrentFlow): signed current from start to end pin (A),
+        // dot phase along the wire (px), whether dots are drawn, piece flag
+        // (0 ok, 1 approximate, 2 inconsistent)
+        double flowCurrent = 0;
+        double flowPhase   = 0;
+        bool   flowShown   = false;
+        int    flowFlag    = 0;
+
         QList<ConnectorLine*>* lineList() { return &m_conLineList; }
 
         void incActLine() { if( m_actLine < m_conLineList.size()-1 ) m_actLine += 1; }

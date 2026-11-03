@@ -76,6 +76,7 @@
         <file alias="powerdeb.png">../src/icons/mainwindow/powerdeb.png</file>
         <file alias="pausesim.png">../src/icons/mainwindow/pausesim.png</file>
         <file alias="simpaused.png">../src/icons/mainwindow/simpaused.png</file>
+        <file alias="currentflow.svg">../src/icons/mainwindow/currentflow.svg</file>
         
         <file alias="remove.svg">../src/icons/mainwindow/remove.svg</file>
         <file alias="properties.svg">../src/icons/mainwindow/properties.svg</file>

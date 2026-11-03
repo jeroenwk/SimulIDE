@@ -96,6 +96,8 @@ class Simulator : public QObject
         void addToElementList( eElement* el );
         void remFromElementList( eElement* el );
         
+        double eNodeVolt( int n ) { return ( n > 0 && n <= m_eNodeList.size() ) ? m_eNodeList.at( n-1 )->getVolt() : 0; } // Node 0 = ground
+
         void addToUpdateList( Updatable* el );
         void remFromUpdateList( Updatable* el );
 

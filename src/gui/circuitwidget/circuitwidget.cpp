@@ -10,6 +10,7 @@
 #include <QDesktopServices>
 #include <QSettings>
 
+#include "currentflow.h"
 #include "circuitwidget.h"
 #include "editorwindow.h"
 #include "mainwindow.h"
@@ -154,6 +155,13 @@ void CircuitWidget::createActions()
     connect( pauseSimAct, &QAction::triggered,
              this, &CircuitWidget::pauseCirc, Qt::UniqueConnection );
 
+    currentFlowAct = new QAction( QIcon(":/currentflow.svg"),tr("Show Current Flow"), this);
+    currentFlowAct->setStatusTip(tr("Show current flowing through the wires as moving dots"));
+    currentFlowAct->setCheckable( true );
+    currentFlowAct->setChecked( CurrentFlow::self()->enabled() );
+    connect( currentFlowAct, &QAction::toggled,
+             []( bool on ){ CurrentFlow::self()->setEnabled( on ); } );
+
     settAppAct = new QAction( QIcon(":/config.svg"),tr("Settings"), this);
     settAppAct->setStatusTip(tr("Settings"));
     connect( settAppAct, &QAction::triggered,
@@ -216,6 +224,7 @@ void CircuitWidget::createToolBars()
 
     m_circToolBar.addAction( powerCircAct );
     m_circToolBar.addAction( pauseSimAct );
+    m_circToolBar.addAction( currentFlowAct );
     m_circToolBar.addSeparator();//..........................
 
     spacer = new QWidget();
@@ -375,6 +384,7 @@ void CircuitWidget::powerCircOn()
     MainWindow::self()->setState("▶");
     setMsg( " "+tr("Running")+" ", 0 );
 
+    CurrentFlow::self()->attach();       // Each circuit has a new Simulator
     Simulator::self()->startSim();
 }
 
@@ -392,6 +402,7 @@ void CircuitWidget::powerCircOff()
     setMsg( " "+tr("Stopped")+" ", 1 );
 
     m_infoWidget->setRate( 0, 0 );
+    CurrentFlow::self()->clear();
     Circuit::self()->update();
 }
 

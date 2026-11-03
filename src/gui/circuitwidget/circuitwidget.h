@@ -34,6 +34,7 @@ class CircuitWidget : public QWidget
         void setError( QString error );
         void setMsg(QString msg , int type);
 
+        void syncCurrentFlow( bool on ) { if( currentFlowAct->isChecked() != on ) currentFlowAct->setChecked( on ); }
         void powerCircOn();
         void powerCircOff();
         void powerCircDebug();
@@ -96,6 +97,7 @@ class CircuitWidget : public QWidget
         QAction* zoomOneAct;
         QAction* powerCircAct;
         QAction* pauseSimAct;
+        QAction* currentFlowAct;
         QAction* settAppAct;
         QAction* infoAct;
         QAction* aboutAct;

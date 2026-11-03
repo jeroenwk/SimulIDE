@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
+  <!-- Current flow: a wire with dots and an arrow -->
+  <path d="M2 15 H14 V7 H19" fill="none" stroke="#28283c" stroke-width="1.6" stroke-linejoin="round"/>
+  <g fill="#ffbe00" stroke="#3c2800" stroke-width="0.6">
+    <circle cx="4.5" cy="15" r="1.9"/>
+    <circle cx="9.5" cy="15" r="1.9"/>
+    <circle cx="14" cy="11" r="1.9"/>
+  </g>
+  <path d="M17 4.5 L20.5 7 L17 9.5 Z" fill="#28283c"/>
+</svg>

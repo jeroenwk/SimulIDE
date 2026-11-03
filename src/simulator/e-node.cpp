@@ -172,6 +172,28 @@ void eNode::changed()
     Simulator::self()->addToChangedNodes( this );
 }
 
+double eNode::pinCurrent( ePin* epin )
+{
+    // Node equation: Σ g·(V - V_other) - Σ s·V_k = Σ i  (see stampMatrix)
+    Simulator* sim = Simulator::self();
+    double current = 0;
+    for( Connection* c = m_firstAdmit; c; c = c->next )
+        if( c->epin == epin ) current += c->value*( m_volt - sim->eNodeVolt( c->node ) );
+    for( Connection* c = m_firstSingAdm; c; c = c->next )
+        if( c->epin == epin ) current -= c->value*sim->eNodeVolt( c->node );
+    for( Connection* c = m_firstCurrent; c; c = c->next )
+        if( c->epin == epin ) current -= c->value;
+    return current;
+}
+
+bool eNode::hasStamps( ePin* epin )
+{
+    for( Connection* c = m_firstAdmit;   c; c = c->next ) if( c->epin == epin ) return true;
+    for( Connection* c = m_firstSingAdm; c; c = c->next ) if( c->epin == epin ) return true;
+    for( Connection* c = m_firstCurrent; c; c = c->next ) if( c->epin == epin ) return true;
+    return false;
+}
+
 void eNode::stampMatrix()
 {
     if( m_nodeNum == 0 ) return;

@@ -13,6 +13,7 @@
 #include "circuit.h"
 #include "node.h"
 #include "utils.h"
+#include "currentflow.h"
 
 #define tr(str) simulideTr("ConnectorLine",str)
  
@@ -46,15 +47,15 @@ QRectF ConnectorLine::boundingRect() const
 {
     int dy = m_p2Y-m_p1Y;
     int dx = m_p2X-m_p1X;
-    int p =-1;
-    int d = 2;
+    int p =-3;   // Room for current flow dots (radius ~2.2)
+    int d = 6;
 
     if    ( dx != 0
          && dy != 0 ) return QRect( 0   , 0   , dx  , dy );
-    else if( dx > 0 ) return QRect(-1   ,-2   , dx+d, 4 );
-    else if( dx < 0 ) return QRect( dx+p,-2   ,-dx+d, 4 );
-    else if( dy > 0 ) return QRect(-2   ,-1   , 4   , dy+d );
-    else if( dy < 0 ) return QRect(-2   , dy+p, 4   ,-dy+d );
+    else if( dx > 0 ) return QRect(-3   ,-3   , dx+d, 6 );
+    else if( dx < 0 ) return QRect( dx+p,-3   ,-dx+d, 6 );
+    else if( dy > 0 ) return QRect(-3   ,-3   , 6   , dy+d );
+    else if( dy < 0 ) return QRect(-3   , dy+p, 6   ,-dy+d );
     else              return QRect( 0   , 0   , 0   , 0 );
 }
 
@@ -371,5 +372,31 @@ void ConnectorLine::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
 
     p->setPen( pen );
     p->drawLine( 0, 0, dx(), dy());
+
+    if( m_pConnector->flowShown ) paintFlow( p );
+}
+
+// Current flow dots: every CurrentFlow::dotSpacing px along the whole connector,
+// shifted by its phase, so they run on smoothly across corners
+void ConnectorLine::paintFlow( QPainter* p )
+{
+    if( !CurrentFlow::self()->enabled() || !Simulator::self()->isRunning() ) return;
+
+    double len = sqrt( (double)dx()*dx() + (double)dy()*dy() );
+    if( len <= 0 ) return;
+    double offset = 0;                                  // Length of the lines before this one
+    for( ConnectorLine* line : *m_pConnector->lineList() )
+    {
+        if( line == this ) break;
+        offset += sqrt( (double)line->dx()*line->dx() + (double)line->dy()*line->dy() );
+    }
+    double s  = CurrentFlow::dotSpacing;
+    double t0 = fmod( m_pConnector->flowPhase-offset, s );
+    if( t0 < 0 ) t0 += s;
+
+    p->setPen( QPen( QColor( 60, 40, 0 ), 0.6 ) );
+    p->setBrush( QColor( 255, 190, 0 ) );
+    for( double t = t0; t <= len; t += s )
+        p->drawEllipse( QPointF( dx()*t/len, dy()*t/len ), 1.6, 1.6 );
 }
 
