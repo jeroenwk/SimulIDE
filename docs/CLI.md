@@ -95,9 +95,9 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | Command | |
 |---|---|
 | `lib list [--search TEXT] [--category CAT]` | Everything that can be added: built-in parts, MCUs, ICs, boards |
-| `comp add <name> [--at x,y] [--label L] [--rot DEG] [prop=value ...]` | Add a part. Prints its uid |
+| `comp add <name> [--at x,y] [--label L] [--rot DEG] [prop=value ...]` | Add a part. Prints its uid and where each pin is (`pos` x,y and the `side` it points to) |
 | `comp list [--type TYPE]` | Components in the circuit |
-| `comp get <comp> [--all]` | Properties (with units, or the allowed options for choice properties) and pins (with connections, and voltages while running). `--all` adds hidden properties, marked `hidden` |
+| `comp get <comp> [--all]` | Properties (with units, or the allowed options for choice properties) and pins (with position, connections, and voltages while running). `--all` adds hidden properties, marked `hidden` |
 | `comp set <comp> prop=value ...` | Change properties. `label=` renames. Undoable |
 | `comp move <comp> <x,y>` | Move (snapped to the grid) |
 | `comp rotate <comp> [cw\|ccw\|180]` | Rotate |
@@ -113,12 +113,27 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 
 | Command | |
 |---|---|
-| `wire add <pinA> <pinB> [--via x,y,...]` | Connect two pins (L-shaped route, or through the `--via` points) |
+| `wire add <pinA\|@x,y> <pinB\|@x,y> [--via x,y,...]` | Connect two pins, or a pin and a point on a wire (a new junction there). The route goes through the `--via` points and is always horizontal/vertical |
 | `wire list` | Wires and the pins they join |
 | `wire remove <wire> ...` | Remove wires. Prints the removed uids and any merged wires |
 
+- `comp move`, `comp rotate` and `comp flip` also print the new pin positions.
+
 Connecting to a pin that already has a wire inserts a junction node on that
-wire, as clicking on a wire does in the GUI.
+wire, as clicking on a wire does in the GUI. The junction goes in the middle of
+the wire segment next to that pin, on the 8 px grid. To put it somewhere
+else, name a point on the wire instead of the pin: `wire add U1.Trg @160,64`
+joins the wire that passes through 160,64. The point can be anywhere along a
+wire, corners included. It can't be where two wires cross (that's ambiguous)
+or at a wire's end (connect to that pin instead).
+
+Routing:
+- Where two consecutive points differ in both x and y, `wire add` adds a corner.
+  The wire leaves its first pin in the direction the pin points, then turns at
+  each corner.
+- `wire add` adds a note when the new wire lies along another wire, or passes
+  over a pin it doesn't connect to. Both look connected in a picture but are
+  not. Use `--via` to route around.
 
 Removing wires around a junction works as in the GUI:
 - A junction left with two wires is dissolved, and the two merge into one new

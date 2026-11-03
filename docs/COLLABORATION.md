@@ -55,9 +55,19 @@ nohup "$B" > /tmp/simulide-gui.log 2>&1 & disown; sleep 4; $B cli ping
    against ratings.
 3. **Add parts.** Use `comp add <Name> --label X --at x,y [--rot 90] Prop=value`.
    - Find library names with `lib list --search`.
-   - Run `comp get X` to see pin names, properties and units.
-4. **Wire.** Use `wire add A.pin B.pin`. Connecting to a pin that already has a
-   wire creates a junction automatically.
+   - The reply lists every pin's position and the side it points to: plan the
+     wires from it. `comp get X` shows the same pins, plus properties and units.
+   - Add all parts first, then wire. Put them all in one `$B cli - <<'EOF'`
+     script.
+4. **Wire.** Use `wire add A.pin B.pin [--via x,y,...]`.
+   - **Choose each junction yourself:** `wire add U1.Trg @160,64 --via ...`
+     joins the wire through 160,64 at that point. Without `@`, connecting to a
+     pin that already has a wire puts the junction in the middle of the segment
+     next to that pin, which is rarely where you want it.
+   - Draw the main line of a net first (e.g. the capacitor node from top to
+     bottom), then join the branches to it with `@x,y`.
+   - Act on every `note:`. It means a wire lies on another wire or runs over a
+     pin. That looks connected but isn't.
 5. **Check the result visually.** Run `capture circuit` and read the PNG. Look
    for crossing wires, wires running over parts, and polarity. Tidy up if it
    looks messy: the user is looking at it too.
@@ -94,6 +104,10 @@ Point at things instead of describing them:
   points, and parallel parts 48 px above or beside.
 - **Scope:** place it to the right (e.g. `--at 320,0`). Its input pins are on
   its left edge (`Pin0` … `Pin3`, and `PinG` for ground).
+- **Don't over-plan.** Pick positions on the grid so pins line up (same x or
+  y), add the parts, read the pin positions from the replies, and wire. Fix
+  details after the capture. A crossing that the pinout forces is fine: a
+  crossing without a dot isn't a connection.
 - **Inserting a part into an existing wire:** remove that one wire with
   `wire remove Connector-N`, add the part, and wire both sides. Removing a wire
   can dissolve a junction: the two remaining pieces merge into one new wire,
@@ -113,6 +127,9 @@ Point at things instead of describing them:
 | Wave Generator (`WaveGen`) | Its ground is internal unless `Floating=true`, so only `outnod` is visible. It has an on/off button: set `Always_On=true`. A sine is set with `Freq=50Hz Semi_Ampli=10V` |
 | Electrolytic (`elCapacitor`) | `lPin` is + (the straight plate) and `rPin` is − (the curved plate). With `--rot 90`, + is on top. Verify with `capture circuit C1 --scale 6 --margin 12` |
 | Oscope | The default display (1 ms/div, 1 V/div) clips most signals. Set it with `scope set SCOPE --timediv 5ms --voltdiv 5 --trigger 0`, then check the trace in `capture circuit SCOPE`. `scope get SCOPE` shows the settings |
+| LM555 (`Lm555`) | DIP outline. At `--at x,y`: Gnd, Trg, Out, Rst on the left at x−8, y+8 … y+32; Vcc, Dis, Thr, CV on the right at x+40, y+8 … y+32. Its output high is about Vcc − 1.3 V. A crossing between the reset (Rst→Vcc) wire and the trigger/threshold wiring can't be avoided |
+| BJT | At `--at x,y`: base x−16,y (left), collector x+8,y−16 (up), emitter x+8,y+16 (down). The default `Gain` is 100, the low end for small-signal NPNs (2N3904 typ. 200). Set it to match the part |
+| Rail | `--rot 0` puts the pin on the right at x+16. The default rotation (90) puts it below at y+16 |
 | Labels with spaces (e.g. "Arduino Uno") | Use the uid instead (`Uno-1`) |
 | Values | Use engineering notation (`220u`, `4k7`, `1M`). A wrong unit is an error, which is good. Choice properties list their `options` in `comp get` |
 | Hidden properties | `comp get X --all` lists them; `comp set` changes them |

@@ -24,6 +24,9 @@ namespace CliRefs
     QJsonObject compJson( Component* comp, bool detail, bool all=false ); // all: include hidden properties
     QString propValue( Component* comp, QString name );                   // Value as comp get shows it
     QJsonObject pinJson( Pin* pin, int index );
+    QJsonObject placedJson( Component* comp );   // Summary plus where each pin is (after add/move/rotate/flip)
+    QPoint  pinPos( Pin* pin );                  // Scene point where wires attach
+    QString pinSide( Pin* pin );                 // Direction the pin points to: left, right, up, down
     QJsonObject wireJson( Connector* con );
 
     QString pinRef( Pin* pin );                  // "R1.lPin" style reference for output

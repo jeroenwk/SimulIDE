@@ -1,0 +1,69 @@
+<circuit version="1.1.0-SR2" rev="261103" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="Lm555" CircId="Lm555-1" mainComp="false" Show_id="false" Show_Val="false" Pos="0,-24" rotation="0" hflip="1" vflip="1" label="U1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="BJT" CircId="BJT-2" mainComp="false" Show_id="false" Show_Val="false" Pos="192,-80" rotation="0" hflip="1" vflip="1" label="Q1" idLabPos="18,0" labelrot="0" valLabPos="-16,20" valLabRot="0" PNP="false" Gain="200" Vcrit="0.670736 V" />
+
+<item itemtype="Rail" CircId="Rail-5" mainComp="false" ShowProp="Voltage" Show_id="false" Show_Val="true" Pos="-104,-112" rotation="0" hflip="1" vflip="1" label="9V" idLabPos="-5,-10" labelrot="-90" valLabPos="-12,6" valLabRot="-90" Voltage="9 V" />
+
+<item itemtype="Resistor" CircId="Resistor-6" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="104,40" rotation="0" hflip="1" vflip="1" label="R1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="33 kΩ" />
+
+<item itemtype="elCapacitor" CircId="elCapacitor-7" mainComp="false" ShowProp="Capacitance" Show_id="false" Show_Val="true" Pos="160,104" rotation="90" hflip="1" vflip="1" label="C1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Capacitance="100 µF" Resistance="1 µΩ" InitVolt="0 V" ReaStep="0 ns" />
+
+<item itemtype="Resistor" CircId="Resistor-8" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="200,0" rotation="90" hflip="1" vflip="1" label="R2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="470 Ω" />
+
+<item itemtype="Led" CircId="Led-9" mainComp="false" Show_id="false" Show_Val="false" Pos="200,64" rotation="90" hflip="1" vflip="1" label="D1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Color="Yellow" Grounded="false" Threshold="2.4 V" MaxCurrent="30 mA" Resistance="0.6 Ω" />
+
+<item itemtype="Ground" CircId="Ground-10" mainComp="false" Show_id="false" Show_Val="false" Pos="-40,152" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Ground" CircId="Ground-11" mainComp="false" Show_id="false" Show_Val="false" Pos="160,152" rotation="0" hflip="1" vflip="1" label="G2" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Ground" CircId="Ground-12" mainComp="false" Show_id="false" Show_Val="false" Pos="200,152" rotation="0" hflip="1" vflip="1" label="G3" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Node" CircId="Node-13" mainComp="false" Pos="56,-112" />
+
+<item itemtype="Node" CircId="Node-14" mainComp="false" Pos="48,-16" />
+
+<item itemtype="Node" CircId="Node-15" mainComp="false" Pos="160,0" />
+
+<item itemtype="Node" CircId="Node-16" mainComp="false" Pos="160,40" />
+
+<item itemtype="Node" CircId="Node-18" mainComp="false" Pos="160,64" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="Rail-5-outnod" endpinid="Node-13-0" pointList="-88,-112,56,-112" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Node-13-2" endpinid="BJT-2-collector" pointList="56,-112,200,-112,200,-96" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Lm555-1-ePin3" endpinid="Node-14-1" pointList="-8,8,-8,24,48,24,48,-16" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="Lm555-1-ePin7" endpinid="Node-14-0" pointList="40,-16,48,-16" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Node-14-2" endpinid="Node-13-1" pointList="48,-16,56,-16,56,-112" />
+
+<item itemtype="Connector" uid="Connector-9" startpinid="Lm555-1-ePin0" endpinid="Ground-10-Gnd" pointList="-8,-16,-40,-16,-40,136" />
+
+<item itemtype="Connector" uid="Connector-11" startpinid="Lm555-1-ePin5" endpinid="Node-15-1" pointList="40,0,160,0" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="BJT-2-base" endpinid="Node-15-0" pointList="176,-80,160,-80,160,0" />
+
+<item itemtype="Connector" uid="Connector-14" startpinid="Lm555-1-ePin2" endpinid="Resistor-6-lPin" pointList="-8,0,-16,0,-16,40,88,40" />
+
+<item itemtype="Connector" uid="Connector-15" startpinid="Resistor-6-rPin" endpinid="Node-16-1" pointList="120,40,160,40" />
+
+<item itemtype="Connector" uid="Connector-16" startpinid="Node-15-2" endpinid="Node-16-0" pointList="160,0,160,40" />
+
+<item itemtype="Connector" uid="Connector-21" startpinid="elCapacitor-7-rPin" endpinid="Ground-11-Gnd" pointList="160,120,160,136" />
+
+<item itemtype="Connector" uid="Connector-22" startpinid="BJT-2-emiter" endpinid="Resistor-8-lPin" pointList="200,-64,200,-16" />
+
+<item itemtype="Connector" uid="Connector-23" startpinid="Resistor-8-rPin" endpinid="Led-9-lPin" pointList="200,16,200,48" />
+
+<item itemtype="Connector" uid="Connector-24" startpinid="Led-9-rPin" endpinid="Ground-12-Gnd" pointList="200,80,200,136" />
+
+<item itemtype="Connector" uid="Connector-26" startpinid="Lm555-1-ePin1" endpinid="Node-18-1" pointList="-8,-8,-24,-8,-24,64,160,64" />
+
+<item itemtype="Connector" uid="Connector-27" startpinid="Node-16-2" endpinid="Node-18-0" pointList="160,40,160,64" />
+
+<item itemtype="Connector" uid="Connector-28" startpinid="Node-18-2" endpinid="elCapacitor-7-lPin" pointList="160,64,160,88" />
+
+</circuit>

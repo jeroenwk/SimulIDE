@@ -104,6 +104,16 @@ QString pinRef( Pin* p )
     return name+"."+pinShortName( p, c );
 }
 
+QPoint pinPos( Pin* p ) { return p->scenePos().toPoint(); }
+
+QString pinSide( Pin* p )
+{
+    // The pin's tip is its local origin and its body runs along local +x, towards the component
+    QPointF out = p->mapToScene( QPointF( 0, 0 ) ) - p->mapToScene( QPointF( 1, 0 ) );
+    if( qAbs( out.x() ) >= qAbs( out.y() ) ) return out.x() > 0 ? "right" : "left";
+    return out.y() > 0 ? "down" : "up";
+}
+
 QJsonObject pinJson( Pin* p, int index )
 {
     QJsonObject o{
@@ -111,6 +121,9 @@ QJsonObject pinJson( Pin* p, int index )
         {"id",    pinShortName( p ) },
         {"ref",   pinRef( p ) } };
     if( !p->getLabelText().isEmpty() ) o["label"] = p->getLabelText();
+    QPoint pos = pinPos( p );
+    o["pos"]  = QJsonArray{ pos.x(), pos.y() };
+    o["side"] = pinSide( p );
 
     Connector* con = p->connector();
     if( con ){
@@ -193,6 +206,24 @@ QJsonObject compJson( Component* c, bool detail, bool all )
     std::vector<Pin*> pinList = c->getPins();
     for( int i=0; i<(int)pinList.size(); ++i )
         if( pinList[i] ) pins.append( pinJson( pinList[i], i ) );
+    o["pins"] = pins;
+    return o;
+}
+
+QJsonObject placedJson( Component* c )
+{
+    QJsonObject o = compJson( c, false );
+    QJsonArray pins;
+    for( Pin* p : c->getPins() )
+    {
+        if( !p ) continue;
+        QJsonObject po{ {"ref", pinRef( p ) } };
+        if( !p->getLabelText().isEmpty() ) po["label"] = p->getLabelText();
+        QPoint pos = pinPos( p );
+        po["pos"]  = QJsonArray{ pos.x(), pos.y() };
+        po["side"] = pinSide( p );
+        pins.append( po );
+    }
     o["pins"] = pins;
     return o;
 }

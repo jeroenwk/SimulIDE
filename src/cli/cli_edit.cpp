@@ -5,6 +5,7 @@
 
 #include <QTreeWidgetItem>
 #include <QRegularExpression>
+#include <QSet>
 
 #include "cliapi.h"
 #include "clirefs.h"
@@ -165,25 +166,151 @@ ConnectorLine* lineAt( Pin* pin, QPoint& point )
         int len = qAbs( line->dx() ) + qAbs( line->dy() );
         if( len < 16 ) continue;                      // Too short to split cleanly
         if( line->dx() != 0 && line->dy() != 0 ) continue;   // Only straight segments
-        point = toGrid( QPointF( ( line->p1()+line->p2() )/2 ) ).toPoint();
+        point = toCompGrid( QPointF( ( line->p1()+line->p2() )/2 ) ).toPoint(); // On the 8 px grid
         return line;
     }
     throw CliError("no wire segment long enough near "+CliRefs::pinRef( pin )+" to add a junction: "
                    "move the components apart or connect to another pin of the same net");
 }
 
-QStringList routePoints( QPoint a, QPoint b, QString via )
+// Wire segment passing through an explicit point ("@x,y"), to attach a junction to
+ConnectorLine* lineThrough( QPoint pt )
 {
-    QList<QPoint> pts{ a };
+    QList<ConnectorLine*> found;
+    QStringList ends;
+    for( Connector* con : *Circuit::self()->conList() )
+    {
+        QList<ConnectorLine*>* lines = con->lineList();
+        for( int i=0; i<lines->size(); ++i )
+        {
+            ConnectorLine* line = lines->at( i );
+            QPoint p1 = line->p1(), p2 = line->p2();
+            bool on = ( p1.x() == p2.x() && pt.x() == p1.x() && pt.y() >= qMin( p1.y(), p2.y() ) && pt.y() <= qMax( p1.y(), p2.y() ) )
+                   || ( p1.y() == p2.y() && pt.y() == p1.y() && pt.x() >= qMin( p1.x(), p2.x() ) && pt.x() <= qMax( p1.x(), p2.x() ) );
+            if( !on ) continue;
+            if( ( i == 0 && pt == p1 ) || ( i == lines->size()-1 && pt == p2 ) )   // End of the wire: a pin or a junction
+            {
+                Pin* pin = ( i == 0 ) ? con->startPin() : con->endPin();
+                if( pin ) ends.append( CliRefs::pinRef( pin ) );
+                continue;
+            }
+            if( found.isEmpty() || found.last()->connector() != con ) found.append( line ); // A corner touches two lines of one wire
+        }
+    }
+    QString at = QString("%1,%2").arg( pt.x() ).arg( pt.y() );
+    if( found.size() > 1 )
+    {
+        QStringList uids;
+        for( ConnectorLine* l : found ) uids.append( l->connector()->getUid() );
+        throw CliError("@"+at+" is on more than one wire ("+uids.join(", ")+"), where they cross: pick another point");
+    }
+    if( found.isEmpty() )
+    {
+        if( !ends.isEmpty() ) throw CliError("@"+at+" is the end of a wire, at "+ends.first()+": connect to that pin instead");
+        throw CliError("no wire passes through @"+at+" (wire list shows the wire points)");
+    }
+    return found.first();
+}
+
+// A wire end: a pin, or "@x,y" for a new junction at that point on a wire
+struct WireEnd
+{
+    Pin* pin = nullptr;
+    ConnectorLine* line = nullptr;     // Junction on this wire segment
+    QPoint point;
+    Connector* net() { return line ? line->connector() : ( pin ? pin->connector() : nullptr ); }
+};
+
+WireEnd wireEnd( QString ref )
+{
+    WireEnd e;
+    if( ref.startsWith('@') )
+    {
+        e.point = CliRefs::parsePoint( ref.mid( 1 ) ).toPoint();
+        e.line  = lineThrough( e.point );
+    }else{
+        e.pin = CliRefs::pin( ref );
+        if( e.pin->connector() ) e.line = lineAt( e.pin, e.point );   // Automatic junction next to the pin
+    }
+    return e;
+}
+
+// Things that look connected in the picture but are not: a wire lying on another
+// wire, or running over a pin it doesn't end at. Reported as notes, not errors.
+void layoutWarnings( Connector* con )
+{
+    auto onSeg = []( QPoint p, QPoint a, QPoint b ){
+        if( a.x() == b.x() ) return p.x() == a.x() && p.y() >= qMin( a.y(), b.y() ) && p.y() <= qMax( a.y(), b.y() );
+        if( a.y() == b.y() ) return p.y() == a.y() && p.x() >= qMin( a.x(), b.x() ) && p.x() <= qMax( a.x(), b.x() );
+        return false;
+    };
+    QSet<QString> notes;
+    for( ConnectorLine* line : *con->lineList() )
+    {
+        QPoint a = line->p1(), b = line->p2();
+        if( a == b ) continue;
+        bool vert = ( a.x() == b.x() ), horiz = ( a.y() == b.y() );
+        if( !vert && !horiz ) continue;
+
+        for( Connector* other : *Circuit::self()->conList() )   // Collinear overlap with another wire
+        {
+            if( other == con ) continue;
+            for( ConnectorLine* ol : *other->lineList() )
+            {
+                QPoint c = ol->p1(), d = ol->p2();
+                int lo, hi;
+                if( vert && c.x() == d.x() && c.x() == a.x() ){
+                    lo = qMax( qMin( a.y(), b.y() ), qMin( c.y(), d.y() ) );
+                    hi = qMin( qMax( a.y(), b.y() ), qMax( c.y(), d.y() ) );
+                    if( hi > lo ) notes.insert( QString("wire runs along %1 at x=%2 from y=%3 to %4: they look joined but are not").arg( other->getUid() ).arg( a.x() ).arg( lo ).arg( hi ) );
+                }
+                else if( horiz && c.y() == d.y() && c.y() == a.y() ){
+                    lo = qMax( qMin( a.x(), b.x() ), qMin( c.x(), d.x() ) );
+                    hi = qMin( qMax( a.x(), b.x() ), qMax( c.x(), d.x() ) );
+                    if( hi > lo ) notes.insert( QString("wire runs along %1 at y=%2 from x=%3 to %4: they look joined but are not").arg( other->getUid() ).arg( a.y() ).arg( lo ).arg( hi ) );
+                }
+            }
+        }
+        for( Component* comp : *Circuit::self()->compList() )  // Pins the wire passes over
+        {
+            for( Pin* pin : comp->getPins() )
+            {
+                if( !pin || pin == con->startPin() || pin == con->endPin() || !pin->isVisible() ) continue;
+                if( onSeg( CliRefs::pinPos( pin ), a, b ) )
+                    notes.insert("wire passes over "+CliRefs::pinRef( pin )+" without connecting to it");
+            }
+        }
+    }
+    QStringList list = notes.values();
+    list.sort();
+    for( QString n : list ) CliApi::self()->addMessage( n+" (use --via to route around)" );
+}
+
+// Wire path from a to b through the --via points. Every leg is horizontal or vertical:
+// where two points differ in x and y a corner is added, leaving the start pin along its
+// own direction (startVertical) and then turning at each corner.
+QStringList routePoints( QPoint a, QPoint b, QString via, bool startVertical )
+{
+    QList<QPoint> target;
     if( !via.isEmpty() )
     {
         QStringList v = via.split(',');
         if( v.size() % 2 ) throw CliError("--via needs x,y pairs");
-        for( int i=0; i<v.size(); i+=2 ) pts.append( QPoint( v[i].toInt(), v[i+1].toInt() ) );
+        for( int i=0; i<v.size(); i+=2 ) target.append( QPoint( v[i].toInt(), v[i+1].toInt() ) );
     }
-    else if( a.x() != b.x() && a.y() != b.y() ) pts.append( QPoint( b.x(), a.y() ) );  // L route
-    pts.append( b );
+    target.append( b );
 
+    QList<QPoint> pts{ a };
+    bool vertical = startVertical;                 // Direction of the next leg
+    for( QPoint p : target )
+    {
+        QPoint last = pts.last();
+        if( p == last ) continue;
+        if( p.x() != last.x() && p.y() != last.y() )   // Two legs: "vertical" then the other way,
+            pts.append( vertical ? QPoint( last.x(), p.y() ) : QPoint( p.x(), last.y() ) ); // so the next turns back to "vertical"
+        else vertical = ( p.x() != last.x() );           // Straight leg: the next one turns
+        pts.append( p );
+    }
     QStringList out;
     for( QPoint p : pts ) { out.append( QString::number( p.x() ) ); out.append( QString::number( p.y() ) ); }
     return out;
@@ -257,7 +384,7 @@ void CliApi::registerEdit()
         if( c.has("rot") ) comp->setPropStr("rotation", c.opt("rot") );
         circ->endUndoStep();
 
-        return CliRefs::compJson( comp, false );
+        return CliRefs::placedJson( comp );
     });
 
     add("comp set", "comp set <comp> prop=value [prop=value ...]", "Change component properties (undoable).",
@@ -311,7 +438,7 @@ void CliApi::registerEdit()
         }
         comp->moveTo( pos );
         circ->endCircuitBatch();
-        return CliRefs::compJson( comp, false );
+        return CliRefs::placedJson( comp );
     });
 
     add("comp rotate", "comp rotate <comp> [cw|ccw|180]", "Rotate a component (default cw = 90° clockwise).",
@@ -323,7 +450,7 @@ void CliApi::registerEdit()
         else if( dir == "ccw" ) comp->rotateCCW();
         else if( dir == "180" ) comp->rotateAngle( -180 );
         else throw CliError("rotation must be cw, ccw or 180");
-        return CliRefs::compJson( comp, false );
+        return CliRefs::placedJson( comp );
     });
 
     add("comp flip", "comp flip <comp> <h|v>", "Flip a component horizontally or vertically.",
@@ -334,7 +461,7 @@ void CliApi::registerEdit()
         if     ( dir == "h" ) comp->slotH_flip();
         else if( dir == "v" ) comp->slotV_flip();
         else throw CliError("flip must be h or v");
-        return CliRefs::compJson( comp, false );
+        return CliRefs::placedJson( comp );
     });
 
     add("comp remove", "comp remove <comp> [comp ...]", "Remove components (and their wires).",
@@ -355,21 +482,23 @@ void CliApi::registerEdit()
 
     //--- Wires ---------------------------------------------------------------
 
-    add("wire add", "wire add <pinA> <pinB> [--via x,y,...]",
-        "Connect two pins. A pin that already has a wire gets a junction node on that wire.",
+    add("wire add", "wire add <pinA|@x,y> <pinB|@x,y> [--via x,y,...]",
+        "Connect two pins. A pin that already has a wire gets a junction node on that wire, in the middle of the "
+        "segment next to the pin. To choose the junction yourself, give a point on a wire instead of a pin: "
+        "wire add U1.Trg @160,64 joins the wire passing through 160,64 there (corners work too, crossings don't).",
         []( CliCtx& c ) -> QJsonValue
     {
-        Pin* pinA = CliRefs::pin( c.arg( 0, "first pin") );
-        Pin* pinB = CliRefs::pin( c.arg( 1, "second pin") );
-        if( pinA == pinB ) throw CliError("cannot connect a pin to itself");
-        if( pinA->connector() && pinA->connector() == pinB->connector() )
-            throw CliError("pins are already connected by "+pinA->connector()->getUid() );
-        if( pinA->isBus() != pinB->isBus() ) throw CliError("cannot connect a bus pin to a non-bus pin");
-
-        // Pick junction points first so nothing changes if one is not possible
-        QPoint ptA, ptB;
-        ConnectorLine* lineA = pinA->connector() ? lineAt( pinA, ptA ) : nullptr;
-        ConnectorLine* lineB = pinB->connector() ? lineAt( pinB, ptB ) : nullptr;
+        // Resolve both ends (and junction points) first so nothing changes on an error
+        WireEnd a = wireEnd( c.arg( 0, "first pin or @x,y") );
+        WireEnd b = wireEnd( c.arg( 1, "second pin or @x,y") );
+        if( a.pin && a.pin == b.pin ) throw CliError("cannot connect a pin to itself");
+        if( a.net() && a.net() == b.net() ) throw CliError("already connected by "+a.net()->getUid() );
+        if( a.pin && b.pin && a.pin->isBus() != b.pin->isBus() ) throw CliError("cannot connect a bus pin to a non-bus pin");
+        ConnectorLine* lineA = a.line;
+        ConnectorLine* lineB = b.line;
+        Pin* pinA = a.pin;
+        Pin* pinB = b.pin;
+        QPoint ptA = a.point, ptB = b.point;
 
         stopSimForEdit();
         Circuit* circ = Circuit::self();
@@ -385,9 +514,12 @@ void CliApi::registerEdit()
         {
             QPoint a = con->startPin()->scenePos().toPoint();
             QPoint b = con->endPin()->scenePos().toPoint();
-            con->setPointList( routePoints( a, b, c.opt("via") ) );
+            Pin* sp = con->startPin();
+            QString side = dynamic_cast<Node*>( sp->component() ) ? "" : CliRefs::pinSide( sp );
+            con->setPointList( routePoints( a, b, c.opt("via"), side == "up" || side == "down" ) );
         }
         if( !con || !circ->conList()->contains( con ) ) throw CliError("wire could not be created");
+        layoutWarnings( con );
         return CliRefs::wireJson( con );
     });
 
