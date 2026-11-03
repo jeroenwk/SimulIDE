@@ -11,6 +11,7 @@
 #include <cmath>
 
 #include "cliapi.h"
+#include "subcircuit.h"
 #include "clirefs.h"
 #include "circuit.h"
 #include "component.h"
@@ -84,6 +85,21 @@ QJsonObject readComp( Component* comp )
             o["current"] = num( v/r->res() );
             o["power"]   = num( v*v/r->res() );
     }   }
+    else if( comp->itemType() == "MCU" )          // Scripted core placed on its own: its state text
+    {
+        QString state = comp->getValLabelText();
+        if( !state.isEmpty() ) o["state"] = state;
+    }
+    else if( SubCircuit* sub = dynamic_cast<SubCircuit*>( comp ) )
+    {
+        // Scripted cores inside (datasheet parts): the state text they show (component.showValue)
+        for( Component* inner : *sub->compList() )
+        {
+            if( inner->itemType() != "MCU" ) continue;
+            QString state = inner->getValLabelText();
+            if( !state.isEmpty() ) o["state"] = state;
+        }
+    }
 
     QJsonObject volts;
     std::vector<Pin*> pins = comp->getPins();
@@ -255,7 +271,7 @@ void CliApi::registerMeasure()
         return list;
     });
 
-    add("read", "read <comp> [comp ...]", "Readout of components: meters, probes, LEDs, resistors (current, power) and pin voltages.",
+    add("read", "read <comp> [comp ...]", "Readout of components: meters, probes, LEDs, resistors (current, power), scripted cores and parts built on them (state), and pin voltages.",
         []( CliCtx& c ) -> QJsonValue
     {
         if( c.pos.isEmpty() ) throw CliError("missing component");

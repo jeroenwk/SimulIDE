@@ -23,8 +23,9 @@ void MessageCallback( const asSMessageInfo* msg, void* param )
     QString deb = QString( msg->section )+" line: "+QString::number( msg->row )
                   +" "+QString::number( msg->col )+type+QString( msg->message );
 
-    EditorWindow::self()->outPane()->appendLine( deb.remove("\n") );
-    //qDebug() << msg->section << "line:" << msg->row << msg->col << type << msg->message;
+    deb.remove("\n");
+    EditorWindow::self()->outPane()->appendLine( deb );
+    if( msg->type != asMSGTYPE_INFORMATION ) qDebug() << deb.toLocal8Bit().constData(); // Also in Messages and the CLI
 }
 
 void print( string &msg )

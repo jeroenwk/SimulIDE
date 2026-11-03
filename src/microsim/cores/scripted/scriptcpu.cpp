@@ -266,7 +266,7 @@ void ScriptCpu::voltChanged()
 {
     if( !m_voltChanged ) return;
 
-#ifndef SIMULIDE_W32 // Defined in .pro file for win32
+#if !defined(SIMULIDE_W32) && !defined(SIMULIDE_NO_JIT) // No JIT on win32 and arm64: plain call
     m_status = m_vChangedCtx->executeJit0( m_voltChanged );
 #else
     m_status = callFunction0( m_voltChanged, m_vChangedCtx );
@@ -277,7 +277,7 @@ void ScriptCpu::voltChanged()
 void ScriptCpu::runEvent()
 {
     if( !m_runEvent ) return;
-#ifndef SIMULIDE_W32 // Defined in .pro file for win32
+#if !defined(SIMULIDE_W32) && !defined(SIMULIDE_NO_JIT) // No JIT on win32 and arm64: plain call
     m_status = m_runEventCtx->executeJit0( m_runEvent );
 #else
     m_status = callFunction0( m_runEvent, m_runEventCtx );
@@ -302,7 +302,7 @@ void ScriptCpu::runStep()
 {
     if( !m_runStep ) return;
     m_mcu->cyclesDone = 1;
-#ifndef SIMULIDE_W32 // Defined in .pro file for win32
+#if !defined(SIMULIDE_W32) && !defined(SIMULIDE_NO_JIT) // No JIT on win32 and arm64: plain call
     m_status = m_runStepCtx->executeJit0( m_runStep );
 #else
     m_status = callFunction0( m_runStep, m_runStepCtx );
@@ -314,7 +314,7 @@ void ScriptCpu::extClock( bool clkState )
 {
     if( m_extClockF )
     {
-#ifndef SIMULIDE_W32 // Defined in .pro file for win32
+#if !defined(SIMULIDE_W32) && !defined(SIMULIDE_NO_JIT) // No JIT on win32 and arm64: plain call
         m_status = m_extClockCtx->executeJit0( m_extClockF );
 #else
         m_status = callFunction0( m_extClockF , m_extClockCtx );

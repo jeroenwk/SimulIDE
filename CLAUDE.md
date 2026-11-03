@@ -21,7 +21,7 @@ make -j8
   - `as_callfunc_arm64.cpp` and `as_callfunc_arm64_xcode.S` were added; the `.pro` adds the `.S` only on macOS arm64.
   - The Apple `__aarch64__` block in `as_config.h` was replaced.
   - The `baseOffset>>1` fix was applied in `as_callfunc.cpp`; without it, virtual methods crash.
-  - The x86-only JIT (`src/angel/JIT`) is excluded on non-x86 via `SIMULIDE_NO_JIT`.
+  - The x86-only JIT (`src/angel/JIT`) is excluded on non-x86 via `SIMULIDE_NO_JIT`. Code that calls scripts must then use the plain call (`callFunction0`), not `executeJit0`, which jumps to the missing JIT code (`scriptcpu.cpp` guards both `SIMULIDE_W32` and `SIMULIDE_NO_JIT`).
   - Known limitation: upstream's ARM64 code can't take a POD struct larger than 16 bytes **by value**. Use references or ref types in script APIs.
 - Source files are picked up by glob (`$$files(src/*.cpp, true)`), so new `.cpp`/`.h`/`.ui` files need no `.pro` edit, but **rerun `qmake`** so the Makefile picks them up (otherwise you get undefined-symbol link errors). A **new subdirectory** must be added to `INCLUDEPATH` in `SimulIDE.pro`, because includes are written flat (`#include "resistor.h"`), without a path.
 - Release flags include `-Ofast`. Debug builds use `-O0 -D_GLIBCXX_ASSERTIONS`.
