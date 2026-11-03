@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "currentflow.h"
+#include "chargeview.h"
 #include <QColorDialog>
 #include <QGridLayout>
 #include <QPushButton>
@@ -44,6 +45,8 @@ AppDialog::AppDialog( QWidget* parent )
     currentFlow->setChecked( CurrentFlow::self()->enabled() );
     currentMin->setText( CurrentFlow::currentStr( CurrentFlow::self()->threshold() ) );
     currentRange->setValue( qRound( CurrentFlow::range() ) );
+    capLabel->addItems({ tr("Off"), tr("Volts"), tr("Percent"), tr("Both") });
+    syncCharge();
     buildColors();
     fps->setValue( Simulator::self()->fps() );
     backup->setValue( Circuit::self()->autoBck() );
@@ -214,6 +217,7 @@ void AppDialog::showEvent( QShowEvent* e )
     currentMin->setText( CurrentFlow::currentStr( CurrentFlow::self()->threshold() ) );
     QSignalBlocker b3( currentRange );
     currentRange->setValue( qRound( CurrentFlow::range() ) );
+    syncCharge();
     QSignalBlocker b2( animate );
     animate->setChecked( Circuit::self()->animate() );
     refreshColors();
@@ -238,6 +242,29 @@ void AppDialog::updateColorButtons()
 void AppDialog::on_currentFlow_toggled( bool on )
 {
     CurrentFlow::self()->setEnabled( on );
+}
+
+void AppDialog::syncCharge()
+{
+    QSignalBlocker b1( capCharge ), b2( capLabel ), b3( chargeScale );
+    capCharge->setChecked( ChargeView::self()->enabled() );
+    capLabel->setCurrentIndex( ChargeView::self()->labelMode() );
+    chargeScale->setValue( Circuit::self()->chargeScale() );
+}
+
+void AppDialog::on_capCharge_toggled( bool on )
+{
+    ChargeView::self()->setEnabled( on );
+}
+
+void AppDialog::on_capLabel_currentIndexChanged( int i )
+{
+    if( i >= 0 ) ChargeView::self()->setLabelMode( i );
+}
+
+void AppDialog::on_chargeScale_valueChanged( double v )
+{
+    if( v != Circuit::self()->chargeScale() ) Circuit::self()->setChargeScale( v );
 }
 
 void AppDialog::on_currentRange_valueChanged( int decades )

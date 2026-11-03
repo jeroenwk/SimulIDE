@@ -137,6 +137,25 @@ contrast). The smallest current shown at all is adjustable: `settings set
 currentMin 100n` (default `1u`). `wire current`
 gives the numbers without the dots.
 
+**Capacitor charge:** `settings set capCharge true` shows how far each
+capacitor is charged (the toolbar button next to current flow does the same):
+- a gauge bar beside the part, filling upwards with |V| / Vref;
+- each plate coloured by its node voltage, grey at 0 V, the Animate high
+  colour at +Vref and the low colour at −Vref.
+
+`settings set capLabel off|volt|percent|both` adds live text beside it
+(default `off`). The reference (100 %) is, in order:
+1. `settings set chargeScale 400` (V, saved in the circuit; 0 = auto);
+2. the largest source voltage (Fixed Voltage, Rail, Battery, Voltage Source,
+   WaveGen; also inside subcircuits and while switched off);
+3. with no source, the highest capacitor voltage since the start.
+
+A capacitor's `MaxVolt` property (rated voltage) makes its gauge red and
+blinking above it, and draws a tick at that level. `read C1` gives the
+numbers: `voltage`, `level` (can exceed 1), `vref`, `vref_source`
+(`override`, `sources` or `peak`), `rating` and `flag` (`overvoltage`,
+`reversed`, `overflow`).
+
 **Colors:** `settings set colorTheme Classic|Light|Dark` picks a preset (Dark
 is inspired by EveryCircuit: black canvas, hollow light grey parts, pale green
 current dots); it reads `Custom` once a color was changed.
@@ -182,7 +201,7 @@ Removing wires around a junction works as in the GUI:
 | Command | |
 |---|---|
 | `probe <pin> ...` | Voltage and current (into the component) at pins |
-| `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors (voltage, current, power), plus pin voltages |
+| `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors (voltage, current, power), capacitors (voltage, charge level, reference, flags), plus pin voltages |
 | `scope data <comp> [--ch N] [--last TIME] [--max N]` | Oscilloscope or logic analyzer samples as `[time_s, value]`, oldest first |
 | `scope get <comp>` | Display settings: time/div, trigger, auto-scale, and per channel volts/div and positions |
 | `scope set <comp> [--timediv T] [--trigger CH\|none] [--voltdiv V\|a,b,c,d] [--voltpos ...] [--timepos ...] [--ch CH] [--autoscale CH\|none]` | Change display settings, as in the Expand panel |

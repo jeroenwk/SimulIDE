@@ -207,6 +207,69 @@ check "scope set one channel"   '[c["voltDiv"] for c in r["result"]["channels"]]
 check "bad value rejected"      'not r["ok"]'                              -- scope set S --timediv 1s --trigger 9
 check "...and nothing changed"  'r["result"]["timeDiv"]=="5 ms" and r["result"]["trigger"]==0' -- scope get S
 
+echo "Capacitor charge display"
+cli - > "$TMP/rc.out" 2>&1 <<'EOF'
+circuit new --discard
+comp add Rail        --label V1 --at 0,0 --rot 0 Voltage=10
+comp add Resistor    --label R1 --at 64,0 Resistance=1k
+comp add Capacitor   --label C1 --at 112,32 --rot 90 Capacitance=100u
+comp add Ground      --label G  --at 112,96
+wire add V1.outnod R1.lPin
+wire add R1.rPin C1.lPin --via 112,0
+wire add C1.rPin G.Gnd
+EOF
+if [ $? -eq 0 ]; then ok "RC build script"; else fail "RC build script" "$(cat "$TMP/rc.out")"; fi
+CHARGE_WAS=$(jcli settings get capCharge | json 'str(r["result"]).lower()')
+LABEL_WAS=$(jcli settings get capLabel | json 'r["result"]')
+check "display on"                  'r["ok"]'                                  -- settings set capCharge true
+check "label both"                  'r["ok"]'                                  -- settings set capLabel both
+check "...reads back"               'r["result"]=="both"'                      -- settings get capLabel
+check "bad label mode rejected"     'not r["ok"]'                              -- settings set capLabel loud
+check "run to t = tau (100 ms)"     'r["ok"]'                                  -- sim run --for 100ms
+check "vref 10 V from the source"   'r["result"]["vref"]==10 and r["result"]["vref_source"]=="sources"' -- read C1
+check "level 63 % at tau"           'abs(r["result"]["level"]-0.632) < 0.01'   -- read C1
+check "voltage matches level"       'abs(r["result"]["voltage"]-10*r["result"]["level"]) < 1e-6' -- read C1
+check "capture with gauge"          'r["ok"]'                                  -- capture circuit C1 --scale 6 --file "$TMP/gauge.png"
+check "run to 5 tau"                'r["ok"]'                                  -- sim run --for 400ms
+check "level 99 % at 5 tau"         'abs(r["result"]["level"]-0.993) < 0.01'   -- read C1
+check "override scale 40 V"         'r["ok"]'                                  -- settings set chargeScale 40
+check "...used as vref"             'r["result"]["vref"]==40 and r["result"]["vref_source"]=="override" and abs(r["result"]["level"]-0.25) < 0.01' -- read C1
+check "negative scale rejected"     'not r["ok"]'                              -- settings set chargeScale -3
+check "save with the scale"         'r["ok"]'                                  -- circuit save "$TMP/rc.sim1"
+check "auto again"                  'r["ok"]'                                  -- settings set chargeScale 0
+check "reopen"                      'r["ok"]'                                  -- circuit open "$TMP/rc.sim1" --discard
+check "...scale saved in circuit"   'r["result"]==40'                          -- settings get chargeScale
+check "rating 5 V"                  'r["ok"]'                                  -- comp set C1 MaxVolt=5
+check "run"                         'r["ok"]'                                  -- sim run --for 500ms
+check "...over-voltage flagged"     '"overvoltage" in r["result"].get("flag","") and r["result"]["rating"]==5' -- read C1
+cli - > "$TMP/peak.out" 2>&1 <<'EOF'
+circuit new --discard
+comp add Capacitor   --label C2 --at 0,0 --rot 90 Capacitance=10u InitVolt=5
+comp add Resistor    --label R2 --at 48,0 --rot 90 Resistance=1M
+comp add Ground      --label G  --at 0,64
+wire add C2.lPin R2.lPin --via 0,-32 48,-32
+wire add C2.rPin G.Gnd
+wire add R2.rPin @0,32 --via 48,32
+EOF
+if [ $? -eq 0 ]; then ok "no-source build script"; else fail "no-source build script" "$(cat "$TMP/peak.out")"; fi
+check "run"                         'r["ok"]'                                  -- sim run --for 20ms
+check "no source: peak fallback"    'r["result"]["vref_source"]=="peak" and abs(r["result"]["vref"]-5) < 0.05' -- read C2
+cli - > "$TMP/rev.out" 2>&1 <<'EOF'
+circuit new --discard
+comp add Rail        --label V1 --at 0,0 --rot 0 Voltage=5
+comp add Resistor    --label R1 --at 64,0 Resistance=1k
+comp add elCapacitor --label C3 --at 112,32 --rot 270 Capacitance=10u
+comp add Ground      --label G  --at 112,96
+wire add V1.outnod R1.lPin
+wire add R1.rPin C3.rPin --via 112,0
+wire add C3.lPin G.Gnd
+EOF
+if [ $? -eq 0 ]; then ok "reversed electrolytic build script"; else fail "reversed electrolytic build script" "$(cat "$TMP/rev.out")"; fi
+check "run"                         'r["ok"]'                                  -- sim run --for 50ms
+check "reversed flagged"            '"reversed" in r["result"].get("flag","") and r["result"]["voltage"] < 0' -- read C3
+cli settings set capCharge "$CHARGE_WAS" >/dev/null
+cli settings set capLabel "$LABEL_WAS" >/dev/null
+
 echo "Arduino and serial"
 ECHO="$EXAMPLES/Micro/Arduino/arduino_serial_echo"
 check "open example (terminal window closed headless)" 'r["ok"] and any("dialog" in m for m in r.get("messages",[]))' \

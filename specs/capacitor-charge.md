@@ -1,7 +1,8 @@
 # Spec: capacitor charge display
 
-Status: **agreed, not implemented**. Decided with the user on 2026-11-03: the
-gauge bar beside the part (variant D in
+Status: **implemented** on branch `feature/capacitor-charge` (2026-11-03),
+see section 11 for where the code differs from this text. Decided with the
+user on 2026-11-03: the gauge bar beside the part (variant D in
 [capacitor-charge-mockups.png](capacitor-charge-mockups.png)), plates
 coloured by node potential, a layered voltage reference (section 3), its own
 toolbar button, and a live label that is configurable and off by default.
@@ -261,3 +262,51 @@ Tests go in `tests/cli/smoke.sh`, headless through the CLI.
 - **Label formats:** Q = C·V, energy ½CV².
 - **Voltage colouring of wires** on the same scale as the plates, a separate
   spec.
+
+## 11. Implementation notes (2026-11-03)
+
+Where the code differs from the text above:
+
+- **The gauge and label are a child item, `ChargeGauge`**
+  (`capacitorbase.h/.cpp`), not painted by the capacitor itself.
+  - Its transform undoes the parent's rotation and flip, so it draws in
+    scene-aligned coordinates.
+  - Its bounding rect is its own, so the capacitor's `boundingRect()`, and
+    with it the selection highlight, stays unchanged.
+  - It takes no mouse buttons, so clicks pass through.
+- **The `ChargeScale` setter is `settings set chargeScale V`**, in the circuit
+  group next to `capCharge` and `capLabel`. The value is still saved in the
+  `.sim1` header (`chargeScale="40"`, only when > 0). In the GUI it is the
+  "100 % at" box in Settings > Circuit (Auto = 0).
+- **`Vref` is recomputed once per frame**, a pass over the component list
+  calling `nominalVolt()`, instead of on source property changes. It is cheap
+  and needs no change hooks: the 555 fader runs at the same speed with the
+  display on and off.
+- **The peak fallback looks only at capacitor pins**, not at every eNode. That
+  is enough for its case: a circuit with no source runs on capacitor charge.
+- **`elCapacitor::updateStep()` now calls the base `updateStep()`.** As a side
+  effect, changing an electrolytic's capacitance during a run takes effect at
+  once, as it already did for the plain capacitor.
+- **Voltages below 1 µV read `0 V · 0 %`**, not `7.99e-11 µV · <1 %`.
+
+### Tests (`tests/cli/smoke.sh`, section "Capacitor charge display")
+
+Automated:
+- RC charge at τ and 5τ (test 1);
+- the override, saved and reloaded (test 5);
+- the rating (test 6);
+- the no-source peak fallback (test 5);
+- the reversed electrolytic (test 7);
+- the label modes, including rejection of a bad one.
+
+Checked by hand in the GUI:
+- led_driver stage R a: C5 at 62 % at τ with its + plate red, C3 at 4 %
+  (test 2), and C5 holding while the divider empties after switch-off
+  (test 3);
+- the performance check (test 11).
+
+Not automated:
+- test 4 (spike immunity): it holds by construction, since nominal source
+  values can't spike;
+- test 7's voltage doubler (overflow): not built yet.
+

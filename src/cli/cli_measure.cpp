@@ -3,6 +3,8 @@
  *   Measurement and interaction commands                                  *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include "capacitorbase.h"
+#include "chargeview.h"
 #include <QGraphicsProxyWidget>
 #include <QAbstractButton>
 #include <QAbstractSlider>
@@ -59,6 +61,17 @@ QJsonObject readComp( Component* comp )
         o["brightness"] = num( led->brightness() );
         o["current"]    = num( led->overCurrent()*led->maxCurrent() );
         o["overloaded"] = led->overCurrent() > 1.5;
+    }
+    else if( CapacitorBase* cap = dynamic_cast<CapacitorBase*>( comp ) )
+    {
+        ChargeView* cv = ChargeView::self();
+        o["voltage"]     = num( cap->capVolt() );
+        o["level"]       = num( cap->chargeLevel() );
+        o["vref"]        = num( cv->vref() );
+        o["vref_source"] = ChargeView::refSourceStr( cv->refSource() );
+        if( cap->maxVolt() > 0 ) o["rating"] = num( cap->maxVolt() );
+        QStringList flags = cap->chargeFlags();
+        if( !flags.isEmpty() ) o["flag"] = flags.join(",");
     }
     else if( comp->itemType() == "Resistor" )
     {

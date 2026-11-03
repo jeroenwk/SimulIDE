@@ -32,6 +32,7 @@ class FixedVolt : public Component, public eElement
         virtual void setOut( bool out );
 
         double volt() { return m_voltage; }
+        virtual double nominalVolt() override { return m_voltage; }
         void setVolt( double v );
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;

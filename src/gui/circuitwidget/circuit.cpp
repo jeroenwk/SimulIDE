@@ -50,6 +50,7 @@ Circuit::Circuit( qreal x, qreal y, qreal width, qreal height, CircuitView*  par
     m_redo       = false;
     m_changed    = false;
     m_animate    = false;
+    m_chargeScale = 0;
     m_pasting    = false;
     m_deleting   = false;
     m_loading    = false;
@@ -202,6 +203,7 @@ void Circuit::loadStrDoc( QString &doc )
                 else if( name == "NLsteps" ) m_simulator->setMaxNlSteps( val.toUInt() );
                 else if( name == "reaStep" ) m_simulator->setreactStep( val.toULongLong() );
                 else if( name == "animate" ) setAnimate( val.toInt() );
+                else if( name == "chargeScale" ) m_chargeScale = val.toDouble();
                 else if( name == "rev"     ) rev = val.toInt();
             }
         }
@@ -482,7 +484,9 @@ QString Circuit::circuitHeader()
     header += "stepsPS=\""+QString::number( m_simulator->stepsPerSec() )+"\" ";
     header += "NLsteps=\""+QString::number( m_simulator->maxNlSteps() )+"\" ";
     header += "reaStep=\""+QString::number( m_simulator->reactStep() )+"\" ";
-    header += "animate=\""+QString::number( m_animate )+"\" >\n";
+    header += "animate=\""+QString::number( m_animate )+"\" ";
+    if( m_chargeScale > 0 ) header += "chargeScale=\""+QString::number( m_chargeScale )+"\" ";
+    header += ">\n";
     return header;
 }
 QString Circuit::circuitToString()
@@ -1257,6 +1261,12 @@ void Circuit::setDrawGrid( bool draw )
     if( m_hideGrid ) MainWindow::self()->settings()->setValue( "Circuit/hideGrid", "true" );
     else             MainWindow::self()->settings()->setValue( "Circuit/hideGrid", "false" );
     update();
+}
+
+void Circuit::setChargeScale( double v )
+{
+    m_chargeScale = ( v > 0 ) ? v : 0;
+    setChanged();
 }
 
 void Circuit::setAnimate( bool an )
