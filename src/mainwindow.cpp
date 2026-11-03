@@ -84,6 +84,9 @@ MainWindow::MainWindow( bool headless )
     setFont( df );
 
     QApplication::setStyle( QStyleFactory::create("Fusion") ); //applyStyle();
+    // The widgets, .ui colours and icons are drawn for a light palette: keep Fusion's own light
+    // palette even when the OS is in dark mode (macOS would otherwise hand Fusion a dark one).
+    QApplication::setPalette( QApplication::style()->standardPalette() );
     createWidgets();
 
     if( !m_userDir.isEmpty() && QDir( m_userDir ).exists() )
