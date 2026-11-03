@@ -37,7 +37,9 @@ void elCapacitor::updateStep()
     CapacitorBase::updateStep();
 
     double volt = m_ePin[0]->getVoltage() - m_ePin[1]->getVoltage();
-    bool crashed = ( volt < -1e-6 );
+    // Reversed: below -0.1 V. A real electrolytic takes a few hundred mV backwards; the old
+    // -1 uV limit flagged numerical drift of a discharged capacitor (e.g. -0.5 mV)
+    bool crashed = ( volt < -0.1 );
     if( crashed || (crashed != m_crashed) )
     {
         m_crashed = crashed;

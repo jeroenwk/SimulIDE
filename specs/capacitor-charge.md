@@ -159,7 +159,7 @@ source property changes, not on every frame.
   (`QColor(230,40,40)`) and blinks at 2 Hz, and the label (if on) turns red.
   The part is not destroyed. It is a hint, as in led_driver, where C5 (50 V)
   would charge towards 325 V if mains went on without IC1.
-- **Reverse polarity** (`elCapacitor`, `V` < −1 µV): the existing `m_crashed`
+- **Reverse polarity** (`elCapacitor`, `V` < −0.1 V; was −1 µV before 2026-11-03, which flagged numerical drift of a discharged part): the existing `m_crashed`
   drawing stays, and the gauge fill is red.
 
 ## 6. Code changes
