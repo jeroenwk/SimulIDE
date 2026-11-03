@@ -18,7 +18,7 @@ which finds the binary, reuses or launches the GUI, and prints the circuit
 state plus a capture. The manual steps are:
 
 ```sh
-cd /Users/jeroen.dezwart/perso/SimulIDE
+cd ~/perso/electronics/SimulIDE
 B=$PWD/build_XX/executables/SimulIDE_1.1.0-SR2/simulide.app/Contents/MacOS/simulide
 $B cli ping            # "pong" means a GUI is already running: use it
 ```
