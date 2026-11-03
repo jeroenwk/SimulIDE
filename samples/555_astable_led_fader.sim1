@@ -12,7 +12,7 @@
 
 <item itemtype="Resistor" CircId="Resistor-8" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="200,0" rotation="90" hflip="1" vflip="1" label="R2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="470 Ω" />
 
-<item itemtype="Led" CircId="Led-9" mainComp="false" Show_id="false" Show_Val="false" Pos="200,64" rotation="90" hflip="1" vflip="1" label="D1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Color="Yellow" Grounded="false" Threshold="2.4 V" MaxCurrent="30 mA" Resistance="0.6 Ω" />
+<item itemtype="Led" CircId="Led-9" mainComp="false" Show_id="false" Show_Val="false" Pos="200,64" rotation="90" hflip="1" vflip="1" label="D1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Color="Green" Grounded="false" Threshold="2 V" MaxCurrent="20 mA" Resistance="0.6 Ω" />
 
 <item itemtype="Ground" CircId="Ground-10" mainComp="false" Show_id="false" Show_Val="false" Pos="-40,152" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
 
