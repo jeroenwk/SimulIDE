@@ -9,10 +9,18 @@
 #include <QPlainTextEdit>
 #include <QSyntaxHighlighter>
 #include <QObject>
+#include <QTextBlockUserData>
 
 #include "updatable.h"
 
 class OutHighlighter;
+
+class PlainBlock : public QTextBlockUserData      // Block shown in one colour (OutPanelText::appendPlain)
+{
+    public:
+        PlainBlock( QColor c ) : color( c ) {}
+        QColor color;
+};
 
 class OutPanelText : public QPlainTextEdit, public Updatable
 {
@@ -26,6 +34,7 @@ class OutPanelText : public QPlainTextEdit, public Updatable
         void appendText( const QString text ) { m_textBuffer.append( text ); if( m_capture ) m_capture->append( text ); }
         void setCapture( QString* c ) { m_capture = c; }    // Command line interface: copy output
         void appendLine( const QString text );
+        void appendPlain( const QString text, QColor color );  // Lines shown in one colour, no highlighting
 
     private:
         QString m_textBuffer;
@@ -45,7 +54,7 @@ class OutHighlighter : public QSyntaxHighlighter
         ~OutHighlighter();
 
     protected:
-        void highlightBlock( const QString &text );
+        void highlightBlock( const QString &text ) override;
 
     private:
         struct HighlightingRule

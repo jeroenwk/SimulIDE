@@ -51,7 +51,7 @@ class CircuitWidget : public QWidget
         void simDebugMessage( QString msg ) { m_outPane.appendLine( msg.remove("\"") ); }
 
         QSplitter* splitter() { return m_mainSplitter; }
-        void showDescription();       // Refresh it; bring its tab forward if there is one
+        void showDescription();       // Refresh the Description tab
         
     public slots:
         bool newCircuit();

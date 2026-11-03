@@ -144,9 +144,9 @@ instances never reopen a circuit, and never change which one the GUI reopens.
 
 **Circuit description:** a circuit file can carry a description (Markdown): what
 the circuit shows, how to use it, what to expect. It is saved as `<description>`
-after the `<circuit>` header and shown in the bottom pane's **Description** tab as
-soon as the circuit is loaded (circuits without one show the Messages tab). Edit it
-there (Edit / Done) or with `circuit description --set TEXT`, `--file notes.md` or
+after the `<circuit>` header. When the circuit is loaded it is printed in white
+in the Messages tab, after the "Circuit Loaded" line, and rendered in the
+**Description** tab next to it. Edit it in that tab (Edit / Done) or with `circuit description --set TEXT`, `--file notes.md` or
 `--clear`; `circuit description` alone reads it. Like any edit, save the circuit
 to keep it.
 

@@ -375,13 +375,13 @@ void CircuitWidget::loadCirc( QString path )
 
         m_infoWidget->clearLastRun();
         showDescription();
+        QString desc = Circuit::self()->description();
+        if( !desc.isEmpty() ) m_outPane.appendPlain( "\n"+desc+"\n", Qt::white );
 }   }
 
 void CircuitWidget::showDescription()
 {
-    m_descWidget->showCircuit();
-    bool has = Circuit::self() && !Circuit::self()->description().isEmpty();
-    m_bottomTabs->setCurrentWidget( has ? (QWidget*)m_descWidget : (QWidget*)&m_outPane );
+    m_descWidget->showCircuit();                 // The Messages tab stays in front: it prints the description too
 }
 
 void CircuitWidget::saveCirc()
