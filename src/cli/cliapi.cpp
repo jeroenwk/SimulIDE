@@ -10,6 +10,7 @@
 #include <QFileInfo>
 
 #include "cliapi.h"
+#include "simulator.h"
 
 CliApi* CliApi::m_pSelf = nullptr;
 
@@ -102,6 +103,23 @@ double parseNum( QString v, QString what )
     return d;
 }
 
+void setSimSpeed( uint64_t psPerSec, uint64_t stepSize )
+{
+    Simulator* sim = Simulator::self();
+    if( psPerSec < 1 ) psPerSec = 1;
+    if( stepSize == 0 ) stepSize = sim->stepSize();
+    if( stepSize < 1 ) stepSize = 1;
+
+    uint64_t stepsPS = psPerSec/stepSize;
+    while( stepsPS >= 1000000000 ) { stepsPS /= 1000; stepSize *= 1000; }
+    while( stepsPS == 0 && stepSize >= 1000 ) { stepSize /= 1000; stepsPS = psPerSec/stepSize; }
+    if( stepsPS == 0 ) stepsPS = 1;
+
+    sim->setStepSize( stepSize );
+    sim->setStepsPerSec( stepsPS );
+    sim->setPsPerSec( psPerSec );
+}
+
 void pollUntil( std::function<bool()> fn, int ms )
 {
     QTimer* timer = new QTimer();
@@ -131,6 +149,8 @@ CliApi::CliApi()
     registerMeasure();
     registerSim();
     registerMcu();
+    registerEditor();
+    registerSettings();
 }
 CliApi::~CliApi(){ m_pSelf = nullptr; }
 

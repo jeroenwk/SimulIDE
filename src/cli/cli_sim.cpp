@@ -150,7 +150,7 @@ void CliApi::registerSim()
         {
             double pct = Cli::parseNum( c.pos.at(0), "speed");
             if( pct <= 0 ) throw CliError("speed must be > 0");
-            Simulator::self()->setPsPerSec( (uint64_t)( pct*1e10 ) );
+            Cli::setSimSpeed( (uint64_t)( pct*1e10 ) );
         }
         return simStatus();
     });

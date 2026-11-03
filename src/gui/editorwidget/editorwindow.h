@@ -44,6 +44,7 @@ class EditorWindow : public EditorWidget, public Updatable
         void pauseAt( codeLine_t line );
 
         bebugState_t debugState() { return m_state; }
+        codeLine_t debugLinePos() { return m_debugLine; }
 
         BaseDebugger* createDebugger( QString name, CodeEditor* ce, QString code="" );
 

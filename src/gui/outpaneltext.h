@@ -23,11 +23,13 @@ class OutPanelText : public QPlainTextEdit, public Updatable
 
         virtual void updateStep() override;
 
-        void appendText( const QString text ) { m_textBuffer.append( text ); }
+        void appendText( const QString text ) { m_textBuffer.append( text ); if( m_capture ) m_capture->append( text ); }
+        void setCapture( QString* c ) { m_capture = c; }    // Command line interface: copy output
         void appendLine( const QString text );
 
     private:
         QString m_textBuffer;
+        QString* m_capture = nullptr;
  
         OutHighlighter* m_highlighter;
 };

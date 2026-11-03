@@ -8,6 +8,7 @@
 
 #include <QWidget>
 #include <QMenu>
+#include <QTabWidget>
 
 #include "compbase.h"
 #include "codeeditor.h"
@@ -43,6 +44,8 @@ class EditorWidget : public QWidget, public CompBase
        CodeEditor* getCodeEditor();
 
        QStringList getFiles() { return m_fileList.keys(); }
+       QWidget* fileWidget( QString file ) { return m_fileList.value( file ); }   // Command line interface
+       int fileTabIndex( QString file ) { return m_docWidget->indexOf( m_fileList.value( file ) ); }
        void restoreFile( QString filePath );
 
     public slots:

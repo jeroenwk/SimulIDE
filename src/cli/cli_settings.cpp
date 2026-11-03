@@ -1,0 +1,198 @@
+/***************************************************************************
+ *   SimulIDE command line control interface                              *
+ *   Application, circuit and simulation settings (the Settings dialog)    *
+ ***( see copyright.txt file at root folder )*******************************/
+
+#include <QJsonArray>
+#include <QMetaEnum>
+
+#include "cliapi.h"
+#include "mainwindow.h"
+#include "circuit.h"
+#include "circuitview.h"
+#include "simulator.h"
+
+namespace
+{
+struct Setting
+{
+    QString name;
+    QString group;
+    QString help;
+    std::function<QJsonValue()> get;
+    std::function<void(QString)> set;   // Empty: read only
+};
+
+const QStringList langNames = { "English","Azerbaijani","Chinese","Czech","Dutch","French","German",
+                                "Italian","Russian","Spanish","Portuguese","Pt_Brasil","Slovak","Turkish"};
+
+bool parseBool( QString v )
+{
+    v = v.toLower();
+    if( v == "true" || v == "1" || v == "on"  || v == "yes" ) return true;
+    if( v == "false"|| v == "0" || v == "off" || v == "no"  ) return false;
+    throw CliError("expected true/false: "+v );
+}
+
+int parseInt( QString v, QString what, int min, int max )
+{
+    double d = Cli::parseNum( v, what );
+    if( d < min || d > max ) throw CliError( QString("%1 must be %2..%3").arg( what ).arg( min ).arg( max ) );
+    return (int)d;
+}
+
+QList<Setting>& settings()
+{
+    static QList<Setting> list;
+    if( !list.isEmpty() ) return list;
+
+    // App -------------------------------------------------------------------
+    list.append({"language", "app", "User interface language (applies after restart): "+langNames.join(", "),
+        [](){ return QJsonValue( langNames.value( (int)MainWindow::self()->lang() ) ); },
+        []( QString v ){
+            int i = -1;
+            for( int n=0; n<langNames.size(); ++n ) if( langNames[n].compare( v, Qt::CaseInsensitive ) == 0 ) i = n;
+            if( i < 0 ) throw CliError("unknown language: "+v+" ("+langNames.join(", ")+")");
+            MainWindow::self()->setLang( (Langs)i );
+            CliApi::self()->addMessage("language applies after restart");
+        }});
+    list.append({"fontScale", "app", "Font scale (applies after restart).",
+        [](){ return QJsonValue( MainWindow::self()->fontScale() ); },
+        []( QString v ){
+            double s = Cli::parseNum( v, "fontScale");
+            if( s < 0.5 || s > 3 ) throw CliError("fontScale must be 0.5..3");
+            MainWindow::self()->setFontScale( s );
+            CliApi::self()->addMessage("font scale applies after restart");
+        }});
+    list.append({"fontName", "app", "Default font family (applies after restart).",
+        [](){ return QJsonValue( MainWindow::self()->defaultFontName() ); },
+        []( QString v ){
+            MainWindow::self()->setDefaultFontName( v );
+            CliApi::self()->addMessage("font applies after restart");
+        }});
+    list.append({"userPath", "app", "User data folder (extra components, examples).",
+        [](){ return QJsonValue( MainWindow::self()->userPath() ); },
+        []( QString v ){
+            QString p = CliApi::self()->resolvePath( v );
+            if( !QFileInfo::exists( p ) ) throw CliError("folder not found: "+p );
+            MainWindow::self()->setUserPath( p );
+        }});
+
+    // Circuit ---------------------------------------------------------------
+    list.append({"drawGrid", "circuit", "Draw the grid.",
+        [](){ return QJsonValue( Circuit::self()->drawGrid() ); },
+        []( QString v ){ Circuit::self()->setDrawGrid( parseBool( v ) ); }});
+    list.append({"showScroll", "circuit", "Show scroll bars.",
+        [](){ return QJsonValue( CircuitView::self()->showScroll() ); },
+        []( QString v ){ CircuitView::self()->setShowScroll( parseBool( v ) ); }});
+    list.append({"animate", "circuit", "Animate (show pin states and wire voltages).",
+        [](){ return QJsonValue( Circuit::self()->animate() ); },
+        []( QString v ){ Circuit::self()->setAnimate( parseBool( v ) ); }});
+    list.append({"fps", "circuit", "Screen refresh rate, frames per second.",
+        [](){ return QJsonValue( (int)Simulator::self()->fps() ); },
+        []( QString v ){ Simulator::self()->setFps( parseInt( v, "fps", 1, 100 ) ); }});
+    list.append({"autoBackup", "circuit", "Auto backup interval in seconds (0 = off).",
+        [](){ return QJsonValue( Circuit::self()->autoBck() ); },
+        []( QString v ){ Circuit::self()->setAutoBck( parseInt( v, "autoBackup", 0, 86400 ) ); }});
+
+    // Simulation (saved in the circuit file) --------------------------------
+    list.append({"speed", "simulation", "Target speed in % of real time (also: sim speed).",
+        [](){ return QJsonValue( 100.0*(double)Simulator::self()->psPerSec()/1e12 ); },
+        []( QString v ){
+            double pct = Cli::parseNum( v, "speed");
+            if( pct <= 0 ) throw CliError("speed must be > 0");
+            Cli::setSimSpeed( (uint64_t)( pct*1e10 ) );
+            Circuit::self()->setChanged();
+        }});
+    list.append({"stepSize", "simulation", "Simulation step size (e.g. 1us).",
+        [](){ return QJsonValue( Cli::timeStr( Simulator::self()->stepSize() ) ); },
+        []( QString v ){
+            uint64_t step = Cli::parseTime( v );
+            if( step == 0 ) throw CliError("stepSize must be > 0");
+            Cli::setSimSpeed( Simulator::self()->psPerSec(), step );
+            Circuit::self()->setChanged();
+        }});
+    list.append({"stepsPerSec", "simulation", "Simulation steps per real second (follows from speed and stepSize).",
+        [](){ return QJsonValue( QString::number( Simulator::self()->stepsPerSec() ) ); },
+        nullptr });
+    list.append({"reactStep", "simulation", "Reactive components step (e.g. 1us).",
+        [](){ return QJsonValue( Cli::timeStr( Simulator::self()->reactStep() ) ); },
+        []( QString v ){
+            uint64_t step = Cli::parseTime( v );
+            if( step == 0 ) throw CliError("reactStep must be > 0");
+            Simulator::self()->setreactStep( step );
+            Circuit::self()->setChanged();
+        }});
+    list.append({"nlSteps", "simulation", "Maximum non-linear iterations per step.",
+        [](){ return QJsonValue( (int)Simulator::self()->maxNlSteps() ); },
+        []( QString v ){
+            Simulator::self()->setMaxNlSteps( parseInt( v, "nlSteps", 1, 1000000000 ) );
+            Circuit::self()->setChanged();
+        }});
+    list.append({"slopeSteps", "simulation", "Steps used for signal slopes (0 = instant edges).",
+        [](){ return QJsonValue( Simulator::self()->slopeSteps() ); },
+        []( QString v ){
+            Simulator::self()->setSlopeSteps( parseInt( v, "slopeSteps", 0, 1000000 ) );
+            Circuit::self()->setChanged();
+        }});
+    return list;
+}
+
+Setting& findSetting( QString name )
+{
+    for( Setting& s : settings() ) if( s.name.compare( name, Qt::CaseInsensitive ) == 0 ) return s;
+    QStringList names;
+    for( Setting& s : settings() ) names.append( s.name );
+    throw CliError("unknown setting: "+name+" ("+names.join(", ")+")");
+}
+
+QJsonObject settingJson( Setting& s )
+{
+    QJsonObject o{
+        {"name",  s.name },
+        {"group", s.group },
+        {"value", s.get() },
+        {"help",  s.help } };
+    if( !s.set ) o["readOnly"] = true;
+    return o;
+}
+}
+
+void CliApi::registerSettings()
+{
+    add("settings list", "settings list [--group app|circuit|simulation]", "All settings with their current values.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QString group = c.opt("group");
+        QJsonArray rows;
+        for( Setting& s : settings() )
+            if( group.isEmpty() || s.group == group ) rows.append( settingJson( s ) );
+        return rows;
+    });
+
+    add("settings get", "settings get <name>", "Value of one setting.",
+        []( CliCtx& c ) -> QJsonValue { return findSetting( c.arg( 0, "name") ).get(); });
+
+    add("settings set", "settings set <name> <value> | <name>=<value>...", "Change settings.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QList<QPair<QString,QString>> changes;
+        if( c.pos.size() >= 2 ) changes.append({ c.pos.at(0), c.pos.mid(1).join(" ") });
+        else if( c.pos.size() == 1 ) throw CliError("missing value for "+c.pos.at(0) );
+        for( QString k : c.sets.keys() ) changes.append({ k, c.sets.value( k ).toString() });
+        if( changes.isEmpty() ) throw CliError("nothing to set (usage: settings set <name> <value>)");
+
+        // Validate names first so nothing is half applied on a typo
+        for( auto& ch : changes )
+            if( !findSetting( ch.first ).set ) throw CliError( ch.first+" is read only");
+
+        QJsonArray rows;
+        for( auto& ch : changes )
+        {
+            Setting& s = findSetting( ch.first );
+            s.set( ch.second );
+            rows.append( settingJson( s ) );
+        }
+        return rows;
+    });
+}

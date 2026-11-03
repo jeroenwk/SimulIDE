@@ -102,6 +102,8 @@ class CliApi
         void registerMeasure();   // cli_measure.cpp
         void registerSim();       // cli_sim.cpp
         void registerMcu();       // cli_mcu.cpp
+        void registerEditor();    // cli_editor.cpp
+        void registerSettings();  // cli_settings.cpp
 
         QMap<QString, CliCommand> m_cmds;
 
@@ -117,6 +119,10 @@ namespace Cli
     uint64_t parseTime( QString t );         // "10ms" -> picoseconds
     QString  timeStr( uint64_t ps );
     double   parseNum( QString v, QString what );
+
+    // Set target speed (picoseconds simulated per real second), keeping steps
+    // per second and step size consistent as the settings dialog does
+    void setSimSpeed( uint64_t psPerSec, uint64_t stepSize=0 );
 
     // Call fn every ms milliseconds (GUI thread) until it returns true
     void pollUntil( std::function<bool()> fn, int ms=5 );
