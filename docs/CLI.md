@@ -130,8 +130,11 @@ or at a wire's end (connect to that pin instead).
 
 **Current flow:** `settings set currentFlow true` shows moving dots on the
 wires (conventional current direction; the toolbar button does the same).
-Faster and brighter dots mean more current. The smallest current shown is
-adjustable: `settings set currentMin 100n` (default `1u`). `wire current`
+Faster and brighter dots mean more current, relative to the largest current
+in the circuit (log scale). `settings set currentRange 2` sets how many
+decades below the largest current are shown (1..6, default 2; fewer = more
+contrast). The smallest current shown at all is adjustable: `settings set
+currentMin 100n` (default `1u`). `wire current`
 gives the numbers without the dots.
 
 **Colors:** `settings set colorTheme Classic|Light|Dark` picks a preset (Dark

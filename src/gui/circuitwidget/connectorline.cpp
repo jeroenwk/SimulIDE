@@ -394,7 +394,7 @@ void ConnectorLine::paintFlow( QPainter* p )
     double t0 = fmod( m_pConnector->flowPhase-offset, s );
     if( t0 < 0 ) t0 += s;
 
-    double op = CurrentFlow::opacity( m_pConnector->flowCurrent, CurrentFlow::self()->threshold() );
+    double op = CurrentFlow::opacity( m_pConnector->flowCurrent, CurrentFlow::self()->threshold(), CurrentFlow::self()->scale() );
     QColor fill = Theme::flow();
     QColor edge = fill.darker( 300 );
     fill.setAlphaF( op );

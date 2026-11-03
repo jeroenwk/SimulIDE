@@ -175,16 +175,28 @@ The result is a signed current for each `Connector`, positive from
   segments. Each `ConnectorLine` knows its starting offset along the connector,
   so dots flow smoothly round corners. `ConnectorLine::paint` draws the dots
   that fall within its segment, at `offset + φ mod 16`.
-- **Opacity:** brighter dots mean more current, as in EveryCircuit
-  ("moving dots of various speed and brightness"). Opacity ramps from 0.3 at
-  the threshold to 1.0 two decades above it, so dots fade in near the
-  threshold instead of popping in.
+- **Relative scale:** speed and opacity are relative to the largest wire
+  current in the circuit (`scale`), as in EveryCircuit: the busiest wire is the
+  fastest and brightest, and the rest shows how its current compares. The scale
+  rises at once and decays with a 1 s time constant, so the start-up (µA) is
+  visible too, and it holds while paused. Level `l = 1 + log10(|I|/scale)/R`,
+  clamped to 0..1. `R` is the range in decades (`currentRange`, 1..6, default
+  2; Settings > Circuit > Range): 10^-R of the largest current or less crawls
+  at the minimum. Fewer decades give more contrast.
+  The scale ignores wires flagged inconsistent, and nothing is computed at
+  1 ps (just started, before the first step): the matrix is not solved yet, so
+  a 9 V source would report its stamp, 9 V · 1e9 S = 9 GA. That spike once set
+  the scale and took about 30 s to decay, which hid the whole start-up.
+- **Opacity:** `0.15 + 0.85·l`.
 - **Speed:**
-  - Below the threshold, nothing is drawn.
-  - Above that, `v = k·(1 + log10(|I| / 1 µA))` px/s, capped. With k ≈ 8 px/s,
-    1 µA moves at 8 px/s, 1 mA at 32 px/s and 1 A at 56 px/s.
-  - Tune k on the example circuits. Dots should never move more than half a
-    spacing per frame, so the motion can't look reversed (wagon-wheel effect).
+  - Below the threshold (absolute, `currentMin`), nothing is drawn.
+  - Above that, `v = 4 + 60·l` px/s: 64 px/s for the largest current, 4 px/s
+    for the smallest shown.
+  - Dots never move more than half a spacing per frame, so the motion can't
+    look reversed (wagon-wheel effect).
+  - Earlier versions used an absolute log scale (8 px/s at 1 µA, +8 per
+    decade, opacity full at 100 µA). In the 555 fader the 6 mA LED branch and
+    the 60 µA timing wires then looked alike.
 - **Look:** filled circles of radius 1.6 px in amber, `QColor(255,190,0)`,
   with a thin dark outline so they stay visible on both the dark wires and the
   red/blue Animate colours. They're drawn above the wire line in the same item.

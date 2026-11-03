@@ -100,6 +100,13 @@ QList<Setting>& settings()
             if( !CurrentFlow::parseCurrent( v, amps ) || amps <= 0 ) throw CliError("invalid current: "+v+" (e.g. 1u, 100n)" );
             CurrentFlow::self()->setThreshold( amps );
         }});
+    list.append({"currentRange", "circuit", "Flow dots: decades of current shown below the largest one, 1..6 (default 2). Fewer = more contrast.",
+        [](){ return QJsonValue( CurrentFlow::range() ); },
+        []( QString v ){
+            bool ok; double d = v.toDouble( &ok );
+            if( !ok || d < 1 || d > 6 ) throw CliError("invalid range: "+v+" (1..6 decades)" );
+            CurrentFlow::self()->setRange( d );
+        }});
     list.append({"colorTheme", "circuit", "Color preset: Classic, Light or Dark (EveryCircuit style). Reads Custom when colors were changed.",
         [](){ return QJsonValue( Theme::currentPreset() ); },
         []( QString v ){

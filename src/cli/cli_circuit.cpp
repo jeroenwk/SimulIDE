@@ -167,7 +167,8 @@ void CliApi::registerCircuit()
     add("wire current", "wire current [wire ...]",
         "Current through wires (A), signed: positive flows from the 'from' pin to the 'to' pin. "
         "Computed from the solved circuit; works paused. flag: approximate = shared between passive pins "
-        "(tunnels, subcircuit pins), inconsistent = current does not add up (bug).",
+        "(tunnels, subcircuit pins), inconsistent = current does not add up (bug). "
+        "level (with currentFlow on): how the dots show it, 1 = as the largest current, 0 = crawling, -1 = below currentMin.",
         []( CliCtx& c ) -> QJsonValue
     {
         if( !Simulator::self()->isRunning() ) throw CliError("simulation is not running");
@@ -184,6 +185,9 @@ void CliApi::registerCircuit()
                 QJsonObject o = CliRefs::wireJson( con );
                 o.remove("points");
                 o["current"] = con->flowCurrent;
+                CurrentFlow* flow = CurrentFlow::self();
+                if( flow->enabled() )   // How the dots show it: 1 = like the largest current, 0 = crawl, -1 = none
+                    o["level"] = qRound( 100*flow->level( con->flowCurrent, flow->threshold(), flow->scale() ) )/100.0;
                 if( con->flowFlag == 1 ) o["flag"] = "approximate";
                 if( con->flowFlag == 2 ) o["flag"] = "inconsistent";
                 rows.append( o );

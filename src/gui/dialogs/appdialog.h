@@ -49,6 +49,7 @@ class AppDialog : public QDialog, private Ui::AppDialog
         void on_animate_toggled( bool ani );
         void on_currentFlow_toggled( bool on );
         void on_currentMin_editingFinished();
+        void on_currentRange_valueChanged( int decades );
         void on_fps_valueChanged( int fps );
         void on_backup_valueChanged( int secs );
 

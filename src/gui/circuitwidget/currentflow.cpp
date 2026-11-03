@@ -20,6 +20,8 @@
 #include "node.h"
 #include "pin.h"
 
+double CurrentFlow::m_range = 2;
+
 CurrentFlow* CurrentFlow::self()
 {
     static CurrentFlow* flow = new CurrentFlow();
@@ -33,7 +35,9 @@ CurrentFlow::CurrentFlow()
     m_enabled   = s->value("Circuit/currentFlow", false ).toBool();
     m_threshold = s->value("Circuit/currentMin", 1e-6 ).toDouble();
     if( m_threshold <= 0 ) m_threshold = 1e-6;
+    m_range = qBound( 1.0, s->value("Circuit/currentRange", 2.0 ).toDouble(), 6.0 );
     m_shown  = false;
+    m_scale  = 0;
     m_lastNs = 0;
     m_clock.start();
 }
@@ -55,6 +59,12 @@ void CurrentFlow::setThreshold( double amps )
     MainWindow::self()->settings()->setValue("Circuit/currentMin", amps );
 }
 
+void CurrentFlow::setRange( double decades )
+{
+    m_range = qBound( 1.0, decades, 6.0 );
+    MainWindow::self()->settings()->setValue("Circuit/currentRange", m_range );
+}
+
 void CurrentFlow::attach()
 {
     if( Simulator::self() ) Simulator::self()->addToUpdateList( this ); // No-op if listed
@@ -71,6 +81,7 @@ void CurrentFlow::clear()
         if( had ) for( ConnectorLine* line : *con->lineList() ) line->update();
     }
     m_shown = false;
+    m_scale = 0;
 }
 
 void CurrentFlow::whenIdle( std::function<void()> fn )
@@ -88,7 +99,9 @@ void CurrentFlow::updateStep()
     m_lastNs   = now;
 
     Simulator* sim = Simulator::self();
-    if( !sim || !sim->isRunning() )   // Stopped: nothing to compute
+    // Stopped: nothing to compute. At 1 ps (just started, before the first step)
+    // nothing is solved yet: sources would show their stamp (9 V * 1e9 S = 9 GA)
+    if( !sim || !sim->isRunning() || sim->circTime() <= 1 )
     {
         if( m_shown ) clear();
         QList<std::function<void()>> pending = m_pending;
@@ -104,6 +117,7 @@ void CurrentFlow::updateStep()
 
     if( !m_enabled ) return;
     bool moving = sim->simState() >= SIM_WAITING;      // Paused: dots stay where they are
+    updateScale( moving ? dt : 0 );
     advance( moving ? dt : 0 );
 }
 
@@ -112,7 +126,7 @@ void CurrentFlow::advance( double dt )
     double maxStep = 0.45*dotSpacing;                  // Never jump more than half a spacing per frame
     for( Connector* con : *Circuit::self()->conList() )
     {
-        double v = speed( con->flowCurrent, m_threshold );
+        double v = speed( con->flowCurrent, m_threshold, m_scale );
         bool active = ( v != 0 );
         if( active )
         {
@@ -230,24 +244,41 @@ void CurrentFlow::solve()
     }
 }
 
-// Brighter dots for more current, like EveryCircuit: fades in from the
-// threshold and saturates two decades above it
-double CurrentFlow::opacity( double amps, double threshold )
+void CurrentFlow::updateScale( double dt )
 {
-    double a = qAbs( amps );
-    if( a < threshold || threshold <= 0 ) return 0;
-    double o = 0.3 + 0.35*log10( a/threshold );
-    if( o < 0.3 ) o = 0.3;
-    if( o > 1.0 ) o = 1.0;
-    return o;
+    double maxI = 0;
+    for( Connector* con : *Circuit::self()->conList() )
+        if( con->flowFlag != 2 )             // Inconsistent currents are not a measure
+            maxI = qMax( maxI, qAbs( con->flowCurrent ) );
+
+    if( maxI >= m_scale ) m_scale = maxI;                // Rise at once
+    else m_scale = qMax( maxI, m_scale*exp( -dt ) );    // Fall in about 1 s (time constant)
 }
 
-double CurrentFlow::speed( double amps, double threshold )
+// Position of a current in the shown range: 1 for the largest current, 0 for
+// 10^-range of it or less (but still above the threshold), -1 below the threshold
+double CurrentFlow::level( double amps, double threshold, double scale )
 {
     double a = qAbs( amps );
-    if( a < threshold || threshold <= 0 ) return 0;
-    double v = 8*( 1+log10( a/threshold ) );           // 8 px/s at the threshold, +8 per decade
-    if( v > 64 ) v = 64;
+    if( a < threshold || threshold <= 0 ) return -1;
+    if( scale < a ) scale = a;
+    double l = 1 + log10( a/scale )/m_range;
+    return qBound( 0.0, l, 1.0 );
+}
+
+// Brighter dots for more current, like EveryCircuit
+double CurrentFlow::opacity( double amps, double threshold, double scale )
+{
+    double l = level( amps, threshold, scale );
+    if( l < 0 ) return 0;
+    return 0.15 + 0.85*l;
+}
+
+double CurrentFlow::speed( double amps, double threshold, double scale )
+{
+    double l = level( amps, threshold, scale );
+    if( l < 0 ) return 0;
+    double v = 4 + 60*l;                               // 4 px/s crawl .. 64 px/s for the largest
     return amps > 0 ? v : -v;
 }
 

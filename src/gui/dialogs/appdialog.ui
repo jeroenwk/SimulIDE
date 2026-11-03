@@ -552,6 +552,29 @@
              </property>
             </widget>
            </item>
+           <item>
+            <widget class="QLabel" name="currentRangeLabel">
+             <property name="text">
+              <string>Range</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="currentRange">
+             <property name="toolTip">
+              <string>Decades of current shown below the largest one. Fewer = more contrast: smaller currents crawl dimly.</string>
+             </property>
+             <property name="suffix">
+              <string> decades</string>
+             </property>
+             <property name="minimum">
+              <number>1</number>
+             </property>
+             <property name="maximum">
+              <number>6</number>
+             </property>
+            </widget>
+           </item>
           </layout>
          </item>
          <item>

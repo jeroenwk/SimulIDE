@@ -43,6 +43,7 @@ AppDialog::AppDialog( QWidget* parent )
     animate->setChecked( Circuit::self()->animate() );
     currentFlow->setChecked( CurrentFlow::self()->enabled() );
     currentMin->setText( CurrentFlow::currentStr( CurrentFlow::self()->threshold() ) );
+    currentRange->setValue( qRound( CurrentFlow::range() ) );
     buildColors();
     fps->setValue( Simulator::self()->fps() );
     backup->setValue( Circuit::self()->autoBck() );
@@ -211,6 +212,8 @@ void AppDialog::showEvent( QShowEvent* e )
     QSignalBlocker b1( currentFlow );
     currentFlow->setChecked( CurrentFlow::self()->enabled() );
     currentMin->setText( CurrentFlow::currentStr( CurrentFlow::self()->threshold() ) );
+    QSignalBlocker b3( currentRange );
+    currentRange->setValue( qRound( CurrentFlow::range() ) );
     QSignalBlocker b2( animate );
     animate->setChecked( Circuit::self()->animate() );
     refreshColors();
@@ -235,6 +238,11 @@ void AppDialog::updateColorButtons()
 void AppDialog::on_currentFlow_toggled( bool on )
 {
     CurrentFlow::self()->setEnabled( on );
+}
+
+void AppDialog::on_currentRange_valueChanged( int decades )
+{
+    CurrentFlow::self()->setRange( decades );
 }
 
 void AppDialog::on_currentMin_editingFinished()

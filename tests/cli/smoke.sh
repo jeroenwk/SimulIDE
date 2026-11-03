@@ -116,6 +116,11 @@ check "threshold accepts 100n"      'r["ok"]'                                  -
 check "...and reports it"           'r["result"]=="100 nA"'                    -- settings get currentMin
 check "bad threshold rejected"      'not r["ok"]'                              -- settings set currentMin banana
 cli settings set currentMin 1u >/dev/null
+RANGE_WAS=$(jcli settings get currentRange | json 'r["result"]')
+check "range accepts 3"             'r["ok"]'                                  -- settings set currentRange 3
+check "...and reports it"           'r["result"]==3'                           -- settings get currentRange
+check "range 9 rejected"            'not r["ok"]'                              -- settings set currentRange 9
+cli settings set currentRange "$RANGE_WAS" >/dev/null
 
 echo "Colors"
 CANVAS_WAS=$(jcli settings get canvasColor | json 'r["result"]')
