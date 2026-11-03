@@ -1,0 +1,7 @@
+.DS_Store
+
+# qmake / build output (build_XX/SimulIDE_Build.pro is tracked)
+build_XX/*
+!build_XX/SimulIDE_Build.pro
+*.o
+.qmake.stash

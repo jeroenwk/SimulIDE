@@ -1,0 +1,65 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+SimulIDE (v1.1.0-SR2) is a real-time electronic circuit simulator with microcontroller emulation (AVR/Arduino, PIC, 8051, 6502, Z80, scripted MCUs) and a basic code editor/debugger. It is a Qt5 C++11 desktop app. It aims for fast, simple models, not accurate circuit analysis.
+
+## Build
+
+Qt5 dependencies: Core, Gui, Xml, Widgets, Concurrent, Svg, Multimedia, SerialPort, plus qmake and `lrelease`.
+
+```sh
+cd build_XX
+qmake        # build_XX/SimulIDE_Build.pro sets BUILD_DIR and includes ../SimulIDE.pro
+make -j8
+```
+
+- Output goes to `build_XX/executables/SimulIDE_<version>/` (on macOS, `simulide.app` inside it). Objects and moc files go to `build_XX/build/`.
+- Pre-build step: `lrelease` compiles `resources/translations/*.ts` to `.qm` files and moves them into `resources/qm`. Post-build step: copies `resources/data` and `resources/examples` next to the executable. The app reads component and MCU definitions from that copied `data/` folder at runtime, so you must rebuild (or recopy) after editing `resources/data`.
+- **macOS (Apple Silicon)**: build with Apple clang against Homebrew `qt@5`, which is keg-only, so put it on PATH first: `export PATH=/opt/homebrew/opt/qt@5/bin:$PATH`. The binary is `build_XX/executables/SimulIDE_<ver>/simulide.app/Contents/MacOS/simulide`, and you can pass it a `.sim1` path to open a circuit.
+- **AngelScript on arm64**: the bundled AngelScript (`src/angel`, v2.35.1, trimmed) has had native arm64 calling backported from 2.38:
+  - `as_callfunc_arm64.cpp` and `as_callfunc_arm64_xcode.S` were added; the `.pro` adds the `.S` only on macOS arm64.
+  - The Apple `__aarch64__` block in `as_config.h` was replaced.
+  - The `baseOffset>>1` fix was applied in `as_callfunc.cpp`; without it, virtual methods crash.
+  - The x86-only JIT (`src/angel/JIT`) is excluded on non-x86 via `SIMULIDE_NO_JIT`.
+  - Known limitation: upstream's ARM64 code can't take a POD struct larger than 16 bytes **by value**. Use references or ref types in script APIs.
+- Source files are picked up by glob (`$$files(src/*.cpp, true)`), so new `.cpp`/`.h`/`.ui` files need no `.pro` edit. A **new subdirectory** must be added to `INCLUDEPATH` in `SimulIDE.pro`, because includes are written flat (`#include "resistor.h"`), without a path.
+- Release flags include `-Ofast`. Debug builds use `-O0 -D_GLIBCXX_ASSERTIONS`.
+
+The repo has no test suite, linter or CI. To verify a change, build it and run the app, for example with circuits from `resources/examples`.
+
+## Architecture
+
+### Two layers: GUI component and simulation element
+- `src/gui/circuitwidget/` holds the Qt graphics side: `Circuit` (the QGraphicsScene; it saves and loads circuits), `Component`/`CompBase` (the base for every placeable item, with properties), `Pin`, `Connector`, `Node`.
+- `src/simulator/` holds the engine: `Simulator`, `eElement`, `eNode`, `ePin`, `CircMatrix` (the MNA matrix solver). Basic electrical elements (`eResistor`, `eDiode`, etc.) live in `src/simulator/elements/`.
+- A concrete component usually inherits from both layers, e.g. `class Resistor : public Comp2Pin, public eResistor`, and maps its GUI pins onto engine pins (`m_ePin[i] = m_pin[i]`).
+
+### Simulation loop (`src/simulator/simulator.cpp`)
+- This is an event-driven solver. On each GUI timer tick, `runCircuit()` runs in a worker thread (`QtConcurrent::run`) up to the next frame time (all times are in **picoseconds**, `uint64_t`).
+- Elements hook in by overriding the `eElement` virtuals:
+  - `initialize()`: reset state when the simulation starts.
+  - `stamp()`: write admittances and currents into the matrix.
+  - `runEvent()`: callback for an event scheduled with `Simulator::self()->addEvent(delay_ps, this)`.
+  - `voltChanged()`: called when a connected node's voltage changes. Non-linear elements are iterated until they converge (limited by `maxNlSteps`).
+- `solveCircuit()` re-solves the matrix only when nodes have changed, then processes the non-linear list and the voltage-changed list.
+- GUI-rate visual updates go through `Updatable::updateStep()` (called from the main thread's `timerEvent`), not from simulation callbacks.
+- Most core managers are singletons reached through `X::self()` (`Simulator`, `Circuit`, `CircuitWidget`, `ItemLibrary`, `EditorWindow`, `InfoWidget`, ...).
+
+### Adding a native component
+1. Create the class under the right `src/gui/circuitwidget/components/<category>/` folder.
+2. Give it a static `construct(type, id)` and a static `libraryItem()` that returns a `LibraryItem(name, category, icon, type, construct)`.
+3. Declare properties in the constructor with `addPropGroup({...})`, using the typed property templates in `properties/` (`DoubProp`, `IntProp`, `BoolProp`, `StrProp`, ...) that bind getter/setter member pointers.
+4. Register it in `ItemLibrary::loadItems()` (`src/gui/circuitwidget/itemlibrary.cpp`), and add the `#include` there.
+5. Wrap translatable strings with `#define tr(str) simulideTr("ClassName",str)`.
+
+### Data-driven components (`resources/data/`)
+- `ComponentSelector` loads every `resources/data/*.xml` (e.g. `avr.xml`, `pics.xml`, `ic74.xml`, `arduinos.xml`). Each `<item>` points to a `package` (pin layout/graphics) and a `data` file.
+- **MCUs**: `McuCreator::createMcu()` (`src/microsim/mcucreator.cpp`) parses the MCU's data XML. The root `core` attribute selects the CPU (`AVR`, `Pic12`, `Pic14`, `Pic14e`, `8051`, `6502`, `Z80`, `Z80ULA`, `scripted`). The XML elements then instantiate generic peripheral modules (ports, timers, UART, SPI, TWI, ADC, EEPROM, interrupts...) from `src/microsim/` and their core-specific subclasses from `src/microsim/cores/<arch>/`. Register writes reach peripherals through `watchRegister` callbacks on the `McuDataSpace`.
+- **Subcircuits** (`src/gui/circuitwidget/subcircuits/`): ICs, boards, shields and modules are defined as circuit files plus a package and need no C++. The subcircuit type (`Logic`, `Board`, `Shield`, `Module`) picks the subclass.
+- **Scripted devices**: `src/angel/` is a vendored AngelScript engine (it is the reason for several `-Wno-*` flags; don't modify it). `src/microsim/cores/scripted/` exposes CPU, ports, peripherals and displays to scripts, which live in `resources/data/scripted/`.
+
+### Other areas
+- `src/gui/editorwidget/` contains the code editor plus compiler/debugger integrations in `debuggers/`.
+- `src/gui/dataplotwidget/` contains the oscilloscope and logic-analyzer plots. `src/gui/serial/` contains the serial port and serial monitor.
+- Translations live in `resources/translations/*.ts`.
