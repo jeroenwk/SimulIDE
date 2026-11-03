@@ -11,6 +11,7 @@ QT += widgets
 QT += concurrent
 QT += serialport
 QT += multimedia widgets
+QT += network
 
 SOURCES      = $$files( $$PWD/src/*.cpp, true )
 HEADERS      = $$files( $$PWD/src/*.h, true )
@@ -19,6 +20,7 @@ FORMS       += $$files( $$PWD/src/*.ui, true )
 RESOURCES    = ../src/application.qrc
 
 INCLUDEPATH += ../src \
+    ../src/cli \
     ../src/gui \
     ../src/gui/circuitwidget \
     ../src/gui/circuitwidget/components \

@@ -79,6 +79,10 @@ class Simulator : public QObject
 
         uint64_t circTime() { return m_circTime; }
 
+        // Hold simulation time at this point (0 = no limit). Used by CLI "sim run --for"
+        void setStopAt( uint64_t ps ) { m_stopAt = ps; }
+        uint64_t stopAt() { return m_stopAt; }
+
         void timerEvent( QTimerEvent* e );
 
         double realSpeed() { return m_realSpeed; } // 0 to 10000 => 0 to 100%
@@ -164,6 +168,7 @@ class Simulator : public QObject
 
         uint64_t m_timerTime;
         uint64_t m_circTime;
+        uint64_t m_stopAt;
         uint64_t m_tStep;
         uint64_t m_lastStep;
         uint64_t m_refTime;

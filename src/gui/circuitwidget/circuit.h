@@ -72,6 +72,7 @@ class Circuit : public QGraphicsScene
 
         void loadCircuit( QString fileName );
         bool saveCircuit( QString fileName );
+        QString toXml() { return circuitToString(); } // Circuit file contents (used by CLI)
 
         Component* createItem( QString name, QString id, bool map=true );
 

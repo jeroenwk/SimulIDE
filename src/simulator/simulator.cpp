@@ -153,6 +153,7 @@ void Simulator::runCircuit()
 
     eElement* event = m_firstEvent;
     uint64_t endRun = m_circTime + m_psPF; // Run upto next Timer event
+    if( m_stopAt && endRun > m_stopAt ) endRun = (m_stopAt > m_circTime) ? m_stopAt : m_circTime;
     uint64_t nextTime;
 
     while( event )                              // Simulator event loop
@@ -222,6 +223,7 @@ void Simulator::resetSim()
     m_tStep    = 0;
     m_lastRefT = 0;
     m_circTime = 1;
+    m_stopAt   = 0;
     m_updtTime = 0;
     m_NLstep   = 0;
     ///m_pauseCirc = false;
