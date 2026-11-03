@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "connbase.h"
+#include "theme.h"
 #include "circuitwidget.h"
 #include "simulator.h"
 #include "circuit.h"
@@ -123,7 +124,7 @@ void ConnBase::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidg
 
     updatePixmap();
 
-    QPen pen( Qt::black, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    QPen pen( Theme::line(), 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
     p->setPen( pen );
     if( !this->m_hidden ) p->drawRoundRect( m_area, 4, 4 );
 

@@ -7,6 +7,7 @@
 #include <QMenu>
 
 #include "diode.h"
+#include "theme.h"
 #include "itemlibrary.h"
 #include "simulator.h"
 #include "e-node.h"
@@ -154,7 +155,7 @@ void Diode::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
 {
     Component::paint( p, option, widget );
 
-    p->setBrush( Qt::black );
+    p->setBrush( Theme::line() );
 
  static const QPointF points[3] = {
         QPointF( 7, 0 ),

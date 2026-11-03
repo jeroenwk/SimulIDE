@@ -12,6 +12,10 @@
 
 class PropVal;
 
+#include "theme.h"
+
+class QPushButton;
+
 class AppDialog : public QDialog, private Ui::AppDialog
 {
     Q_OBJECT
@@ -23,6 +27,12 @@ class AppDialog : public QDialog, private Ui::AppDialog
 
     public slots:
         void on_tabList_currentChanged( int );
+    public:
+        void showTab( int i ) { tabList->setCurrentIndex( i ); }   // CLI: view settings
+        void refreshColors() { if( m_themeBox ) updateColorButtons(); } // Theme changed elsewhere
+    protected:
+        void showEvent( QShowEvent* e ) override;   // Re-read values changed while hidden
+    public slots:
         void on_helpButton0_clicked() { m_showHelp = !m_showHelp;updtHelp(); }
         void on_helpButton1_clicked() { m_showHelp = !m_showHelp;updtHelp(); }
         void on_helpButton2_clicked() { m_showHelp = !m_showHelp;updtHelp(); }
@@ -59,6 +69,11 @@ class AppDialog : public QDialog, private Ui::AppDialog
         void on_fontName_currentFontChanged( const QFont &f );
 
     private:
+        void buildColors();
+        void updateColorButtons();
+        QPushButton* m_colorButtons[Theme::numRoles];
+        class QComboBox* m_themeBox = nullptr;
+
         void updtHelp();
         void updtSpeed();
         void updtSpeedPer();

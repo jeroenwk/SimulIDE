@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "connectorline.h"
+#include "theme.h"
 #include "connector.h"
 #include "circuitview.h"
 #include "circuitwidget.h"
@@ -357,10 +358,9 @@ void ConnectorLine::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
     else if( m_isBus ) color =  Qt::darkGreen;
     else if( Circuit::self()->animate() )
     {
-        if( m_pConnector->getVoltage() > 2.5 ) color = QColor( 200, 50, 50  );
-        else                                   color = QColor( 50,  50, 200 );
+        color = Theme::animWire( m_pConnector->getVoltage() > 2.5 );
     }
-    else color = QColor( 40, 40, 60 /*Qt::black*/ );
+    else color = Theme::wire();
 
     QPen pen( color, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
     //p->setBrush( Qt::green );
@@ -395,8 +395,8 @@ void ConnectorLine::paintFlow( QPainter* p )
     if( t0 < 0 ) t0 += s;
 
     double op = CurrentFlow::opacity( m_pConnector->flowCurrent, CurrentFlow::self()->threshold() );
-    QColor fill( 255, 190, 0 );
-    QColor edge( 60, 40, 0 );
+    QColor fill = Theme::flow();
+    QColor edge = fill.darker( 300 );
     fill.setAlphaF( op );
     edge.setAlphaF( 0.5*op );
 

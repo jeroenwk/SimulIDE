@@ -6,6 +6,13 @@
 #include <math.h>
 
 #include "currentflow.h"
+#include <QColorDialog>
+#include <QGridLayout>
+#include <QPushButton>
+#include <QLabel>
+#include <QComboBox>
+#include <QSignalBlocker>
+#include "theme.h"
 #include "appdialog.h"
 #include "mainwindow.h"
 #include "simulator.h"
@@ -36,6 +43,7 @@ AppDialog::AppDialog( QWidget* parent )
     animate->setChecked( Circuit::self()->animate() );
     currentFlow->setChecked( CurrentFlow::self()->enabled() );
     currentMin->setText( CurrentFlow::currentStr( CurrentFlow::self()->threshold() ) );
+    buildColors();
     fps->setValue( Simulator::self()->fps() );
     backup->setValue( Circuit::self()->autoBck() );
 
@@ -81,7 +89,10 @@ void AppDialog::on_tabList_currentChanged( int tab )
 
     switch( tab ) {
         case 0: setMinimumHeight( 250*m_scale ); setMaximumHeight( 350*m_scale ); break;
-        case 1: setMinimumHeight( 300*m_scale ); setMaximumHeight( 400*m_scale ); break;
+        case 1:                                    // Sized by its contents (current flow, colors)
+            setMinimumHeight( 0 ); setMaximumHeight( QWIDGETSIZE_MAX );
+            setMinimumHeight( minimumSizeHint().height() );
+            break;
         case 2: setMinimumHeight( 350*m_scale ); setMaximumHeight( 450*m_scale ); break;
     }
     adjustSize();
@@ -145,6 +156,80 @@ void AppDialog::on_showScroll_toggled( bool show )
 void AppDialog::on_animate_toggled( bool ani )
 {
     Circuit::self()->setAnimate( ani );
+}
+
+// Circuit colours: a swatch button per colour (opens a colour picker) and a reset
+void AppDialog::buildColors()
+{
+    QGridLayout* grid = new QGridLayout( colorsBox );
+    grid->setContentsMargins( 6, 4, 6, 4 );
+
+    m_themeBox = new QComboBox( colorsBox );                // Presets
+    m_themeBox->addItems( Theme::presets() );
+    m_themeBox->setToolTip( tr("Color preset. Dark is inspired by EveryCircuit.") );
+    connect( m_themeBox, QOverload<int>::of( &QComboBox::activated ), [this]( int )
+    {
+        if( Theme::applyPreset( m_themeBox->currentText() ) ) updateColorButtons();
+    });
+    grid->addWidget( new QLabel( tr("Theme"), colorsBox ), 0, 0 );
+    grid->addWidget( m_themeBox, 0, 1, 1, 3 );
+
+    const int animRow = 1+(Theme::firstAnimRole+1)/2;           // After the base colours
+    for( int i=0; i<Theme::numRoles; ++i )
+    {
+        Theme::role_t role = (Theme::role_t)i;
+        QPushButton* b = new QPushButton( colorsBox );
+        b->setFixedSize( 44*m_scale, 20*m_scale );
+        b->setToolTip( tr("Click to choose the %1 color").arg( Theme::caption( role ).toLower() ) );
+        b->setAutoDefault( false );
+        m_colorButtons[i] = b;
+        connect( b, &QPushButton::clicked, [this, role]()
+        {
+            QColor c = QColorDialog::getColor( Theme::get( role ), this, tr("%1 color").arg( Theme::caption( role ) ) );
+            if( !c.isValid() ) return;                       // Cancelled
+            Theme::set( role, c );
+            updateColorButtons();
+        });
+        int k   = ( i < Theme::firstAnimRole ) ? i : i-Theme::firstAnimRole;
+        int row = ( i < Theme::firstAnimRole ) ? 1+k/2 : animRow+1+k/2;
+        grid->addWidget( new QLabel( Theme::caption( role ), colorsBox ), row, (k%2)*2 );
+        grid->addWidget( b, row, (k%2)*2+1 );
+    }
+    QLabel* animLabel = new QLabel( tr("Animate"), colorsBox );   // Sub-heading
+    QFont f = animLabel->font(); f.setBold( true ); animLabel->setFont( f );
+    grid->addWidget( animLabel, animRow, 0, 1, 4 );
+    QPushButton* reset = new QPushButton( tr("Reset colors"), colorsBox );
+    reset->setAutoDefault( false );
+    connect( reset, &QPushButton::clicked, [this](){ Theme::reset(); updateColorButtons(); } );
+    grid->addWidget( reset, animRow+1+(Theme::numRoles-Theme::firstAnimRole+1)/2, 0, 1, 4 );
+    updateColorButtons();
+}
+
+void AppDialog::showEvent( QShowEvent* e )
+{
+    // The dialog is reused: values may have changed (CLI, toolbar) since it was built
+    QSignalBlocker b1( currentFlow );
+    currentFlow->setChecked( CurrentFlow::self()->enabled() );
+    currentMin->setText( CurrentFlow::currentStr( CurrentFlow::self()->threshold() ) );
+    QSignalBlocker b2( animate );
+    animate->setChecked( Circuit::self()->animate() );
+    refreshColors();
+    QDialog::showEvent( e );
+}
+
+void AppDialog::updateColorButtons()
+{
+    for( int i=0; i<Theme::numRoles; ++i )
+    {
+        QColor c = Theme::get( (Theme::role_t)i );
+        m_colorButtons[i]->setStyleSheet( QString("background-color: %1; border: 1px solid #777; border-radius: 3px;").arg( c.name() ) );
+    }
+    // Show the matching preset, or "Custom" (an extra entry, only while it applies)
+    QString cur = Theme::currentPreset();
+    int custom = m_themeBox->findText("Custom");
+    if( cur == "Custom" && custom < 0 ) m_themeBox->addItem("Custom");
+    if( cur != "Custom" && custom >= 0 ) m_themeBox->removeItem( custom );
+    m_themeBox->setCurrentText( cur );
 }
 
 void AppDialog::on_currentFlow_toggled( bool on )

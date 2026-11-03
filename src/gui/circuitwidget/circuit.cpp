@@ -10,6 +10,7 @@
 #include <QSettings>
 
 #include "circuit.h"
+#include "theme.h"
 #include "simulator.h"
 #include "itemlibrary.h"
 #include "mainwindow.h"
@@ -1223,9 +1224,9 @@ void Circuit::drawBackground( QPainter*  painter, const QRectF &rect )
     painter->drawRect( m_scenerect );
     return;*/
 
-    painter->setBrush( QColor( 240, 240, 210 ) );
+    painter->setBrush( Theme::canvas() );
     painter->drawRect( m_scenerect );
-    painter->setPen( QColor( 210, 210, 210 ) );
+    painter->setPen( Theme::grid() );
 
     if( m_hideGrid ) return;
 

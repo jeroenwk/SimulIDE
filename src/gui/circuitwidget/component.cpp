@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "component.h"
+#include "theme.h"
 #include "label.h"
 #include "mainwindow.h"
 #include "connector.h"
@@ -72,14 +73,14 @@ Component::Component( QString type, QString id )
 
     m_idLabel = new Label();
     m_idLabel->setComponent( this );
-    m_idLabel->setDefaultTextColor( Qt::darkBlue );
+    m_idLabel->setDefaultTextColor( Theme::idLabel() );
     m_idLabel->setFont( font );
     setLabelPos(-16,-24, 0 );
     setShowId( false );
     
     m_valLabel = new Label();
     m_valLabel->setComponent( this );
-    m_valLabel->setDefaultTextColor( Qt::darkRed );
+    m_valLabel->setDefaultTextColor( Theme::valLabel() );
     setValLabelPos(-16, 20, 0 );
     font.setPixelSize( 8 );
     m_valLabel->setFont( font );
@@ -651,12 +652,19 @@ void Component::paintSelected( QPainter* p )
     }
 }
 
+void Component::updateLabelColors()   // Theme changed
+{
+    m_idLabel->setDefaultTextColor( Theme::idLabel() );
+    m_valLabel->setDefaultTextColor( Theme::valLabel() );
+}
+
 void Component::paint( QPainter* p, const QStyleOptionGraphicsItem*, QWidget* )
 {
-    QPen pen( Qt::black, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    QPen pen( Theme::line(), 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
     QColor color;
 
     color = m_color;
+    if( color == QColor( Qt::white ) ) color = Theme::body();   // Default body: follows the theme
 
     //p->drawPath( shape() );
     p->setBrush( color );

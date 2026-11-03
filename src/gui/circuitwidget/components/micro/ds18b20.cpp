@@ -11,6 +11,7 @@
 #include <QGraphicsProxyWidget>
 
 #include "ds18b20.h"
+#include "theme.h"
 #include "iopin.h"
 #include "simulator.h"
 #include "circuit.h"
@@ -529,7 +530,7 @@ void Ds18b20::downbuttonclicked()
 void Ds18b20::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
     Component::paint( p, option, widget );
-    QPen pen( Qt::black, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    QPen pen( Theme::line(), 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
     p->setPen( pen );
     p->setBrush(QColor( 50, 50, 70 ));
     p->drawRoundedRect( m_area, 2, 2 );

@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include "dcmotor.h"
+#include "theme.h"
 #include "itemlibrary.h"
 #include "simulator.h"
 #include "pin.h"
@@ -152,7 +153,7 @@ void DcMotor::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
     p->drawRoundRect( 28,-4, 8, 8, 4, 4 );
 
     p->setPen( QColor(0, 0, 0) );
-    p->setBrush( QColor(255, 255, 255) );
+    p->setBrush( Theme::body() );
     p->drawEllipse(-26,-26, 52, 52 );
 
     // rotating pointer

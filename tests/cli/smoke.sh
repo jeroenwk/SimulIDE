@@ -107,12 +107,35 @@ check "Kirchhoff at the junction"   'abs(sum(x["current"] for x in r["result"] i
 check "no flagged wires"            'all("flag" not in x for x in r["result"])' -- wire current
 check "sign: battery out is +"      '[x for x in r["result"] if x["from"]=="B1.lPin"][0]["current"] > 0' -- wire current
 check "pin current in comp get"     'any("current" in p for p in r["result"]["pins"])' -- comp get R1
-check "flow off by default"         'r["result"] is False' -- settings get currentFlow
+FLOW_WAS=$(jcli settings get currentFlow | json 'str(r["result"]).lower()')   # User preference: restored below
 check "flow on"                     'r["ok"]'                                  -- settings set currentFlow true
+check "...reads back on"            'r["result"] is True'                      -- settings get currentFlow
 check "...and off again"            'r["ok"]'                                  -- settings set currentFlow false
+cli settings set currentFlow "$FLOW_WAS" >/dev/null
 check "threshold accepts 100n"      'r["ok"]'                                  -- settings set currentMin 100n
 check "...and reports it"           'r["result"]=="100 nA"'                    -- settings get currentMin
 check "bad threshold rejected"      'not r["ok"]'                              -- settings set currentMin banana
+cli settings set currentMin 1u >/dev/null
+
+echo "Colors"
+CANVAS_WAS=$(jcli settings get canvasColor | json 'r["result"]')
+check "set canvas color"            'r["ok"]'                                  -- settings set canvasColor "#202830"
+check "...reads back"               'r["result"]=="#202830"'                   -- settings get canvasColor
+check "capture uses it"             'r["ok"]'                                  -- capture circuit --file "$TMP/dark.png"
+check "bad color rejected"          'not r["ok"] and "invalid color" in r["error"]' -- settings set wireColor nonsense
+check "default resets"              'r["ok"]'                                  -- settings set canvasColor default
+check "...to the classic canvas"    'r["result"]=="#f0f0d2"'                   -- settings get canvasColor
+cli settings set canvasColor "$CANVAS_WAS" >/dev/null
+THEME_COLORS=$(for k in canvasColor wireColor lineColor textColor bodyColor flowColor nameColor valueColor animHighColor animLowColor outHighColor outLowColor inHighColor inLowColor openHighColor; do jcli settings get $k | json 'r["result"]'; done)
+check "preset Dark"                 'r["ok"]'                                  -- settings set colorTheme Dark
+check "...is reported"              'r["result"]=="Dark"'                      -- settings get colorTheme
+check "...black canvas"             'r["result"]=="#000000"'                   -- settings get canvasColor
+check "...value label color"        'r["result"]=="#c8c8c8"'                   -- settings get valueColor
+check "...animate wire high"        'r["result"]=="#ff6060"'                   -- settings get animHighColor
+cli settings set wireColor "#123456" >/dev/null
+check "changing a color: Custom"    'r["result"]=="Custom"'                    -- settings get colorTheme
+check "unknown preset rejected"     'not r["ok"] and "Classic" in r["error"]'  -- settings set colorTheme banana
+set -- $THEME_COLORS; for k in canvasColor wireColor lineColor textColor bodyColor flowColor nameColor valueColor animHighColor animLowColor outHighColor outLowColor inHighColor inLowColor openHighColor; do cli settings set $k "$1" >/dev/null; shift; done
 
 echo "Capture and selection"
 check "capture circuit"         'r["result"]["width"] > 100 and __import__("os").path.getsize(r["result"]["file"]) > 1000' -- capture circuit --file "$TMP/cap.png"

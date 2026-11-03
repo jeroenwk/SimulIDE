@@ -74,6 +74,7 @@ class Pin : public QGraphicsItem, public ePin, public Updatable
         virtual void setLabelText( QString label, bool over=true );
         void setLabelPos();
         void setLabelColor( QColor color );
+        void updateLabelColor();          // Re-apply the theme's text colour
         void setFontSize( int size );
         int  labelSizeX() { return m_labelWidth; }
 
@@ -128,6 +129,7 @@ class Pin : public QGraphicsItem, public ePin, public Updatable
         bool m_isBus;
         bool m_unused;
         bool m_animate;
+        bool m_themedLabel = false;   // Label uses Theme::text()
         bool m_warning;
 
         double  m_opCount;

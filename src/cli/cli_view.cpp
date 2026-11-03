@@ -21,6 +21,8 @@
 #include "component.h"
 #include "connector.h"
 #include "editorwindow.h"
+#include "theme.h"
+#include "appdialog.h"
 
 namespace
 {
@@ -99,7 +101,7 @@ void CliApi::registerView()
             scale = maxSide/qMax( rect.width(), rect.height() );
 
         QImage img( QSize( qCeil( rect.width()*scale ), qCeil( rect.height()*scale ) ), QImage::Format_ARGB32 );
-        img.fill( QColor( 240, 240, 210 ) );
+        img.fill( Theme::canvas() );
         QPainter painter( &img );
         painter.setRenderHints( QPainter::Antialiasing | QPainter::TextAntialiasing | QPainter::SmoothPixmapTransform );
         circ->render( &painter, QRectF( QPointF(0,0), QSizeF( img.size() ) ), rect, Qt::KeepAspectRatio );
@@ -111,7 +113,7 @@ void CliApi::registerView()
         return o;
     });
 
-    add("capture window", "capture window [main|view|circuit|editor] [--scale S] [--file F.png]",
+    add("capture window", "capture window [main|view|circuit|editor|settings] [--scale S] [--file F.png]",
         "Grab what the window shows: the whole main window (default), the circuit view as the user sees it "
         "(zoom and scroll included), the circuit panel with its toolbar, or the code editor. Returns the file path.",
         []( CliCtx& c ) -> QJsonValue
@@ -122,7 +124,11 @@ void CliApi::registerView()
         else if( part == "view"    ) w = CircuitView::self()->viewport();
         else if( part == "circuit" ) w = CircuitWidget::self();
         else if( part == "editor"  ) w = EditorWindow::self();
-        else throw CliError("unknown part: "+part+" (main, view, circuit, editor)");
+        else if( part == "settings" ){
+            w = CircuitWidget::self()->appDialog();
+            if( !w || !w->isVisible() ) throw CliError("the Settings dialog is not open (view settings opens it)");
+        }
+        else throw CliError("unknown part: "+part+" (main, view, circuit, editor, settings)");
 
         if( !w->isVisible() && !CliApi::self()->headless() )
             CliApi::self()->addMessage( part+" is not visible: the image may be empty");
@@ -134,7 +140,7 @@ void CliApi::registerView()
         return saveImage( img, outFile( c, "window-"+part ) );
     });
 
-    add("view", "view fit|selected|reset|zoom <factor>|center <comp|x,y>|show <comp ...>|raise",
+    add("view", "view fit|selected|reset|zoom <factor>|center <comp|x,y>|show <comp ...>|raise|settings [app|circuit|simulation|close]",
         "Control what the circuit view shows: fit all, fit selection, 100%, zoom by a factor, center on a component "
         "or point, show (select + fit) components, or bring the window to the front.",
         []( CliCtx& c ) -> QJsonValue
@@ -167,6 +173,19 @@ void CliApi::registerView()
             view->fitInView( rect, Qt::KeepAspectRatio );
             if( view->transform().m11() > 3 ) { view->resetMatrix(); view->zoomBy( 3 ); view->centerOn( rect.center() ); }
         }
+        else if( verb == "settings" )             // Open the Settings dialog (on a tab), or close it
+        {
+            QString tab = c.argOr( 1, "circuit").toLower();
+            if( tab == "close" ){
+                if( CircuitWidget::self()->appDialog() ) CircuitWidget::self()->appDialog()->close();
+            }else{
+                int i = QStringList{"app","circuit","simulation"}.indexOf( tab );
+                if( i < 0 ) throw CliError("unknown settings tab: "+tab+" (app, circuit, simulation, close)");
+                CircuitWidget::self()->settApp();
+                CircuitWidget::self()->appDialog()->showTab( i );
+                CircuitWidget::self()->appDialog()->raise();
+            }
+        }
         else if( verb == "raise" )
         {
             MainWindow* mw = MainWindow::self();
@@ -174,7 +193,7 @@ void CliApi::registerView()
             mw->raise();
             mw->activateWindow();
         }
-        else throw CliError("unknown view action: "+verb+" (fit, selected, reset, zoom, center, show, raise)");
+        else throw CliError("unknown view action: "+verb+" (fit, selected, reset, zoom, center, show, raise, settings)");
 
         QRectF visible = view->mapToScene( view->viewport()->rect() ).boundingRect();
         return QJsonObject{

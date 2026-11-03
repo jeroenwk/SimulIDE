@@ -6,6 +6,7 @@
 #include <QPainter>
 
 #include "mosfet.h"
+#include "theme.h"
 #include "simulator.h"
 #include "circuit.h"
 #include "itemlibrary.h"
@@ -90,7 +91,7 @@ void Mosfet::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
     Component::paint( p, o, w);
     
     if( Circuit::self()->animate() && m_gateV > 0 )  p->setBrush( Qt::yellow );
-    else                                             p->setBrush( Qt::white );
+    else                                             p->setBrush( Theme::body() );
 
     p->drawEllipse( m_area );
     
@@ -104,7 +105,7 @@ void Mosfet::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
     p->drawLine( 8,-12, 8,-7 );
     p->drawLine( 8, 12, 8, 0 );
     
-    p->setBrush( Qt::black );
+    p->setBrush( Theme::line() );
     if( m_Pchannel )
     {
          QPointF points[3] = {
@@ -121,7 +122,7 @@ void Mosfet::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
     }
     if( m_depletion )
     {
-        QPen pen(Qt::black, 2.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+        QPen pen(Theme::line(), 2.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
         p->setPen( pen );
         p->drawLine( 0,-9, 0, 9 );
     } else {

@@ -9,6 +9,7 @@
 #include <QGraphicsProxyWidget>
 
 #include "dht22.h"
+#include "theme.h"
 #include "iopin.h"
 #include "simulator.h"
 #include "circuit.h"
@@ -254,7 +255,7 @@ double Dht22::trim( double data ) { return (double)(((int)(data*10)))/10; }
 void Dht22::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
     Component::paint( p, option, widget );
-    QPen pen( Qt::black, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    QPen pen( Theme::line(), 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
     p->setPen( pen );
     p->setBrush(QColor( 50, 50, 70 ));
     p->drawRoundedRect( m_area, 2, 2 );

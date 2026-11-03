@@ -10,6 +10,7 @@
 #include <math.h>
 
 #include "ds1621.h"
+#include "theme.h"
 #include "itemlibrary.h"
 #include "circuit.h"
 #include "iopin.h"
@@ -275,7 +276,7 @@ void DS1621::downbuttonclicked()
 void DS1621::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
     Component::paint( p, option, widget );
-    QPen pen( Qt::black, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    QPen pen( Theme::line(), 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
     p->setPen( pen );
     p->setBrush(QColor( 50, 50, 70 ));
     p->drawRoundedRect( m_area, 2, 2 );

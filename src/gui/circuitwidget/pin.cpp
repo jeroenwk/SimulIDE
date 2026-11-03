@@ -9,6 +9,7 @@
 #include <QPainter>
 
 #include "pin.h"
+#include "theme.h"
 #include "bus.h"
 #include "node.h"
 #include "lachannel.h"
@@ -294,7 +295,16 @@ void Pin::setLabelPos()
     update();
 }
 
-void Pin::setLabelColor( QColor color ) { m_label.setBrush( QBrush(color) ); }
+void Pin::setLabelColor( QColor color )
+{
+    m_themedLabel = ( color == QColor( 0, 0, 0 ) );  // Black = default text: follows the theme
+    m_label.setBrush( QBrush( m_themedLabel ? Theme::text() : color ) );
+}
+
+void Pin::updateLabelColor()   // Theme changed
+{
+    if( m_themedLabel ) m_label.setBrush( QBrush( Theme::text() ) );
+}
 
 void Pin::setFontSize( int size )
 {
@@ -409,11 +419,11 @@ void Pin::paint( QPainter* painter, const QStyleOptionGraphicsItem* option, QWid
         painter->setPen( pen );
         painter->drawLine( QPointF( x, y ), QPointF( x+width, y ) );
     }
-    QPen pen( m_color[0], 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    QPen pen( Theme::line(), 3, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
 
     if     ( m_unused  ) pen.setColor( QColor( 75, 120, 170 ));
     else if( m_isBus   ) pen.setColor( Qt::darkGreen );
-    else if( m_animate ) pen.setColor( m_color[m_pinState] );
+    else if( m_animate ) pen.setColor( Theme::pinState( m_pinState, m_color[0] == QColor( Qt::black ) ? Theme::line() : m_color[0] ) );
 
     painter->setPen(pen);
     if( m_length > 1 ) painter->drawLine( QPointF(0, 0), QPointF( m_length-0.7, 0) );

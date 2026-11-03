@@ -7,6 +7,7 @@
 #include <QtMath>
 
 #include "servo.h"
+#include "theme.h"
 #include "itemlibrary.h"
 #include "simulator.h"
 #include "circuit.h"
@@ -181,9 +182,9 @@ void Servo::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
     p->setPen(pen);
     p->drawEllipse( 0,-16, 32, 32 );
 
-    pen.setColor( Qt::black);;
+    pen.setColor( Theme::line() );
     p->setPen(pen);
-    p->setBrush( QColor( 255, 255, 255) );
+    p->setBrush( Theme::body() );
     p->save();
     p->translate( 16, 0);
     p->rotate( m_pos-90 );

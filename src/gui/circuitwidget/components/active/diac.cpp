@@ -8,6 +8,7 @@
 #include <QDebug>
 
 #include "diac.h"
+#include "theme.h"
 #include "itemlibrary.h"
 #include "simulator.h"
 #include "circuit.h"
@@ -150,7 +151,7 @@ void Diac::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
 {
     Component::paint( p, o, w );
 
-    p->setBrush( Qt::black );
+    p->setBrush( Theme::line() );
 
  static const QPointF points1[3] = {
         QPointF( 7,-8  ),

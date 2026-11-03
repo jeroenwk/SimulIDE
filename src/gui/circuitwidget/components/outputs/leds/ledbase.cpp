@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "ledbase.h"
+#include "theme.h"
 #include "circuitwidget.h"
 #include "connector.h"
 #include "simulator.h"
@@ -175,6 +176,13 @@ void LedBase::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w 
         int over = m_overBright*2;
         backColor = QColor( over, over, m_overBright );
     }
+    // Thin ring in the outline colour around the dark body, so an LED that is
+    // off stays visible on a dark canvas (classic: black on black, unchanged)
+    QPen ring( Theme::line(), 5.2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    p->setPen( ring );
+    p->setBrush( Qt::NoBrush );
+    drawBackground( p );
+
     pen.setColor( backColor );
     p->setPen( pen );
     p->setBrush( backColor );

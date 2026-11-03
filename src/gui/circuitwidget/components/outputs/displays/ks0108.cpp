@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include "ks0108.h"
+#include "theme.h"
 #include "itemlibrary.h"
 #include "connector.h"
 #include "simulator.h"
@@ -241,7 +242,7 @@ void Ks0108::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget
 {
     Component::paint( p, option, widget );
 
-    QPen pen(Qt::black, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen pen(Theme::line(), 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     p->setPen( pen );
     
     p->setBrush( QColor(50, 70, 100) );

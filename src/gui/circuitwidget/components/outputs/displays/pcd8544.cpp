@@ -16,6 +16,7 @@
 #include <QPainter>
 
 #include "itemlibrary.h"
+#include "theme.h"
 #include "connector.h"
 #include "simulator.h"
 #include "pcd8544.h"
@@ -197,7 +198,7 @@ void Pcd8544::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 {
     Component::paint( p, option, widget );
 
-    QPen pen(Qt::black, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen pen(Theme::line(), 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     p->setPen( pen );
     
     p->setBrush( QColor(50, 70, 100) );

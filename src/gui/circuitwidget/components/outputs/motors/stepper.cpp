@@ -7,6 +7,7 @@
 #include <QPainter>
 
 #include "stepper.h"
+#include "theme.h"
 #include "simulator.h"
 #include "connector.h"
 #include "itemlibrary.h"
@@ -222,7 +223,7 @@ void Stepper::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
     p->drawRoundRect(-48,-48, 96, 96 );
 
     p->setPen( QColor(0, 0, 0) );
-    p->setBrush( QColor(255, 255, 255) );
+    p->setBrush( Theme::body() );
     p->drawEllipse(-37,-37, 74, 74 );
 
     p->setPen ( QColor(255, 255, 255) );

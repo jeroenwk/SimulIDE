@@ -134,6 +134,20 @@ Faster and brighter dots mean more current. The smallest current shown is
 adjustable: `settings set currentMin 100n` (default `1u`). `wire current`
 gives the numbers without the dots.
 
+**Colors:** `settings set colorTheme Classic|Light|Dark` picks a preset (Dark
+is inspired by EveryCircuit: black canvas, hollow light grey parts, pale green
+current dots); it reads `Custom` once a color was changed.
+`settings set canvasColor|wireColor|lineColor|textColor|bodyColor|flowColor|nameColor|valueColor <color>`
+sets the canvas, wires, component outlines (lines, pins, arrowheads), text
+inside components (pin names), component bodies (parts drawn white by default),
+current flow dots, and the name (R1) and value (470 Ω) labels. Animate colors:
+`animHighColor`/`animLowColor` (wires above/below 2.5 V), `outHighColor`/`outLowColor`
+(output pins), `inHighColor`/`inLowColor` (input pins) and `openHighColor`
+(open-drain output released). A color is `#rrggbb` or a name (`white`, `navy`); `default` restores
+the classic one. All of it is in Settings > Circuit > Colors too, with a reset
+button. Animate colors wires by voltage (red/blue) and overrides the wire color.
+`capture circuit` uses the canvas color.
+
 Routing:
 - Where two consecutive points differ in both x and y, `wire add` adds a corner.
   The wire leaves its first pin in the direction the pin points, then turns at

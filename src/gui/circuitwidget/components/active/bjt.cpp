@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "bjt.h"
+#include "theme.h"
 #include "itemlibrary.h"
 #include "circuitwidget.h"
 #include "connector.h"
@@ -77,7 +78,7 @@ void BJT::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
     
     if( Circuit::self()->animate()
      && fabs(m_baseCurr) > 1e-4 ) p->setBrush( Qt::yellow );
-    else                          p->setBrush( Qt::white );
+    else                          p->setBrush( Theme::body() );
 
     p->drawEllipse( m_area );
     p->drawLine(-12, 0,-4,  0 );
@@ -85,7 +86,7 @@ void BJT::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
     p->drawLine( -4,-4, 8,-12 );
     p->drawLine( -4, 4, 8, 12 );
     
-    p->setBrush( Qt::black );
+    p->setBrush( Theme::line() );
     if( m_PNP ){
         QPointF points[3] = {
         QPointF( 0.1, 6.8 ),

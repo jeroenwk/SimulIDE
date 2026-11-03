@@ -6,6 +6,7 @@
 #include <QPainter>
 
 #include "connector.h"
+#include "theme.h"
 #include "simulator.h"
 #include "hd44780_base.h"
 #include "utils.h"
@@ -212,7 +213,7 @@ void Hd44780_Base::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidge
 {
     Component::paint( p, o, w );
 
-    QPen pen(Qt::black, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen pen(Theme::line(), 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     p->setPen( pen );
 
     p->setBrush( QColor(50, 70, 100) );

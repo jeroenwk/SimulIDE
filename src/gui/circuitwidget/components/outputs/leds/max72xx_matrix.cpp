@@ -6,6 +6,7 @@
 #include <QPainter>
 
 #include "max72xx_matrix.h"
+#include "theme.h"
 #include "itemlibrary.h"
 #include "connector.h"
 #include "simulator.h"
@@ -198,7 +199,7 @@ void Max72xx_matrix::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWid
     Component::paint( p, o, w );
     p->setRenderHint( QPainter::Antialiasing );
 
-    QPen pen( Qt::black, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    QPen pen( Theme::line(), 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
     p->setPen( pen );
 
     p->setBrush( QColor(50, 70, 100) );

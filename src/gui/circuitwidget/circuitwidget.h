@@ -113,6 +113,9 @@ class CircuitWidget : public QWidget
         QString m_lastCircDir;
 
         AppDialog*   m_appPropW;
+    public:
+        AppDialog* appDialog() { return m_appPropW; }   // Settings dialog, if opened (CLI)
+    private:
         AboutDialog* m_about;
 };
 

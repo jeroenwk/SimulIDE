@@ -6,6 +6,7 @@
 #include <QPainter>
 
 #include "ili9341.h"
+#include "theme.h"
 #include "itemlibrary.h"
 #include "connector.h"
 #include "simulator.h"
@@ -404,7 +405,7 @@ uint Ili9341::getPixel( int row, int col )
 void Ili9341::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
     p->setRenderHint( QPainter::Antialiasing, true );
-    QPen pen( Qt::black, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    QPen pen( Theme::line(), 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
     p->setPen( pen );
     
     p->setBrush( QColor(50, 70, 100) );

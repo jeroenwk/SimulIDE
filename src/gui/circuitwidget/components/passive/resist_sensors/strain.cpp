@@ -11,6 +11,7 @@
 #include <iostream>
 
 #include "strain.h"
+#include "theme.h"
 #include "connector.h"
 #include "circuit.h"
 #include "itemlibrary.h"
@@ -134,10 +135,10 @@ void Strain::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget
 
     Component::paint( p, option, widget );
     p->drawRect(-11,-20, 22, 24 );
-    p->fillRect(-8,-2, 4, 4, Qt::black );
-    p->fillRect( 8,-2,-4, 4, Qt::black );
+    p->fillRect(-8,-2, 4, 4, Theme::line() );
+    p->fillRect( 8,-2,-4, 4, Theme::line() );
 
-    QPen pen(Qt::black, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen pen(Theme::line(), 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     p->setPen( pen );
 
     const QPointF points[8] = {

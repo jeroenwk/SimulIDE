@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "resistordip.h"
+#include "theme.h"
 #include "circuitwidget.h"
 #include "itemlibrary.h"
 #include "connector.h"
@@ -201,7 +202,7 @@ void ResistorDip::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget
     if( m_pullUp )
     {
         p->setRenderHint( QPainter::Antialiasing, true );
-        QPen pen( Qt::black, 0.1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+        QPen pen( Theme::line(), 0.1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
         p->setPen( pen );
         if( m_puVolt > 2.5 ){
             p->setBrush( QColor( 200, 50, 50 ) );

@@ -12,6 +12,7 @@
 #include "circuitview.h"
 #include "simulator.h"
 #include "currentflow.h"
+#include "theme.h"
 
 namespace
 {
@@ -99,6 +100,34 @@ QList<Setting>& settings()
             if( !CurrentFlow::parseCurrent( v, amps ) || amps <= 0 ) throw CliError("invalid current: "+v+" (e.g. 1u, 100n)" );
             CurrentFlow::self()->setThreshold( amps );
         }});
+    list.append({"colorTheme", "circuit", "Color preset: Classic, Light or Dark (EveryCircuit style). Reads Custom when colors were changed.",
+        [](){ return QJsonValue( Theme::currentPreset() ); },
+        []( QString v ){
+            if( !Theme::applyPreset( v ) ) throw CliError("unknown color theme: "+v+" ("+Theme::presets().join(", ")+")");
+        }});
+    for( int i=0; i<Theme::numRoles; ++i )
+    {
+        Theme::role_t role = (Theme::role_t)i;
+        static const char* help[] = {
+            "Canvas (background) color: #rrggbb, a color name, or default.",
+            "Wire color: #rrggbb, a color name, or default.",
+            "Component outline color (lines, pins, arrowheads): #rrggbb, a color name, or default.",
+            "Text inside components (pin names): #rrggbb, a color name, or default.",
+            "Component body (fill) color, for parts drawn white by default: #rrggbb, a color name, or default.",
+            "Current flow dot color: #rrggbb, a color name, or default.",
+            "Component name label color (R1, U1): #rrggbb, a color name, or default.",
+            "Component value label color (470 Ω): #rrggbb, a color name, or default." };
+        QString desc = ( i < Theme::firstAnimRole ) ? QString( help[i] )
+                     : "Animate color, "+Theme::caption( role ).toLower()+": #rrggbb, a color name, or default.";
+        list.append({ Theme::key( role ), "circuit", desc,
+            [role](){ return QJsonValue( Theme::get( role ).name() ); },
+            [role]( QString v ){
+                if( v.toLower() == "default" ) { Theme::set( role, Theme::defaultColor( role ) ); return; }
+                QColor c( v );
+                if( !c.isValid() ) throw CliError("invalid color: "+v+" (e.g. #202830, white, default)");
+                Theme::set( role, c );
+            }});
+    }
     list.append({"fps", "circuit", "Screen refresh rate, frames per second.",
         [](){ return QJsonValue( (int)Simulator::self()->fps() ); },
         []( QString v ){ Simulator::self()->setFps( parseInt( v, "fps", 1, 100 ) ); }});

@@ -6,6 +6,7 @@
 #include <QPainter>
 
 #include "ssd1306.h"
+#include "theme.h"
 #include "itemlibrary.h"
 #include "simulator.h"
 #include "circuitview.h"
@@ -459,7 +460,7 @@ void Ssd1306::updateSize()
 
 void Ssd1306::paint( QPainter* p, const QStyleOptionGraphicsItem*, QWidget* )
 {
-    QPen pen( Qt::black, 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    QPen pen( Theme::line(), 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
     p->setPen( pen );
 
     p->setBrush( QColor( 50, 70, 100 ) );
