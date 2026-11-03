@@ -107,6 +107,7 @@ int main( int argc, char *argv[] )
         }
     }
     if( !circFile.isEmpty() ) CircuitWidget::self()->loadCirc( QFileInfo( circFile ).absoluteFilePath() );
+    else                      window.reopenLastCircuit();
 
     if( !headless ) window.show();
 

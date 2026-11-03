@@ -37,6 +37,7 @@ class CircuitWidget : public QWidget
 
         void syncTimebase( uint64_t psPerSec );   // Show the simulation speed in the toolbar
         void syncCurrentFlow( bool on ) { if( currentFlowAct->isChecked() != on ) currentFlowAct->setChecked( on ); }
+        QString curCirc() { return m_curCirc; }   // File of the open circuit (empty: unsaved)
         void syncCapCharge( bool on ) { if( capChargeAct->isChecked() != on ) capChargeAct->setChecked( on ); }
         void powerCircOn();
         void powerCircOff();

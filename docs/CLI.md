@@ -137,6 +137,11 @@ contrast). The smallest current shown at all is adjustable: `settings set
 currentMin 100n` (default `1u`). `wire current`
 gives the numbers without the dots.
 
+**Reopen last circuit:** the GUI reopens the circuit that was open when it was
+closed, unless a file is given on the command line or a crash backup is
+restored. `settings set reopenLast false` turns it off (Settings > App). Headless
+instances never reopen a circuit, and never change which one the GUI reopens.
+
 **Capacitor charge:** `settings set capCharge true` shows how far each
 capacitor is charged (the toolbar button next to current flow does the same):
 - a gauge bar beside the part, filling upwards with |V| / Vref;

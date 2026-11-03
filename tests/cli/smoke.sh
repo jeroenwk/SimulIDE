@@ -207,6 +207,12 @@ check "scope set one channel"   '[c["voltDiv"] for c in r["result"]["channels"]]
 check "bad value rejected"      'not r["ok"]'                              -- scope set S --timediv 1s --trigger 9
 check "...and nothing changed"  'r["result"]["timeDiv"]=="5 ms" and r["result"]["trigger"]==0' -- scope get S
 
+echo "Reopen last circuit setting"
+REOPEN_WAS=$(jcli settings get reopenLast | json 'str(r["result"]).lower()')
+check "reopenLast off"              'r["ok"]'                                  -- settings set reopenLast false
+check "...reads back"               'r["result"] is False'                     -- settings get reopenLast
+cli settings set reopenLast "$REOPEN_WAS" >/dev/null
+
 echo "Capacitor charge display"
 cli - > "$TMP/rc.out" 2>&1 <<'EOF'
 circuit new --discard

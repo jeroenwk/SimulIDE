@@ -65,7 +65,11 @@ class MainWindow : public QMainWindow
         float fontScale() { return m_fontScale; }
         void setFontScale( float scale )  { m_fontScale = scale; }
 
-        bool headless() { return m_headless; }   // No window, no auto-backup (CLI --headless)
+        bool headless() { return m_headless; }
+        // Reopen the circuit that was open when the app was closed (default on)
+        bool reopenLast();
+        void setReopenLast( bool on );
+        void reopenLastCircuit();     // At startup: no file given, no crash backup restored   // No window, no auto-backup (CLI --headless)
         int autoBck() { return m_autoBck; }
         void setAutoBck( int secs ) { m_autoBck = secs; }
 
