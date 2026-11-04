@@ -46,6 +46,7 @@ class CompBase
 
         virtual bool    setPropStr( QString prop, QString val );
         virtual QString getPropStr( QString prop );
+        ComProperty* property( QString prop ) { return m_propHash.value( prop ); }
 
         virtual QString toString();
 

@@ -66,6 +66,7 @@ void ColorVal::changeColor()
     if(!color.isValid() ) return;
     m_color = color;
 
+    prepareChange();
     m_component->setPropStr( m_propName, m_color.name() ); /// FIXME
 
     QPalette pal = colorW->palette();
@@ -73,7 +74,7 @@ void ColorVal::changeColor()
     colorW->setPalette( pal );
     //colorW->setText( m_color.name() );
 
-    m_propDialog->changed();
+    saveChanges();
 }
 
 void ColorVal::updtValues()

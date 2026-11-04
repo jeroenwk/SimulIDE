@@ -149,13 +149,13 @@ void PropDialog::showProp( QString name, bool show )
 
 void PropDialog::on_labelBox_editingFinished()
 {
-    m_component->setPropStr("label", labelBox->text() );
+    setUndoable("label", labelBox->text() );
 }
 
 void PropDialog::on_showButton_toggled( bool checked )
 {
     QString show = checked ? "true" : "false";
-    m_component->setPropStr("Show_id", show );
+    setUndoable("Show_id", show );
 }
 
 void PropDialog::on_tabList_currentChanged( int )
@@ -225,4 +225,12 @@ void PropDialog::commitEdit()
     if( !w ) return;
     if( QAbstractSpinBox* sb = qobject_cast<QAbstractSpinBox*>( w ) ) sb->interpretText();
     else if( w == labelBox ) on_labelBox_editingFinished();
+}
+
+void PropDialog::setUndoable( QString prop, QString val ) // Set a property as one undo step
+{
+    QString old = m_component->getPropStr( prop );
+    if( val == old ) return;
+    m_component->setPropStr( prop, val );
+    Circuit::self()->saveCompChange( m_component->getUid(), prop, old );
 }

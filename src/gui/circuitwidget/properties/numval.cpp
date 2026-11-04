@@ -104,10 +104,10 @@ void NumVal::on_unitBox_currentTextChanged( QString unit )
     if( m_blocked ) return;
     m_blocked = true;
 
+    prepareChange();
     m_property->setValStr( getValWithUnit() );
     m_blocked = false;
-    m_propDialog->updtValues();
-    m_propDialog->changed();
+    saveChanges();
 }
 
 void NumVal::updtValues()

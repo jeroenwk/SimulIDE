@@ -40,6 +40,7 @@ class PropDialog : public QDialog, private Ui::PropDialog
 
     private:
         void commitEdit();
+        void setUndoable( QString prop, QString val );
 
         CompBase* m_component;
 

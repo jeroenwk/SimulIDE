@@ -112,6 +112,8 @@ class CircuitWidget : public QWidget
         QAction* openCircAct;
         QAction* saveCircAct;
         QAction* saveCircAsAct;
+        QAction* undoAct;
+        QAction* redoAct;
         QAction* zoomFitAct;
         QAction* zoomSelAct;
         QAction* zoomOneAct;
