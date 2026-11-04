@@ -25,6 +25,7 @@ class OpAmp : public Component, public eElement
         virtual void stamp() override;
         virtual void updateStep() override;
         virtual void voltChanged() override;
+        virtual void stepSettled() override;
 
         double gain() { return m_gain; }
         void setGain( double g ) { m_gain = g; m_changed = true; }
@@ -66,6 +67,8 @@ class OpAmp : public Component, public eElement
         double m_lastOut;
         double m_lastIn;
         double m_outImp;
+
+        int m_region;                // Part state: -1 none, 0 linear, 1 SAT+, 2 SAT- (stepSettled)
 
         IoPin* m_inputP;
         IoPin* m_inputN;

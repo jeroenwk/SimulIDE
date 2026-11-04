@@ -23,6 +23,8 @@ class VoltReg : public Component, public eResistor
         virtual void stamp() override;
         virtual void updateStep() override;
         virtual void voltChanged() override;
+        virtual void initialize() override;
+        virtual void stepSettled() override;
 
         double outVolt() { return m_vRef; }
         void setOutVolt( double v ) { m_vRef = v; m_changed = true; }
@@ -34,6 +36,7 @@ class VoltReg : public Component, public eResistor
         double m_lastCurrent;
 
         bool m_connected;
+        int  m_region;               // Part state: -1 none, 0 off, 1 dropout, 2 regulating
 };
 
 #endif

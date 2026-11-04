@@ -1,6 +1,6 @@
 # Part states for active components: implementation note
 
-Status (2026-11-04): steps 1 and 2 done. These are the shared mechanism and the thyristors (SCR, triac, diac); the BJT and MOSFET are moved onto it. Steps 3 to 5 are open.
+Status (2026-11-04): steps 1 to 3 done. These are the shared mechanism, the thyristors (SCR, triac, diac), and the op amp and voltage regulator; the BJT and MOSFET are moved onto it. Steps 4 and 5 (diodes, LEDs; 555, relay, mux) are open.
 
 ## What a part state is
 
@@ -67,8 +67,8 @@ Example (Duncan Fig. 49.5, 100 mV in, full speed) [SIMULATED]:
 | SCR | OFF / ON | triggered (`m_state`) **and** anode current > 10 % of the holding current. With gate current present, `m_state` stays set while the series diode blocks the reverse half; that is not conduction | done (step 2) |
 | Triac | OFF / ON | same, with \|current\|: OFF at each zero crossing | done (step 2) |
 | Diac | OFF / ON | `m_state`: on above the breakover voltage, off below the holding current | done (step 2) |
-| Op amp | LINEAR / SAT+ / SAT− | output vs `m_voltPos` / `m_voltNeg`, which `voltChanged` clamps to | step 3 |
-| Voltage regulator | REGULATING / DROPOUT / OFF | its own test: input − output < 0.7 V = dropout, input < 0.7 V = off | step 3 |
+| Op amp | LINEAR / SAT+ / SAT− | the output the gain asks for, gain × (V+ − V−), against the rails (supply pins or V+ / V−), 10 mV hysteresis. Open loop (comparator): always SAT+ or SAT− | done (step 3) |
+| Voltage regulator | REGULATING / DROPOUT / OFF | the model's own test: headroom input − (ref + set voltage) < 0.7 V = dropout, input < 0.7 V = off; 50 mV hysteresis | done (step 3) |
 | Diode | OFF / ON / BREAKDOWN (red) | forward voltage vs threshold, reverse vs breakdown | step 4, Show State off by default |
 | Zener | OFF / FORWARD / REGULATING (green) | as the diode; for a zener, breakdown is the working state | step 4 |
 | LED | OFF / ON / OVER (red) | its current against its maximum | step 4, Show State off by default |
@@ -79,13 +79,15 @@ Checked on 2026-11-04 [SIMULATED], 50 Hz AC through a resistor, gate driven from
 - **SCR:** ON 0.2–10 ms and 20.2–30 ms, OFF in the negative half-cycles.
 - **Triac:** ON in both halves, OFF at each zero crossing.
 - **Diac** on 40 V peak through 1 kΩ: ON at 30 V (2.8 ms), OFF when its current falls below 10 mA (8.8 ms).
+- **Op amp** follower (rails 0 / 5 V), 2.5 ± 3 V sine at 50 Hz: SAT+ 3.2–7 ms and SAT− from 13.2 ms. The calculated crossings are 3.13, 6.87 and 13.13 ms; the WaveGen steps in 0.2 ms. LINEAR at 2.5 ± 1.5 V.
+- **5 V regulator** on a 0–10 V triangle into 1 kΩ: OFF to 0.8 ms (input 0.75 V), DROPOUT to 5.8 ms (5.75 V), REGULATING until the input falls below 5.7 V (14.4 ms), OFF below 0.7 V (19.4 ms).
 
 ## Things to keep in mind
 
 - **Clutter.** A circuit with many diodes would get a badge on every one. That is why Show State is per part, with the default chosen per type: on for transistors, thyristors, op amps and regulators; off for diodes and LEDs.
 - **A state is only as good as the solved values.** Before adding a state, check how the model decides it has converged:
   - **MOSFET**: a fixed 5 µA. This was 1 % of the 0.43 mA in Duncan's FET amplifier and put steps into the output. It is now relative, 1e-4 of the current, never looser than 5 µA.
-  - **Voltage regulator**: stops at a fixed **1 mA** change, worse still. Fix it the same way in step 3.
+  - **Voltage regulator**: stops at a 1 mA change of its "current". This looks loose but is not: the model drives the output through 1 µΩ (1e6 S), so its current is the voltage error × 1e6, and 1 mA means 1 nV. No change needed. Read what a tolerance is applied to before changing it.
   - **Op amp**: uses 5e-6 V on its input and output. Fine for the states.
 - **Thyristor models report "triggered", not "conducting".** See the SCR row. The badge shows conduction.
 - **Subcircuits**: only top-level parts get badges. A transistor inside a subcircuit (a datasheet part's internals) shows nothing; the part's scripted cores report for it.

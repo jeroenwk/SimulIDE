@@ -60,13 +60,21 @@ VoltReg::VoltReg( QString type, QString id )
 
     addPropGroup( { tr("Main"), {
         new DoubProp<VoltReg>("Voltage", tr("Output Voltage"),"V"
-                             , this, &VoltReg::outVolt, &VoltReg::setOutVolt )
+                             , this, &VoltReg::outVolt, &VoltReg::setOutVolt ),
+        showStateProp()
     },0 } );
+    enableStates( true );
 
     setShowProp("Voltage");
     setPropStr( "Voltage", "1.2" );
 }
 VoltReg::~VoltReg(){}
+
+void VoltReg::initialize()
+{
+    m_region = -1;
+    clearStates();
+}
 
 void VoltReg::stamp()
 {
@@ -97,6 +105,7 @@ void VoltReg::updateStep()
 
 void VoltReg::voltChanged()
 {
+    Simulator::self()->addToSettled( this );   // State from this step's final values
     double inVolt  = m_ePin[0]->getVoltage();
     double outVolt = m_ePin[2]->getVoltage()+m_vRef;
 
@@ -114,6 +123,31 @@ void VoltReg::voltChanged()
 
     m_pin[0]->stampCurrent( current );
     m_pin[1]->stampCurrent(-current );
+}
+
+// Part state (docs/PART_STATES.md), from the model's own test: it keeps at least 0.7 V between input
+// and output, and passes nothing below 0.7 V of input.
+//   REGULATING  output at its set voltage (green)
+//   DROPOUT     less than 0.7 V of headroom: the output follows the input down (amber)
+//   OFF         input below 0.7 V: no output (grey)
+// 50 mV hysteresis on each boundary.
+void VoltReg::stepSettled()
+{
+    if( !m_connected ) return;
+    double inVolt = m_ePin[0]->getVoltage();
+    double head   = inVolt-( m_ePin[2]->getVoltage()+m_vRef );   // Headroom above the regulated output
+    int r = m_region;
+    if( r < 0 ) r = ( inVolt < 0.725 ) ? 0 : ( head < 0.725 ) ? 1 : 2;
+    else if( r == 0 ){ if( inVolt > 0.75 ) r = ( head < 0.7 ) ? 1 : 2; }
+    else if( inVolt < 0.7 ) r = 0;
+    else if( r == 1 ){ if( head > 0.75 ) r = 2; }
+    else if( head < 0.7 ) r = 1;
+
+    if( r == m_region ) return;
+    m_region = r;
+    if     ( r == 0 ) reportState("OFF",        stOff );
+    else if( r == 1 ) reportState("DROPOUT",    stWait );
+    else              reportState("REGULATING", stOn );
 }
 
 void VoltReg::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )

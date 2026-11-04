@@ -192,8 +192,10 @@ while the simulation runs. A scripted core reports with
   time; `read <comp>` includes the current ones as `status`.
 - Built-in parts report their operating state (`docs/PART_STATES.md`): BJTs
   **OFF** (grey, cut-off: VBE < 0.45 V), **ACTIVE** (green, amplifying) and
-  **SAT** (amber, saturated: VCE < 0.2 V); SCRs, triacs and diacs **OFF** or
-  **ON** (amber, conducting). Each boundary has a little hysteresis. The state
+  **SAT** (amber, saturated: VCE < 0.2 V); MOSFETs **OFF** / **ACTIVE** /
+  **OHMIC**; SCRs, triacs and diacs **OFF** or **ON** (amber, conducting); op
+  amps **LINEAR** / **SAT+** / **SAT-** (amber, at a rail); voltage regulators
+  **REGULATING** / **DROPOUT** (amber) / **OFF**. Each boundary has a little hysteresis. The state
   is taken when each time step has converged, so the times are exact at any
   speed. `status` lists them, `read` gives the current one as `state`, and
   Messages logs them. A part's **Show State** property (`Show_State`) turns its
