@@ -18,8 +18,9 @@ class OutHighlighter;
 class PlainBlock : public QTextBlockUserData      // Block shown in one colour (OutPanelText::appendPlain)
 {
     public:
-        PlainBlock( QColor c ) : color( c ) {}
+        PlainBlock( QColor c, QString u="" ) : color( c ), uid( u ) {}
         QColor color;
+        QString uid;      // Part this line is about (event log): a click selects it
 };
 
 class OutPanelText : public QPlainTextEdit, public Updatable
@@ -34,7 +35,10 @@ class OutPanelText : public QPlainTextEdit, public Updatable
         void appendText( const QString text ) { m_textBuffer.append( text ); if( m_capture ) m_capture->append( text ); }
         void setCapture( QString* c ) { m_capture = c; }    // Command line interface: copy output
         void appendLine( const QString text );
-        void appendPlain( const QString text, QColor color );  // Lines shown in one colour, no highlighting
+        void appendPlain( const QString text, QColor color, QString uid="" );  // Lines shown in one colour, no highlighting
+
+    protected:
+        virtual void mouseReleaseEvent( QMouseEvent* event ) override;
 
     private:
         QString m_textBuffer;

@@ -44,6 +44,9 @@ class CapacitorBase : public Reactive
         virtual void setCurrentValue( double c ) override;
         virtual void updateStep() override;
 
+        bool logCharge() { return m_logCharge; }          // Charge events in Messages (EventLog)
+        void setLogCharge( bool l ) { m_logCharge = l; }
+
         double maxVolt() { return m_maxVolt; }
         void setMaxVolt( double v );
 
@@ -64,6 +67,7 @@ class CapacitorBase : public Reactive
 
         double m_capacitance;
         double m_maxVolt;
+        bool   m_logCharge;
 
         ChargeGauge* m_gauge;
 };

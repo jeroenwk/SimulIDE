@@ -14,6 +14,7 @@
 #include "pin.h"
 
 #include "doubleprop.h"
+#include "boolprop.h"
 
 #define tr(str) simulideTr("CapacitorBase",str)
 
@@ -26,7 +27,8 @@ CapacitorBase::CapacitorBase( QString type, QString id )
     m_pin[1]->setLength( 12 );
 
     m_value = m_capacitance = 0.00001; // Farads
-    m_maxVolt = 0;                     // Rated voltage: 0 = not set
+    m_maxVolt = 0;
+    m_logCharge = false;                     // Rated voltage: 0 = not set
 
     addPropGroup( { tr("Main"), {
         new DoubProp<CapacitorBase>("Capacitance", tr("Capacitance"), "µF"
@@ -40,6 +42,9 @@ CapacitorBase::CapacitorBase( QString type, QString id )
 
         new DoubProp<CapacitorBase>("MaxVolt"    , tr("Rated Voltage (0 = not set)"), "V"
                                    , this, &CapacitorBase::maxVolt, &CapacitorBase::setMaxVolt ),
+
+        new BoolProp<CapacitorBase>("LogCharge", tr("Log charge in Messages"), ""
+                                   , this, &CapacitorBase::logCharge, &CapacitorBase::setLogCharge ),
 
         new DoubProp<CapacitorBase>("ReaStep", tr("Reactive Step"), "ns"
                                    , this, &CapacitorBase::reaStep , &CapacitorBase::setReaStep,0 )

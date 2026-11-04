@@ -95,6 +95,16 @@ When the user wants to build or try circuits together, follow **`docs/COLLABORAT
 - `StatusView` (an Updatable, like `ChargeView`, toggled from the toolbar and with `settings set partStatus`) gives each top-level part that reports a `StatusBadge`. That is a child item of the part, with the part's transform cancelled so it draws upright in scene coordinates: the part's own state and those of the scripted cores inside a subcircuit, as pills above the part, plus the outline in the most severe colour. The badges are removed when the simulation stops.
 - CLI: `read` (`status`) and `status <comp>` (history), in `cli_measure.cpp`.
 
+### Event log (`src/gui/circuitwidget/eventlog.cpp`)
+- `EventLog` (an Updatable) runs once per frame:
+  - It reads new part-state events (`ScriptCpu::statusHistory`, by sequence number) and joins changes within 1 µs into one line.
+  - It samples capacitors whose `LogCharge` property is on, comparing 10 ms means: charging, charged, discharging, discharged, over the rating. These times are approximate.
+- Lines are written to Messages (`OutPanelText::appendPlain` with a colour and the part's uid; a click selects the part).
+- A sequence of line signatures, which carry no numbers, that repeats 3 times is summarised with its period, up to 8 lines per cycle. Plateau lines ("charged", "steady") are left out of the signatures.
+- Rate limit: 20 lines per part per wall-clock second.
+- All events are kept for the CLI `log` command.
+- Checkboxes above Messages and the settings `logParts` / `logCaps` control it.
+
 ### Other areas
 - `src/gui/editorwidget/` contains the code editor plus compiler/debugger integrations in `debuggers/`.
 - `src/gui/dataplotwidget/` contains the oscilloscope and logic-analyzer plots. `src/gui/serial/` contains the serial port and serial monitor.

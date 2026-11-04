@@ -15,6 +15,8 @@
 #include "component.h"
 #include "subcircuit.h"
 #include "theme.h"
+#include "mcu.h"
+#include "scriptcpu.h"
 
 StatusView* StatusView::self()
 {
@@ -63,6 +65,20 @@ QString StatusView::blockName( Component* inner )
     return name;
 }
 
+QList<QPair<QString, ScriptCpu*>> StatusView::statusCores( Component* comp )
+{
+    QList<QPair<QString, ScriptCpu*>> list;
+    auto add = [&list]( Component* c, QString name ){
+        if( Mcu* mcu = dynamic_cast<Mcu*>( c ) )
+            if( ScriptCpu* cpu = dynamic_cast<ScriptCpu*>( mcu->cpu() ) )
+                if( cpu->status().level >= 0 || !cpu->statusHistory().isEmpty() ) list.append({ name, cpu });
+    };
+    add( comp, "" );
+    if( SubCircuit* sub = dynamic_cast<SubCircuit*>( comp ) )
+        for( Component* inner : *sub->compList() ) add( inner, blockName( inner ) );
+    return list;
+}
+
 QList<StatusView::Block> StatusView::blocks( Component* comp )
 {
     QList<Block> list;
@@ -76,9 +92,10 @@ QList<StatusView::Block> StatusView::blocks( Component* comp )
     return list;
 }
 
-QColor StatusView::levelColor( int level )
+QColor StatusView::levelColor( int level ) { return levelColor( level, Theme::canvas().lightness() < 128 ); }
+
+QColor StatusView::levelColor( int level, bool dark )
 {
-    bool dark = Theme::canvas().lightness() < 128;
     switch( level ){
         case Component::stOn:    return dark ? QColor( 63, 180, 106) : QColor( 31, 154,  76);
         case Component::stWait:  return dark ? QColor(227, 161,  47) : QColor(194, 124,   0);
