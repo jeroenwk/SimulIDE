@@ -131,8 +131,12 @@ void WaveGen::stamp()
         m_outpin->createCurrent();
         m_gndpin->createCurrent();
 
-        m_outpin->setImpedance( cero_doub );
-        m_gndpin->setImpedance( cero_doub );
+        // 1 mΩ, not ~0: the pair's potential to the rest of the circuit may hang on tiny
+        // conductances only (e.g. a mains source when every bridge diode is off: ~1e-9 S of
+        // leakage). Next to 1e9 S that leakage is lost in rounding, the pair's potential is
+        // undefined and diodes never converge; next to 1e3 S it is kept
+        m_outpin->setImpedance( 1e-3 );
+        m_gndpin->setImpedance( 1e-3 );
     }
     else{
         m_outpin->skipStamp( false );
