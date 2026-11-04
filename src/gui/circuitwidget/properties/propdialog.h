@@ -35,7 +35,12 @@ class PropDialog : public QDialog, private Ui::PropDialog
         void on_helpButton_clicked();
         void adjustWidgets();
 
+    protected:
+        bool event( QEvent* e ) override;
+
     private:
+        void commitEdit();
+
         CompBase* m_component;
 
         bool m_helpExpanded;
