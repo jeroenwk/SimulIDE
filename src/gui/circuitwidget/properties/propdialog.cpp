@@ -3,6 +3,8 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <QAbstractSpinBox>
+
 #include "propdialog.h"
 #include "component.h"
 #include "circuit.h"
@@ -205,4 +207,22 @@ void PropDialog::updtValues()
 void PropDialog::changed()
 {
     Circuit::self()->setChanged();
+}
+
+// A typed value is only taken on Enter or when focus moves to another field;
+// also take it when the dialog loses focus or is closed, so it is not lost.
+bool PropDialog::event( QEvent* e )
+{
+    QEvent::Type t = e->type();
+    if( t == QEvent::WindowDeactivate || t == QEvent::Hide || t == QEvent::Close )
+        commitEdit();
+    return QDialog::event( e );
+}
+
+void PropDialog::commitEdit()
+{
+    QWidget* w = focusWidget();
+    if( !w ) return;
+    if( QAbstractSpinBox* sb = qobject_cast<QAbstractSpinBox*>( w ) ) sb->interpretText();
+    else if( w == labelBox ) on_labelBox_editingFinished();
 }
