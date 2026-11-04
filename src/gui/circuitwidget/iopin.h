@@ -70,6 +70,11 @@ class IoPin : public Pin, public eElement
             m_outVolt = volt;
             ePin::stampCurrent( m_outVolt*m_admit );
         }
+        inline void forceVoltage( double volt ) // Stamp even if unchanged (e.g. at start, after a run)
+        {
+            m_outVolt = volt;
+            ePin::stampCurrent( m_outVolt*m_admit );
+        }
         inline void setOutStatFast( bool state )
         {
             m_outState = m_nextState = state;

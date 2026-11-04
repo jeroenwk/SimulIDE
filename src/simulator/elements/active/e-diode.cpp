@@ -31,6 +31,7 @@ eDiode::~eDiode(){}
 void eDiode::stamp()
 {
     m_converged = true;
+    m_step    = 0;      // Iteration damping (gmin) from a previous run
     m_admit   = m_bAdmit;
     m_voltPN  = 0;
     m_current = 0;

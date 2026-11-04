@@ -227,6 +227,7 @@ void Simulator::resetSim()
     m_stopAt   = 0;
     m_updtTime = 0;
     m_NLstep   = 0;
+    m_converged = true;  // A stop during the non-linear loop leaves it false
     ///m_pauseCirc = false;
     m_simPsPF = 1;
 
