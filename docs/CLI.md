@@ -83,7 +83,7 @@ shows one.
 | `circuit new [--discard]` | Start an empty circuit |
 | `circuit open <file.sim1> [--discard]` | Open a circuit |
 | `circuit save [file.sim1]` | Save it (to its current file, or a new one) |
-| `circuit info` | File, modified flag, counts, simulation settings |
+| `circuit info` | File, modified flag, counts, simulation settings, and `matrix`: each group of connected nodes the solver handles, with its size and how many times it was factorized and solved since the simulation started (a solver load check) |
 | `circuit export` | The circuit as `.sim1` XML |
 | `undo`, `redo` | Same as Ctrl+Z / Ctrl+Y |
 | `quit [--discard]` | Close SimulIDE |
