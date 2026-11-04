@@ -9,6 +9,11 @@
              led_driver test 13) with nA reverse leakage; 0.5 Ohm gives ~1.25 V at 1 A
              (datasheet max 1.7 V). Breakdown = VRRM. -->
         <item name="ES1J superfast" satCurr_nA="1" resist="0.5" emCoef="1.39" brkDown="600" />
+        <!-- 1N4007: 1 A 1000 V general-purpose rectifier (trr ~2 us, not modelled). Is, n and Rs
+             from the common SPICE model (Diodes Inc.): 0.55 V at 1 mA (led_driver test 9 read
+             0.5-0.65 V with a 34401A diode test), 0.91 V at 1 A (datasheet max 1.1 V).
+             Breakdown = VRRM. -->
+        <item name="1N4007" satCurr_nA="7.02767" resist="0.0341512" emCoef="1.80803" brkDown="1000" />
     </itemset>
     <itemset type="zener">
         <item name="Zener Default 3.3V" satCurr_nA="171.4352819281" resist="0" emCoef="2" brkDown="3.3" />

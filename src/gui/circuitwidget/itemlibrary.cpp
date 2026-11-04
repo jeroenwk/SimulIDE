@@ -111,6 +111,7 @@
 #include "triac.h"
 #include "tunnel.h"
 #include "varresistor.h"
+#include "varistor.h"
 #include "voltmeter.h"
 #include "volt_reg.h"
 #include "voltsource.h"
@@ -168,6 +169,7 @@ void ItemLibrary::loadItems()
     addItem( ResistorDip::libraryItem() );
     addItem( Potentiometer::libraryItem() );
     addItem( VarResistor::libraryItem() );
+    addItem( Varistor::libraryItem() );
     addItem( new LibraryItem( QObject::tr("Resistive Sensors"), "Passive", "resistorsensors.png","Resistive Sensors", NULL ) );
     addItem( Ldr::libraryItem() );
     addItem( Thermistor::libraryItem() );

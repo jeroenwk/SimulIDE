@@ -40,6 +40,8 @@ void OscopeChannel::initialize()
     m_dispMin =-5;
 
     m_lastValue = 0;
+    m_stepData  = 0;
+    m_noWave    = 0;
     m_bufferCounter = 0;
 
     m_freq = 0;
@@ -70,21 +72,22 @@ void OscopeChannel::updateStep()
 
     if( m_period > 10 )  // We have a wave
     {
-        if( m_numMax > 1 )  // Got enought maximums to calculate Freq
+        if( m_numMax > 0 )  // Periods measured since the last frame: their average
         {
-            double avgPeriod = (double)m_totalP/(double)(m_numMax-1);
-            m_freq = 1e12/avgPeriod;
-
-            m_totalP  = 0;
-            m_numMax  = 0;
+            m_freq = 1e12*(double)m_numMax/(double)m_totalP;
+            m_totalP = 0;
+            m_numMax = 0;
         }
         if( m_freq < 20 )voltChanged();
     }else{
         voltChanged();
         m_freq = 0;
-        m_maxVal  =-1e12;
-        m_minVal  = 1e12;
-    }
+        if( ++m_noWave >= 10 )  // No edge for 10 frames: forget old extremes (a past transient)
+        {
+            m_noWave = 0;
+            m_maxVal =-1e12;
+            m_minVal = 1e12;
+    }   }
     if( m_oscope->autoSC() == m_channel )
     {
         m_oscope->setTimePos( m_channel, 0 );
@@ -135,16 +138,15 @@ void OscopeChannel::voltChanged()
         else return;
     }*/
     double data = m_ePin[0]->getVoltage()-m_ePin[1]->getVoltage();
-    double delta = data-m_lastValue;
-    if( delta == 0 ) return;
-
-    if( data > m_maxVal ) m_maxVal = data;
-    if( data < m_minVal ) m_minVal = data;
-
     uint64_t simTime = Simulator::self()->circTime();
 
     if( m_simTime != simTime )
     {
+        // Edges, extremes and the frequency come from the value each time step settled at. A
+        // step with non-linear parts (diodes switching) calls this for every iteration, and the
+        // unconverged values in between can swing back and forth: counted as minima, they made
+        // a 100 Hz bus read 150-175 Hz, and the trigger fire on them.
+        if( m_simTime != (uint64_t)-1 ) findEdges( m_stepData, m_simTime );
         m_simTime = simTime;
         // A slowly changing voltage (an RC decay) changes on every reactive step, so storing
         // every change fills the buffer with a fraction of a second. Like a real scope, sample
@@ -159,60 +161,50 @@ void OscopeChannel::voltChanged()
             m_slotStart = simTime;
         }
     }
+    m_stepData = data;
     m_buffer[m_bufferCounter] = data;
     m_time[m_bufferCounter] = simTime;
+}
 
-    if( delta > m_filter )               // Rising
+void OscopeChannel::findEdges( double data, uint64_t simTime )
+{
+    // A rising edge is a crossing of the middle level with hysteresis, like a scope's trigger:
+    // armed once the signal is below mid - h, fired when it then goes above mid + h, with h 15 %
+    // of the last cycle's amplitude (at least the noise filter). Counting local minima instead
+    // made any small wiggle a cycle: a 0.5 V step at a rectifier's zero crossing read 150 Hz.
+    if( data > m_maxVal ) m_maxVal = data;
+    if( data < m_minVal ) m_minVal = data;
+
+    double ampli = m_ampli;
+    double mid   = m_midVal;
+    if( ampli <= 0 ){                           // No full cycle yet: what has been seen so far
+        ampli = m_maxVal-m_minVal;
+        mid   = m_minVal+ampli/2;
+    }
+    if( ampli < 2*m_filter ) return;            // Flat, or only noise
+
+    double hyst = ampli*0.15;
+    if( hyst < m_filter ) hyst = m_filter;
+
+    if( data < mid-hyst ) m_falling = true;     // Armed
+    else if( m_falling && data > mid+hyst )     // Rising edge
     {
-        //if( delta > m_filter )
+        m_falling = false;
+        if( m_risEdge > 0 )
         {
-            if( m_falling && !m_rising )     // Min To Rising
-            {
-                if( m_numMax > 0 ) m_totalP += simTime-m_lastMax;
-                m_lastMax = simTime;
-
-                m_numMax++;
-                m_nCycles++;
-                m_falling = false;
-            }
-            m_rising = true;
-            m_lastValue = data;
+            m_period  = simTime-m_risEdge;
+            m_totalP += m_period;
+            m_numMax++;                         // Periods measured since the last frame
         }
-        if( m_nCycles > 2 )     // Trigger lost? Reset Max and Min values
-        {
-            m_nCycles = 0;
-            m_maxVal  =-1e12;
-            m_minVal  = 1e12;
-        }
-        else if( m_nCycles > 1 )     // Wait for a full wave
-        {
-            m_ampli  = m_maxVal-m_minVal;
-            m_midVal = m_minVal + m_ampli/2;
+        m_risEdge = simTime;
+        m_lastMax = simTime;
 
-            if( data >= m_midVal )            // Rising edge
-            {
-                if( m_numMax > 1 )
-                {
-                    m_dispMax = m_maxVal;
-                    m_dispMin = m_minVal;
-                    m_maxVal  =-1e12;
-                    m_minVal  = 1e12;
-                }
-                m_nCycles--;
-
-                if( m_risEdge > 0 ) m_period = simTime-m_risEdge; // period = this_edge_time - last_edge_time
-                m_risEdge = simTime;
-                //if( m_trigger ) m_oscope->triggerEvent();
-    }   }   }
-
-    else if( delta < -m_filter )         // Falling
-    {
-        if( m_rising && !m_falling )    // Max Found
-        {
-            m_rising = false;
-        }
-        m_falling = true;
-        m_lastValue = data;
+        m_ampli   = m_maxVal-m_minVal;          // This cycle's extremes set the next thresholds
+        m_midVal  = m_minVal+m_ampli/2;
+        m_dispMax = m_maxVal;
+        m_dispMin = m_minVal;
+        m_maxVal  =-1e12;
+        m_minVal  = 1e12;
 }   }
 
 void OscopeChannel::setFilter( double f )

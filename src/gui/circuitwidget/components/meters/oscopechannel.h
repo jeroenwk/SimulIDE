@@ -25,6 +25,10 @@ class OscopeChannel : public DataChannel
 
     private:
         void updateValues();
+        void findEdges( double data, uint64_t simTime );
+
+        double m_stepData;       // Latest value in the current time step (settled at its end)
+        int    m_noWave;         // Frames without a wave
 
         uint64_t m_totalP;
         uint64_t m_lastMax;
