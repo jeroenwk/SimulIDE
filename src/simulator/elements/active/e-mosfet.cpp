@@ -90,7 +90,10 @@ void eMosfet::voltChanged()
     }
     m_gateV = gateV;
 
-    if( qFabs(current-m_lastCurrent)<m_accuracy ) return; // Converged
+    // Converged when the current changes by less than 1e-4 of itself (at least 1 nA). A fixed
+    // 5 uA was 1 % of a 0.4 mA small-signal amplifier: its output came out in steps
+    double tol = qMax( 1e-9, 1e-4*qMax( qFabs(current), qFabs(m_lastCurrent) ) );
+    if( qFabs(current-m_lastCurrent) < qMin( tol, m_accuracy ) ) return; // Converged
     Simulator::self()->notCorverged();
 
     m_lastCurrent = current;
