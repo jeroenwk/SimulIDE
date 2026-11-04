@@ -408,8 +408,7 @@ void ScriptCpu::setStatus( string text, int level )
     if( level > m_stPeakLevel ) { m_stPeakText = t; m_stPeakLevel = level; }
 
     if( m_stHistory.size() >= 1000 ) m_stHistory.removeFirst();
-    static uint64_t s_seq = 0;                           // All cores run in the simulation thread
-    m_stHistory.append({ Simulator::self()->circTime(), t, level, ++s_seq });
+    m_stHistory.append({ Simulator::self()->circTime(), t, level, StateLog::nextSeq() });   // One order with built-in parts
 }
 
 ScriptCpu::StatusEvent ScriptCpu::status()

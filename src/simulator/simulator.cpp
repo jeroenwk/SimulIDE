@@ -151,6 +151,7 @@ void Simulator::timerEvent( QTimerEvent* e )  //update at m_timerTick_ms rate (5
 void Simulator::runCircuit()
 {
     solveCircuit(); // Solve any pending changes
+    runSettled();
     if( m_state < SIM_RUNNING ) return;
 
     eElement* event = m_firstEvent;
@@ -175,11 +176,25 @@ void Simulator::runCircuit()
             else break;
         }
         solveCircuit();
+        runSettled();
         if( m_state < SIM_RUNNING ) break;
         event = m_firstEvent;               // m_firstEvent can be an event added at solveCircuit()
     }
     if( m_state > SIM_WAITING ) m_circTime = endRun;
     m_loopTime = m_RefTimer.nsecsElapsed();
+}
+
+void Simulator::runSettled()   // The step is solved: elements that asked see its final values
+{
+    eElement* el = m_settled;
+    m_settled = nullptr;
+    m_settledGen++;
+    if( m_state < SIM_RUNNING ) return;   // Stopped in the middle of the step: values not final
+    while( el ){
+        eElement* next = el->nextSettled;
+        el->stepSettled();
+        el = next;
+    }
 }
 
 void Simulator::solveCircuit()
@@ -266,6 +281,8 @@ void Simulator::resetSim()
     m_changedNode = NULL;
     m_voltChanged = NULL;
     m_nonLinear = NULL;
+    m_settled = nullptr;      // Elements may be gone: drop the list, a new generation forgets the flags
+    m_settledGen++;
 }
 
 void Simulator::createNodes()
@@ -386,6 +403,8 @@ void Simulator::stopSim()
 
     clearEventList();
     m_changedNode = NULL;
+    m_settled = nullptr;
+    m_settledGen++;
 }
 
 void Simulator::pauseSim() // Only pause simulation, don't update UI

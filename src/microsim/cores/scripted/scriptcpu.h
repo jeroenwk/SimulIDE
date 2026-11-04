@@ -6,6 +6,7 @@
 #ifndef SCRIPTCPU_H
 #define SCRIPTCPU_H
 
+#include "statelog.h"
 #include <QMutex>
 
 #include "scriptmodule.h"
@@ -41,7 +42,7 @@ class ScriptCpu : public ScriptModule, public McuCpu
         void showValue( string r );
         void setStatus( string text, int level );     // Called from script: part state (StatusView)
 
-        struct StatusEvent { uint64_t time; QString text; int level; uint64_t seq; };  // seq: unique, rising
+        typedef StateLog::Event StatusEvent;          // seq: unique, rising, shared with built-in parts' states
         QList<StatusEvent> statusHistory();           // State changes since the start (thread safe)
         StatusEvent status();                         // Current state, not the one held on screen
 

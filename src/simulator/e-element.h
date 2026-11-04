@@ -23,6 +23,11 @@ class eElement
         virtual void runEvent(){;}
         virtual void voltChanged(){;}
 
+        // Called once a time step has converged, with its settled node voltages, if the element
+        // asked for it during that step (Simulator::addToSettled, e.g. from voltChanged()). Part
+        // states are taken here: the values inside the non-linear iterations are not final
+        virtual void stepSettled(){;}
+
         virtual void setNumEpins( int n );
 
         virtual ePin* getEpin( int num );
@@ -42,6 +47,9 @@ class eElement
 
         eElement* nextEvent;
         uint64_t eventTime;
+
+        eElement* nextSettled = nullptr;
+        uint64_t  settledGen  = 0;     // Simulator::m_settledGen when last added
 
     protected:
         uint64_t m_pendingTime;

@@ -22,6 +22,8 @@ class Mosfet : public Component, public eMosfet
 
         virtual void initialize() override;
         virtual void updateStep() override;
+        virtual void voltChanged() override;
+        virtual void stepSettled() override;
 
         virtual void setPchannel( bool p ) override;
         virtual void setDepletion( bool d ) override;
@@ -29,9 +31,7 @@ class Mosfet : public Component, public eMosfet
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w ) override;
 
     private:
-        void updateRegion();
-
-        enum region_t { regOff=0, regActive, regOhmic };
+        enum region_t { regNone=-1, regOff=0, regActive, regOhmic };
         region_t m_region;
 };
 
