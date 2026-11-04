@@ -693,8 +693,8 @@ void CircuitWidget::syncEventLog()
     m_logCapsBox->setEnabled( ChargeView::self()->enabled() );
 }
 
-void CircuitWidget::eventMessage( QString text, int level, QString uid )
+void CircuitWidget::eventMessage( QString text, int level, QString uid, int64_t time )
 {
     bool dark = m_outPane.palette().color( QPalette::Base ).lightness() < 128;
-    m_outPane.appendPlain( text, StatusView::levelColor( level, dark ), uid );
+    m_outPane.appendPlain( text, StatusView::levelColor( level, dark ), uid, time );
 }

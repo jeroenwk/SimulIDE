@@ -137,7 +137,7 @@ void EventLog::solverReports()
                                "until one converges. Still iterating: %2").arg( r.iterations ).arg( names.join(", ") );
         if( m_events.size() >= maxEvents ) m_events.removeFirst();
         m_events.append({ r.time, false, "solver", uid, "solver", Component::stFault, text, true });
-        CircuitWidget::self()->eventMessage( "[ "+timeStr( r.time )+"] "+text, Component::stFault, uid );
+        CircuitWidget::self()->eventMessage( "[ "+timeStr( r.time )+"] "+text, Component::stFault, uid, (int64_t)r.time );
     }
 }
 
@@ -415,9 +415,11 @@ void EventLog::write( Component* comp, QString kind, const Line& line, bool show
         else tr.lines++;
     }
     if( m_events.size() >= maxEvents ) m_events.removeFirst();
-    m_events.append({ line.time, line.approx, comp->idLabel(), comp->getUid(), kind, line.level, line.text, shown && paneOn });
+    int at = m_events.size();                      // In time order: a line dated back goes before later ones
+    while( at > 0 && m_events[at-1].time > line.time && m_events[at-1].kind != "solver" ) at--;
+    m_events.insert( at, { line.time, line.approx, comp->idLabel(), comp->getUid(), kind, line.level, line.text, shown && paneOn });
 
     if( !shown || !paneOn ) return;
     QString text = "["+QString( line.approx ? "≈" : " " )+timeStr( line.time )+"] "+comp->idLabel()+"  "+line.text;
-    CircuitWidget::self()->eventMessage( text, line.level, comp->getUid() );
+    CircuitWidget::self()->eventMessage( text, line.level, comp->getUid(), (int64_t)line.time );
 }

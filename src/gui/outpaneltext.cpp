@@ -48,20 +48,32 @@ void OutPanelText::appendLine( const QString text )
     }
 }
 
-void OutPanelText::appendPlain( const QString text, QColor color, QString uid )
+void OutPanelText::appendPlain( const QString text, QColor color, QString uid, int64_t time )
 {
     updateStep();                                  // Keep the order with buffered text
     if( m_capture ) m_capture->append( text+"\n" );
 
     QTextCursor cursor( document() );
     cursor.movePosition( QTextCursor::End );
+    if( time >= 0 )                                // Before event lines with a later time
+    {
+        QTextBlock b = cursor.block().previous();  // The last line (the end is an empty block)
+        QTextBlock at;
+        for( int n=0; b.isValid() && n<2000; ++n, b = b.previous() )
+        {
+            PlainBlock* d = dynamic_cast<PlainBlock*>( b.userData() );
+            if( !d || d->time < 0 || d->time <= time ) break;
+            at = b;
+        }
+        if( at.isValid() ) cursor.setPosition( at.position() );
+    }
     int first = cursor.blockNumber();
     cursor.insertText( text+"\n" );
     int last = cursor.blockNumber();
     for( int i=first; i<last; ++i )               // Mark the blocks: the highlighter paints them in one colour
     {
         QTextBlock b = document()->findBlockByNumber( i );
-        b.setUserData( new PlainBlock( color, uid ) );
+        b.setUserData( new PlainBlock( color, uid, time ) );
         m_highlighter->rehighlightBlock( b );
     }
     moveCursor( QTextCursor::End );

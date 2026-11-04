@@ -43,7 +43,7 @@ class CircuitWidget : public QWidget
         void syncCurrentFlow( bool on ) { if( currentFlowAct->isChecked() != on ) currentFlowAct->setChecked( on ); }
         QString curCirc() { return m_curCirc; }   // File of the open circuit (empty: unsaved)
         void syncCapCharge( bool on ) { if( capChargeAct->isChecked() != on ) capChargeAct->setChecked( on ); }
-        void eventMessage( QString text, int level, QString uid );  // Event log line in Messages
+        void eventMessage( QString text, int level, QString uid="", int64_t time=-1 );  // time: in time order among event lines  // Event log line in Messages
         void syncEventLog();                                        // Checkboxes from EventLog
         void syncPartStatus( bool on ) { if( partStatusAct->isChecked() != on ) partStatusAct->setChecked( on ); }
         void syncInstruments( bool on ) { if( instrumentsAct->isChecked() != on ) instrumentsAct->setChecked( on ); }
