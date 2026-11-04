@@ -30,6 +30,7 @@ class Relay : public MechContact
         virtual void initialize() override;
         virtual void stamp() override;
         virtual void voltChanged() override;
+        virtual void stepSettled() override;
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w ) override;
 

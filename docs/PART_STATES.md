@@ -1,6 +1,6 @@
 # Part states for active components: implementation note
 
-Status (2026-11-04): steps 1 to 4 done. These are the shared mechanism, the thyristors (SCR, triac, diac), the op amp and voltage regulator, and the diode, zener and LED; the BJT and MOSFET are moved onto it. Step 5 (555, relay, mux) is open, to do only if useful.
+Status (2026-11-04): all five steps done. These are the shared mechanism; the thyristors (SCR, triac, diac); the op amp and voltage regulator; the diode, zener and LED; and the 555, relay and analog mux. The BJT and MOSFET are moved onto the mechanism.
 
 ## What a part state is
 
@@ -72,8 +72,9 @@ Example (Duncan Fig. 49.5, 100 mV in, full speed) [SIMULATED]:
 | Diode | OFF / ON (amber) / BREAKDOWN (red) / OVER (red) | junction current: conducting above 10 µA, back below 1 µA (a factor 10: currents near a zero crossing ring); its sign gives forward or reverse. OVER: above Max Current, back below 0.95×. A voltage threshold was tried first, but the forward voltage at small currents depends on the model (Is, n): a zener at 1.4 mA never reached 0.8 × its forward voltage | done (step 4), Show State **off** by default |
 | Zener | OFF / FORWARD (amber) / REGULATING (green) / OVER | as the diode; for a zener, reverse conduction is the working state | done (step 4), Show State on |
 | LED (Led, LedSmd: `LedBase`) | OFF / ON (green, lit) / OVER (red) | current above 10 µA (back below 5 µA); OVER: above Max Current at that moment. The crash drawing still uses the averaged current (1.5×), so a PWM-driven LED can show OVER on its pulses without crashing | done (step 4), Show State **off** by default |
-| 555 | output HIGH / LOW, DISCHARGE | its flip-flop | step 5, if useful |
-| Relay, analog mux | ENERGISED / channel n / DISABLED | coil state, address | step 5, if useful |
+| 555 | HIGH (green) / LOW (grey, discharging) / RESET (amber, reset pin < 0.7 V) | its flip-flop, reported in `runEvent()` when the output changes (10 ns after the comparators): an exact event time, no settled hook needed | done (step 5) |
+| Relay | ENERGISED (green) / RELEASED (grey) | the coil: above IOn until below IOff. Whether that closes or opens the contacts depends on Normally Closed | done (step 5) |
+| Analog mux | CH n (green) / DISABLED (grey) | address and enable, reported in `runEvent()` at the switch-over | done (step 5); only CH 0 checked, because its pins are outside the component's pin list, so the CLI can't wire them (an old limitation) |
 
 Checked on 2026-11-04 [SIMULATED], 50 Hz AC through a resistor, gate driven from 5 V through 100 Ω:
 - **SCR:** ON 0.2–10 ms and 20.2–30 ms, OFF in the negative half-cycles.
@@ -83,6 +84,8 @@ Checked on 2026-11-04 [SIMULATED], 50 Hz AC through a resistor, gate driven from
 - **Zener** 5.6 V through 1 kΩ, triangle −2..12 V: REGULATING above 5.4 ms (input 5.5 V), OFF from 14.8 ms, FORWARD from 18.8 ms (input −0.6 V), every 20 ms.
 - **LED**: 5 V through 150 Ω (20 mA) gives ON; through 47 Ω (≈ 60 mA, Max Current 30 mA) gives OVER.
 - **Bridge diodes** (led_driver `stage_0b_bridge.sim1`, cold lamp): each conducts in its own half-cycle. OVER from 0.63 to 7.9 ms during the inrush: about 5 A against the 1N4007 model's 1 A Max Current. That is the average rating; the real part takes a 30 A surge. One 10 µs ON blip at a zero crossing is real: that circuit's winding and probe capacitances make the current ring there.
+- **555** (`samples/555_astable_led_fader.sim1`, 100 µF via 33 kΩ): HIGH from 10 ns, LOW at 6.92 s, HIGH 8.95 s, LOW 14.23 s.
+- **Relay** (100 Ω coil, 10 Hz 0/5 V square): ENERGISED 0.5 ms after each rising edge (coil current through 20 mA), RELEASED 1.6 ms after each falling edge (below 10 mA).
 - **5 V regulator** on a 0–10 V triangle into 1 kΩ: OFF to 0.8 ms (input 0.75 V), DROPOUT to 5.8 ms (5.75 V), REGULATING until the input falls below 5.7 V (14.4 ms), OFF below 0.7 V (19.4 ms).
 
 ## Things to keep in mind
