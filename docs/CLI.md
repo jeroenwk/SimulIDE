@@ -327,7 +327,7 @@ that match the end of the run.
 | `ui controls <comp>` | Buttons, switches and dials of a part, with their state |
 | `ui press <comp> [index]` / `ui release <comp> [index]` | Hold or release a push button |
 | `ui click <comp> [index]` | Click (press and release); toggles switches |
-| `ui set <comp> [index] on\|off` | Set a switch or toggle |
+| `ui set <comp> [index] on\|off` | Set a switch or toggle. Switch and DIP switch positions are saved with the circuit (Switch: hidden property `Toggled`, true when flipped away from its Normally Closed setting) |
 | `ui dial <comp> [index] <value\|N%>` | Potentiometers, variable sources, encoders, sliders |
 | `ui key <char> [down\|up\|tap]` | Keyboard key, for parts bound to a key |
 

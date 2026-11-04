@@ -54,6 +54,12 @@ Switch::Switch( QString type, QString id )
         new StrProp <Switch>("Key", tr("Key"), ""
                             , this, &Switch::key, &Switch::setKey ),
     },0} );
+
+    // The switch position (toggled away from its normal position), saved with the circuit
+    addPropGroup( {"Hidden", {
+        new BoolProp<Switch>("Toggled", "", ""
+                            , this, &Switch::toggled, &Switch::setToggled ),
+    },0} );
 }
 Switch::~Switch(){}
 
@@ -61,6 +67,15 @@ void Switch::stamp()
 {
     MechContact::stamp();
     onbuttonclicked();
+}
+
+bool Switch::toggled() { return m_button->isChecked(); }
+
+void Switch::setToggled( bool t )
+{
+    if( t == m_button->isChecked() ) return;
+    m_button->setChecked( t );
+    SwitchBase::onbuttonclicked();
 }
 
 void Switch::keyEvent( QString key, bool pressed )
