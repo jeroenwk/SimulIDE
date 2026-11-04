@@ -117,7 +117,7 @@ bool WaveGen::setPropStr( QString prop, QString val )
 void WaveGen::stamp()
 {
     ClockBase::stamp();
-    m_lastVout = m_vOut = 0;
+    m_vOut = 0;
     m_index = 0;
 
     if( m_bipolar && m_floating )
@@ -141,6 +141,13 @@ void WaveGen::stamp()
         m_outpin->setImpedance( cero_doub );
         m_gndpin->setImpedance( cero_doub );
     }
+    // Start from the rest level, not from the voltage the pins had when the last run stopped:
+    // the first sample comes only at the next frame (ClockBase::updateStep), and a stale level
+    // (e.g. a mains source stopped near its peak) is a step of hundreds of volts into a
+    // discharged circuit at t = 0, which the non-linear iteration may never resolve.
+    m_lastVout = -1;                    // The first sample always writes the pins
+    m_outpin->forceVoltage( m_bipolar ? m_voltMid : m_voltBase );
+    m_gndpin->forceVoltage( m_bipolar ? m_voltMid : 0 );
 }
 
 void WaveGen::runEvent()
