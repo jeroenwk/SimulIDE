@@ -29,6 +29,7 @@
 #include "varistor.h"
 #include "lamp.h"
 #include "bjt.h"
+#include "mosfet.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -136,6 +137,17 @@ QJsonObject readComp( Component* comp )
         std::vector<Pin*> pins = comp->getPins();
         for( int i=0; i<3; ++i )
             if( pins[i]->isConnected() && pins[i]->hasTrueCurrent() ) o[ QString("i_")+names[i] ] = num( pins[i]->trueCurrent() );
+        if( comp->statusLevel() >= 0 ) o["state"] = comp->statusText();
+    }
+    else if( dynamic_cast<Mosfet*>( comp ) )      // Drain current and the region
+    {
+        std::vector<Pin*> pins = comp->getPins();   // drain, source, gate
+        if( pins[0]->isConnected() && pins[1]->isConnected() ){
+            o["vgs"] = num( pins[2]->isConnected() ? pins[2]->getVoltage()-pins[1]->getVoltage() : 0 );
+            o["vds"] = num( pins[0]->getVoltage()-pins[1]->getVoltage() );
+            if( pins[0]->hasTrueCurrent() ) o["i_drain"] = num( pins[0]->trueCurrent() );
+            else                            o["i_drain"] = num( pins[0]->getCurrent() );
+        }
         if( comp->statusLevel() >= 0 ) o["state"] = comp->statusText();
     }
     else if( comp->itemType() == "MCU" )          // Scripted core placed on its own: its state text
