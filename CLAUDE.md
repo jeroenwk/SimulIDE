@@ -89,6 +89,12 @@ When the user wants to build or try circuits together, follow **`docs/COLLABORAT
 - **Seeing the circuit:** `capture circuit` renders the scene to a PNG (it works headless and doesn't depend on the window's zoom). `capture window` grabs widgets. `select` and `view show` highlight parts in a shared GUI session. Read the resulting PNG to check visual state (LEDs, switches, scope screens).
 - **Edits go through the GUI's undo bookkeeping** (`beginUndoStep`, `addCompChange`, `endUndoStep`, ...). That keeps them undoable from both the GUI and the CLI.
 
+### Part states (`src/gui/circuitwidget/statusview.cpp`)
+- A scripted core reports its state with `component.setStatus(text, ST_OFF|ST_ON|ST_WAIT|ST_FAULT)` (`ScriptCpu::setStatus`, simulation thread). It keeps the current state, the most severe one since the last frame, and a history of changes with their times, all behind a mutex.
+- Once per frame, `ScriptCpu::updateStep()` copies the state to show to its component (`Component::setStatus`). A state more severe than the current one, seen during the frame, is held for 3 frames.
+- `StatusView` (an Updatable, like `ChargeView`, toggled from the toolbar and with `settings set partStatus`) gives each top-level part that reports a `StatusBadge`. That is a child item of the part, with the part's transform cancelled so it draws upright in scene coordinates: the part's own state and those of the scripted cores inside a subcircuit, as pills above the part, plus the outline in the most severe colour. The badges are removed when the simulation stops.
+- CLI: `read` (`status`) and `status <comp>` (history), in `cli_measure.cpp`.
+
 ### Other areas
 - `src/gui/editorwidget/` contains the code editor plus compiler/debugger integrations in `debuggers/`.
 - `src/gui/dataplotwidget/` contains the oscilloscope and logic-analyzer plots. `src/gui/serial/` contains the serial port and serial monitor.

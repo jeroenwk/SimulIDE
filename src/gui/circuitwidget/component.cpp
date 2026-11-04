@@ -42,6 +42,7 @@ Component::Component( QString type, QString id )
 
     m_showId     = false;
     m_showVal    = false;
+    m_statusLevel = -1;
     m_moving     = false;
     m_isMainComp = false;
     m_hidden     = false;
@@ -520,6 +521,17 @@ void Component::setLabelPos( float x, float y, int rot )
 void Component::updtLabelPos() { m_idLabel->updtLabelPos(); }
 
 void Component::setShowId( bool show ) { m_idLabel->setVisible( show ); m_showId = show; }
+QString Component::statusLevelStr( int level )
+{
+    switch( level ){
+        case stOff:   return "off";
+        case stOn:    return "on";
+        case stWait:  return "wait";
+        case stFault: return "fault";
+    }
+    return "";
+}
+
 void Component::setShowVal( bool show ) { m_valLabel->setVisible( show ); m_showVal = show; }
 
 QPointF Component::getValPos() { return m_valLabel->getLabelPos(); }

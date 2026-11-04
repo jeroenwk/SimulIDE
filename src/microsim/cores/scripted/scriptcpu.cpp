@@ -55,6 +55,9 @@ ScriptCpu::ScriptCpu( eMcu* mcu )
 
     m_mcuComp = m_mcu->component();
 
+    m_stLevel = m_stPeakLevel = m_stShowLevel = -1;
+    m_stHold = 0;
+
     m_aEngine->RegisterObjectType("eElement" ,0, asOBJ_REF | asOBJ_NOCOUNT );
     m_aEngine->RegisterObjectType("ScriptCpu",0, asOBJ_REF | asOBJ_NOCOUNT );
     //m_aEngine->RegisterObjectType("pod", sizeof(pod), asOBJ_VALUE | asOBJ_POD);
@@ -81,6 +84,16 @@ ScriptCpu::ScriptCpu( eMcu* mcu )
 
     m_aEngine->RegisterObjectMethod("ScriptCpu", "void showValue( string r )"
                                    , asMETHODPR( ScriptCpu, showValue, (string), void)
+                                   , asCALL_THISCALL );
+
+    m_aEngine->RegisterEnum("statusLevel");      // Part state levels for setStatus(), by severity
+    m_aEngine->RegisterEnumValue("statusLevel", "ST_OFF",   Component::stOff );
+    m_aEngine->RegisterEnumValue("statusLevel", "ST_ON",    Component::stOn );
+    m_aEngine->RegisterEnumValue("statusLevel", "ST_WAIT",  Component::stWait );
+    m_aEngine->RegisterEnumValue("statusLevel", "ST_FAULT", Component::stFault );
+
+    m_aEngine->RegisterObjectMethod("ScriptCpu", "void setStatus( string text, int level )"
+                                   , asMETHODPR( ScriptCpu, setStatus, (string, int), void)
                                    , asCALL_THISCALL );
 
     m_aEngine->RegisterObjectMethod("ScriptCpu", "void addEvent(uint64 t)"
@@ -247,6 +260,21 @@ void ScriptCpu::updateStep()
 
     m_aEngine->GarbageCollect( asGC_FULL_CYCLE );  // Automatic garbage collection is disabled, doing it manually
 
+    {                                             // Part state for the canvas (StatusView)
+        QMutexLocker lock( &m_statusLock );
+        if( m_stPeakLevel > m_stLevel )           // Something more severe happened during the frame:
+        {                                         // show it for a few frames, even if it is over
+            m_stShowText  = m_stPeakText;
+            m_stShowLevel = m_stPeakLevel;
+            m_stHold = 3;
+        }
+        else if( m_stHold > 0 ) m_stHold--;
+        else { m_stShowText = m_stText; m_stShowLevel = m_stLevel; }
+
+        m_stPeakText  = m_stText;
+        m_stPeakLevel = m_stLevel;
+        m_mcuComp->setStatus( m_stShowText, m_stShowLevel );
+    }
     if( !m_changed ) return;
     m_changed = false;
     m_mcuComp->setValLabelText( m_value );
@@ -258,6 +286,14 @@ void ScriptCpu::reset()
 
     m_mcuComp->setShowVal( true );
     m_value = "";
+    {
+        QMutexLocker lock( &m_statusLock );
+        m_stText.clear(); m_stPeakText.clear(); m_stShowText.clear();
+        m_stLevel = m_stPeakLevel = m_stShowLevel = -1;
+        m_stHold = 0;
+        m_stHistory.clear();
+    }
+    m_mcuComp->setStatus( "", -1 );
 
     if( m_reset ) callFunction( m_reset );
 }
@@ -358,6 +394,34 @@ void ScriptCpu::showValue( string r )
 {
     m_value = QString::fromStdString(r);
     m_changed = true;
+}
+
+void ScriptCpu::setStatus( string text, int level )
+{
+    QString t = QString::fromStdString( text );
+    if( level < Component::stOff || level > Component::stFault ) level = Component::stOff;
+
+    QMutexLocker lock( &m_statusLock );
+    if( t == m_stText && level == m_stLevel ) return;   // Only changes count
+    m_stText  = t;
+    m_stLevel = level;
+    if( level > m_stPeakLevel ) { m_stPeakText = t; m_stPeakLevel = level; }
+
+    if( m_stHistory.size() >= 1000 ) m_stHistory.removeFirst();
+    m_stHistory.append({ Simulator::self()->circTime(), t, level });
+}
+
+ScriptCpu::StatusEvent ScriptCpu::status()
+{
+    QMutexLocker lock( &m_statusLock );
+    uint64_t t = m_stHistory.isEmpty() ? 0 : m_stHistory.last().time;
+    return { t, m_stText, m_stLevel };
+}
+
+QList<ScriptCpu::StatusEvent> ScriptCpu::statusHistory()
+{
+    QMutexLocker lock( &m_statusLock );
+    return m_stHistory;
 }
 
 void ScriptCpu::addCpuReg( string name, string type )

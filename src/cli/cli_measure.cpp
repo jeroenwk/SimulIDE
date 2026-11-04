@@ -5,6 +5,9 @@
 
 #include "capacitorbase.h"
 #include "chargeview.h"
+#include "statusview.h"
+#include "mcu.h"
+#include "scriptcpu.h"
 #include <QGraphicsProxyWidget>
 #include <QAbstractButton>
 #include <QAbstractSlider>
@@ -36,6 +39,32 @@ void requireSim()
 }
 
 QJsonValue num( double v ) { return std::isfinite( v ) ? QJsonValue( v ) : QJsonValue(); }
+
+// Scripted cores of a part that report a state: the part itself (a core placed on its own)
+// or the cores inside a subcircuit, named after their block ("supply")
+QList<QPair<QString, ScriptCpu*>> statusCores( Component* comp )
+{
+    QList<QPair<QString, ScriptCpu*>> list;
+    auto add = [&list]( Component* c, QString name ){
+        if( Mcu* mcu = dynamic_cast<Mcu*>( c ) )
+            if( ScriptCpu* cpu = dynamic_cast<ScriptCpu*>( mcu->cpu() ) )
+                if( cpu->status().level >= 0 || !cpu->statusHistory().isEmpty() ) list.append({ name, cpu });
+    };
+    add( comp, "" );
+    if( SubCircuit* sub = dynamic_cast<SubCircuit*>( comp ) )
+        for( Component* inner : *sub->compList() ) add( inner, StatusView::blockName( inner ) );
+    return list;
+}
+
+QJsonObject statusJson( QString block, const ScriptCpu::StatusEvent& e, bool withTime )
+{
+    QJsonObject o;
+    if( !block.isEmpty() ) o["block"] = block;
+    o["text"]  = e.text;
+    o["level"] = Component::statusLevelStr( e.level );
+    if( withTime ) o["time"] = Cli::timeStr( e.time );
+    return o;
+}
 
 QJsonObject readComp( Component* comp )
 {
@@ -109,6 +138,11 @@ QJsonObject readComp( Component* comp )
         if( cores == 1 && states.size() == 1 ) o["state"] = states.first().section(": ", 1 );
         else if( !states.isEmpty() )           o["state"] = states.join(" | ");
     }
+
+    QJsonArray status;                            // States reported with setStatus (StatusView)
+    for( auto& core : statusCores( comp ) )
+        if( core.second->status().level >= 0 ) status.append( statusJson( core.first, core.second->status(), false ) );
+    if( !status.isEmpty() ) o["status"] = status;
 
     QJsonObject volts;
     std::vector<Pin*> pins = comp->getPins();
@@ -289,6 +323,34 @@ void CliApi::registerMeasure()
         QJsonArray list;
         for( QString ref : c.pos ) list.append( readComp( CliRefs::comp( ref ) ) );
         return list;
+    });
+
+    add("status", "status <comp> [--last N]",
+        "States a part reports (scripted cores: component.setStatus), now and every change since the start with its simulated time, "
+        "oldest first, across all its blocks (up to 1000 per block). --last N keeps the N most recent changes.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        Component* comp = CliRefs::comp( c.arg( 0, "component") );
+        auto cores = statusCores( comp );
+        if( cores.isEmpty() ) throw CliError( comp->getUid()+" reports no state (no setStatus calls since the start)");
+
+        QJsonArray now;
+        QList<QPair<QString, ScriptCpu::StatusEvent>> events;
+        for( auto& core : cores )
+        {
+            if( core.second->status().level >= 0 ) now.append( statusJson( core.first, core.second->status(), false ) );
+            for( auto& e : core.second->statusHistory() ) events.append({ core.first, e });
+        }
+        std::stable_sort( events.begin(), events.end(),
+                          []( const QPair<QString, ScriptCpu::StatusEvent>& a, const QPair<QString, ScriptCpu::StatusEvent>& b )
+                          { return a.second.time < b.second.time; } );
+        int last = c.has("last") ? c.opt("last").toInt() : 0;
+        if( last > 0 && events.size() > last ) events = events.mid( events.size()-last );
+
+        QJsonArray history;
+        for( auto& e : events ) history.append( statusJson( e.first, e.second, true ) );
+        return QJsonObject{ {"status", now}, {"history", history},
+                            {"time", Cli::timeStr( Simulator::self()->circTime() )} };
     });
 
     add("scope get", "scope get <comp>",
