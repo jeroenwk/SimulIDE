@@ -27,6 +27,7 @@
 #include "e-led.h"
 #include "e-resistor.h"
 #include "varistor.h"
+#include "lamp.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -102,6 +103,21 @@ QJsonObject readComp( Component* comp )
             o["current"] = num( v/r->res() );
             o["power"]   = num( v*v/r->res() );
     }   }
+    else if( Lamp* lamp = dynamic_cast<Lamp*>( comp ) )
+    {
+        std::vector<Pin*> pins = comp->getPins();
+        if( pins[0]->isConnected() && pins[1]->isConnected() )
+        {
+            double v = pins[0]->getVoltage() - pins[1]->getVoltage();
+            double r = lamp->filamentRes();
+            o["voltage"]    = num( v );
+            o["current"]    = num( v/r );
+            o["power"]      = num( v*v/r );
+            o["resistance"] = num( r );
+            if( lamp->thermal() ){
+                o["temperature"] = num( lamp->temperature() );
+                o["radiated"]    = num( lamp->radiated() );
+    }   }   }
     else if( Varistor* va = dynamic_cast<Varistor*>( comp ) )
     {
         std::vector<Pin*> pins = comp->getPins();
