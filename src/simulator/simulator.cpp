@@ -196,7 +196,12 @@ void Simulator::solveCircuit()
                 m_nonLinear->voltChanged();
                 m_nonLinear = m_nonLinear->nextChanged;
             }
-            if( m_maxNlstp && (m_NLstep++ >= m_maxNlstp) ) { m_warning = 1; return; } // Max iterations reached
+            if( m_maxNlstp && (m_NLstep++ >= m_maxNlstp) ) // Max iterations reached: warn, and give the
+            {                                              // next attempt a full budget again (the count
+                m_warning = 1;                             // used to stay over the limit, leaving one pass
+                m_NLstep = 0;                              // per step: stuck after one bad step)
+                return;
+            }
             if( m_state < SIM_RUNNING ){ m_converged = false; break; }    // Loop broken without converging
             if( m_changedNode ) solveMatrix();
         }
