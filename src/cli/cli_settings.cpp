@@ -14,6 +14,7 @@
 #include "simulator.h"
 #include "currentflow.h"
 #include "chargeview.h"
+#include "statusview.h"
 #include "theme.h"
 
 namespace
@@ -122,6 +123,9 @@ QList<Setting>& settings()
     list.append({"capCharge", "circuit", "Show capacitor charge: a gauge beside each capacitor and its plates coloured by voltage (see also read Cx).",
         [](){ return QJsonValue( ChargeView::self()->enabled() ); },
         []( QString v ){ ChargeView::self()->setEnabled( parseBool( v ) ); }});
+    list.append({"partStatus", "circuit", "Show part states: badges above each part that reports its state (scripted cores: component.setStatus) and its outline in the most severe state's colour (see also: status).",
+        [](){ return QJsonValue( StatusView::self()->enabled() ); },
+        []( QString v ){ StatusView::self()->setEnabled( parseBool( v ) ); }});
     list.append({"capLabel", "circuit", "Live label beside each capacitor while the charge display is on: off, volt, percent or both.",
         [](){ return QJsonValue( ChargeView::labelModes().at( ChargeView::self()->labelMode() ) ); },
         []( QString v ){

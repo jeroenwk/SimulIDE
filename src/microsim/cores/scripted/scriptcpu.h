@@ -6,6 +6,8 @@
 #ifndef SCRIPTCPU_H
 #define SCRIPTCPU_H
 
+#include <QMutex>
+
 #include "scriptmodule.h"
 #include "iopin.h"
 #include "mcucpu.h"
@@ -37,6 +39,11 @@ class ScriptCpu : public ScriptModule, public McuCpu
         virtual void command( QString c ) override;
         void toConsole( string r );
         void showValue( string r );
+        void setStatus( string text, int level );     // Called from script: part state (StatusView)
+
+        struct StatusEvent { uint64_t time; QString text; int level; };
+        QList<StatusEvent> statusHistory();           // State changes since the start (thread safe)
+        StatusEvent status();                         // Current state, not the one held on screen
 
         void addCpuReg( string name, string type );
         void addCpuVar( string name, string type );
@@ -106,6 +113,16 @@ class ScriptCpu : public ScriptModule, public McuCpu
         QHash<QString, asIScriptFunction*> m_propSetters;
 
         QString m_value;
+
+        QMutex  m_statusLock;      // setStatus() runs in the simulation thread, the CLI in the GUI thread
+        QString m_stText;          // Current state
+        int     m_stLevel;
+        QString m_stPeakText;      // Most severe state since the last frame
+        int     m_stPeakLevel;
+        QString m_stShowText;      // Shown on the canvas: a short fault stays a few frames
+        int     m_stShowLevel;
+        int     m_stHold;
+        QList<StatusEvent> m_stHistory;
 
         Watcher* m_watcher;
 

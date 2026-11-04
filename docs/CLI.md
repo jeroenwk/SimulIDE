@@ -178,6 +178,19 @@ and switches with it (live on macOS; elsewhere the mode at start). It covers the
 windows and panels; the circuit canvas keeps its own colours (Settings > Circuit >
 Colors). The code editor stays light in both modes.
 
+**Part states:** `settings set partStatus true|false` (on by default; the
+toolbar button with the red chip does the same) shows the states parts report
+while the simulation runs. A scripted core reports with
+`component.setStatus("HICCUP", ST_FAULT)`; the levels are `ST_OFF` (grey),
+`ST_ON` (green), `ST_WAIT` (amber) and `ST_FAULT` (red).
+- Each reporting block gets a badge above the part ("supply HICCUP"); waiting
+  and fault badges are filled.
+- The part's outline takes the colour of its most severe state.
+- A state shorter than a frame that was more severe than the current one stays
+  on screen for 3 frames, so a short fault is seen.
+- `status <comp>` lists the states now and every change with its simulated
+  time; `read <comp>` includes the current ones as `status`.
+
 **Capacitor charge:** `settings set capCharge true` shows how far each
 capacitor is charged (the toolbar button next to current flow does the same):
 - a gauge bar beside the part, filling upwards with |V| / Vref;
@@ -242,7 +255,8 @@ Removing wires around a junction works as in the GUI:
 | Command | |
 |---|---|
 | `probe <pin> ...` | Voltage and current (into the component) at pins |
-| `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors (voltage, current, power), capacitors (voltage, charge level, reference, flags), subcircuits with scripted cores (`state`: the text each script shows with `component.showValue`; with several cores `block: text | block: text`, e.g. `supply: ON | fb: OK | pwm: RUN`), plus pin voltages |
+| `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors (voltage, current, power), capacitors (voltage, charge level, reference, flags), subcircuits with scripted cores (`state`: the text each script shows with `component.showValue`; with several cores `block: text | block: text`, e.g. `supply: ON | fb: OK | pwm: RUN`; and `status`: each block's state set with `component.setStatus`, with its level), plus pin voltages |
+| `status <comp> [--last N]` | States a part reports with `component.setStatus`: now, and every change since the start with its simulated time (block, text, level `off`/`on`/`wait`/`fault`), oldest first. Restart times and blink rates come straight from it |
 | `scope data <comp> [--ch N] [--last TIME] [--max N]` | Oscilloscope or logic analyzer samples as `[time_s, value]`, oldest first |
 | `scope get <comp>` | Display settings: time/div, trigger, auto-scale, and per channel volts/div and positions |
 | `scope set <comp> [--timediv T] [--trigger CH\|none] [--voltdiv V\|a,b,c,d] [--voltpos ...] [--timepos ...] [--ch CH] [--autoscale CH\|none]` | Change display settings, as in the Expand panel |

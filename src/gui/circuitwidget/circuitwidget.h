@@ -42,6 +42,7 @@ class CircuitWidget : public QWidget
         void syncCurrentFlow( bool on ) { if( currentFlowAct->isChecked() != on ) currentFlowAct->setChecked( on ); }
         QString curCirc() { return m_curCirc; }   // File of the open circuit (empty: unsaved)
         void syncCapCharge( bool on ) { if( capChargeAct->isChecked() != on ) capChargeAct->setChecked( on ); }
+        void syncPartStatus( bool on ) { if( partStatusAct->isChecked() != on ) partStatusAct->setChecked( on ); }
         void powerCircOn();
         void powerCircOff();
         void powerCircDebug();
@@ -111,6 +112,7 @@ class CircuitWidget : public QWidget
         QAction* pauseSimAct;
         QAction* currentFlowAct;
         QAction* capChargeAct;
+        QAction* partStatusAct;
         QComboBox* m_timebase = nullptr;   // Simulated time per real second
         QAction* settAppAct;
         QAction* infoAct;

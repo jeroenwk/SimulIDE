@@ -15,6 +15,7 @@
 #include "descriptionwidget.h"
 #include "currentflow.h"
 #include "chargeview.h"
+#include "statusview.h"
 #include "circuitwidget.h"
 #include "editorwindow.h"
 #include "mainwindow.h"
@@ -184,6 +185,13 @@ void CircuitWidget::createActions()
     connect( capChargeAct, &QAction::toggled,
              []( bool on ){ ChargeView::self()->setEnabled( on ); } );
 
+    partStatusAct = new QAction( QIcon(":/partstatus.svg"),tr("Show Part States"), this);
+    partStatusAct->setStatusTip(tr("Show the states parts report (start-up, running, fault...): badges above each part and its outline coloured by the most severe one"));
+    partStatusAct->setCheckable( true );
+    partStatusAct->setChecked( StatusView::self()->enabled() );
+    connect( partStatusAct, &QAction::toggled,
+             []( bool on ){ StatusView::self()->setEnabled( on ); } );
+
     settAppAct = new QAction( QIcon(":/config.svg"),tr("Settings"), this);
     settAppAct->setStatusTip(tr("Settings"));
     connect( settAppAct, &QAction::triggered,
@@ -270,6 +278,7 @@ void CircuitWidget::createToolBars()
     m_circToolBar.addAction( pauseSimAct );
     m_circToolBar.addAction( currentFlowAct );
     m_circToolBar.addAction( capChargeAct );
+    m_circToolBar.addAction( partStatusAct );
     m_circToolBar.addSeparator();//..........................
 
     spacer = new QWidget();
@@ -445,6 +454,7 @@ void CircuitWidget::powerCircOn()
 
     CurrentFlow::self()->attach();       // Each circuit has a new Simulator
     ChargeView::self()->attach();
+    StatusView::self()->attach();
     m_infoWidget->setSimState( InfoWidget::shownRunning );
     Simulator::self()->startSim();
 }
@@ -467,6 +477,7 @@ void CircuitWidget::powerCircOff()
     m_infoWidget->setSimState( InfoWidget::shownStopped );
     CurrentFlow::self()->clear();
     ChargeView::self()->clear();
+    StatusView::self()->clear();
     Circuit::self()->update();
 }
 

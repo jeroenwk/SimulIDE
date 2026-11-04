@@ -71,6 +71,13 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
         void setValLabelText( QString t );
         QString getValLabelText();
 
+        // Part state shown on the canvas by StatusView (GUI thread). Level: -1 none, else statusLevel_t
+        enum statusLevel_t { stOff=0, stOn, stWait, stFault };   // Ordered by severity
+        void setStatus( QString text, int level ) { m_statusText = text; m_statusLevel = level; }
+        QString statusText()  { return m_statusText; }
+        int     statusLevel() { return m_statusLevel; }
+        static QString statusLevelStr( int level );               // "off", "on", "wait", "fault", ""
+
         QString showProp();
         void setShowProp( QString prop );
 
@@ -186,6 +193,9 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
         bool m_graphical;
         bool m_showId;
         bool m_showVal;
+
+        QString m_statusText;
+        int     m_statusLevel;
         bool m_moving;
         bool m_warning;
         bool m_crashed;
