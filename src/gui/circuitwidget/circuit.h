@@ -135,6 +135,8 @@ class Circuit : public QGraphicsScene
         void paste( QPointF eventpoint );
         void undo();
         void redo();
+        bool canUndo() { return m_undoIndex >= 0; }
+        bool canRedo() { return m_undoIndex < m_undoStack.size()-1; }
         void importCircuit();
         //void bom();
         void saveBackup();

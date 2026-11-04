@@ -10,6 +10,8 @@
 #include <QFileDialog>
 #include <QDesktopServices>
 #include <QSettings>
+#include <QTimer>
+#include <QKeySequence>
 
 #include "scriptpane.h"
 #include "descriptionwidget.h"
@@ -171,6 +173,24 @@ void CircuitWidget::createActions()
     connect( saveCircAsAct, &QAction::triggered,
                       this, &CircuitWidget::saveCircAs, Qt::UniqueConnection );
 
+    QString undoKey = QKeySequence( QKeySequence::Undo ).toString( QKeySequence::NativeText );
+    QString redoKey = QKeySequence( QKeySequence::Redo ).toString( QKeySequence::NativeText );
+    undoAct = new QAction( QIcon(":/undo.svg"), tr("Undo")+" ("+undoKey+")", this );
+    undoAct->setStatusTip( tr("Undo the last change to the circuit") );
+    connect( undoAct, &QAction::triggered, this, [](){ Circuit::self()->undo(); } );
+
+    redoAct = new QAction( QIcon(":/redo.svg"), tr("Redo")+" ("+redoKey+")", this );
+    redoAct->setStatusTip( tr("Redo the last undone change") );
+    connect( redoAct, &QAction::triggered, this, [](){ Circuit::self()->redo(); } );
+
+    QTimer* undoTimer = new QTimer( this ); // Grey the buttons out when there is nothing to undo/redo
+    connect( undoTimer, &QTimer::timeout, this, [this](){
+        Circuit* c = Circuit::self();
+        undoAct->setEnabled( c && c->canUndo() );
+        redoAct->setEnabled( c && c->canRedo() );
+    });
+    undoTimer->start( 200 );
+
     zoomFitAct = new QAction( QIcon(":/zoomfit.svg"),tr("Zoom to fit"), this);
     zoomFitAct->setStatusTip( tr("Zoom Circuit to fit all components"));
     connect( zoomFitAct, &QAction::triggered,
@@ -272,6 +292,13 @@ void CircuitWidget::createToolBars()
     m_circToolBar.addAction( openCircAct );
     m_circToolBar.addAction( saveCircAct );
     m_circToolBar.addAction( saveCircAsAct );
+    spacer = new QWidget();
+    spacer->setFixedWidth( 15 );
+    m_circToolBar.addWidget( spacer );
+    m_circToolBar.addSeparator();//..........................
+
+    m_circToolBar.addAction( undoAct );
+    m_circToolBar.addAction( redoAct );
     spacer = new QWidget();
     spacer->setFixedWidth( 15 );
     m_circToolBar.addWidget( spacer );

@@ -40,10 +40,9 @@ void PropVal::addMultipliers( QComboBox* unitBox, QString unit )
 
 void PropVal::prepareChange()
 {
-    m_undo = m_property->flags() & propNoCopy;
-    if( !m_undo ) return;
     m_oldValue = m_property->getValStr();
-    Circuit::self()->beginUndoStep();
+    m_undo = m_property->flags() & propNoCopy; // May create or remove items (pins...)
+    if( m_undo ) Circuit::self()->beginUndoStep();
 }
 
 void PropVal::saveChanges()
@@ -53,6 +52,7 @@ void PropVal::saveChanges()
         Circuit::self()->addCompChange( m_component->getUid(), m_propName, m_oldValue );
         Circuit::self()->endCircuitBatch();
     }
-    else m_propDialog->changed();
+    else if( m_property->getValStr() != m_oldValue ) // A plain value: one undo step
+        Circuit::self()->saveCompChange( m_component->getUid(), m_propName, m_oldValue );
     m_propDialog->updtValues();
 }

@@ -856,10 +856,20 @@ void Circuit::addCompChange( QString component, QString property, QString undoVa
 
 void Circuit::restoreState()
 {
-    if( m_simulator->isRunning() ) CircuitWidget::self()->powerCircOff();
-    m_busy = true;
-
     circChange& step = m_undoStack[ m_undoIndex ];
+
+    if( m_simulator->isRunning() ) // Plain value changes are applied live, like in the dialog
+    {
+        bool structural = false;
+        for( compChange& c : step.compChanges )
+        {
+            CompBase* comp = m_compMap.value( c.component );
+            ComProperty* p = comp ? comp->property( c.property ) : nullptr;
+            if( c.property == COMP_STATE_NEW || !p || (p->flags() & propNoCopy) ) { structural = true; break; }
+        }
+        if( structural ) CircuitWidget::self()->powerCircOff();
+    }
+    m_busy = true;
 
     int iStep, i;
     if( m_undo ) { iStep = -1; i = step.compChanges.size()-1; }
