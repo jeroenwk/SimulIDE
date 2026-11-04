@@ -42,9 +42,9 @@ double DSpinBox::valueFromText( const QString& text ) const
 double DSpinBox::evaluate( QString exp )
 {
     exp = "return "+ exp;
-    const char* code = exp.toLocal8Bit().data();
+    QByteArray code = exp.toLocal8Bit(); // Keep the bytes alive while the script runs
     double res = 0;
-    int r = ExecuteString( m_aEngine, code, &res, asTYPEID_DOUBLE );
+    int r = ExecuteString( m_aEngine, code.constData(), &res, asTYPEID_DOUBLE );
     //qDebug()<<"----\n" <<r<<code<<  "=" << res;
     if( r >= 0 ) return res;
     return NAN ;
