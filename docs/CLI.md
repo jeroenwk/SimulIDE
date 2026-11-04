@@ -202,13 +202,17 @@ what happens, with the simulated time, coloured like the part-state badges:
 - Part states: every `setStatus` change, exact time; changes within 1 µs share a line.
 - Capacitors whose **Log charge** property is on (`comp set C5 LogCharge=true`):
   charging, charged, discharging, discharged, above / back within the rated
-  voltage. Seen once per frame from 10 ms averages, so the time is marked ≈.
+  voltage. Seen once per frame from 20 ms averages (mains ripple averages
+  out), with a 3 % hysteresis, so the time is marked ≈.
+- Lines follow the toolbar: part states only while **Show Part States** is on,
+  capacitors only while **Show Capacitor Charge** is on; with both off the log
+  does no work. Switched on during a run, it starts from that moment.
 - A sequence of changes that comes three times in a row is summarised in one
   line with its period, then not listed until it changes ("cycle ended after
   N repeats"); at most 20 lines per part per second, then "N more changes".
 - Click a line to select its part. The **Part states** / **Capacitors**
   checkboxes above the pane (`settings set logParts|logCaps`) switch the lines
-  off; `log [--since T] [--kind part|cap] [--comp C] [--last N]` returns every
+  off as well (greyed while their toolbar display is off); `log [--since T] [--kind part|cap] [--comp C] [--last N]` returns every
   event of the run, also those not shown (`shown: false`).
 
 **Capacitor charge:** `settings set capCharge true` shows how far each

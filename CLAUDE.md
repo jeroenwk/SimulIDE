@@ -98,7 +98,8 @@ When the user wants to build or try circuits together, follow **`docs/COLLABORAT
 ### Event log (`src/gui/circuitwidget/eventlog.cpp`)
 - `EventLog` (an Updatable) runs once per frame:
   - It reads new part-state events (`ScriptCpu::statusHistory`, by sequence number) and joins changes within 1 µs into one line.
-  - It samples capacitors whose `LogCharge` property is on, comparing 10 ms means: charging, charged, discharging, discharged, over the rating. These times are approximate.
+  - It samples capacitors whose `LogCharge` property is on, from 20 ms means with a 3 % hysteresis: charging, charged, discharging, discharged, over the rating. These times are approximate.
+  - It only works while the matching toolbar display is on (`partsActive()`: Show Part States; `capsActive()`: Show Capacitor Charge). Switched on during a run, it catches up silently and logs from then on.
 - Lines are written to Messages (`OutPanelText::appendPlain` with a colour and the part's uid; a click selects the part).
 - A sequence of line signatures, which carry no numbers, that repeats 3 times is summarised with its period, up to 8 lines per cycle. Plateau lines ("charged", "steady") are left out of the signatures.
 - Rate limit: 20 lines per part per wall-clock second.

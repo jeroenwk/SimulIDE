@@ -39,6 +39,11 @@ class EventLog : public Updatable
         bool logCaps() { return m_logCaps; }
         void setLogCaps( bool l );
 
+        // Lines are written only while the matching toolbar display is on: part states with
+        // "Show Part States", capacitors with "Show Capacitor Charge" (and the checkbox here)
+        bool partsActive();
+        bool capsActive();
+
         QList<Event> events() { return m_events; }    // Since the simulation started
 
         void attach();      // Simulation started: register, forget the last run
@@ -69,10 +74,11 @@ class EventLog : public Updatable
             int  capState = -1;
             bool over = false;
             double peak = 0;
+            double ref  = -1;               // Level at the last event (hysteresis)
             QList<QPair<uint64_t, double>> samples;
         };
 
-        void partEvents( Component* comp );
+        void partEvents( Component* comp, bool silent=false );  // silent: catch up without lines
         void capEvents( CapacitorBase* cap, uint64_t now );
         void emitLine( Component* comp, QString kind, const Line& line );
         void write( Component* comp, QString kind, const Line& line, bool shown );
@@ -80,6 +86,8 @@ class EventLog : public Updatable
 
         bool m_logParts;
         bool m_logCaps;
+        bool m_partsWas = false;            // Active at the last frame
+        bool m_capsWas  = false;
 
         QHash<QString, Track> m_tracks;     // By component uid
         QList<Event> m_events;

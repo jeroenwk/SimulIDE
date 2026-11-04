@@ -81,9 +81,9 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     logRow->setContentsMargins( 6, 2, 6, 2 );
     QLabel* logLabel = new QLabel( tr("Log:"), m_msgWidget );
     m_logPartsBox = new QCheckBox( tr("Part states"), m_msgWidget );
-    m_logPartsBox->setToolTip( tr("Write every state change of parts that report one (e.g. IC1 supply: ON → HICCUP) with its simulated time") );
+    m_logPartsBox->setToolTip( tr("Write every state change of parts that report one (e.g. IC1 supply: ON → HICCUP) with its simulated time. Needs Show Part States on in the toolbar") );
     m_logCapsBox = new QCheckBox( tr("Capacitors"), m_msgWidget );
-    m_logCapsBox->setToolTip( tr("Write charging, charged, discharged and over-rating events of capacitors whose \"Log charge\" property is on") );
+    m_logCapsBox->setToolTip( tr("Write charging, charged, discharged and over-rating events of capacitors whose \"Log charge\" property is on. Needs Show Capacitor Charge on in the toolbar") );
     logRow->addWidget( logLabel );
     logRow->addWidget( m_logPartsBox );
     logRow->addWidget( m_logCapsBox );
@@ -680,6 +680,8 @@ void CircuitWidget::syncEventLog()
     if( !m_logPartsBox ) return;
     if( m_logPartsBox->isChecked() != EventLog::self()->logParts() ) m_logPartsBox->setChecked( EventLog::self()->logParts() );
     if( m_logCapsBox->isChecked()  != EventLog::self()->logCaps()  ) m_logCapsBox->setChecked( EventLog::self()->logCaps() );
+    m_logPartsBox->setEnabled( StatusView::self()->enabled() );      // Only with the toolbar display on
+    m_logCapsBox->setEnabled( ChargeView::self()->enabled() );
 }
 
 void CircuitWidget::eventMessage( QString text, int level, QString uid )

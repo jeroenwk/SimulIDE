@@ -92,8 +92,8 @@ class CircuitWidget : public QWidget
         CircuitView  m_circView;
         OutPanelText m_outPane;
         QWidget*   m_msgWidget;
-        QCheckBox* m_logPartsBox;
-        QCheckBox* m_logCapsBox;
+        QCheckBox* m_logPartsBox = nullptr;
+        QCheckBox* m_logCapsBox = nullptr;
         
         QToolBar m_circToolBar;
 
