@@ -26,6 +26,7 @@
 #include "freqmeter.h"
 #include "e-led.h"
 #include "e-resistor.h"
+#include "varistor.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -100,6 +101,17 @@ QJsonObject readComp( Component* comp )
             o["voltage"] = num( v );
             o["current"] = num( v/r->res() );
             o["power"]   = num( v*v/r->res() );
+    }   }
+    else if( Varistor* va = dynamic_cast<Varistor*>( comp ) )
+    {
+        std::vector<Pin*> pins = comp->getPins();
+        if( pins[0]->isConnected() && pins[1]->isConnected() )
+        {
+            double v = pins[0]->getVoltage() - pins[1]->getVoltage();
+            double i = va->current();
+            o["voltage"] = num( v );
+            o["current"] = num( i );
+            o["power"]   = num( v*i );
     }   }
     else if( comp->itemType() == "MCU" )          // Scripted core placed on its own: its state text
     {

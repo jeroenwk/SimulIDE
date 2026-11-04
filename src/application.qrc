@@ -125,6 +125,7 @@
         <file alias="resistor.png">../src/icons/components/resistor.png</file>
         <file alias="varresistor.png">../src/icons/components/varresistor.png</file>
         <file alias="thermistor.png">../src/icons/components/thermistor.png</file>
+        <file alias="varistor.png">../src/icons/components/varistor.png</file>
         <file alias="rtd.png">../src/icons/components/rtd.png</file>
         <file alias="strain.png">../src/icons/components/strain.png</file>
         <file alias="ldr.png">../src/icons/components/ldr.png</file>
