@@ -22,6 +22,8 @@
 #include "intprop.h"
 #include "stringprop.h"
 #include "pointprop.h"
+#include "statelog.h"
+#include "simulator.h"
 
 #define tr(str) simulideTr("Component",str)
 
@@ -123,7 +125,28 @@ new IntProp  <Component>("boardHflip" ,"","", this, &Component::boardHflip,  &Co
 new IntProp  <Component>("boardVflip" ,"","", this, &Component::boardVflip,  &Component::setBoardVflip ),
     }, groupHidden | groupNoCopy } );
 }
-Component::~Component(){}
+Component::~Component(){ delete m_stateLog; }
+
+void Component::enableStates( bool show )
+{
+    if( !m_stateLog ) m_stateLog = new StateLog();
+    m_showState = show;
+}
+
+ComProperty* Component::showStateProp()
+{
+    return new BoolProp<Component>("Show_State", tr("Show State"),"", this, &Component::showState, &Component::setShowState );
+}
+
+void Component::reportState( QString text, int level )
+{
+    if( m_stateLog ) m_stateLog->report( text, level, Simulator::self()->circTime() );
+}
+
+void Component::clearStates()
+{
+    if( m_stateLog ) m_stateLog->clear();
+}
 
 bool Component::setPropStr( QString prop, QString val )
 {

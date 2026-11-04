@@ -190,12 +190,14 @@ while the simulation runs. A scripted core reports with
   on screen for 3 frames, so a short fault is seen.
 - `status <comp>` lists the states now and every change with its simulated
   time; `read <comp>` includes the current ones as `status`.
-- BJTs report their operating region: **OFF** (grey, cut-off: VBE < 0.45 V),
-  **ACTIVE** (green, amplifying) and **SAT** (amber, saturated: VCE < 0.2 V),
-  with a little hysteresis at each boundary. The region is taken once per frame,
-  so it follows a fast signal only with the simulation slowed down (e.g. 1 kHz at
-  0.1 % speed). Messages logs the changes with the frame's time (approximate),
-  `read` gives the region as `state`; `status` covers scripted cores only.
+- Built-in parts report their operating state (`docs/PART_STATES.md`): BJTs
+  **OFF** (grey, cut-off: VBE < 0.45 V), **ACTIVE** (green, amplifying) and
+  **SAT** (amber, saturated: VCE < 0.2 V); SCRs, triacs and diacs **OFF** or
+  **ON** (amber, conducting). Each boundary has a little hysteresis. The state
+  is taken when each time step has converged, so the times are exact at any
+  speed. `status` lists them, `read` gives the current one as `state`, and
+  Messages logs them. A part's **Show State** property (`Show_State`) turns its
+  badge and log off.
 - MOSFETs (also depletion mode, used for JFETs) report **OFF** (grey, VGS below
   turn-on or past pinch-off), **ACTIVE** (green, amplifying: the FET's
   "saturation" region, VDS > VGS − Vth) and **OHMIC** (amber, fully on, a

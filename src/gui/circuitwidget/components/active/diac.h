@@ -26,6 +26,7 @@ class Diac : public Component, public eElement
         virtual void stamp() override;
         virtual void updateStep() override;
         virtual void voltChanged() override;
+        virtual void stepSettled() override;
 
         double resOn() { return m_resOn; }
         void setResOn( double r ) { m_resOn = r; m_changed = true; }

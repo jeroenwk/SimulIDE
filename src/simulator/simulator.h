@@ -96,6 +96,15 @@ class Simulator : public QObject
 
         inline void notCorverged() { m_converged = false; }
 
+        // Call el->stepSettled() once this time step has converged (once per step, however often called)
+        inline void addToSettled( eElement* el )
+        {
+            if( el->settledGen == m_settledGen ) return;
+            el->settledGen  = m_settledGen;
+            el->nextSettled = m_settled;
+            m_settled = el;
+        }
+
         void addToEnodeList( eNode* nod );
 
         void addToElementList( eElement* el );
@@ -116,6 +125,7 @@ class Simulator : public QObject
         inline void addToChangedNodes( eNode* nod ) { nod->nextCH = m_changedNode; m_changedNode = nod; }
         inline void addToChangedList( eElement* el ) { el->nextChanged = m_voltChanged; m_voltChanged = el; }
         inline void addToNoLinList( eElement* el ) { el->nextChanged = m_nonLinear;  m_nonLinear = el; }
+
 
         void createNodes();
         void resetSim();
@@ -142,6 +152,9 @@ class Simulator : public QObject
         eNode*    m_changedNode;
         eElement* m_voltChanged;
         eElement* m_nonLinear;
+        eElement* m_settled = nullptr;
+        uint64_t  m_settledGen = 1;
+        inline void runSettled();
 
         QList<eElement*> m_elementList;
         QList<Updatable*> m_updateList;

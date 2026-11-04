@@ -84,8 +84,10 @@ Triac::Triac( QString type, QString id )
                            , this, &Triac::trigCurr, &Triac::setTrigCurr ),
 
         new DoubProp<Triac>("HoldCurr", tr("Holding Current"), "mA"
-                           , this, &Triac::holdCurr, &Triac::setHoldCurr )
-    },0 } );
+                           , this, &Triac::holdCurr, &Triac::setHoldCurr ),
+        showStateProp()
+    },0} );
+    enableStates( true );
 }
 Triac::~Triac()
 {
@@ -97,6 +99,7 @@ Triac::~Triac()
 
 void Triac::initialize()
 {
+    clearStates();
     m_midEnode = new eNode( m_elmId+"-mideNode");
 }
 
@@ -136,6 +139,7 @@ void Triac::updateStep()
 
 void Triac::voltChanged()
 {
+    Simulator::self()->addToSettled( this );   // Latch state from this step's final values
     double current1 = m_resistor->current();
     double currentG = m_resistGa->current();
     bool state = m_state;
@@ -149,6 +153,15 @@ void Triac::voltChanged()
         double res = state ? 0.01 : 10e5;
         m_resistor->setRes( res );
     }
+}
+
+// Part state (docs/PART_STATES.md): ON = conducting (amber, like a switch that is on), else OFF.
+// m_state alone means "triggered": with gate current it stays set while the part blocks (reverse
+// half-cycle, zero crossing), so ON also needs a main current above 10 % of the holding current
+void Triac::stepSettled()
+{
+    if( m_state && qFabs( m_resistor->current() ) > 0.1*m_holdCurr ) reportState("ON",  stWait );
+    else                                    reportState("OFF", stOff );
 }
 
 void Triac::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )

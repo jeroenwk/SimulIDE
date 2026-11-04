@@ -57,22 +57,23 @@ Mosfet::Mosfet( QString type, QString id )
                             , this, &Mosfet::rdson, &Mosfet::setRDSon),
 
         new DoubProp<Mosfet>("Threshold", tr("Threshold"),"V"
-                            , this, &Mosfet::threshold, &Mosfet::setThreshold )
+                            , this, &Mosfet::threshold, &Mosfet::setThreshold ),
+        showStateProp()
     },0} );
+    enableStates( true );
 }
 Mosfet::~Mosfet(){}
 
 void Mosfet::initialize()
 {
     eMosfet::initialize();
-    m_region = regOff;
-    setStatus("OFF", stOff );
+    m_region = regNone;
+    clearStates();
 }
 
 void Mosfet::updateStep()
 {
     if( Circuit::self()->animate() ) update();
-    updateRegion();
 
     if( !m_changed ) return;
     m_changed = false;
@@ -81,32 +82,38 @@ void Mosfet::updateStep()
     voltChanged();
 }
 
-// Operating region for the part state label ("Show Part States") and the Messages log, once
-// per frame from the terminal voltages (P channel: polarities reversed). Vov = VGS - Vth is
-// the gate drive above the model's turn-on voltage (negative for depletion / JFET-like parts):
+void Mosfet::voltChanged()
+{
+    eMosfet::voltChanged();
+    if( m_stateLog ) Simulator::self()->addToSettled( this );   // Region from this step's final values
+}
+
+// Operating region, taken once a time step has converged (docs/PART_STATES.md). P channel:
+// polarities reversed. Vov = VGS - Vth is the gate drive above the model's turn-on voltage
+// (negative Vth for depletion / JFET-like parts):
 //   OFF     VGS below the turn-on voltage (pinch-off for depletion): no drain current
 //   ACTIVE  amplifying (the "saturation" region of a FET): VDS > Vov, ID set by VGS
 //   OHMIC   fully on, a resistor (RDSon): VDS < Vov. Same amber as a saturated BJT: a switch that is on
-// Each boundary has a hysteresis (0.05 V / 0.1 V) so the label does not flicker on it.
-void Mosfet::updateRegion()
+// Each boundary has a hysteresis (0.05 V) so the state does not flicker on it.
+void Mosfet::stepSettled()
 {
-    if( !Simulator::self()->isRunning() ) return;
     double vgs = m_ePin[2]->isConnected() ? m_ePin[2]->getVoltage()-m_ePin[1]->getVoltage() : 0;
     double vds = m_ePin[0]->getVoltage()-m_ePin[1]->getVoltage();
     if( m_Pchannel ){ vgs = -vgs; vds = -vds; }
     double vov = vgs-m_Gth;
 
     region_t r = m_region;
-    if( r == regOff ){ if( vov > 0.05 ) r = ( vds < vov ) ? regOhmic : regActive; }
+    if( r == regNone ) r = ( vov <= 0.025 ) ? regOff : ( vds < vov ) ? regOhmic : regActive;
+    else if( r == regOff ){ if( vov > 0.05 ) r = ( vds < vov ) ? regOhmic : regActive; }
     else if( vov < 0 ) r = regOff;
     else if( r == regActive ){ if( vds < vov-0.05 ) r = regOhmic; }
     else if( vds > vov+0.05 ) r = regActive;
 
     if( r == m_region ) return;
     m_region = r;
-    if     ( r == regOff    ) setStatus("OFF",    stOff );
-    else if( r == regActive ) setStatus("ACTIVE", stOn );
-    else                      setStatus("OHMIC",  stWait );
+    if     ( r == regOff    ) reportState("OFF",    stOff );
+    else if( r == regActive ) reportState("ACTIVE", stOn );
+    else                      reportState("OHMIC",  stWait );
 }
 
 void Mosfet::setPchannel( bool p )

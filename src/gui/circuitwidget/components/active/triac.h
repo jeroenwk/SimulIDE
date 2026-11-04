@@ -26,6 +26,7 @@ class Triac : public Component, public eElement
         virtual void stamp() override;
         virtual void updateStep() override;
         virtual void voltChanged() override;
+        virtual void stepSettled() override;
 
         double gateRes() { return m_gateRes; }
         void setGateRes( double r ) { m_gateRes = r; m_changed = true; }

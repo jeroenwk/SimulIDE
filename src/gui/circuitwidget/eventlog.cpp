@@ -8,6 +8,7 @@
 #include <algorithm>
 
 #include "eventlog.h"
+#include "statelog.h"
 #include "statusview.h"
 #include "chargeview.h"
 #include "mainwindow.h"
@@ -178,18 +179,8 @@ void EventLog::flushRate()
 void EventLog::partEvents( Component* comp, bool silent )
 {
     auto cores = StatusView::statusCores( comp );
-    if( cores.isEmpty() )                         // A built-in part with a state (BJT): seen at this frame
-    {
-        if( comp->statusLevel() < 0 ) return;
-        Track& tr = m_tracks[ comp->getUid() ];
-        QString text = comp->statusText();
-        QString from = tr.last.value("");
-        tr.last[""] = text;
-        if( silent || text == from ) return;
-        emitLine( comp, "part", { Simulator::self()->circTime(), true, comp->statusLevel(),
-                                  ( from.isEmpty() ? "" : from+" → " )+text, "="+text } );
-        return;
-    }
+    StateLog* own = comp->stateLog();             // A built-in part's operating state (BJT, MOSFET...)
+    if( cores.isEmpty() && !own ) return;
     Track& tr = m_tracks[ comp->getUid() ];
 
     struct Ev { QString block; ScriptCpu::StatusEvent e; };
@@ -198,10 +189,14 @@ void EventLog::partEvents( Component* comp, bool silent )
     for( auto& core : cores )
         for( auto& e : core.second->statusHistory() )
             if( e.seq > tr.seq ) { evs.append({ core.first, e }); maxSeq = qMax( maxSeq, e.seq ); }
+    if( own )
+        for( auto& e : own->history() )
+            if( e.seq > tr.seq ) { evs.append({ "", e }); maxSeq = qMax( maxSeq, e.seq ); }
     tr.seq = maxSeq;
     if( silent )                                  // Catch up: remember the states, no lines
     {
         for( auto& core : cores ) if( core.second->status().level >= 0 ) tr.last[ core.first ] = core.second->status().text;
+        if( own && own->current().level >= 0 ) tr.last[""] = own->current().text;
         return;
     }
     if( evs.isEmpty() ) return;

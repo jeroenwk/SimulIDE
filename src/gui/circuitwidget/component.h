@@ -19,6 +19,9 @@ class Connector;
 class ConnectorLine;
 class Linker;
 
+class StateLog;
+class ComProperty;
+
 class Component : public CompBase, public QGraphicsItem, public Updatable
 {
     Q_INTERFACES( QGraphicsItem )
@@ -77,6 +80,11 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
         QString statusText()  { return m_statusText; }
         int     statusLevel() { return m_statusLevel; }
         static QString statusLevelStr( int level );               // "off", "on", "wait", "fault", ""
+
+        // Operating state of a built-in part (BJT, MOSFET, SCR...): see docs/PART_STATES.md
+        StateLog* stateLog() { return m_showState ? m_stateLog : nullptr; }   // nullptr: none, or hidden
+        bool showState() { return m_showState; }
+        void setShowState( bool s ) { m_showState = s; }
 
         QString showProp();
         void setShowProp( QString prop );
@@ -196,6 +204,17 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
 
         QString m_statusText;
         int     m_statusLevel;
+
+        // A part that reports states calls enableStates() in its constructor and lists
+        // showStateProp() among its properties, then reportState() from the simulation thread
+        // (normally in eElement::stepSettled(), with the step's settled voltages)
+        void enableStates( bool show );
+        ComProperty* showStateProp();
+        void reportState( QString text, int level );
+        void clearStates();                  // In initialize(): a new run
+
+        StateLog* m_stateLog = nullptr;
+        bool      m_showState = true;
         bool m_moving;
         bool m_warning;
         bool m_crashed;

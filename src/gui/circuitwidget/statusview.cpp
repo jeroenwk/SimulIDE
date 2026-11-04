@@ -8,6 +8,7 @@
 #include <QFontMetricsF>
 
 #include "statusview.h"
+#include "statelog.h"
 #include "mainwindow.h"
 #include "circuit.h"
 #include "circuitwidget.h"
@@ -83,7 +84,12 @@ QList<QPair<QString, ScriptCpu*>> StatusView::statusCores( Component* comp )
 QList<StatusView::Block> StatusView::blocks( Component* comp )
 {
     QList<Block> list;
-    if( comp->statusLevel() >= 0 )                          // The part itself reports
+    if( StateLog* log = comp->stateLog() )                  // A built-in part's operating state
+    {
+        StateLog::Event e = log->shown();
+        if( e.level >= 0 ) list.append({ "", e.text, e.level });
+    }
+    else if( comp->statusLevel() >= 0 )                     // The part itself reports
         list.append({ "", comp->statusText(), comp->statusLevel() });
 
     if( SubCircuit* sub = dynamic_cast<SubCircuit*>( comp ) )   // Its cores report

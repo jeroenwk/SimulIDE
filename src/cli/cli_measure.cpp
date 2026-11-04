@@ -6,6 +6,7 @@
 #include "capacitorbase.h"
 #include "chargeview.h"
 #include "statusview.h"
+#include "statelog.h"
 #include "eventlog.h"
 #include "mcu.h"
 #include "scriptcpu.h"
@@ -137,7 +138,6 @@ QJsonObject readComp( Component* comp )
         std::vector<Pin*> pins = comp->getPins();
         for( int i=0; i<3; ++i )
             if( pins[i]->isConnected() && pins[i]->hasTrueCurrent() ) o[ QString("i_")+names[i] ] = num( pins[i]->trueCurrent() );
-        if( comp->statusLevel() >= 0 ) o["state"] = comp->statusText();
     }
     else if( dynamic_cast<Mosfet*>( comp ) )      // Drain current and the region
     {
@@ -148,7 +148,6 @@ QJsonObject readComp( Component* comp )
             if( pins[0]->hasTrueCurrent() ) o["i_drain"] = num( pins[0]->trueCurrent() );
             else                            o["i_drain"] = num( pins[0]->getCurrent() );
         }
-        if( comp->statusLevel() >= 0 ) o["state"] = comp->statusText();
     }
     else if( comp->itemType() == "MCU" )          // Scripted core placed on its own: its state text
     {
@@ -175,6 +174,11 @@ QJsonObject readComp( Component* comp )
         else if( !states.isEmpty() )           o["state"] = states.join(" | ");
     }
 
+    if( StateLog* log = comp->stateLog() )        // A built-in part's operating state (BJT, MOSFET...)
+    {
+        StateLog::Event e = log->current();
+        if( e.level >= 0 ) o["state"] = e.text;
+    }
     QJsonArray status;                            // States reported with setStatus (StatusView)
     for( auto& core : statusCores( comp ) )
         if( core.second->status().level >= 0 ) status.append( statusJson( core.first, core.second->status(), false ) );
@@ -362,16 +366,22 @@ void CliApi::registerMeasure()
     });
 
     add("status", "status <comp> [--last N]",
-        "States a part reports (scripted cores: component.setStatus), now and every change since the start with its simulated time, "
+        "States a part reports (scripted cores: component.setStatus; built-in parts: their operating state, docs/PART_STATES.md), now and every change since the start with its simulated time, "
         "oldest first, across all its blocks (up to 1000 per block). --last N keeps the N most recent changes.",
         []( CliCtx& c ) -> QJsonValue
     {
         Component* comp = CliRefs::comp( c.arg( 0, "component") );
         auto cores = statusCores( comp );
-        if( cores.isEmpty() ) throw CliError( comp->getUid()+" reports no state (no setStatus calls since the start)");
-
+        StateLog* own = comp->stateLog();         // A built-in part's operating state
+        if( cores.isEmpty() && !own ) throw CliError( comp->getUid()+" reports no state (no setStatus calls since the start, "
+                                                      "or its Show State property is off)");
         QJsonArray now;
         QList<QPair<QString, ScriptCpu::StatusEvent>> events;
+        if( own )
+        {
+            if( own->current().level >= 0 ) now.append( statusJson( "", own->current(), false ) );
+            for( auto& e : own->history() ) events.append({ "", e });
+        }
         for( auto& core : cores )
         {
             if( core.second->status().level >= 0 ) now.append( statusJson( core.first, core.second->status(), false ) );

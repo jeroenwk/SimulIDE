@@ -78,8 +78,10 @@ SCR::SCR( QString type, QString id )
                          , this, &SCR::trigCurr, &SCR::setTrigCurr ),
 
         new DoubProp<SCR>("HoldCurr", tr("Holding Current"), "mA"
-                         , this, &SCR::holdCurr, &SCR::setHoldCurr )
-    },0 } );
+                         , this, &SCR::holdCurr, &SCR::setHoldCurr ),
+        showStateProp()
+    },0} );
+    enableStates( true );
 }
 SCR::~SCR()
 {
@@ -90,6 +92,7 @@ SCR::~SCR()
 
 void SCR::initialize()
 {
+    clearStates();
     m_midEnode = new eNode( m_elmId+"-mideNode");
 }
 
@@ -127,6 +130,7 @@ void SCR::updateStep()
 
 void SCR::voltChanged()
 {
+    Simulator::self()->addToSettled( this );   // Latch state from this step's final values
     double voltAC = m_pin[0]->getVoltage() - m_pin[1]->getVoltage();
     double voltGC = m_pin[2]->getVoltage() - m_pin[1]->getVoltage();
     if( qFabs( voltAC ) < .01 && qFabs( voltGC ) < .01 ) return;  // Converged
@@ -145,6 +149,15 @@ void SCR::voltChanged()
         double res = state ? 0.0105 : 10e5;
         m_resistor->setRes( res );
     }
+}
+
+// Part state (docs/PART_STATES.md): ON = conducting (amber, like a switch that is on), else OFF.
+// m_state alone means "triggered": with gate current it stays set while the part blocks (reverse
+// half-cycle, series diode), so ON also needs a main current above 10 % of the holding current
+void SCR::stepSettled()
+{
+    if( m_state && m_resistor->current() > 0.1*m_holdCurr ) reportState("ON",  stWait );
+    else                                    reportState("OFF", stOff );
 }
 
 void SCR::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
