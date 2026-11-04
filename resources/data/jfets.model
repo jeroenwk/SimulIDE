@@ -1,0 +1,33 @@
+<!DOCTYPE SimulIDE>
+
+<!-- JFET models for the JFET component (e-jfet.cpp): SPICE level 1 (Shichman-Hodges).
+     beta (A/V2), vto (pinch-off, V, negative for both N and P channel, as in SPICE),
+     lambda (1/V), is (gate junction saturation current, A), n (emission coefficient, default 1).
+     IDSS = beta * vto^2. Not modelled: RD/RS (a few ohms), capacitances, temperature, breakdown.
+     Values from LTspice's standard.jft (https://ltwiki.org/index.php?title=Standard.jft);
+     the manufacturer is the "mfg" of each SPICE line. MPF102 uses that file's MPF102A line. -->
+
+<itemlib>
+    <itemset type="NJF">
+        <item name="2N3819" beta="1.304e-3"   vto="-3"       lambda="2.25e-3"   is="33.57e-15" /><!-- Vishay -->
+        <item name="2N4416" beta="989.4e-6"   vto="-3.06"    lambda="5.5e-3"    is="33.57e-15" /><!-- Fairchild -->
+        <item name="2N5457" beta="1.125e-3"   vto="-1.372"   lambda="2.3e-3"    is="181.3e-15" />
+        <item name="2N5484" beta="3.0e-3"     vto="-1.5"     lambda="10e-3"     is="0.25e-12"  /><!-- Siliconix -->
+        <item name="2N5485" beta="3.5e-3"     vto="-2.0"     lambda="10e-3"     is="0.25e-12"  /><!-- Siliconix -->
+        <item name="2N5486" beta="4.0e-3"     vto="-4.0"     lambda="10e-3"     is="0.25e-12"  /><!-- Siliconix -->
+        <item name="BF245A" beta="1.16621e-3" vto="-1.7372"  lambda="1.77211e-2" is="2.91797e-16" /><!-- Philips -->
+        <item name="BF245B" beta="1.09045e-3" vto="-2.3085"  lambda="2.31754e-2" is="2.59121e-16" /><!-- Philips -->
+        <item name="BF245C" beta="5.43157e-4" vto="-5.0014"  lambda="2.71505e-2" is="3.64346e-16" /><!-- Philips -->
+        <item name="J111"   beta="3.25e-3"    vto="-5.3638"  lambda="2.0e-2"    is="2.17605e-15" /><!-- Philips -->
+        <item name="J112"   beta="5.97264e-3" vto="-2.3303"  lambda="2.31986e-2" is="8.87988e-16" /><!-- Philips -->
+        <item name="J113"   beta="9.25964e-3" vto="-1.2854"  lambda="3.03839e-2" is="9.8687e-16"  /><!-- Philips -->
+        <item name="J201"   beta="1.621e-3"   vto="-0.6"     lambda="2.236e-3"  is="114.5e-15" />
+        <item name="J310"   beta="2.88371e-3" vto="-3.8366"  lambda="2.00998e-2" is="4.189e-16"  /><!-- Philips -->
+        <item name="MPF102" beta="1.04e-3"    vto="-3.41"    lambda="2e-3"      is="33.57e-15" />
+    </itemset>
+    <itemset type="PJF">
+        <item name="2N5460" beta="1.0e-3"     vto="-3.4"     lambda="10e-3"     is="1.5e-12"   /><!-- Siliconix -->
+        <item name="J175"   beta="2.84523e-3" vto="-3.632"   lambda="2.0e-2"    is="7.74158e-16" /><!-- Philips -->
+        <item name="J176"   beta="2.89414e-3" vto="-2.3"     lambda="2.0e-2"    is="4.51393e-16" /><!-- Philips -->
+    </itemset>
+</itemlib>

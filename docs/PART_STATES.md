@@ -63,7 +63,8 @@ Example (Duncan Fig. 49.5, 100 mV in, full speed) [SIMULATED]:
 | Part | States | Basis | Status |
 |---|---|---|---|
 | BJT | OFF / ACTIVE / SAT | OFF: VBE < 0.45 V (on above 0.5 V). SAT: VCE < 0.2 V (back to active above 0.3 V). PNP reversed | done |
-| MOSFET (incl. depletion, used for JFETs) | OFF / ACTIVE / OHMIC | Vov = VGS − Vth of the model. OFF: Vov < 0. OHMIC: VDS < Vov (0.05 V hysteresis). P channel reversed | done |
+| MOSFET (incl. depletion) | OFF / ACTIVE / OHMIC | Vov = VGS − Vth of the model. OFF: Vov < 0. OHMIC: VDS < Vov (0.05 V hysteresis). P channel reversed | done |
+| JFET | OFF / ACTIVE / OHMIC | Vov = VGS − Vto (pinch-off). OFF: Vov < 0. OHMIC: \|VDS\| < Vov (0.05 V hysteresis). P channel reversed | done |
 | SCR | OFF / ON | triggered (`m_state`) **and** anode current > 10 % of the holding current. With gate current present, `m_state` stays set while the series diode blocks the reverse half; that is not conduction | done (step 2) |
 | Triac | OFF / ON | same, with \|current\|: OFF at each zero crossing | done (step 2) |
 | Diac | OFF / ON | `m_state`: on above the breakover voltage, off below the holding current | done (step 2) |

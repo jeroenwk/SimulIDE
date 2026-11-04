@@ -74,6 +74,7 @@
 #include "mcu.h"
 #include "memory.h"
 #include "mosfet.h"
+#include "jfet.h"
 #include "mux.h"
 #include "mux_analog.h"
 #include "op_amp.h"
@@ -190,6 +191,7 @@ void ItemLibrary::loadItems()
     addItem( Triac::libraryItem() );
     addItem( new LibraryItem( QObject::tr("Transistors"), "Active", "transistors.png","Transistors", NULL ) );
     addItem( Mosfet::libraryItem() );
+    addItem( Jfet::libraryItem() );
     addItem( BJT::libraryItem() );
     addItem( new LibraryItem( QObject::tr("Other Active"), "Active", "2to2.png","Other Active", NULL ) );
     addItem( OpAmp::libraryItem() );

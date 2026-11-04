@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 36 24">
+  <!-- N-channel JFET for the component list: same layout as mosfet.png (gate left, drain up, source down) -->
+  <g stroke="#000" fill="none" stroke-linecap="square">
+    <line x1="13" y1="3" x2="13" y2="21" stroke-width="2.5"/>
+    <polyline points="14,6 25,6 25,0" stroke-width="2"/>
+    <polyline points="14,18 25,18 25,24" stroke-width="2"/>
+    <line x1="5" y1="18" x2="11" y2="18" stroke-width="2"/>
+  </g>
+  <polygon points="12,18 7.5,15.5 7.5,20.5" fill="#000"/>
+</svg>
