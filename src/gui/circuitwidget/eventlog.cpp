@@ -7,6 +7,8 @@
 #include <QtMath>
 #include <algorithm>
 
+#include <functional>
+
 #include "eventlog.h"
 #include "statelog.h"
 #include "statusview.h"
@@ -101,7 +103,7 @@ void EventLog::updateStep()
         {
             if( !cap->logCharge() ) continue;
             if( capsOn ) m_tracks.remove( cap->getUid() );   // Fresh samples
-            capEvents( cap, now );
+            capEvents( cap, now, capsOn );
         }
     }
 }
@@ -231,75 +233,126 @@ void EventLog::partEvents( Component* comp, bool silent )
 }
 
 // Capacitors with "Log charge": charging, charged, discharging, discharged, over the rating.
-// Sampled once per frame, from 20 ms means (ripple averages out), with a 3 % hysteresis.
-void EventLog::capEvents( CapacitorBase* cap, uint64_t now )
+// The capacitor records its voltage every 0.1 ms of simulated time (CapacitorBase::takeSamples),
+// so this does not depend on the simulation speed or the frame rate. A change is judged on
+// 20 ms means (two 100 Hz ripple periods, so ripple averages out) with a 3 % hysteresis; once
+// it is seen, the last 200 ms are searched for when it actually happened, and that is its time.
+void EventLog::capEvents( CapacitorBase* cap, uint64_t now, bool fresh )
+{
+    uint64_t t0;
+    QVector<float> pts = cap->takeSamples( now, &t0 );
+    if( pts.isEmpty() ) return;
+
+    const uint64_t step = CapacitorBase::sampleStep;
+    if( fresh && pts.size() > 1 ){           // Switched on during a run: from now on
+        t0 += (uint64_t)(pts.size()-1)*step;
+        pts.remove( 0, pts.size()-1 );
+    }
+    Track& tr = m_tracks[ cap->getUid() ];
+    const int W = 20*ms/step;                 // Points in 20 ms
+
+    if( tr.hist.empty() )                     // As if steady at the first voltage before
+    {
+        double v0 = qAbs( pts.first() );
+        tr.hist.assign( 10*W, v0 );
+        tr.s0 = tr.s1 = W*v0;
+        tr.peak = v0;
+        tr.ref  = v0;
+        tr.capState = ( v0 < 0.05*qMax( v0, 0.5 ) ) ? 0 : 2;  // Empty or Steady
+    }
+    for( int i=0; i<pts.size(); ++i ) capPoint( cap, tr, t0 + (uint64_t)i*step, qAbs( pts[i] ) );
+}
+
+void EventLog::capPoint( CapacitorBase* cap, Track& tr, uint64_t t, double v )
 {
     enum { Empty=0, Charging, Steady, Discharging };
-    Track& tr = m_tracks[ cap->getUid() ];
-    double v = qAbs( cap->capVolt() );
+    const int W = 20*ms/CapacitorBase::sampleStep;
+    const uint64_t step = CapacitorBase::sampleStep;
 
-    tr.samples.append({ now, v });
-    while( !tr.samples.isEmpty() && tr.samples.first().first+60*ms < now ) tr.samples.removeFirst();
+    tr.hist.push_back( v );                   // Slide the two 20 ms windows
+    int n = (int)tr.hist.size();
+    double x = tr.hist[ n-1-W ];
+    tr.s1 += v - x;
+    tr.s0 += x - tr.hist[ n-1-2*W ];
+    tr.hist.pop_front();                      // 200 ms kept to find when things happened
+    n--;
+
     tr.peak = qMax( tr.peak, v );
     double scale = qMax( tr.peak, 0.5 );
 
-    double mv = cap->maxVolt();                   // Rated voltage
+    double mv = cap->maxVolt();                   // Rated voltage: exact, point by point
     if( mv > 0 && !tr.over && v > mv )
     {
         tr.over = true;
-        emitLine( cap, "cap", { now, true, Component::stFault,
+        emitLine( cap, "cap", { t, false, Component::stFault,
                   "above its "+ChargeView::voltStr( mv )+" rating: "+ChargeView::voltStr( v ), "over" } );
     }
     else if( tr.over && v < mv*0.98 )
     {
         tr.over = false;
-        emitLine( cap, "cap", { now, true, Component::stOn, "back within its rating", "rated" } );
+        emitLine( cap, "cap", { t, false, Component::stOn, "back within its rating", "rated" } );
     }
 
-    double s1 = 0, s0 = 0; int n1 = 0, n0 = 0;    // Means of the last 20 ms and the 20 ms before:
-    for( auto& s : tr.samples )                   // two 100 Hz ripple periods, so ripple averages out
-    {
-        if     ( s.first+20*ms > now ) { s1 += s.second; n1++; }
-        else if( s.first+40*ms > now ) { s0 += s.second; n0++; }
-    }
-    if( tr.capState < 0 ) tr.capState = ( v < 0.05*scale ) ? Empty : Steady;
-    if( n1 == 0 || n0 == 0 ) return;              // Not 40 ms of history yet
-    double m1 = s1/n1, m0 = s0/n0;
-    if( tr.ref < 0 ) tr.ref = m1;
+    double m1 = tr.s1/W, m0 = tr.s0/W;
+    auto timeAt = [&]( int k ){ return t - (uint64_t)( n-1-k )*step; };
+    int from = 0;                              // Searches go back no further than the last event
+    if( tr.evTime && t > tr.evTime ) from = qMax( 0, n-1-int( ( t-tr.evTime )/step ) );
+    int found = from;
+    auto lastWhere  = [&]( std::function<bool(double)> ok ){
+        for( int k=n-1; k>=from; --k ) if( ok( tr.hist[k] ) ){ found = k; return timeAt( k ); }
+        found = from; return timeAt( from ); };
+    auto firstWhere = [&]( std::function<bool(double)> ok ){
+        for( int k=from; k<n; ++k ) if( ok( tr.hist[k] ) ){ found = k; return timeAt( k ); }
+        found = n-1; return t; };
+    double lo = v, hi = v;                     // Ripple of the last 20 ms
+    for( int k=n-W; k<n; ++k ){ lo = qMin( lo, tr.hist[k] ); hi = qMax( hi, tr.hist[k] ); }
 
     // A move of 3 % of the capacitor's own scale away from the level of the last event (or the
     // extreme since, while it keeps going the same way) is an event; less is ripple or drift
     if     ( tr.capState == Charging    ) tr.ref = qMax( tr.ref, m1 );
     else if( tr.capState == Discharging ) tr.ref = qMin( tr.ref, m1 );
     double thr = qMax( 0.03*scale, 0.02 );
+    double ref = tr.ref;
 
-    QString what, sig; int level = Component::stOn;
-    if( m1 > tr.ref+thr && tr.capState != Charging )
+    QString what, sig; int level = Component::stOn; uint64_t when = t;
+    if( m1 > ref+thr && tr.capState != Charging )
     {
         level = Component::stWait;
-        sig  = QString("charging@%1").arg( qRound( 10*tr.ref/scale ) );   // Starting level in 10 % steps
-        what = "charging from "+ChargeView::voltStr( tr.ref );
+        sig  = QString("charging@%1").arg( qRound( 10*ref/scale ) );   // Starting level in 10 % steps
+        lastWhere( [&]( double u ){ return u <= ref+thr/4; } );         // Near the old level...
+        while( found > from && tr.hist[found-1] < tr.hist[found] ) found--;  // ...the foot of the rise
+        when = timeAt( found );
+        what = "charging from "+ChargeView::voltStr( tr.hist[found] );
         tr.capState = Charging; tr.ref = m1;
     }
-    else if( m1 < tr.ref-thr && tr.capState != Discharging && tr.capState != Empty )
+    else if( m1 < ref-thr && tr.capState != Discharging && tr.capState != Empty )
     {
         level = Component::stOff;
-        sig  = QString("discharging@%1").arg( qRound( 10*tr.ref/scale ) );
-        what = "discharging from "+ChargeView::voltStr( tr.ref );
+        sig  = QString("discharging@%1").arg( qRound( 10*ref/scale ) );
+        lastWhere( [&]( double u ){ return u >= ref-thr/4; } );
+        while( found > from && tr.hist[found-1] > tr.hist[found] ) found--;  // The top of the fall
+        when = timeAt( found );
+        what = "discharging from "+ChargeView::voltStr( tr.hist[found] );
         tr.capState = Discharging; tr.ref = m1;
     }
     else if( tr.capState == Discharging && m1 < 0.05*scale )
     {
         level = Component::stOff; sig = "discharged"; what = "discharged";
+        when = firstWhere( [&]( double u ){ return u < 0.05*scale; } );
         tr.capState = Empty; tr.ref = m1;
     }
     else if( qAbs( m1-m0 ) < 0.005*scale && ( tr.capState == Charging || tr.capState == Discharging ) )
     {
-        sig  = "~";                               // A plateau: only seen if a frame catches it, not used for cycles
+        sig  = "~";                               // A plateau, not used for cycles
         what = ( tr.capState == Charging ? "charged to " : "steady at " )+ChargeView::voltStr( m1 );
+        double band = qMax( thr, ( hi-lo )/2 );   // The new level, ripple included
+        bool up = tr.capState == Charging;
+        when = firstWhere( [&]( double u ){ return up ? u >= m1-band : u <= m1+band; } );
         tr.capState = Steady; tr.ref = m1;
     }
-    if( !what.isEmpty() ) emitLine( cap, "cap", { now, true, level, what, sig } );
+    if( what.isEmpty() ) return;
+    tr.evTime = when;
+    emitLine( cap, "cap", { when, false, level, what, sig } );
 }
 
 // Repeating cycles are summarised: once the same sequence of changes has come three times, one line

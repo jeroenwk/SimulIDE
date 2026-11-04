@@ -7,6 +7,8 @@
 #define CAPACITORBASE_H
 
 #include <QGraphicsItem>
+#include <QMutex>
+#include <QVector>
 
 #include "reactive.h"
 
@@ -56,6 +58,14 @@ class CapacitorBase : public Reactive
         QStringList chargeFlags();    // "overvoltage", "reversed", "overflow"
         void chargeDisplayChanged();  // Setting toggled or simulation stopped
 
+        // Charge log (Log charge on): the voltage every sampleStep of simulated time, held
+        // between steps, recorded in the simulation thread. takeSamples() hands the EventLog
+        // the points up to `now` (GUI thread) and the time of the first one
+        static constexpr uint64_t sampleStep = 100*1000*1000;   // 0.1 ms in ps
+        QVector<float> takeSamples( uint64_t now, uint64_t* firstTime );
+
+        virtual void stamp() override;
+
     protected:
         virtual double updtRes()  override { return m_tStep/m_capacitance; }
         virtual double updtCurr() override { return m_volt*m_admit; }
@@ -65,11 +75,19 @@ class CapacitorBase : public Reactive
         bool chargeShown();
         virtual bool isReversed() { return false; }
 
+        virtual void voltSample() override;
+        void fillTo( uint64_t time );          // Grid points before `time` at the held voltage
+
         double m_capacitance;
         double m_maxVolt;
         bool   m_logCharge;
 
         ChargeGauge* m_gauge;
+
+        QMutex         m_sampleLock;
+        QVector<float> m_samples;              // Not yet taken
+        uint64_t       m_nextSample = 0;       // Time of the next grid point
+        double         m_heldVolt = 0;
 };
 
 #endif
