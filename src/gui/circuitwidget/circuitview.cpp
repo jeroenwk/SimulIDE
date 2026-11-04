@@ -19,6 +19,7 @@
 #include "subcircuit.h"
 #include "utils.h"
 #include "e-diode.h"
+#include "e-jfet.h"
 #include "linker.h"
 
 #define tr(str) QCoreApplication::translate("CircuitView",str)
@@ -37,6 +38,7 @@ CircuitView::CircuitView( QWidget *parent )
     m_enterItem = NULL;
 
     eDiode::getModels();
+    eJfet::getModels();
 
     //viewport()->setFixedSize( 3200, 2400 );
     bool scrollBars = MainWindow::self()->settings()->value( "Circuit/showScroll" ).toBool();

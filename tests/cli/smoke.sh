@@ -412,6 +412,28 @@ check "links saved"             'r["ok"]'                                  -- ci
 if grep -q 'Links="Csource-' "$TMP/part/part.sim1"; then ok "Links in the file"; else fail "Links in the file"; fi
 check "comp link --clear"       'r["result"]["links"]==[]'                 -- comp link CORE --clear
 
+echo "JFET"
+# 2N3819 (Beta 1.304m, Vto -3, Lambda 2.25m): IDSS x (1 + 15 Lambda) = 12.132 mA at VGS 0, VDS 15 V
+check "new circuit"             'r["ok"]'                                  -- circuit new --discard
+cli comp add Jfet --at 0,0 --label J1 >/dev/null
+cli comp add Rail --at 8,-48 --label VD Voltage=15 >/dev/null
+cli comp add Rail --at -48,-8 --label VG Voltage=0 >/dev/null
+cli comp add Ground --at 8,72 --label G >/dev/null
+for w in "VD.outnod J1.Dren" "VG.outnod J1.Gate" "J1.Sour G.Gnd"; do cli wire add $w >/dev/null 2>&1; done
+check "default model 2N3819"    '[p for p in r["result"]["properties"] if p["name"]=="Model"][0]["value"]=="2N3819"' -- comp get J1
+check "run 100us"               'r["ok"]'                                  -- sim run --for 100us
+check "IDSS at VDS 15 V"        'abs(r["result"]["i_drain"]-0.0121321) < 1e-6 and r["result"]["state"]=="ACTIVE"' -- read J1
+check "VGS -2 V"                'r["ok"]'                                  -- comp set VG Voltage=-2
+check "run 100us"               'r["ok"]'                                  -- sim run --for 100us
+check "Beta (VGS-Vto)^2 (1+15 Lambda)" 'abs(r["result"]["i_drain"]-0.00134801) < 1e-7' -- read J1
+check "VGS -3.5 V: OFF"         'r["ok"]'                                  -- comp set VG Voltage=-3.5
+check "run 100us"               'r["ok"]'                                  -- sim run --for 100us
+check "...no drain current"     'abs(r["result"]["i_drain"]) < 1e-9 and r["result"]["state"]=="OFF"' -- read J1
+check "model J175 (P channel)"  'r["ok"]'                                  -- comp set J1 Model=J175
+check "...sets P channel"       '[p for p in r["result"]["properties"] if p["name"]=="P_Channel"][0]["value"]=="true"' -- comp get J1
+check "edit IDSS -> Custom"     'r["ok"]'                                  -- comp set J1 IDSS=5m
+check "...model Custom"         '[p for p in r["result"]["properties"] if p["name"]=="Model"][0]["value"]=="Custom"' -- comp get J1
+
 echo "Quit"
 check "quit"                    'r["ok"]'                                  -- quit --discard
 wait "$PID"

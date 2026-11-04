@@ -31,6 +31,7 @@
 #include "lamp.h"
 #include "bjt.h"
 #include "mosfet.h"
+#include "jfet.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -147,6 +148,16 @@ QJsonObject readComp( Component* comp )
             o["vds"] = num( pins[0]->getVoltage()-pins[1]->getVoltage() );
             if( pins[0]->hasTrueCurrent() ) o["i_drain"] = num( pins[0]->trueCurrent() );
             else                            o["i_drain"] = num( pins[0]->getCurrent() );
+        }
+    }
+    else if( dynamic_cast<Jfet*>( comp ) )        // Drain and gate current and the region
+    {
+        std::vector<Pin*> pins = comp->getPins();   // drain, source, gate
+        if( pins[0]->isConnected() && pins[1]->isConnected() ){
+            o["vgs"] = num( pins[2]->isConnected() ? pins[2]->getVoltage()-pins[1]->getVoltage() : 0 );
+            o["vds"] = num( pins[0]->getVoltage()-pins[1]->getVoltage() );
+            if( pins[0]->hasTrueCurrent() ) o["i_drain"] = num( pins[0]->trueCurrent() );
+            if( pins[2]->hasTrueCurrent() ) o["i_gate"]  = num( pins[2]->trueCurrent() );
         }
     }
     else if( comp->itemType() == "MCU" )          // Scripted core placed on its own: its state text
