@@ -21,6 +21,7 @@
         <item name="J111"   beta="3.25e-3"    vto="-5.3638"  lambda="2.0e-2"    is="2.17605e-15" /><!-- Philips -->
         <item name="J112"   beta="5.97264e-3" vto="-2.3303"  lambda="2.31986e-2" is="8.87988e-16" /><!-- Philips -->
         <item name="J113"   beta="9.25964e-3" vto="-1.2854"  lambda="3.03839e-2" is="9.8687e-16"  /><!-- Philips -->
+        <item name="MMBF5103" beta="5.97264e-3" vto="-2.3303" lambda="2.31986e-2" is="8.87988e-16" /><!-- No published model: onsemi's datasheet says "Sourced from Process 51, see J111"; the J112 (same process) fits its limits (VGS(off) -1.2..-2.7 V, IDSS 10..40 mA), so its values are used -->
         <item name="J201"   beta="1.621e-3"   vto="-0.6"     lambda="2.236e-3"  is="114.5e-15" />
         <item name="J310"   beta="2.88371e-3" vto="-3.8366"  lambda="2.00998e-2" is="4.189e-16"  /><!-- Philips -->
         <item name="MPF102" beta="1.04e-3"    vto="-3.41"    lambda="2e-3"      is="33.57e-15" />
