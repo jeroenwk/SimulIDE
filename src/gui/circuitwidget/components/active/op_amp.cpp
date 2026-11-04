@@ -81,8 +81,10 @@ OpAmp::OpAmp( QString type, QString id )
                            , this, &OpAmp::gain, &OpAmp::setGain ),
 
         new DoubProp<OpAmp>("Out_Imped", tr("Output Impedance"),"Ω"
-                           , this, &OpAmp::outImp, &OpAmp::setOutImp )
-    },0 } );
+                           , this, &OpAmp::outImp, &OpAmp::setOutImp ),
+        showStateProp()
+    },0} );
+    enableStates( true );
 
     addPropGroup( { tr("Supply"), {
         new BoolProp<OpAmp>("Power_Pins", tr("Use Supply Pins"),""
@@ -109,6 +111,8 @@ void OpAmp::initialize()
     m_lastOut = 0;
     m_lastIn  = 0;
     m_k = 1e-6/m_gain;
+    m_region = -1;
+    clearStates();
 }
 
 void OpAmp::stamp()
@@ -131,8 +135,34 @@ void OpAmp::updateStep()
     voltChanged();
 }
 
+// Part state (docs/PART_STATES.md), from the output the gain asks for, gain x (V+ - V-), against the
+// rails (supply pins, or V+ / V- when they are not used):
+//   LINEAR  the output follows (green): the feedback holds it
+//   SAT+    it would go above the positive rail: clipped there (amber). Open loop (a comparator): high
+//   SAT-    the same at the negative rail
+// 10 mV hysteresis on each rail so the state does not flicker at the edge.
+void OpAmp::stepSettled()
+{
+    double ideal = ( m_inputP->getVoltage()-m_inputN->getVoltage() )*m_gain;
+    double h = 0.01;
+    int r = m_region;
+    if( r == 1 ){ if( ideal < m_voltPos-h ) r = 0; }
+    else if( r == 2 ){ if( ideal > m_voltNeg+h ) r = 0; }
+    if( r <= 0 ){
+        if     ( ideal >= m_voltPos+h ) r = 1;   // Also at the first step: inputs at 0 V sit
+        else if( ideal <= m_voltNeg-h ) r = 2;   // exactly on a 0 V rail, that is not SAT-
+        else r = 0;
+    }
+    if( r == m_region ) return;
+    m_region = r;
+    if     ( r == 0 ) reportState("LINEAR", stOn );
+    else if( r == 1 ) reportState("SAT+",   stWait );
+    else              reportState("SAT-",   stWait );
+}
+
 void OpAmp::voltChanged() // Called when any pin node change volt
 {
+    Simulator::self()->addToSettled( this );   // State from this step's final values
     if( m_powerPins )
     {
         m_voltPos = m_pin[3]->getVoltage();
