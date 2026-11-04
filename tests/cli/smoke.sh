@@ -41,7 +41,7 @@ check() {
     local desc=$1 expr=$2; shift 3
     local out
     out=$(jcli "$@" 2>&1)
-    if echo "$out" | python3 -c "import json,sys; r=json.load(sys.stdin); sys.exit(0 if ($expr) else 1)" 2>/dev/null
+    if printf '%s\n' "$out" | python3 -c "import json,sys; r=json.load(sys.stdin); sys.exit(0 if ($expr) else 1)" 2>/dev/null
     then ok "$desc"
     else fail "$desc" "$out"
     fi
