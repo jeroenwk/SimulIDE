@@ -52,6 +52,9 @@ class CircuitView : public QGraphicsView
         
     protected:
         void contextMenuEvent( QContextMenuEvent* event );
+        bool viewportEvent( QEvent* event ) override;
+
+        void zoomAtMouse( qreal f );
 
     private:
  static CircuitView*  m_pSelf;

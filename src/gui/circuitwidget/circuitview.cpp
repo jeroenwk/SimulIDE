@@ -8,6 +8,8 @@
 #include <QFileDialog>
 #include <QSettings>
 #include <QGuiApplication>
+#include <QNativeGestureEvent>
+#include <QScrollBar>
 
 #include "circuitview.h"
 #include "circuitwidget.h"
@@ -81,9 +83,50 @@ void CircuitView::setShowScroll( bool show )
 
 void CircuitView::wheelEvent( QWheelEvent* event )
 {
-    qreal scaleFactor = pow( 2.0, event->delta() / 700.0);
-    scale( scaleFactor, scaleFactor );
-    m_scale *= scaleFactor;
+    // Trackpad two-finger scroll (pixel deltas, scroll phases): pan the canvas in the
+    // direction of the gesture. Mouse wheel, or Cmd/Ctrl + scroll: zoom, as before
+    bool trackpad = !event->pixelDelta().isNull() || event->phase() != Qt::NoScrollPhase;
+    bool zoomKey  = event->modifiers() & Qt::ControlModifier;
+
+    if( trackpad && !zoomKey )
+    {
+        QPoint d = event->pixelDelta();
+        if( d.isNull() ) d = event->angleDelta()/8;
+        horizontalScrollBar()->setValue( horizontalScrollBar()->value() - d.x() );
+        verticalScrollBar()->setValue(   verticalScrollBar()->value()   - d.y() );
+        event->accept();
+        return;
+    }
+    QPoint a = event->angleDelta();
+    int delta = a.y() ? a.y() : a.x();
+    if( trackpad && !event->pixelDelta().isNull() ) delta = event->pixelDelta().y()*4;
+    zoomAtMouse( pow( 2.0, delta / 700.0 ) );
+    event->accept();
+}
+
+void CircuitView::zoomAtMouse( qreal f )
+{
+    if( f <= 0 ) return;
+    scale( f, f );
+    m_scale *= f;
+}
+
+bool CircuitView::viewportEvent( QEvent* event )
+{
+    if( event->type() == QEvent::NativeGesture )  // Trackpad pinch: zoom
+    {
+        QNativeGestureEvent* g = static_cast<QNativeGestureEvent*>( event );
+        if( g->gestureType() == Qt::ZoomNativeGesture )
+        {
+            zoomAtMouse( 1.0 + g->value() );
+            return true;
+        }
+        if( g->gestureType() == Qt::SmartZoomNativeGesture )  // Two-finger double tap
+        {
+            zoomToFit();
+            return true;
+    }   }
+    return QGraphicsView::viewportEvent( event );
 }
 
 void CircuitView::dragEnterEvent( QDragEnterEvent* event )
