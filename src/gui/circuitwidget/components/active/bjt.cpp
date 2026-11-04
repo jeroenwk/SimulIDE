@@ -59,10 +59,47 @@ BJT::BJT( QString type, QString id )
 }
 BJT::~BJT(){}
 
+void BJT::initialize()
+{
+    eBJT::initialize();
+    m_region = regOff;
+    setStatus("OFF", stOff );
+}
+
 void BJT::updateStep()
 {
     if( Circuit::self()->animate() ) update();
     if( m_changed ) eBJT::voltChanged(); // m_changed cleared at eBJT::voltChanged
+    updateRegion();
+}
+
+// Operating region for the part state label ("Show Part States") and the Messages log, once
+// per frame from the terminal voltages (PNP: polarities reversed):
+//   OFF     cut-off: VBE below 0.45 V, collector current below ~10 uA at the default threshold
+//   ACTIVE  amplifying: IC = gain x IB
+//   SAT     saturated, fully on: VCE below 0.2 V (base-collector junction forward biased)
+// Each boundary has a hysteresis (0.05 V on, 0.1 V off) so the label does not flicker on it.
+void BJT::updateRegion()
+{
+    if( !Simulator::self()->isRunning() ) return;
+    double pnp = m_PNP ? -1 : 1;
+    double vB = m_ePin[2]->getVoltage();
+    double vE = m_ePin[1]->getVoltage();
+    double vC = m_ePin[0]->getVoltage();
+    double vbe = pnp*( vB-vE );
+    double vce = pnp*( vC-vE );
+
+    region_t r = m_region;
+    if( r == regOff ){ if( vbe > 0.5 ) r = ( vce < 0.2 ) ? regSat : regActive; }
+    else if( vbe < 0.45 ) r = regOff;
+    else if( r == regActive ){ if( vce < 0.2 ) r = regSat; }
+    else if( vce > 0.3 ) r = regActive;
+
+    if( r == m_region ) return;
+    m_region = r;
+    if     ( r == regOff    ) setStatus("OFF",    stOff );
+    else if( r == regActive ) setStatus("ACTIVE", stOn );
+    else                      setStatus("SAT",    stWait );
 }
 
 void BJT::setPnp( bool pnp )

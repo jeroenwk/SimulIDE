@@ -190,6 +190,12 @@ while the simulation runs. A scripted core reports with
   on screen for 3 frames, so a short fault is seen.
 - `status <comp>` lists the states now and every change with its simulated
   time; `read <comp>` includes the current ones as `status`.
+- BJTs report their operating region: **OFF** (grey, cut-off: VBE < 0.45 V),
+  **ACTIVE** (green, amplifying) and **SAT** (amber, saturated: VCE < 0.2 V),
+  with a little hysteresis at each boundary. The region is taken once per frame,
+  so it follows a fast signal only with the simulation slowed down (e.g. 1 kHz at
+  0.1 % speed). Messages logs the changes with the frame's time (approximate),
+  `read` gives the region as `state`; `status` covers scripted cores only.
 
 **Event log (Messages):** while the simulation runs, the Messages pane lists
 what happens, with the simulated time, coloured like the part-state badges:
@@ -284,7 +290,7 @@ Removing wires around a junction works as in the GUI:
 | Command | |
 |---|---|
 | `probe <pin> ...` | Voltage and current (into the component) at pins |
-| `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors and varistors (voltage, current, power), lamps (also resistance; with the filament model on, temperature in K and radiated W), capacitors (voltage, charge level, reference, flags), subcircuits with scripted cores (`state`: the text each script shows with `component.showValue`; with several cores `block: text | block: text`, e.g. `supply: ON | fb: OK | pwm: RUN`; and `status`: each block's state set with `component.setStatus`, with its level), plus pin voltages |
+| `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors and varistors (voltage, current, power), BJTs (terminal currents `i_base`, `i_collector`, `i_emitter` and the region `state`: OFF, ACTIVE or SAT), lamps (also resistance; with the filament model on, temperature in K and radiated W), capacitors (voltage, charge level, reference, flags), subcircuits with scripted cores (`state`: the text each script shows with `component.showValue`; with several cores `block: text | block: text`, e.g. `supply: ON | fb: OK | pwm: RUN`; and `status`: each block's state set with `component.setStatus`, with its level), plus pin voltages |
 | `log [--since T] [--kind part\|cap] [--comp C] [--last N]` | Event log of the run, as in Messages: part state changes and charge events of capacitors with Log charge on (time, approx, comp, kind, level, text, shown) |
 | `status <comp> [--last N]` | States a part reports with `component.setStatus`: now, and every change since the start with its simulated time (block, text, level `off`/`on`/`wait`/`fault`), oldest first. Restart times and blink rates come straight from it |
 | `scope data <comp> [--ch N] [--last TIME] [--max N]` | Oscilloscope or logic analyzer samples as `[time_s, value]`, oldest first |
