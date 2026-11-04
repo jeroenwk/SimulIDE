@@ -80,8 +80,10 @@ Diac::Diac( QString type, QString id )
                           , this, &Diac::brkVolt,  &Diac::setBrkVolt ),
 
         new DoubProp<Diac>("HoldCurr", tr("Hold Current"), "A"
-                          , this, &Diac::holdCurr, &Diac::setHoldCurr )
+                          , this, &Diac::holdCurr, &Diac::setHoldCurr ),
+        showStateProp()
     },0} );
+    enableStates( true );
 
     setPropStr("ResOff", "100 MΩ");
     setPropStr("HoldCurr", "10 mA");
@@ -95,6 +97,7 @@ Diac::~Diac()
 
 void Diac::initialize()
 {
+    clearStates();
     m_midEnode = new eNode( m_elmId+"-mideNode");
 }
 
@@ -131,6 +134,7 @@ void Diac::updateStep()
 
 void Diac::voltChanged()
 {
+    Simulator::self()->addToSettled( this );   // Latch state from this step's final values
     double voltage = m_pin[0]->getVoltage()-m_pin[1]->getVoltage();
     double current = m_resistor->current();// - m_diode2->getCurrent();
     bool state = m_state;
@@ -145,6 +149,13 @@ void Diac::voltChanged()
     m_state = state;
     double res = state ? m_resOn : m_resOff;
     m_resistor->setRes( res );
+}
+
+// Part state (docs/PART_STATES.md): OFF, or ON = latched on, conducting (amber, like a switch that is on)
+void Diac::stepSettled()
+{
+    if( m_state ) reportState("ON",  stWait );
+    else          reportState("OFF", stOff );
 }
 
 void Diac::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
