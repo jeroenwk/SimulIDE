@@ -59,6 +59,7 @@ the model file). IDSS = Beta·Vto² at VDS = 0; at VDS = 10 V add Lambda·10.
 | J112 | N | 32.4 | −2.33 | 0.023 |
 | J113 | N | 15.3 | −1.29 | 0.03 |
 | J201 | N | 0.58 | −0.6 | 0.0022 |
+| MMBF5103 | N | 32.4 | −2.33 | 0.023 |
 | J310 | N | 42.4 | −3.84 | 0.02 |
 | MPF102 | N | 12.1 | −3.41 | 0.002 |
 | 2N5460 | P | 11.6 | 3.4 | 0.01 |
@@ -70,6 +71,11 @@ VGS(off) down to −8 V). The 2N3819 against its Vishay datasheet (70238 Rev. D,
 [SIMULATED with the model's equations]: IDSS 11.7 mA (typ 10), rDS(on) = 1/(2·Beta·|Vto|) = 128 Ω
 (typ 150), gfs at VGS = 0 = 2·Beta·|Vto| = 7.8 mS (typ 5.5, max 6.5), gos = Lambda·IDSS = 26 µS
 (typ 25), VGS(F) at 1 mA = 0.61 V (typ 0.7).
+
+The MMBF5103 has no published SPICE model. onsemi's datasheet (MMBF5103/D Rev. 2) says "Sourced
+from Process 51, see J111 for characteristics" and gives only limits: VGS(off) −1.2 to −2.7 V,
+IDSS 10 to 40 mA. The J112 model (same process, Philips) falls inside both, so the MMBF5103 entry
+uses its values [INFERRED]. It is the input JFET of *The Art of Electronics* Fig. 3.31.
 
 To add a part, add a line to `jfets.model` from its SPICE `.model` (Beta, Vto, Lambda, Is, N) and
 restart SimulIDE.

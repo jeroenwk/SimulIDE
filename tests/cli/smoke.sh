@@ -426,6 +426,10 @@ check "IDSS at VDS 15 V"        'abs(r["result"]["i_drain"]-0.0121321) < 1e-6 an
 check "VGS -2 V"                'r["ok"]'                                  -- comp set VG Voltage=-2
 check "run 100us"               'r["ok"]'                                  -- sim run --for 100us
 check "Beta (VGS-Vto)^2 (1+15 Lambda)" 'abs(r["result"]["i_drain"]-0.00134801) < 1e-7' -- read J1
+# A property change alone (no node voltage moves) must still be solved again
+check "Lambda 0"                'r["ok"]'                                  -- comp set J1 Lambda=0
+check "run 100us"               'r["ok"]'                                  -- sim run --for 100us
+check "...takes effect paused"  'abs(r["result"]["i_drain"]-0.001304) < 1e-7' -- read J1
 check "VGS -3.5 V: OFF"         'r["ok"]'                                  -- comp set VG Voltage=-3.5
 check "run 100us"               'r["ok"]'                                  -- sim run --for 100us
 check "...no drain current"     'abs(r["result"]["i_drain"]) < 1e-9 and r["result"]["state"]=="OFF"' -- read J1
