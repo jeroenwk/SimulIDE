@@ -29,6 +29,8 @@ Meter::Meter( QString type, QString id )
     m_pin[0]->setColor( Qt::red );
 
     m_ePin[1] = m_pin[1] = new Pin( 270, QPoint(8, 16), id+"-rPin", 1, this);
+    m_pin[0]->setWireColor( QColor( 220, 40, 40 ) );     // Test leads: red, and COM grey
+    m_pin[1]->setWireColor( QColor( 128, 128, 128 ) );
 
     m_pin[2] = m_outPin = new IoPin( 0, QPoint(32,-8), id+"-outnod", 0, this, source );
     m_outPin->setOutHighV( 0 );

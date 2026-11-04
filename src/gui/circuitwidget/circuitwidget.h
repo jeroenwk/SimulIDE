@@ -46,6 +46,7 @@ class CircuitWidget : public QWidget
         void eventMessage( QString text, int level, QString uid );  // Event log line in Messages
         void syncEventLog();                                        // Checkboxes from EventLog
         void syncPartStatus( bool on ) { if( partStatusAct->isChecked() != on ) partStatusAct->setChecked( on ); }
+        void syncInstruments( bool on ) { if( instrumentsAct->isChecked() != on ) instrumentsAct->setChecked( on ); }
         void powerCircOn();
         void powerCircOff();
         void powerCircDebug();
@@ -119,6 +120,7 @@ class CircuitWidget : public QWidget
         QAction* currentFlowAct;
         QAction* capChargeAct;
         QAction* partStatusAct;
+        QAction* instrumentsAct;
         QComboBox* m_timebase = nullptr;   // Simulated time per real second
         QAction* settAppAct;
         QAction* infoAct;

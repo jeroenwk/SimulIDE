@@ -56,6 +56,7 @@ Oscope::Oscope( QString type, QString id )
     m_inPin.resize(5);
     m_pin.resize(5);
     m_pin[4] = m_inPin[4] = new IoPin( 180, QPoint(-80-8, 64 ), id+"-PinG", 0, this, input );
+    m_pin[4]->setWireColor( QColor( 128, 128, 128 ) );   // Ground lead: grey
 
     for( int i=0; i<4; i++ )
     {
@@ -73,6 +74,7 @@ Oscope::Oscope( QString type, QString id )
 
         m_display->setChannel( i, m_channel[i] );
         m_display->setColor( i, m_color[i] );
+        m_pin[i]->setWireColor( m_color[i] );            // Probe lead in the channel colour
         m_dataWidget->setColor( i, m_color[i] );
 
         setTimePos( i, 0 );

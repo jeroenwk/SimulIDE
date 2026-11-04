@@ -30,6 +30,12 @@ class Theme
         static QColor idLabel()  { return get( nameRole ); }  // Component name labels ("R1")
         static QColor valLabel() { return get( valueRole ); } // Component value labels ("470 Ω")
 
+        // Instrument leads (scope channels, meter + / COM): the lead's own colour, made to
+        // stand out on the canvas (contrast >= 3:1, darker on light canvases). A grey lead
+        // (COM, ground) is moved away from the wire colour, so it does not look like a wire
+        static QColor lead( QColor c );
+        static double contrast( QColor a, QColor b );  // WCAG contrast ratio, 1..21
+
         static QColor animWire( bool high ) { return get( high ? animHighRole : animLowRole ); }
         static QColor pinState( int state, QColor undefColor ); // Animate colour of a pinState_t
 

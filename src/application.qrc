@@ -83,6 +83,7 @@
         <file alias="currentflow.svg">../src/icons/mainwindow/currentflow.svg</file>
         <file alias="capcharge.svg">../src/icons/mainwindow/capcharge.svg</file>
         <file alias="partstatus.svg">../src/icons/mainwindow/partstatus.svg</file>
+        <file alias="instruments.svg">../src/icons/mainwindow/instruments.svg</file>
         
         <file alias="remove.svg">../src/icons/mainwindow/remove.svg</file>
         <file alias="properties.svg">../src/icons/mainwindow/properties.svg</file>

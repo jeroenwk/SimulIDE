@@ -52,6 +52,11 @@ class Pin : public QGraphicsItem, public ePin, public Updatable
         virtual void setLength( int length );
 
         void setColor( QColor color ) { m_color[0] = color; }
+
+        // Instrument leads: a wire attached to this pin is drawn in this colour (scope channel,
+        // meter red / COM grey). Invalid (the default): the theme's wire colour
+        void setWireColor( QColor color ) { m_wireColor = color; }
+        QColor wireColor() { return m_wireColor; }
         void setPinAngle( int angle );
         int pinAngle() { return m_angle; }
 
@@ -137,6 +142,7 @@ class Pin : public QGraphicsItem, public ePin, public Updatable
         QString m_labelText;
         
         QColor m_color[8];
+        QColor m_wireColor;
         QRectF     m_area;
         Connector* my_connector;
         Component* m_component;

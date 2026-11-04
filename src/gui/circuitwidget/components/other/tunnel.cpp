@@ -6,6 +6,9 @@
 #include <QInputDialog>
 
 #include "tunnel.h"
+#include "theme.h"
+#include "connector.h"
+#include "instrumentview.h"
 #include "linker.h"
 #include "itemlibrary.h"
 #include "propdialog.h"
@@ -260,6 +263,41 @@ void Tunnel::mousePressEvent( QGraphicsSceneMouseEvent* event )
         Component::mousePressEvent( event ); // Tunnel should not be linked or main component
 }
 
+Pin* Tunnel::leadPin()
+{
+    // A tunnel wired straight to an instrument input belongs to its lead. The rest of the
+    // group belongs to it too only if it is a single tunnel: the one place the lead clips
+    // on. A group that also distributes a signal through the circuit (source to several
+    // inputs, with a scope tapping it) stays circuit wiring
+    QList<Tunnel*>* list = m_tunnels.value( m_name );
+    if( !list ) return nullptr;
+
+    Pin* lead = nullptr;
+    Pin* mine = nullptr;
+    int others = 0;
+    for( Tunnel* tunnel : *list )
+    {
+        Pin* other = nullptr;
+        Connector* con = tunnel->m_pin[0]->connector();
+        if( con ) other = ( con->startPin() == tunnel->m_pin[0] ) ? con->endPin() : con->startPin();
+
+        if( other && InstrumentView::isInstrument( other->component() ) )
+        {
+            if( !lead ) lead = other;
+            if( tunnel == this ) mine = other;
+        }
+        else others++;
+    }
+    if( mine ) return mine;
+    return ( lead && others == 1 ) ? lead : nullptr;
+}
+
+QColor Tunnel::leadColor()
+{
+    Pin* pin = leadPin();
+    return pin ? pin->wireColor() : QColor();
+}
+
 void Tunnel::paint( QPainter* p, const QStyleOptionGraphicsItem *option, QWidget *widget )
 {
     if( m_hidden || m_packed ) return;
@@ -270,7 +308,15 @@ void Tunnel::paint( QPainter* p, const QStyleOptionGraphicsItem *option, QWidget
         else                    m_color = QColor( 255, 255, 250 );
     } else                      m_color = QColor( 210, 210, 230 );
 
+    QColor lead = leadColor();
+    if( lead.isValid() )            // Part of an instrument lead: a tint of the lead's colour
+    {
+        lead = Theme::lead( lead );
+        QColor c = lead.toHsl();
+        m_color = QColor::fromHsl( c.hslHue(), qMin( c.hslSaturation(), 200 ), 225 );
+    }
     Component::paint( p, option, widget );
+    if( lead.isValid() ) p->setPen( QPen( lead, 1.5 ) );
 
     if( m_rotated ){
         QPointF points[5] =        {

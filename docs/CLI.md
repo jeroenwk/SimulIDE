@@ -178,6 +178,18 @@ and switches with it (live on macOS; elsewhere the mode at start). It covers the
 windows and panels; the circuit canvas keeps its own colours (Settings > Circuit >
 Colors). The code editor stays light in both modes.
 
+**Instruments and their leads:** wires attached to a scope or meter input are
+drawn as leads: thicker, in the channel colour (scope CH1–CH4) or red (+) and
+grey (COM, scope ground), adjusted to stay readable on the canvas colour. A
+tunnel wired to an instrument input continues the lead; the rest of its group
+does too when it is a single tunnel (where the lead clips on), not when the
+group also carries a signal through the circuit. The lead ends at the first
+junction. `settings set instruments true|false` (on by default; the toolbar
+button with the scope screen does the same) shows or hides every scope, logic
+analyzer, voltmeter, frequency meter and probe, with its leads, lead tunnels,
+the grounds only they use, and their junction dots. Hidden instruments keep
+measuring (`scope data`, `read`). Ammeters stay: they are in series.
+
 **Part states:** `settings set partStatus true|false` (on by default; the
 toolbar button with the red chip does the same) shows the states parts report
 while the simulation runs. A scripted core reports with

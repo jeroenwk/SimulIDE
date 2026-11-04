@@ -13,6 +13,8 @@
 #include "simulator.h"
 #include "circuit.h"
 #include "node.h"
+#include "tunnel.h"
+#include "pin.h"
 #include "utils.h"
 #include "currentflow.h"
 
@@ -354,8 +356,14 @@ void ConnectorLine::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
     //p->setPen( pen );
 
     QColor color;
+    QColor lead;                        // A wire on an instrument's input takes its lead colour
+    Pin* leadPin = m_pConnector->leadPin();
+    if( leadPin ) lead = leadPin->wireColor();
+    if( lead.isValid() ) lead = Theme::lead( lead );
+
     if( isSelected() ) color = QColor( Qt::darkGray );
     else if( m_isBus ) color =  Qt::darkGreen;
+    else if( lead.isValid() ) color = lead;
     else if( Circuit::self()->animate() )
     {
         color = Theme::animWire( m_pConnector->getVoltage() > 2.5 );
@@ -369,6 +377,7 @@ void ConnectorLine::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
     //p->drawPath( shape() );
     
     if( m_isBus ) pen.setWidth( 3 );
+    else if( lead.isValid() && !isSelected() ) pen.setWidthF( 2.4 ); // Leads a bit thicker, like test leads
 
     p->setPen( pen );
     p->drawLine( 0, 0, dx(), dy());

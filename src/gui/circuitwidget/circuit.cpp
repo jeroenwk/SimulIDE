@@ -10,6 +10,7 @@
 #include <QSettings>
 
 #include "circuit.h"
+#include "instrumentview.h"
 #include "theme.h"
 #include "simulator.h"
 #include "itemlibrary.h"
@@ -163,6 +164,7 @@ void Circuit::loadCircuit( QString fileName )
 
     if( m_error != 0 ) clearCircuit();
     else{
+        if( !InstrumentView::self()->shown() ) InstrumentView::self()->apply();
         m_graphicView->zoomToFit();
         CircuitWidget::self()->printDescription();
         qDebug() << "Circuit Loaded: ";
@@ -733,6 +735,7 @@ void Circuit::saveChanges()
 {
     if( m_conStarted || m_circChange.size() == 0 ) return;
     setChanged();
+    if( !InstrumentView::self()->shown() ) InstrumentView::self()->apply(); // New parts and wires too
 
     while( m_undoStack.size() > (m_undoIndex+1) ) m_undoStack.removeLast();
 

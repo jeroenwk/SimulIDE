@@ -22,6 +22,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include "circuitwidget.h"
+#include "instrumentview.h"
 #include "editorwindow.h"
 #include "mainwindow.h"
 #include "simulator.h"
@@ -217,6 +218,13 @@ void CircuitWidget::createActions()
     connect( partStatusAct, &QAction::toggled,
              []( bool on ){ StatusView::self()->setEnabled( on ); } );
 
+    instrumentsAct = new QAction( QIcon(":/instruments.svg"),tr("Show Instruments"), this);
+    instrumentsAct->setStatusTip(tr("Show the scopes, voltmeters, frequency meters and probes with their leads; off: the circuit alone (they keep measuring)"));
+    instrumentsAct->setCheckable( true );
+    instrumentsAct->setChecked( InstrumentView::self()->shown() );
+    connect( instrumentsAct, &QAction::toggled,
+             []( bool on ){ InstrumentView::self()->setShown( on ); } );
+
     settAppAct = new QAction( QIcon(":/config.svg"),tr("Settings"), this);
     settAppAct->setStatusTip(tr("Settings"));
     connect( settAppAct, &QAction::triggered,
@@ -304,6 +312,7 @@ void CircuitWidget::createToolBars()
     m_circToolBar.addAction( currentFlowAct );
     m_circToolBar.addAction( capChargeAct );
     m_circToolBar.addAction( partStatusAct );
+    m_circToolBar.addAction( instrumentsAct );
     m_circToolBar.addSeparator();//..........................
 
     spacer = new QWidget();

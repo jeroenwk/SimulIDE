@@ -4,6 +4,9 @@
 
 #include <QSettings>
 
+#include <cmath>
+#include <utility>
+
 #include "theme.h"
 #include "mainwindow.h"
 #include "circuit.h"
@@ -91,6 +94,39 @@ void Theme::reset()
         if( MainWindow::self() ) MainWindow::self()->settings()->remove("Circuit/"+key( (role_t)i ) );
     }
     apply();
+}
+
+static double luminance( QColor c )
+{
+    auto lin = []( double v ){ v /= 255; return v <= 0.03928 ? v/12.92 : pow( (v+0.055)/1.055, 2.4 ); };
+    return 0.2126*lin( c.red() ) + 0.7152*lin( c.green() ) + 0.0722*lin( c.blue() );
+}
+
+double Theme::contrast( QColor a, QColor b )
+{
+    double la = luminance( a ), lb = luminance( b );
+    if( la < lb ) std::swap( la, lb );
+    return ( la+0.05 )/( lb+0.05 );
+}
+
+QColor Theme::lead( QColor c )
+{
+    QColor bg = canvas();
+    bool lightBg = bg.lightness() > 128;
+
+    if( c.hslSaturation() < 20 )                 // Neutral lead: a grey well apart from the wires
+    {
+        int w = wire().lightness();
+        int g = ( w > 128 ) ? w-60 : w+70;
+        c = QColor::fromHsl( 0, 0, qBound( 0, g, 255 ) );
+    }
+    int h = c.hslHue(), s = c.hslSaturation(), l = c.lightness();
+    for( int i=0; i<40 && contrast( c, bg ) < 3.0; ++i ) // Darken on light, lighten on dark canvases
+    {
+        l = qBound( 0, l + ( lightBg ? -5 : 5 ), 255 );
+        c = QColor::fromHsl( h, s, l );
+    }
+    return c;
 }
 
 QColor Theme::grid()
