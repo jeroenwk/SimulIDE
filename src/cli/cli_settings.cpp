@@ -15,6 +15,7 @@
 #include "currentflow.h"
 #include "chargeview.h"
 #include "statusview.h"
+#include "eventlog.h"
 #include "theme.h"
 
 namespace
@@ -126,6 +127,12 @@ QList<Setting>& settings()
     list.append({"partStatus", "circuit", "Show part states: badges above each part that reports its state (scripted cores: component.setStatus) and its outline in the most severe state's colour (see also: status).",
         [](){ return QJsonValue( StatusView::self()->enabled() ); },
         []( QString v ){ StatusView::self()->setEnabled( parseBool( v ) ); }});
+    list.append({"logParts", "circuit", "Messages: write part state changes with their simulated time (see also: log).",
+        [](){ return QJsonValue( EventLog::self()->logParts() ); },
+        []( QString v ){ EventLog::self()->setLogParts( parseBool( v ) ); }});
+    list.append({"logCaps", "circuit", "Messages: write charge events of capacitors whose LogCharge property is on (see also: log).",
+        [](){ return QJsonValue( EventLog::self()->logCaps() ); },
+        []( QString v ){ EventLog::self()->setLogCaps( parseBool( v ) ); }});
     list.append({"capLabel", "circuit", "Live label beside each capacitor while the charge display is on: off, volt, percent or both.",
         [](){ return QJsonValue( ChargeView::labelModes().at( ChargeView::self()->labelMode() ) ); },
         []( QString v ){

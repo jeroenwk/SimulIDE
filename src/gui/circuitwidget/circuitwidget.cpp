@@ -16,6 +16,11 @@
 #include "currentflow.h"
 #include "chargeview.h"
 #include "statusview.h"
+#include "eventlog.h"
+#include <QCheckBox>
+#include <QLabel>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
 #include "circuitwidget.h"
 #include "editorwindow.h"
 #include "mainwindow.h"
@@ -68,11 +73,31 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     m_bottomTabs->setObjectName("BottomTabs");
     m_bottomTabs->setDocumentMode( true );
     m_bottomTabs->addTab( m_descWidget, tr("Description") );
-    m_bottomTabs->addTab( &m_outPane, tr("Messages") );
+    m_msgWidget = new QWidget( this );                // Messages: event log switches above the text
+    QVBoxLayout* msgLayout = new QVBoxLayout( m_msgWidget );
+    msgLayout->setContentsMargins( 0, 0, 0, 0 );
+    msgLayout->setSpacing( 0 );
+    QHBoxLayout* logRow = new QHBoxLayout();
+    logRow->setContentsMargins( 6, 2, 6, 2 );
+    QLabel* logLabel = new QLabel( tr("Log:"), m_msgWidget );
+    m_logPartsBox = new QCheckBox( tr("Part states"), m_msgWidget );
+    m_logPartsBox->setToolTip( tr("Write every state change of parts that report one (e.g. IC1 supply: ON → HICCUP) with its simulated time") );
+    m_logCapsBox = new QCheckBox( tr("Capacitors"), m_msgWidget );
+    m_logCapsBox->setToolTip( tr("Write charging, charged, discharged and over-rating events of capacitors whose \"Log charge\" property is on") );
+    logRow->addWidget( logLabel );
+    logRow->addWidget( m_logPartsBox );
+    logRow->addWidget( m_logCapsBox );
+    logRow->addStretch();
+    msgLayout->addLayout( logRow );
+    msgLayout->addWidget( &m_outPane );
+    m_bottomTabs->addTab( m_msgWidget, tr("Messages") );
+    syncEventLog();
+    connect( m_logPartsBox, &QCheckBox::toggled, []( bool on ){ EventLog::self()->setLogParts( on ); } );
+    connect( m_logCapsBox,  &QCheckBox::toggled, []( bool on ){ EventLog::self()->setLogCaps( on ); } );
     m_scriptPane = new ScriptPane( this );
     m_bottomTabs->addTab( m_scriptPane, tr("Scripts") );
     connect( m_scriptPane, &ScriptPane::started, [this](){ m_bottomTabs->setCurrentWidget( m_scriptPane ); } );
-    m_bottomTabs->setCurrentWidget( &m_outPane );
+    m_bottomTabs->setCurrentWidget( m_msgWidget );
     m_panelSplitter->addWidget( m_bottomTabs );
     m_panelSplitter->setSizes( {170, 500} );
 
@@ -455,6 +480,7 @@ void CircuitWidget::powerCircOn()
     CurrentFlow::self()->attach();       // Each circuit has a new Simulator
     ChargeView::self()->attach();
     StatusView::self()->attach();
+    EventLog::self()->attach();
     m_infoWidget->setSimState( InfoWidget::shownRunning );
     Simulator::self()->startSim();
 }
@@ -477,6 +503,7 @@ void CircuitWidget::powerCircOff()
     m_infoWidget->setSimState( InfoWidget::shownStopped );
     CurrentFlow::self()->clear();
     ChargeView::self()->clear();
+    EventLog::self()->stop();
     StatusView::self()->clear();
     Circuit::self()->update();
 }
@@ -647,3 +674,16 @@ void CircuitWidget::syncTimebase( uint64_t psPerSec )
 }
 
 #include "moc_circuitwidget.cpp"
+
+void CircuitWidget::syncEventLog()
+{
+    if( !m_logPartsBox ) return;
+    if( m_logPartsBox->isChecked() != EventLog::self()->logParts() ) m_logPartsBox->setChecked( EventLog::self()->logParts() );
+    if( m_logCapsBox->isChecked()  != EventLog::self()->logCaps()  ) m_logCapsBox->setChecked( EventLog::self()->logCaps() );
+}
+
+void CircuitWidget::eventMessage( QString text, int level, QString uid )
+{
+    bool dark = m_outPane.palette().color( QPalette::Base ).lightness() < 128;
+    m_outPane.appendPlain( text, StatusView::levelColor( level, dark ), uid );
+}

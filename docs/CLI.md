@@ -191,6 +191,26 @@ while the simulation runs. A scripted core reports with
 - `status <comp>` lists the states now and every change with its simulated
   time; `read <comp>` includes the current ones as `status`.
 
+**Event log (Messages):** while the simulation runs, the Messages pane lists
+what happens, with the simulated time, coloured like the part-state badges:
+```
+[   312.009 ms] IC1  supply: UVLO → ON  ·  pwm: IDLE → WAIT COMP
+[   414.817 ms] IC1  fb: OK → OVP  ·  supply: ON → HICCUP  ·  pwm: RUN → STOP → IDLE
+[≈  419.683 ms] C5  charged to 23.7 V
+[     1.4017 s] IC1  repeats the same cycle of 5 changes every 340.234 ms (2.94 Hz): not listed further while it repeats
+```
+- Part states: every `setStatus` change, exact time; changes within 1 µs share a line.
+- Capacitors whose **Log charge** property is on (`comp set C5 LogCharge=true`):
+  charging, charged, discharging, discharged, above / back within the rated
+  voltage. Seen once per frame from 10 ms averages, so the time is marked ≈.
+- A sequence of changes that comes three times in a row is summarised in one
+  line with its period, then not listed until it changes ("cycle ended after
+  N repeats"); at most 20 lines per part per second, then "N more changes".
+- Click a line to select its part. The **Part states** / **Capacitors**
+  checkboxes above the pane (`settings set logParts|logCaps`) switch the lines
+  off; `log [--since T] [--kind part|cap] [--comp C] [--last N]` returns every
+  event of the run, also those not shown (`shown: false`).
+
 **Capacitor charge:** `settings set capCharge true` shows how far each
 capacitor is charged (the toolbar button next to current flow does the same):
 - a gauge bar beside the part, filling upwards with |V| / Vref;
@@ -256,6 +276,7 @@ Removing wires around a junction works as in the GUI:
 |---|---|
 | `probe <pin> ...` | Voltage and current (into the component) at pins |
 | `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors (voltage, current, power), capacitors (voltage, charge level, reference, flags), subcircuits with scripted cores (`state`: the text each script shows with `component.showValue`; with several cores `block: text | block: text`, e.g. `supply: ON | fb: OK | pwm: RUN`; and `status`: each block's state set with `component.setStatus`, with its level), plus pin voltages |
+| `log [--since T] [--kind part\|cap] [--comp C] [--last N]` | Event log of the run, as in Messages: part state changes and charge events of capacitors with Log charge on (time, approx, comp, kind, level, text, shown) |
 | `status <comp> [--last N]` | States a part reports with `component.setStatus`: now, and every change since the start with its simulated time (block, text, level `off`/`on`/`wait`/`fault`), oldest first. Restart times and blink rates come straight from it |
 | `scope data <comp> [--ch N] [--last TIME] [--max N]` | Oscilloscope or logic analyzer samples as `[time_s, value]`, oldest first |
 | `scope get <comp>` | Display settings: time/div, trigger, auto-scale, and per channel volts/div and positions |

@@ -6,6 +6,7 @@
 #include "capacitorbase.h"
 #include "chargeview.h"
 #include "statusview.h"
+#include "eventlog.h"
 #include "mcu.h"
 #include "scriptcpu.h"
 #include <QGraphicsProxyWidget>
@@ -40,21 +41,7 @@ void requireSim()
 
 QJsonValue num( double v ) { return std::isfinite( v ) ? QJsonValue( v ) : QJsonValue(); }
 
-// Scripted cores of a part that report a state: the part itself (a core placed on its own)
-// or the cores inside a subcircuit, named after their block ("supply")
-QList<QPair<QString, ScriptCpu*>> statusCores( Component* comp )
-{
-    QList<QPair<QString, ScriptCpu*>> list;
-    auto add = [&list]( Component* c, QString name ){
-        if( Mcu* mcu = dynamic_cast<Mcu*>( c ) )
-            if( ScriptCpu* cpu = dynamic_cast<ScriptCpu*>( mcu->cpu() ) )
-                if( cpu->status().level >= 0 || !cpu->statusHistory().isEmpty() ) list.append({ name, cpu });
-    };
-    add( comp, "" );
-    if( SubCircuit* sub = dynamic_cast<SubCircuit*>( comp ) )
-        for( Component* inner : *sub->compList() ) add( inner, StatusView::blockName( inner ) );
-    return list;
-}
+QList<QPair<QString, ScriptCpu*>> statusCores( Component* comp ) { return StatusView::statusCores( comp ); }
 
 QJsonObject statusJson( QString block, const ScriptCpu::StatusEvent& e, bool withTime )
 {
@@ -351,6 +338,29 @@ void CliApi::registerMeasure()
         for( auto& e : events ) history.append( statusJson( e.first, e.second, true ) );
         return QJsonObject{ {"status", now}, {"history", history},
                             {"time", Cli::timeStr( Simulator::self()->circTime() )} };
+    });
+
+    add("log", "log [--since T] [--kind part|cap] [--comp C] [--last N]",
+        "Event log of this run: part state changes (setStatus) and charge events of capacitors with \"Log charge\" on, "
+        "as written to Messages, with simulated time (approx: seen at a screen frame). Includes the lines not shown "
+        "there (repeating cycles, rate limit: shown false).",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        uint64_t since = c.has("since") ? Cli::parseTime( c.opt("since") ) : 0;
+        QString kind = c.opt("kind"), comp = c.opt("comp");
+        QJsonArray list;
+        for( const EventLog::Event& e : EventLog::self()->events() )
+        {
+            if( e.time < since ) continue;
+            if( !kind.isEmpty() && e.kind != kind ) continue;
+            if( !comp.isEmpty() && e.comp != comp && e.uid != comp ) continue;
+            list.append( QJsonObject{ {"time", Cli::timeStr( e.time )}, {"approx", e.approx}, {"comp", e.comp},
+                                      {"kind", e.kind}, {"level", Component::statusLevelStr( e.level )},
+                                      {"text", e.text}, {"shown", e.shown} } );
+        }
+        int last = c.has("last") ? c.opt("last").toInt() : 0;
+        if( last > 0 && list.size() > last ) { QJsonArray tail; for( int i=list.size()-last; i<list.size(); ++i ) tail.append( list[i] ); list = tail; }
+        return QJsonObject{ {"events", list}, {"time", Cli::timeStr( Simulator::self()->circTime() )} };
     });
 
     add("scope get", "scope get <comp>",

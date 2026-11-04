@@ -6,6 +6,10 @@
 #include "outpaneltext.h"
 #include "mainwindow.h"
 #include "simulator.h"
+#include "circuit.h"
+#include "circuitview.h"
+#include "component.h"
+#include <QMouseEvent>
 
 OutPanelText::OutPanelText( QWidget* parent )
             : QPlainTextEdit( parent )
@@ -44,7 +48,7 @@ void OutPanelText::appendLine( const QString text )
     }
 }
 
-void OutPanelText::appendPlain( const QString text, QColor color )
+void OutPanelText::appendPlain( const QString text, QColor color, QString uid )
 {
     updateStep();                                  // Keep the order with buffered text
     if( m_capture ) m_capture->append( text+"\n" );
@@ -57,11 +61,29 @@ void OutPanelText::appendPlain( const QString text, QColor color )
     for( int i=first; i<last; ++i )               // Mark the blocks: the highlighter paints them in one colour
     {
         QTextBlock b = document()->findBlockByNumber( i );
-        b.setUserData( new PlainBlock( color ) );
+        b.setUserData( new PlainBlock( color, uid ) );
         m_highlighter->rehighlightBlock( b );
     }
     moveCursor( QTextCursor::End );
     if( !Simulator::self() || !Simulator::self()->isRunning() ) repaint();
+}
+
+void OutPanelText::mouseReleaseEvent( QMouseEvent* event )
+{
+    QPlainTextEdit::mouseReleaseEvent( event );
+    if( event->button() != Qt::LeftButton || textCursor().hasSelection() ) return;
+
+    QTextBlock block = cursorForPosition( event->pos() ).block();   // An event log line: show its part
+    PlainBlock* data = dynamic_cast<PlainBlock*>( block.userData() );
+    if( !data || data->uid.isEmpty() ) return;
+    for( Component* comp : *Circuit::self()->compList() )
+    {
+        if( comp->getUid() != data->uid ) continue;
+        Circuit::self()->clearSelection();
+        comp->setSelected( true );
+        CircuitView::self()->centerOn( comp );
+        break;
+    }
 }
 
 void OutPanelText::updateStep()

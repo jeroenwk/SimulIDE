@@ -408,14 +408,15 @@ void ScriptCpu::setStatus( string text, int level )
     if( level > m_stPeakLevel ) { m_stPeakText = t; m_stPeakLevel = level; }
 
     if( m_stHistory.size() >= 1000 ) m_stHistory.removeFirst();
-    m_stHistory.append({ Simulator::self()->circTime(), t, level });
+    static uint64_t s_seq = 0;                           // All cores run in the simulation thread
+    m_stHistory.append({ Simulator::self()->circTime(), t, level, ++s_seq });
 }
 
 ScriptCpu::StatusEvent ScriptCpu::status()
 {
     QMutexLocker lock( &m_statusLock );
     uint64_t t = m_stHistory.isEmpty() ? 0 : m_stHistory.last().time;
-    return { t, m_stText, m_stLevel };
+    return { t, m_stText, m_stLevel, 0 };
 }
 
 QList<ScriptCpu::StatusEvent> ScriptCpu::statusHistory()

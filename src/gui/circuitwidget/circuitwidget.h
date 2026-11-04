@@ -14,6 +14,7 @@
 #include "circuitview.h"
 #include "outpaneltext.h"
 
+class QCheckBox;
 class QSplitter;
 class QLabel;
 class AboutDialog;
@@ -42,6 +43,8 @@ class CircuitWidget : public QWidget
         void syncCurrentFlow( bool on ) { if( currentFlowAct->isChecked() != on ) currentFlowAct->setChecked( on ); }
         QString curCirc() { return m_curCirc; }   // File of the open circuit (empty: unsaved)
         void syncCapCharge( bool on ) { if( capChargeAct->isChecked() != on ) capChargeAct->setChecked( on ); }
+        void eventMessage( QString text, int level, QString uid );  // Event log line in Messages
+        void syncEventLog();                                        // Checkboxes from EventLog
         void syncPartStatus( bool on ) { if( partStatusAct->isChecked() != on ) partStatusAct->setChecked( on ); }
         void powerCircOn();
         void powerCircOff();
@@ -88,6 +91,9 @@ class CircuitWidget : public QWidget
         QVBoxLayout  m_verticalLayout;
         CircuitView  m_circView;
         OutPanelText m_outPane;
+        QWidget*   m_msgWidget;
+        QCheckBox* m_logPartsBox;
+        QCheckBox* m_logCapsBox;
         
         QToolBar m_circToolBar;
 

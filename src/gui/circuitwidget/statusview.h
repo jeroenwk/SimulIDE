@@ -14,6 +14,7 @@
 #include "updatable.h"
 
 class Component;
+class ScriptCpu;
 
 class StatusView : public Updatable
 {
@@ -30,7 +31,12 @@ class StatusView : public Updatable
         static QList<Block> blocks( Component* comp );
         static QString blockName( Component* inner );   // "MT7833A_supply-1" -> "supply"
 
+        // Scripted cores of a part that report a state (history included): the part itself
+        // or the cores inside a subcircuit, with their block names
+        static QList<QPair<QString, ScriptCpu*>> statusCores( Component* comp );
+
         static QColor levelColor( int level );          // For the current canvas colour
+        static QColor levelColor( int level, bool dark );
 
         void attach();      // Register with the current Simulator (on every simulation start)
         void clear();       // Simulation stopped: remove the badges
