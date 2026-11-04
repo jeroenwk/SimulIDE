@@ -60,6 +60,7 @@ class Lm555 : public Component, public eElement
         uint64_t m_propDelay;
 
         bool m_outState;
+        bool m_reset;            // Reset pin below 0.7 V (part state)
 };
 
 #endif

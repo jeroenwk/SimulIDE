@@ -61,7 +61,9 @@ MuxAnalog::MuxAnalog( QString type, QString id )
 
         new DoubProp<MuxAnalog>("Impedance", tr("Impedance"), "mΩ"
                                , this, &MuxAnalog::impedance, &MuxAnalog::setImpedance ),
+        showStateProp()
     },0} );
+    enableStates( true );
 }
 MuxAnalog::~MuxAnalog(){}
 
@@ -69,6 +71,8 @@ void MuxAnalog::stamp()
 {
     m_address = 0;
     m_enabled = true;
+    clearStates();
+    reportState("CH 0", stOn );       // What stamp() connects
 
     eNode* enode = m_zPin->getEnode();
     for( int i=0; i<m_channels; ++i )
@@ -108,6 +112,11 @@ void MuxAnalog::voltChanged()
 
 void MuxAnalog::runEvent()
 {
+    // Part state (docs/PART_STATES.md), when the switch-over happens (10 ns after the inputs):
+    // CH n (green: channel n connected to Z) or DISABLED (grey: enable pin high, all open)
+    if( m_enabled ) reportState( "CH "+QString::number( m_address ), stOn );
+    else            reportState( "DISABLED", stOff );
+
     if( !m_enabled )
     {
         for( int i=0; i<m_channels; ++i ) m_resistor[i]->setAdmit( cero_doub );

@@ -11,6 +11,9 @@
 #include "itemlibrary.h"
 #include "iopin.h"
 #include "e-node.h"
+#include "boolprop.h"
+
+#define tr(str) simulideTr("Lm555",str)
 
 Component* Lm555::construct( QString type, QString id )
 { return new Lm555( type, id ); }
@@ -96,12 +99,19 @@ Lm555::Lm555( QString type, QString id )
     m_resD.setEpin( 1, m_discharge );
 
     m_propDelay = 10*1000; // 10 ns
+
+    addPropGroup( { tr("Main"), {
+        showStateProp()
+    },0} );
+    enableStates( true );
 }
 Lm555::~Lm555(){}
 
 void Lm555::initialize()
 {
     m_outState = false;
+    m_reset = false;
+    clearStates();
     m_voltNeg = 0;
     m_voltPos = 0;
 
@@ -162,7 +172,8 @@ void Lm555::voltChanged()
 
     bool outState = m_outState;
 
-    if( resetVolt < 0.7 ) outState = false;                   // Reset
+    m_reset = resetVolt < 0.7;
+    if( m_reset ) outState = false;                           // Reset
     else{
         bool TrigComp = refTrig > m_trigger->getVoltage();
         if( TrigComp ) outState = true;                       // Trigger
@@ -183,6 +194,12 @@ void Lm555::runEvent()
 {
     m_output->setOutState( m_outState );
     m_resD.setRes( m_outState ? high_imp : 1 );
+
+    // Part state (docs/PART_STATES.md), at the moment the output changes (after the 10 ns delay):
+    // HIGH (green: output high, discharge off), LOW (grey: discharging), RESET (amber: reset pin low)
+    if     ( m_outState ) reportState("HIGH",  stOn );
+    else if( m_reset    ) reportState("RESET", stWait );
+    else                  reportState("LOW",   stOff );
 }
 
 void Lm555::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )

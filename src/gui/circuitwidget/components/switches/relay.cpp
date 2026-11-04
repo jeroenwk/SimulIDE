@@ -68,7 +68,9 @@ Relay::Relay( QString type, QString id )
 
         new IntProp <Relay>("Poles", tr("Poles"),""
                            , this, &Relay::poles, &Relay::setPoles, propNoCopy,"uint" ),
+        showStateProp()
     }, 0} );
+    enableStates( true );
 
     addPropGroup( { tr("Electric"), {
         new DoubProp<Relay>("IOn" , tr("IOn"),"mA"
@@ -94,6 +96,7 @@ Relay::~Relay(){}
 void Relay::initialize()
 {
     m_relayOn = false;
+    clearStates();
 
     if( Simulator::self()->isRunning() )
         m_internalEnode = new eNode( m_id+"-internaleNode" );
@@ -109,6 +112,7 @@ void Relay::stamp()
 
 void Relay::voltChanged()
 {
+    Simulator::self()->addToSettled( this );   // State from this step's final coil current
     double indCurr = fabs( m_inductor->indCurrent() );
     bool relayOn;
 
@@ -118,6 +122,14 @@ void Relay::voltChanged()
 
     if( m_nClose ) relayOn = !relayOn;
     if( relayOn != m_closed ) setSwitch( relayOn );
+}
+
+// Part state (docs/PART_STATES.md): the coil, ENERGISED (green: above IOn, until it falls below IOff)
+// or RELEASED (grey). Whether that closes or opens the contacts depends on Normally Closed
+void Relay::stepSettled()
+{
+    if( m_relayOn ) reportState("ENERGISED", stOn );
+    else            reportState("RELEASED",  stOff );
 }
 
 void Relay::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
