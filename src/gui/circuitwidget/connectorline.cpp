@@ -354,8 +354,15 @@ void ConnectorLine::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
     //p->setPen( pen );
 
     QColor color;
+    QColor lead;                        // A wire on an instrument's input takes its lead colour
+    Pin* sp = m_pConnector->startPin();
+    Pin* ep = m_pConnector->endPin();
+    if     ( sp && sp->wireColor().isValid() ) lead = sp->wireColor();
+    else if( ep && ep->wireColor().isValid() ) lead = ep->wireColor();
+
     if( isSelected() ) color = QColor( Qt::darkGray );
     else if( m_isBus ) color =  Qt::darkGreen;
+    else if( lead.isValid() ) color = lead;
     else if( Circuit::self()->animate() )
     {
         color = Theme::animWire( m_pConnector->getVoltage() > 2.5 );
