@@ -20,12 +20,19 @@ class Mosfet : public Component, public eMosfet
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 
+        virtual void initialize() override;
         virtual void updateStep() override;
 
         virtual void setPchannel( bool p ) override;
         virtual void setDepletion( bool d ) override;
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w ) override;
+
+    private:
+        void updateRegion();
+
+        enum region_t { regOff=0, regActive, regOhmic };
+        region_t m_region;
 };
 
 #endif
