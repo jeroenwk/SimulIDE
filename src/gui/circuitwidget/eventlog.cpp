@@ -17,6 +17,7 @@
 #include "component.h"
 #include "capacitorbase.h"
 #include "scriptcpu.h"
+#include "subcircuit.h"
 
 static const uint64_t ms = 1000000000ull;          // Picoseconds
 static const int maxLinesPerSec = 20;              // Per part, wall clock
@@ -81,6 +82,8 @@ void EventLog::updateStep()
     Simulator* sim = Simulator::self();
     if( !sim || !sim->isRunning() ) return;
 
+    solverReports();
+
     bool parts = partsActive(), caps = capsActive();
     bool partsOn = parts && !m_partsWas, capsOn = caps && !m_capsWas;   // Just switched on
     m_partsWas = parts;
@@ -102,8 +105,42 @@ void EventLog::updateStep()
     }
 }
 
+// An element id ("Diode-9", or "1@Zener-6" inside a subcircuit) as the user knows it: "D6", "IC1.ZVDD"
+QString EventLog::elementLabel( QString id, QString* uid )
+{
+    for( Component* comp : *Circuit::self()->compList() )
+    {
+        if( comp->getUid() == id ) { if( uid->isEmpty() ) *uid = comp->getUid(); return comp->idLabel(); }
+        if( SubCircuit* sub = dynamic_cast<SubCircuit*>( comp ) )
+            for( Component* inner : *sub->compList() )
+                if( inner->getUid() == id || inner->getUid() == id.section('@', -1 ) )
+                {
+                    if( uid->isEmpty() ) *uid = comp->getUid();
+                    return comp->idLabel()+"."+inner->idLabel();
+                }
+    }
+    return id;
+}
+
+void EventLog::solverReports()
+{
+    for( const Simulator::NlReport& r : Simulator::self()->takeNlReports() )
+    {
+        QString uid;
+        QStringList names;
+        for( const QString& id : r.ids ) names.append( elementLabel( id, &uid ) );
+        names.sort();
+        QString text = QString("Not converging after %1 iterations, step taken as it is; the next steps get at most 1000 "
+                               "until one converges. Still iterating: %2").arg( r.iterations ).arg( names.join(", ") );
+        if( m_events.size() >= maxEvents ) m_events.removeFirst();
+        m_events.append({ r.time, false, "solver", uid, "solver", Component::stFault, text, true });
+        CircuitWidget::self()->eventMessage( "[ "+timeStr( r.time )+"] "+text, Component::stFault, uid );
+    }
+}
+
 void EventLog::stop()
 {
+    solverReports();
     if( partsActive() )
         for( Component* comp : *Circuit::self()->compList() ) partEvents( comp );  // Last frame
     m_partsWas = m_capsWas = false;

@@ -20,6 +20,8 @@ enum simState_t{
 };
 
 #include <QElapsedTimer>
+#include <QMutex>
+#include <QStringList>
 #include <QFuture>
 
 class BaseProcessor;
@@ -70,7 +72,10 @@ class Simulator : public QObject
         void  setSlopeSteps( int steps ) { m_slopeSteps = steps; }
         int slopeSteps( ) { return m_slopeSteps; }
 
-        void  setMaxNlSteps( uint32_t steps ) { m_maxNlstp = steps; }
+        void  setMaxNlSteps( uint32_t steps ) { m_maxNlstp = steps; m_nlBudget = steps; }
+
+        struct NlReport { uint64_t time; uint32_t iterations; QStringList ids; };  // Step left unconverged
+        QList<NlReport> takeNlReports();            // GUI thread: reports since the last call
         uint32_t maxNlSteps( ) { return m_maxNlstp; }
         
         bool isRunning() { return (m_state >= SIM_STARTING); }
@@ -159,6 +164,10 @@ class Simulator : public QObject
         uint64_t m_fps;
         uint32_t m_NLstep;
         uint32_t m_maxNlstp;
+        uint32_t m_nlBudget;       // Iterations allowed now: less after a step that did not converge
+        QStringList m_nlIds;       // Elements still iterating in the last allowed pass
+        QList<NlReport> m_nlReports;
+        QMutex m_nlLock;
 
         uint64_t m_reactStep;
         uint64_t m_psPerSec;

@@ -83,6 +83,8 @@ class EventLog : public Updatable
         void emitLine( Component* comp, QString kind, const Line& line );
         void write( Component* comp, QString kind, const Line& line, bool shown );
         void flushRate();
+        void solverReports();               // Steps the solver left unconverged: always shown
+        static QString elementLabel( QString id, QString* uid );
 
         bool m_logParts;
         bool m_logCaps;
