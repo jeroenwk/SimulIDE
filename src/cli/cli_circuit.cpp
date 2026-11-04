@@ -12,6 +12,7 @@
 #include <QFile>
 
 #include "cliapi.h"
+#include "circmatrix.h"
 #include "clirefs.h"
 #include "currentflow.h"
 #include "mainwindow.h"
@@ -57,7 +58,8 @@ QJsonObject circuitInfo()
         {"stepsPS",    QString::number( sim->stepsPerSec() ) },
         {"NLsteps",    (int)sim->maxNlSteps() },
         {"reaStep",    QString::number( sim->reactStep() ) },
-        {"animate",    circ->animate() } };
+        {"animate",    circ->animate() },
+        {"matrix",     CircMatrix::self() ? CircMatrix::self()->stats() : QString() } };
 }
 }
 

@@ -32,7 +32,7 @@ The repo has no linter or CI. The only automated test is `tests/cli/smoke.sh` (n
 
 ### Two layers: GUI component and simulation element
 - `src/gui/circuitwidget/` holds the Qt graphics side: `Circuit` (the QGraphicsScene; it saves and loads circuits), `Component`/`CompBase` (the base for every placeable item, with properties), `Pin`, `Connector`, `Node`.
-- `src/simulator/` holds the engine: `Simulator`, `eElement`, `eNode`, `ePin`, `CircMatrix` (the MNA matrix solver). Basic electrical elements (`eResistor`, `eDiode`, etc.) live in `src/simulator/elements/`.
+- `src/simulator/` holds the engine: `Simulator`, `eElement`, `eNode`, `ePin`, `CircMatrix` (the MNA matrix solver: one LU per group of connected nodes, no pivoting; the nodes are put in minimum-degree order and only the structurally nonzero entries, fill-in included, are factorized, which makes switching circuits several times faster than the original dense LU; `circuit info` shows the group sizes and factorization counts). The sparsity pattern comes from the node connections (`addConnection`, `addSingAdm`) made in `stamp()`, before `createMatrix()`: an element must not add a matrix entry between nodes it did not connect there. Basic electrical elements (`eResistor`, `eDiode`, etc.) live in `src/simulator/elements/`.
 - A concrete component usually inherits from both layers, e.g. `class Resistor : public Comp2Pin, public eResistor`, and maps its GUI pins onto engine pins (`m_ePin[i] = m_pin[i]`).
 
 ### Simulation loop (`src/simulator/simulator.cpp`)
