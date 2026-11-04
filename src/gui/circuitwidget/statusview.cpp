@@ -35,6 +35,7 @@ void StatusView::setEnabled( bool en )
     if( en == m_enabled ) return;
     m_enabled = en;
     CircuitWidget::self()->syncPartStatus( en );       // Toolbar button
+    CircuitWidget::self()->syncEventLog();              // Messages checkbox
     MainWindow::self()->settings()->setValue("Circuit/partStatus", en );
     if( en ){ attach(); updateStep(); }
     else      clear();

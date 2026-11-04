@@ -40,6 +40,7 @@ void ChargeView::setEnabled( bool en )
     if( en == m_enabled ) return;
     m_enabled = en;
     CircuitWidget::self()->syncCapCharge( en );       // Toolbar button
+    CircuitWidget::self()->syncEventLog();             // Messages checkbox
     MainWindow::self()->settings()->setValue("Circuit/capCharge", en );
     if( en ) attach();
     repaintCaps();

@@ -57,6 +57,8 @@ void EventLog::attach()
     m_tracks.clear();
     m_events.clear();
     m_rateTimer.restart();
+    m_partsWas = partsActive();                   // A new run logs from its start
+    m_capsWas  = capsActive();
 }
 
 QString EventLog::timeStr( uint64_t ps )
@@ -71,24 +73,40 @@ QString EventLog::timeStr( uint64_t ps )
 
 //------------------------------------------------------------------------------
 
+bool EventLog::partsActive() { return m_logParts && StatusView::self()->enabled(); }
+bool EventLog::capsActive()  { return m_logCaps  && ChargeView::self()->enabled(); }
+
 void EventLog::updateStep()
 {
     Simulator* sim = Simulator::self();
     if( !sim || !sim->isRunning() ) return;
 
+    bool parts = partsActive(), caps = capsActive();
+    bool partsOn = parts && !m_partsWas, capsOn = caps && !m_capsWas;   // Just switched on
+    m_partsWas = parts;
+    m_capsWas  = caps;
+    if( !parts && !caps ) return;                 // Nothing to show: no work
+
     flushRate();
     uint64_t now = sim->circTime();
     for( Component* comp : *Circuit::self()->compList() )
     {
-        partEvents( comp );
+        if( parts ) partEvents( comp, partsOn );  // Switched on: from now, not the whole history
+        if( !caps ) continue;
         if( CapacitorBase* cap = dynamic_cast<CapacitorBase*>( comp ) )
-            if( cap->logCharge() ) capEvents( cap, now );
+        {
+            if( !cap->logCharge() ) continue;
+            if( capsOn ) m_tracks.remove( cap->getUid() );   // Fresh samples
+            capEvents( cap, now );
+        }
     }
 }
 
 void EventLog::stop()
 {
-    for( Component* comp : *Circuit::self()->compList() ) partEvents( comp );  // Last frame
+    if( partsActive() )
+        for( Component* comp : *Circuit::self()->compList() ) partEvents( comp );  // Last frame
+    m_partsWas = m_capsWas = false;
     for( Component* comp : *Circuit::self()->compList() )
     {
         if( !m_tracks.contains( comp->getUid() ) ) continue;
@@ -120,7 +138,7 @@ void EventLog::flushRate()
 }
 
 // Part states: the setStatus history of the part's scripted cores, one line per moment
-void EventLog::partEvents( Component* comp )
+void EventLog::partEvents( Component* comp, bool silent )
 {
     auto cores = StatusView::statusCores( comp );
     if( cores.isEmpty() ) return;
@@ -133,6 +151,11 @@ void EventLog::partEvents( Component* comp )
         for( auto& e : core.second->statusHistory() )
             if( e.seq > tr.seq ) { evs.append({ core.first, e }); maxSeq = qMax( maxSeq, e.seq ); }
     tr.seq = maxSeq;
+    if( silent )                                  // Catch up: remember the states, no lines
+    {
+        for( auto& core : cores ) if( core.second->status().level >= 0 ) tr.last[ core.first ] = core.second->status().text;
+        return;
+    }
     if( evs.isEmpty() ) return;
     std::sort( evs.begin(), evs.end(), []( const Ev& a, const Ev& b ){ return a.e.seq < b.e.seq; } );
 
@@ -165,7 +188,7 @@ void EventLog::partEvents( Component* comp )
 }
 
 // Capacitors with "Log charge": charging, charged, discharging, discharged, over the rating.
-// Sampled once per frame: the 10 ms mean now against the 10 ms before (ripple averages out).
+// Sampled once per frame, from 20 ms means (ripple averages out), with a 3 % hysteresis.
 void EventLog::capEvents( CapacitorBase* cap, uint64_t now )
 {
     enum { Empty=0, Charging, Steady, Discharging };
@@ -190,40 +213,48 @@ void EventLog::capEvents( CapacitorBase* cap, uint64_t now )
         emitLine( cap, "cap", { now, true, Component::stOn, "back within its rating", "rated" } );
     }
 
-    double s1 = 0, s0 = 0; int n1 = 0, n0 = 0;
-    for( auto& s : tr.samples )
+    double s1 = 0, s0 = 0; int n1 = 0, n0 = 0;    // Means of the last 20 ms and the 20 ms before:
+    for( auto& s : tr.samples )                   // two 100 Hz ripple periods, so ripple averages out
     {
-        if     ( s.first+10*ms > now ) { s1 += s.second; n1++; }
-        else if( s.first+20*ms > now ) { s0 += s.second; n0++; }
+        if     ( s.first+20*ms > now ) { s1 += s.second; n1++; }
+        else if( s.first+40*ms > now ) { s0 += s.second; n0++; }
     }
     if( tr.capState < 0 ) tr.capState = ( v < 0.05*scale ) ? Empty : Steady;
-    if( n1 == 0 || n0 == 0 ) return;              // Not 20 ms of history yet
-    double m1 = s1/n1, m0 = s0/n0, slope = m1-m0;
-    double big = qMax( 0.01*scale, 0.005 );
+    if( n1 == 0 || n0 == 0 ) return;              // Not 40 ms of history yet
+    double m1 = s1/n1, m0 = s0/n0;
+    if( tr.ref < 0 ) tr.ref = m1;
+
+    // A move of 3 % of the capacitor's own scale away from the level of the last event (or the
+    // extreme since, while it keeps going the same way) is an event; less is ripple or drift
+    if     ( tr.capState == Charging    ) tr.ref = qMax( tr.ref, m1 );
+    else if( tr.capState == Discharging ) tr.ref = qMin( tr.ref, m1 );
+    double thr = qMax( 0.03*scale, 0.02 );
 
     QString what, sig; int level = Component::stOn;
-    if( slope > big && tr.capState != Charging )
+    if( m1 > tr.ref+thr && tr.capState != Charging )
     {
-        tr.capState = Charging; level = Component::stWait;
-        sig = QString("charging@%1").arg( qRound( 10*m0/scale ) );   // Starting level in 10 % steps
-        what = "charging from "+ChargeView::voltStr( m0 );
+        level = Component::stWait;
+        sig  = QString("charging@%1").arg( qRound( 10*tr.ref/scale ) );   // Starting level in 10 % steps
+        what = "charging from "+ChargeView::voltStr( tr.ref );
+        tr.capState = Charging; tr.ref = m1;
     }
-    else if( slope < -big && tr.capState != Discharging && tr.capState != Empty )
+    else if( m1 < tr.ref-thr && tr.capState != Discharging && tr.capState != Empty )
     {
-        tr.capState = Discharging; level = Component::stOff;
-        sig = QString("discharging@%1").arg( qRound( 10*m0/scale ) );
-        what = "discharging from "+ChargeView::voltStr( m0 );
+        level = Component::stOff;
+        sig  = QString("discharging@%1").arg( qRound( 10*tr.ref/scale ) );
+        what = "discharging from "+ChargeView::voltStr( tr.ref );
+        tr.capState = Discharging; tr.ref = m1;
     }
     else if( tr.capState == Discharging && m1 < 0.05*scale )
     {
-        tr.capState = Empty; level = Component::stOff; sig = "discharged";
-        what = "discharged";
+        level = Component::stOff; sig = "discharged"; what = "discharged";
+        tr.capState = Empty; tr.ref = m1;
     }
-    else if( qAbs( slope ) < 0.003*scale && ( tr.capState == Charging || tr.capState == Discharging ) )
+    else if( qAbs( m1-m0 ) < 0.005*scale && ( tr.capState == Charging || tr.capState == Discharging ) )
     {
         sig  = "~";                               // A plateau: only seen if a frame catches it, not used for cycles
         what = ( tr.capState == Charging ? "charged to " : "steady at " )+ChargeView::voltStr( m1 );
-        tr.capState = Steady;
+        tr.capState = Steady; tr.ref = m1;
     }
     if( !what.isEmpty() ) emitLine( cap, "cap", { now, true, level, what, sig } );
 }
@@ -281,7 +312,7 @@ void EventLog::emitLine( Component* comp, QString kind, const Line& line )
 void EventLog::write( Component* comp, QString kind, const Line& line, bool shown )
 {
     Track& tr = m_tracks[ comp->getUid() ];
-    bool paneOn = ( kind == "part" ) ? m_logParts : m_logCaps;
+    bool paneOn = ( kind == "part" ) ? partsActive() : capsActive();
     if( shown && paneOn )
     {
         if( tr.lines >= maxLinesPerSec ) { tr.dropped++; shown = false; }
