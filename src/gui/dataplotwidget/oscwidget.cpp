@@ -9,6 +9,7 @@
 #include "oscope.h"
 #include "utils.h"
 #include "mainwindow.h"
+#include "uitheme.h"
 
 OscWidget::OscWidget( QWidget* parent , Oscope* oscope )
          : QDialog( parent )
@@ -22,7 +23,6 @@ OscWidget::OscWidget( QWidget* parent , Oscope* oscope )
     m_blocked = false;
     m_action = actNone;
     m_channel = 4;
-    QString color = m_oscope->getColor( m_channel ).name();
 
     channelGroup->setId( chButton1, 0 );
     channelGroup->setId( chButton2, 1 );
@@ -36,7 +36,6 @@ OscWidget::OscWidget( QWidget* parent , Oscope* oscope )
     autoGroup->addButton( autoCheck4, 3 );
     autoGroup->addButton( autoCheck5, 4 );
     autoGroup->button( 4 )->setChecked( true );
-    autoLabel->setStyleSheet( "background-color:"+color );
 
     triggerGroup->addButton( triggerCheck1, 0 );
     triggerGroup->addButton( triggerCheck2, 1 );
@@ -44,7 +43,6 @@ OscWidget::OscWidget( QWidget* parent , Oscope* oscope )
     triggerGroup->addButton( triggerCheck4, 3 );
     triggerGroup->addButton( triggerCheck5, 4 );
     triggerGroup->button( 4 )->setChecked( true );
-    trigLabel->setStyleSheet( "background-color:"+color );
 
     hideGroup->addButton( hideCheck1, 0 );
     hideGroup->addButton( hideCheck2, 1 );
@@ -59,16 +57,9 @@ OscWidget::OscWidget( QWidget* parent , Oscope* oscope )
     trackGroup->addButton( trackCheck4, 4 );
     trackGroup->button( 1 )->setChecked( true );
 
-    for( int i=0; i<5; ++i )
-    {
-        QString color = m_oscope->getColor( i ).name();
-        channelGroup->button( i )->setStyleSheet("QPushButton:checked{background-color:"+color+"; border: 3px solid gray; border-radius: 2px; border-style: inset;}\
-                                                  QPushButton{background-color:"+color+"; }" );
-        channelGroup->button( i )->adjustSize();
-        autoGroup->button( i )->setStyleSheet( "background-color:"+color );
-        triggerGroup->button( i )->setStyleSheet( "background-color:"+color );
-        hideGroup->button( i )->setStyleSheet( "background-color:"+color );
-    }
+    updateColors();
+    for( int i=0; i<5; ++i ) channelGroup->button( i )->adjustSize();
+    connect( UiTheme::self(), &UiTheme::changed, this, [this]( bool ){ updateColors(); } );
     mainLayout->setDirection( QBoxLayout::RightToLeft );
 
     timeDivBox->setUnitStr( "s" );
@@ -290,6 +281,30 @@ void OscWidget::on_filterBox_valueChanged( double filter )
     m_blocked = false;
 }
 
+void OscWidget::updateColors()   // Text on a channel colour: see UiTheme::chipSheet (dark mode)
+{
+    UiTheme* theme = UiTheme::self();
+    for( int i=0; i<5; ++i )
+    {
+        QColor  c    = m_oscope->getColor( i );
+        QString chip = theme->chipSheet( c );
+        channelGroup->button( i )->setStyleSheet("QPushButton:checked{"+chip+" border: 3px solid gray; border-radius: 2px; border-style: inset;}"
+                                                 "QPushButton{"+chip+"}" );
+        QString color = c.name();                 // Round buttons without text: the colour itself
+        autoGroup->button( i )->setStyleSheet( "background-color:"+color );
+        triggerGroup->button( i )->setStyleSheet( "background-color:"+color );
+        hideGroup->button( i )->setStyleSheet( "background-color:"+color );
+    }
+    QString chip = theme->chipSheet( m_oscope->getColor( m_channel ) );
+    timePosBox->setStyleSheet( chip );
+    voltDivBox->setStyleSheet( chip );
+    voltPosBox->setStyleSheet( chip );
+    int autoCh = autoGroup->checkedId();
+    int trigCh = triggerGroup->checkedId();
+    autoLabel->setStyleSheet( theme->chipSheet( m_oscope->getColor( autoCh < 0 ? 4 : autoCh ) ) );
+    trigLabel->setStyleSheet( theme->chipSheet( m_oscope->getColor( trigCh < 0 ? 4 : trigCh ) ) );
+}
+
 void OscWidget::setFilter( double filter )
 {
     filterBox->setValue( filter );
@@ -299,10 +314,10 @@ void OscWidget::on_channelGroup_buttonClicked( int ch )
 {
     m_channel = ch;
 
-    QString color = m_oscope->getColor( ch ).name();
-    timePosBox->setStyleSheet( "background-color:"+color );
-    voltDivBox->setStyleSheet( "background-color:"+color );
-    voltPosBox->setStyleSheet( "background-color:"+color );
+    QString chip = UiTheme::self()->chipSheet( m_oscope->getColor( ch ) );
+    timePosBox->setStyleSheet( chip );
+    voltDivBox->setStyleSheet( chip );
+    voltPosBox->setStyleSheet( chip );
 
     if( ch < 4 ){
         updateTimePosBox( ch, m_oscope->timePos( ch ) );
@@ -316,8 +331,7 @@ void OscWidget::on_autoGroup_buttonClicked( int ch )
 void OscWidget::setAuto( int ch )
 {
     autoGroup->button( ch )->setChecked( true );
-    QString color = m_oscope->getColor( ch ).name();
-    autoLabel->setStyleSheet( "background-color:"+color );
+    autoLabel->setStyleSheet( UiTheme::self()->chipSheet( m_oscope->getColor( ch ) ) );
 }
 
 void OscWidget::on_triggerGroup_buttonClicked( int ch )
@@ -326,8 +340,7 @@ void OscWidget::on_triggerGroup_buttonClicked( int ch )
 void OscWidget::setTrigger( int ch )
 {
     triggerGroup->button( ch )->setChecked( true );
-    QString color = m_oscope->getColor( ch ).name();
-    trigLabel->setStyleSheet( "background-color:"+color );
+    trigLabel->setStyleSheet( UiTheme::self()->chipSheet( m_oscope->getColor( ch ) ) );
 }
 
 void OscWidget::on_hideGroup_buttonClicked( int ch )

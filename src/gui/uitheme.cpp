@@ -279,6 +279,17 @@ QColor UiTheme::bg( QColor c )
     return QColor::fromHsl( c.hslHue(), c.hslSaturation(), 45+(255-c.lightness()), c.alpha() );
 }
 
+QString UiTheme::chipSheet( QColor c )
+{
+    QColor back = c, text = Qt::black;
+    if( m_dark )
+    {
+        back = QColor::fromHsl( c.hslHue(), qMin( c.hslSaturation(), 160 ), 50 );
+        text = c.lightness() < 170 ? QColor::fromHsl( c.hslHue(), c.hslSaturation(), 170 ) : c;
+    }
+    return "background-color:"+back.name()+"; color:"+text.name()+";";
+}
+
 QIcon UiTheme::icon( const QIcon &i )
 {
     if( !m_dark || i.isNull() ) return i;
