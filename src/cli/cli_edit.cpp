@@ -548,6 +548,10 @@ void CliApi::registerEdit()
         WireEnd a = wireEnd( c.arg( 0, "first pin or @x,y") );
         WireEnd b = wireEnd( c.arg( 1, "second pin or @x,y") );
         if( a.pin && a.pin == b.pin ) throw CliError("cannot connect a pin to itself");
+        for( Pin* p : { a.pin, b.pin } )  // Hidden pins are not used in the part's current mode (the GUI
+            if( p && !p->isVisibleTo( p->parentItem() ) )   // can't reach them): e.g. a WaveGen's ground
+                throw CliError( CliRefs::pinRef( p )+" is hidden: the part does not use it in its current mode "
+                                "(a Wave Generator's gndnod only with Bipolar on)");
         if( a.net() && a.net() == b.net() ) throw CliError("already connected by "+a.net()->getUid() );
         if( a.pin && b.pin && a.pin->isBus() != b.pin->isBus() ) throw CliError("cannot connect a bus pin to a non-bus pin");
         ConnectorLine* lineA = a.line;
