@@ -13,6 +13,8 @@
 #include "simulator.h"
 #include "circuit.h"
 #include "node.h"
+#include "tunnel.h"
+#include "pin.h"
 #include "utils.h"
 #include "currentflow.h"
 
@@ -359,6 +361,12 @@ void ConnectorLine::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
     Pin* ep = m_pConnector->endPin();
     if     ( sp && sp->wireColor().isValid() ) lead = sp->wireColor();
     else if( ep && ep->wireColor().isValid() ) lead = ep->wireColor();
+    else for( Pin* pin : { sp, ep } )   // From a tunnel that continues a lead to the circuit
+    {
+        Tunnel* tunnel = pin ? dynamic_cast<Tunnel*>( pin->component() ) : nullptr;
+        if( tunnel ){ lead = tunnel->leadColor(); if( lead.isValid() ) break; }
+    }
+    if( lead.isValid() ) lead = Theme::lead( lead );
 
     if( isSelected() ) color = QColor( Qt::darkGray );
     else if( m_isBus ) color =  Qt::darkGreen;
@@ -376,6 +384,7 @@ void ConnectorLine::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
     //p->drawPath( shape() );
     
     if( m_isBus ) pen.setWidth( 3 );
+    else if( lead.isValid() && !isSelected() ) pen.setWidthF( 2.4 ); // Leads a bit thicker, like test leads
 
     p->setPen( pen );
     p->drawLine( 0, 0, dx(), dy());

@@ -6,6 +6,8 @@
 #include <QInputDialog>
 
 #include "tunnel.h"
+#include "theme.h"
+#include "connector.h"
 #include "linker.h"
 #include "itemlibrary.h"
 #include "propdialog.h"
@@ -260,6 +262,20 @@ void Tunnel::mousePressEvent( QGraphicsSceneMouseEvent* event )
         Component::mousePressEvent( event ); // Tunnel should not be linked or main component
 }
 
+QColor Tunnel::leadColor()
+{
+    QList<Tunnel*>* list = m_tunnels.value( m_name );
+    if( !list ) return QColor();
+    for( Tunnel* tunnel : *list )
+    {
+        Connector* con = tunnel->m_pin[0]->connector();
+        if( !con ) continue;
+        Pin* other = ( con->startPin() == tunnel->m_pin[0] ) ? con->endPin() : con->startPin();
+        if( other && other->wireColor().isValid() ) return other->wireColor();
+    }
+    return QColor();
+}
+
 void Tunnel::paint( QPainter* p, const QStyleOptionGraphicsItem *option, QWidget *widget )
 {
     if( m_hidden || m_packed ) return;
@@ -270,7 +286,15 @@ void Tunnel::paint( QPainter* p, const QStyleOptionGraphicsItem *option, QWidget
         else                    m_color = QColor( 255, 255, 250 );
     } else                      m_color = QColor( 210, 210, 230 );
 
+    QColor lead = leadColor();
+    if( lead.isValid() )            // Part of an instrument lead: a tint of the lead's colour
+    {
+        lead = Theme::lead( lead );
+        QColor c = lead.toHsl();
+        m_color = QColor::fromHsl( c.hslHue(), qMin( c.hslSaturation(), 200 ), 225 );
+    }
     Component::paint( p, option, widget );
+    if( lead.isValid() ) p->setPen( QPen( lead, 1.5 ) );
 
     if( m_rotated ){
         QPointF points[5] =        {
