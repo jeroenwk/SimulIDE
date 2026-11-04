@@ -88,6 +88,7 @@ void Jfet::initialize()
 void Jfet::updateStep()
 {
     if( Circuit::self()->animate() ) update();
+    if( m_changed ) voltChanged(); // A property changed: solve again (m_changed cleared at eJfet::voltChanged)
 }
 
 void Jfet::voltChanged()
