@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "datawidget.h"
+#include "uitheme.h"
 #include "oscope.h"
 #include "mainwindow.h"
 
@@ -37,6 +38,8 @@ DataWidget::DataWidget( QWidget* parent, Oscope* oscope )
     }
 
     this->adjustSize();
+
+    connect( UiTheme::self(), &UiTheme::changed, this, [this]( bool ){ updateColors(); } );
 }
 
 bool DataWidget::eventFilter( QObject*, QEvent* event)
@@ -52,8 +55,14 @@ void DataWidget::on_expandButton_clicked()
 
 void DataWidget::setColor( int ch, QColor c )
 {
-    QString color = c.name();
-    m_chNames.at( ch )->setStyleSheet( "background-color:"+color );
+    m_colors[ch] = c;
+    m_chNames.at( ch )->setStyleSheet( UiTheme::self()->chipSheet( c ) );
+}
+
+void DataWidget::updateColors()      // Dark or light mode changed
+{
+    for( auto it = m_colors.begin(); it != m_colors.end(); ++it )
+        m_chNames.at( it.key() )->setStyleSheet( UiTheme::self()->chipSheet( it.value() ) );
 }
 
 void DataWidget::setData( int ch, QString freq )

@@ -2,6 +2,7 @@
  *   Copyright (C) 2020 by Santiago González                               *
  *                                                                         */
 
+#include <QHash>
 #include <QWidget>
 
 #include "ui_datalawidget.h"
@@ -19,6 +20,7 @@ class DataLaWidget : public QWidget, private Ui::DataLaWidget
         DataLaWidget(QWidget* parent=0 , PlotBase* pb=0) ;
 
         void setColor( int ch, QColor c );
+        void updateColors();
         void setTunnel( int ch, QString name );
 
         bool eventFilter( QObject* object, QEvent* event) override;
@@ -40,6 +42,7 @@ class DataLaWidget : public QWidget, private Ui::DataLaWidget
         PlotBase* m_plotBase;
 
         QList<QLineEdit*> m_chNames;
+        QHash<int, QColor> m_colors;    // Set by setColor, restyled when the theme changes
 };
 
 

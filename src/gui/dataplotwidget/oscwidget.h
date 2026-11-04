@@ -31,6 +31,7 @@ class OscWidget : public QDialog, private Ui::OscWidget
         QHBoxLayout* getLayout() { return mainLayout; }
 
         void setFilter( double filter );
+        void updateColors();
         void setAuto( int ch );
         void setTrigger( int ch );
         void hideChannel( int ch, bool hide );

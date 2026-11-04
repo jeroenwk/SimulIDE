@@ -44,6 +44,10 @@ class UiTheme : public QObject
         // Dark-mode versions of colours and icons drawn for a light background (identity in light mode)
         QColor fg( QColor c );          // Text: dark colours become light, hue kept
         QColor bg( QColor c );          // Light greyish backgrounds become dark, hue kept
+
+        // A text widget filled with a signal colour (scope channel buttons and boxes): the colour
+        // with black text in light mode; in dark mode a dark shade of it, with the colour as text
+        QString chipSheet( QColor c );
         QIcon  icon( const QIcon &i );
         static QImage darkImage( const QImage &img );
 

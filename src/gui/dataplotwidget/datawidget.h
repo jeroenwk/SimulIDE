@@ -2,6 +2,7 @@
  *   Copyright (C) 2020 by Santiago González                               *
  *                                                                         */
 
+#include <QHash>
 #include <QWidget>
 
 #include "ui_datawidget.h"
@@ -19,6 +20,7 @@ class DataWidget : public QWidget, private Ui::DataWidget
         DataWidget(QWidget* parent=0 , Oscope* oscope=0) ;
 
         void setColor( int ch, QColor c );
+        void updateColors();
         void setData( int ch, QString freq );
         void setTunnel( int ch, QString name );
 
@@ -37,6 +39,7 @@ class DataWidget : public QWidget, private Ui::DataWidget
         Oscope* m_oscope;
 
         QList<QLineEdit*> m_chNames;
+        QHash<int, QColor> m_colors;    // Set by setColor, restyled when the theme changes
 };
 
 

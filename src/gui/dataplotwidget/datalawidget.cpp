@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "datalawidget.h"
+#include "uitheme.h"
 #include "logicanalizer.h"
 #include "mainwindow.h"
 
@@ -36,6 +37,8 @@ DataLaWidget::DataLaWidget( QWidget* parent, PlotBase* pb )
     }
 
     this->adjustSize();
+
+    connect( UiTheme::self(), &UiTheme::changed, this, [this]( bool ){ updateColors(); } );
 }
 
 bool DataLaWidget::eventFilter( QObject*, QEvent* event)
@@ -51,8 +54,14 @@ void DataLaWidget::on_expandButton_clicked()
 
 void DataLaWidget::setColor( int ch, QColor c )
 {
-    QString color = c.name();
-    m_chNames.at( ch )->setStyleSheet( "background-color:"+color );
+    m_colors[ch] = c;
+    m_chNames.at( ch )->setStyleSheet( UiTheme::self()->chipSheet( c ) );
+}
+
+void DataLaWidget::updateColors()      // Dark or light mode changed
+{
+    for( auto it = m_colors.begin(); it != m_colors.end(); ++it )
+        m_chNames.at( it.key() )->setStyleSheet( UiTheme::self()->chipSheet( it.value() ) );
 }
 
 void DataLaWidget::setTunnel( int ch, QString name )
