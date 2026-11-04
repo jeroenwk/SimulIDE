@@ -29,10 +29,11 @@ PlotBase::PlotBase( QString type, QString id )
     m_connectGnd = true;
     m_inputAdmit = 1e-7;
 
-    m_color[0] = QColor( 240, 240, 100 );
-    m_color[1] = QColor( 220, 220, 255 );
-    m_color[2] = QColor( 255, 210, 90  );
-    m_color[3] = QColor( 000, 245, 160 );
+    // Channel colours of a Rigol DS2000 scope: yellow, cyan, magenta, blue
+    m_color[0] = QColor( 245, 230,  50 );
+    m_color[1] = QColor(  90, 215, 245 );
+    m_color[2] = QColor( 240,  80, 190 );
+    m_color[3] = QColor(  70, 140, 255 );
     m_color[4] = QColor( 255, 255, 255 );
 
     m_baSizeX = 135;
