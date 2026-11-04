@@ -178,7 +178,18 @@ void EventLog::flushRate()
 void EventLog::partEvents( Component* comp, bool silent )
 {
     auto cores = StatusView::statusCores( comp );
-    if( cores.isEmpty() ) return;
+    if( cores.isEmpty() )                         // A built-in part with a state (BJT): seen at this frame
+    {
+        if( comp->statusLevel() < 0 ) return;
+        Track& tr = m_tracks[ comp->getUid() ];
+        QString text = comp->statusText();
+        QString from = tr.last.value("");
+        tr.last[""] = text;
+        if( silent || text == from ) return;
+        emitLine( comp, "part", { Simulator::self()->circTime(), true, comp->statusLevel(),
+                                  ( from.isEmpty() ? "" : from+" → " )+text, "="+text } );
+        return;
+    }
     Track& tr = m_tracks[ comp->getUid() ];
 
     struct Ev { QString block; ScriptCpu::StatusEvent e; };

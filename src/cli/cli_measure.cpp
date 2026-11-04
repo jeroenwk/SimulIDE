@@ -28,6 +28,7 @@
 #include "e-resistor.h"
 #include "varistor.h"
 #include "lamp.h"
+#include "bjt.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -129,6 +130,14 @@ QJsonObject readComp( Component* comp )
             o["current"] = num( i );
             o["power"]   = num( v*i );
     }   }
+    else if( dynamic_cast<BJT*>( comp ) )         // Terminal currents (into the part) and the region
+    {
+        const char* names[3] = { "collector", "emitter", "base" };
+        std::vector<Pin*> pins = comp->getPins();
+        for( int i=0; i<3; ++i )
+            if( pins[i]->isConnected() && pins[i]->hasTrueCurrent() ) o[ QString("i_")+names[i] ] = num( pins[i]->trueCurrent() );
+        if( comp->statusLevel() >= 0 ) o["state"] = comp->statusText();
+    }
     else if( comp->itemType() == "MCU" )          // Scripted core placed on its own: its state text
     {
         QString state = comp->getValLabelText();
