@@ -12,6 +12,7 @@
 #include <QList>
 #include <QPair>
 #include <QElapsedTimer>
+#include <deque>
 
 #include "updatable.h"
 
@@ -75,11 +76,14 @@ class EventLog : public Updatable
             bool over = false;
             double peak = 0;
             double ref  = -1;               // Level at the last event (hysteresis)
-            QList<QPair<uint64_t, double>> samples;
+            std::deque<double> hist;        // |V| every 0.1 ms, the last 200 ms
+            double s0 = 0, s1 = 0;          // Sums of the 20 ms before the last 20 ms, and of those
+            uint64_t evTime = 0;            // Time of the last event
         };
 
         void partEvents( Component* comp, bool silent=false );  // silent: catch up without lines
-        void capEvents( CapacitorBase* cap, uint64_t now );
+        void capEvents( CapacitorBase* cap, uint64_t now, bool fresh );
+        void capPoint( CapacitorBase* cap, Track& tr, uint64_t t, double v );
         void emitLine( Component* comp, QString kind, const Line& line );
         void write( Component* comp, QString kind, const Line& line, bool shown );
         void flushRate();

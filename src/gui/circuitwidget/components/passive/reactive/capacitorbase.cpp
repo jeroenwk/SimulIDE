@@ -77,6 +77,46 @@ void CapacitorBase::updateStep()
     else if( m_gauge->isVisible() ) m_gauge->setVisible( false );
 }
 
+void CapacitorBase::stamp()
+{
+    m_sampleLock.lock();                  // A new run: samples start at t = 0
+    m_samples.clear();
+    m_nextSample = 0;
+    m_heldVolt = m_InitVolt;
+    m_sampleLock.unlock();
+    Reactive::stamp();
+}
+
+void CapacitorBase::fillTo( uint64_t time )
+{
+    while( m_nextSample <= time )
+    {
+        m_samples.append( m_heldVolt );
+        m_nextSample += sampleStep;
+    }
+    const int maxSamples = 1<<15;         // 3.3 s: older points are dropped if nobody takes them
+    if( m_samples.size() > maxSamples ) m_samples.remove( 0, m_samples.size()-maxSamples );
+}
+
+void CapacitorBase::voltSample()
+{
+    if( !m_logCharge ) return;
+    QMutexLocker lock( &m_sampleLock );
+    uint64_t now = Simulator::self()->circTime();
+    if( now ) fillTo( now-1 );            // Points before this step keep the old voltage
+    m_heldVolt = m_volt;
+}
+
+QVector<float> CapacitorBase::takeSamples( uint64_t now, uint64_t* firstTime )
+{
+    QMutexLocker lock( &m_sampleLock );
+    fillTo( now );                        // Nothing changed since the last step: still held
+    QVector<float> out;
+    out.swap( m_samples );
+    *firstTime = m_nextSample - (uint64_t)out.size()*sampleStep;
+    return out;
+}
+
 bool CapacitorBase::chargeShown()
 {
     return ChargeView::self()->active() && m_pin[0]->isConnected() && m_pin[1]->isConnected();

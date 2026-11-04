@@ -27,6 +27,8 @@ class eReactive : public eResistor
     protected:
         void updtReactStep();
 
+        virtual void voltSample(){;}   // m_volt has a new value (simulation thread)
+
         virtual double updtRes(){ return 0.0;}
         virtual double updtCurr(){ return 0.0;}
 

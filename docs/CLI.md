@@ -227,14 +227,19 @@ what happens, with the simulated time, coloured like the part-state badges:
 ```
 [   312.009 ms] IC1  supply: UVLO → ON  ·  pwm: IDLE → WAIT COMP
 [   414.817 ms] IC1  fb: OK → OVP  ·  supply: ON → HICCUP  ·  pwm: RUN → STOP → IDLE
-[≈  419.683 ms] C5  charged to 23.7 V
+[   419.683 ms] C5  charged to 23.7 V
 [     1.4017 s] IC1  repeats the same cycle of 5 changes every 340.234 ms (2.94 Hz): not listed further while it repeats
 ```
 - Part states: every `setStatus` change, exact time; changes within 1 µs share a line.
 - Capacitors whose **Log charge** property is on (`comp set C5 LogCharge=true`):
   charging, charged, discharging, discharged, above / back within the rated
-  voltage. Seen once per frame from 20 ms averages (mains ripple averages
-  out), with a 3 % hysteresis, so the time is marked ≈.
+  voltage. The capacitor records its voltage every 0.1 ms of simulated time,
+  whatever the speed. A change is judged on 20 ms averages (mains ripple
+  averages out) with a 3 % hysteresis; once seen, the recorded voltage is
+  searched for when it really happened (the foot of the rise, the first point
+  at the new level, ripple included), and that is the time and level logged.
+  A "charged" line therefore appears about 40 ms of simulated time after the
+  moment it names (two equal 20 ms averages are needed to call a level steady).
 - A step the solver could not converge (the "NonLinear Not Converging" warning)
   always gets a red line: its time, the iterations, and the parts still
   iterating ("D1, D5, IC1.Mosfet-28, ..."). The step is then taken as it is

@@ -30,6 +30,7 @@ void eReactive::stamp()
         updtReactStep();
 
         m_volt = m_InitVolt;
+        voltSample();
         m_curSource = m_InitCurr;
         m_curSource = updtCurr();
 
@@ -59,6 +60,7 @@ void eReactive::runEvent()
     if( m_volt != volt )
     {
         m_volt = volt;
+        voltSample();
 
         m_curSource = updtCurr();
 
