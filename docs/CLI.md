@@ -195,7 +195,10 @@ while the simulation runs. A scripted core reports with
   **SAT** (amber, saturated: VCE < 0.2 V); MOSFETs **OFF** / **ACTIVE** /
   **OHMIC**; SCRs, triacs and diacs **OFF** or **ON** (amber, conducting); op
   amps **LINEAR** / **SAT+** / **SAT-** (amber, at a rail); voltage regulators
-  **REGULATING** / **DROPOUT** (amber) / **OFF**. Each boundary has a little hysteresis. The state
+  **REGULATING** / **DROPOUT** (amber) / **OFF**; diodes **OFF** / **ON** /
+  **BREAKDOWN** / **OVER**, zeners **REGULATING** in breakdown, LEDs **OFF** /
+  **ON** / **OVER**. Diodes and LEDs have Show State off by default (there are
+  usually many): turn it on for the ones to watch. Each boundary has a little hysteresis. The state
   is taken when each time step has converged, so the times are exact at any
   speed. `status` lists them, `read` gives the current one as `state`, and
   Messages logs them. A part's **Show State** property (`Show_State`) turns its

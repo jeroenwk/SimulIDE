@@ -65,7 +65,9 @@ Diode::Diode( QString type, QString id, bool zener )
     addPropGroup( { tr("Main"), {
         new StrProp<Diode>("Model", tr("Model"), m_diodes.keys().join(",")
                           , this, &Diode::model, &Diode::setModel, 0,"enum" ),
+        showStateProp()
     },0} );
+    enableStates( zener );   // Zeners show their state, diodes only on request (many in a circuit)
 
     addPropGroup( { tr("Electric"), {
         new DoubProp<Diode>("Threshold" , tr("Forward Voltage"),"V"
@@ -113,6 +115,8 @@ void Diode::initialize()
 
     m_midEnode = new eNode( m_elmId+"-mideNode");
     eDiode::initialize();
+    m_region = -1;
+    clearStates();
 
     update();
 }
@@ -141,6 +145,7 @@ void Diode::updateStep()
 
 void Diode::voltChanged()
 {
+    Simulator::self()->addToSettled( this );   // State from this step's final values
     eDiode::voltChanged();
     if( !m_converged ) return;
 
@@ -149,6 +154,35 @@ void Diode::voltChanged()
         double current = m_resistor->current();
         for( Component* comp : m_linkedComp ) comp->setLinkedValue( current );
     }
+}
+
+// Part state (docs/PART_STATES.md), from the junction current (forward positive):
+//   OFF         less than 10 uA either way (back below 1 uA: a factor 10, near zero currents ring)
+//   ON          conducting forward (amber, a closed switch). A zener: FORWARD
+//   BREAKDOWN   conducting in reverse (the junction voltage is negative): red for a diode,
+//               REGULATING (green) for a zener, whose working state it is
+//   OVER        current above Max Current (back below 0.95 x): red
+// Current, not voltage: the forward voltage at 10 uA..1 A depends on the model (Is, n).
+void Diode::stepSettled()
+{
+    double i  = m_current;
+    double ai = qFabs( i );
+    int r = m_region;
+    if( m_maxCur > 0 && ( r == 3 ? ai > 0.95*m_maxCur : ai > m_maxCur ) ) r = 3;
+    else{
+        bool on = ( r == 1 || r == 2 || r == 3 ) ? ai > 1e-6 : ai > 1e-5;
+        if( !on ) r = 0;
+        else      r = ( i > 0 ) ? 1 : 2;
+    }
+    if( r == m_region ) return;
+    m_region = r;
+    if     ( r == 0 ) reportState("OFF", stOff );
+    else if( r == 1 ) reportState( m_isZener ? "FORWARD" : "ON", stWait );
+    else if( r == 2 ){
+        if( m_isZener ) reportState("REGULATING", stOn );
+        else            reportState("BREAKDOWN",  stFault );
+    }
+    else reportState("OVER", stFault );
 }
 
 void Diode::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )

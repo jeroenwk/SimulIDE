@@ -43,7 +43,9 @@ LedBase::LedBase( QString type, QString id )
 
         new BoolProp<LedBase>("Grounded", tr("Grounded"), ""
                              , this, &LedBase::grounded, &LedBase::setGrounded, propNoCopy ),
+        showStateProp()
     }, 0} );
+    enableStates( false );   // On request only: circuits often have many LEDs
 
     addPropGroup( { tr("Electric"), {
         new DoubProp<LedBase>("Threshold", tr("Forward Voltage"), "V"
@@ -66,6 +68,8 @@ void LedBase::initialize()
     if( m_grounded ) m_ePin[1]->setEnode( &m_gndEnode );
 
     eLed::initialize();
+    m_region = -1;
+    clearStates();
     update();
 }
 
@@ -195,4 +199,28 @@ void LedBase::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w 
     drawForeground( p );
 
     Component::paintSelected( p );
+}
+
+void LedBase::voltChanged()
+{
+    if( m_stateLog ) Simulator::self()->addToSettled( this );   // State from this step's final values
+    eLed::voltChanged();
+}
+
+// Part state (docs/PART_STATES.md): OFF, ON (green: lit, conducting more than 10 uA, back below 5 uA)
+// or OVER (red: above Max Current at this moment, back below 0.95 x). The red crash drawing still
+// uses the averaged current (1.5 x): a PWM-driven LED can show OVER on its pulses without crashing.
+void LedBase::stepSettled()
+{
+    double i = m_current;
+    int r = m_region;
+    if( m_maxCurrent > 0 && ( r == 2 ? i > 0.95*m_maxCurrent : i > m_maxCurrent ) ) r = 2;
+    else if( r == 1 || r == 2 ) r = ( i < 5e-6 ) ? 0 : 1;
+    else r = ( i > 1e-5 ) ? 1 : 0;
+
+    if( r == m_region ) return;
+    m_region = r;
+    if     ( r == 0 ) reportState("OFF",  stOff );
+    else if( r == 1 ) reportState("ON",   stOn );
+    else              reportState("OVER", stFault );
 }

@@ -36,6 +36,8 @@ class LedBase : public Component, public eLed
 
         virtual void initialize() override;
         virtual void updateStep() override;
+        virtual void voltChanged() override;
+        virtual void stepSettled() override;
 
  static QColor getColor( ledColor_t c, int bright );
  static QString getColorList();
@@ -43,6 +45,7 @@ class LedBase : public Component, public eLed
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w ) override;
 
     protected:
+        int m_region;            // Part state: -1 none, 0 off, 1 on, 2 over current
         virtual void drawBackground( QPainter* p )=0;
         virtual void drawForeground( QPainter* p )=0;
         

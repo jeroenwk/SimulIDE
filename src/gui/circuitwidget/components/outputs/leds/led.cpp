@@ -51,7 +51,7 @@ Led::~Led(){}
 
 void Led::voltChanged()
 {
-    eLed::voltChanged();
+    LedBase::voltChanged();   // Also asks for the part state (stepSettled)
     if( !m_converged ) return;
 
     for( Component* comp : m_linkedComp ) comp->setLinkedValue( m_current );
