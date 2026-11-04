@@ -27,6 +27,7 @@ class Diode : public LinkerComponent, public eDiode
         virtual void initialize() override;
         virtual void stamp() override;
         virtual void updateStep() override;
+        virtual void stepSettled() override;
 
         virtual double res() override{ return m_resistor->res(); }
         virtual void setResSafe( double resist ) override { m_resistor->setResSafe(resist);}
@@ -35,6 +36,7 @@ class Diode : public LinkerComponent, public eDiode
 
     private:
         bool m_isZener;
+        int  m_region;           // Part state: -1 none, 0 off, 1 forward, 2 breakdown, 3 over current
 
         eNode* m_midEnode;
         eResistor* m_resistor;

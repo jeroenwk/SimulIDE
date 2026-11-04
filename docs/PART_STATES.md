@@ -1,6 +1,6 @@
 # Part states for active components: implementation note
 
-Status (2026-11-04): steps 1 to 3 done. These are the shared mechanism, the thyristors (SCR, triac, diac), and the op amp and voltage regulator; the BJT and MOSFET are moved onto it. Steps 4 and 5 (diodes, LEDs; 555, relay, mux) are open.
+Status (2026-11-04): steps 1 to 4 done. These are the shared mechanism, the thyristors (SCR, triac, diac), the op amp and voltage regulator, and the diode, zener and LED; the BJT and MOSFET are moved onto it. Step 5 (555, relay, mux) is open, to do only if useful.
 
 ## What a part state is
 
@@ -69,9 +69,9 @@ Example (Duncan Fig. 49.5, 100 mV in, full speed) [SIMULATED]:
 | Diac | OFF / ON | `m_state`: on above the breakover voltage, off below the holding current | done (step 2) |
 | Op amp | LINEAR / SAT+ / SAT− | the output the gain asks for, gain × (V+ − V−), against the rails (supply pins or V+ / V−), 10 mV hysteresis. Open loop (comparator): always SAT+ or SAT− | done (step 3) |
 | Voltage regulator | REGULATING / DROPOUT / OFF | the model's own test: headroom input − (ref + set voltage) < 0.7 V = dropout, input < 0.7 V = off; 50 mV hysteresis | done (step 3) |
-| Diode | OFF / ON / BREAKDOWN (red) | forward voltage vs threshold, reverse vs breakdown | step 4, Show State off by default |
-| Zener | OFF / FORWARD / REGULATING (green) | as the diode; for a zener, breakdown is the working state | step 4 |
-| LED | OFF / ON / OVER (red) | its current against its maximum | step 4, Show State off by default |
+| Diode | OFF / ON (amber) / BREAKDOWN (red) / OVER (red) | junction current: conducting above 10 µA, back below 1 µA (a factor 10: currents near a zero crossing ring); its sign gives forward or reverse. OVER: above Max Current, back below 0.95×. A voltage threshold was tried first, but the forward voltage at small currents depends on the model (Is, n): a zener at 1.4 mA never reached 0.8 × its forward voltage | done (step 4), Show State **off** by default |
+| Zener | OFF / FORWARD (amber) / REGULATING (green) / OVER | as the diode; for a zener, reverse conduction is the working state | done (step 4), Show State on |
+| LED (Led, LedSmd: `LedBase`) | OFF / ON (green, lit) / OVER (red) | current above 10 µA (back below 5 µA); OVER: above Max Current at that moment. The crash drawing still uses the averaged current (1.5×), so a PWM-driven LED can show OVER on its pulses without crashing | done (step 4), Show State **off** by default |
 | 555 | output HIGH / LOW, DISCHARGE | its flip-flop | step 5, if useful |
 | Relay, analog mux | ENERGISED / channel n / DISABLED | coil state, address | step 5, if useful |
 
@@ -80,6 +80,9 @@ Checked on 2026-11-04 [SIMULATED], 50 Hz AC through a resistor, gate driven from
 - **Triac:** ON in both halves, OFF at each zero crossing.
 - **Diac** on 40 V peak through 1 kΩ: ON at 30 V (2.8 ms), OFF when its current falls below 10 mA (8.8 ms).
 - **Op amp** follower (rails 0 / 5 V), 2.5 ± 3 V sine at 50 Hz: SAT+ 3.2–7 ms and SAT− from 13.2 ms. The calculated crossings are 3.13, 6.87 and 13.13 ms; the WaveGen steps in 0.2 ms. LINEAR at 2.5 ± 1.5 V.
+- **Zener** 5.6 V through 1 kΩ, triangle −2..12 V: REGULATING above 5.4 ms (input 5.5 V), OFF from 14.8 ms, FORWARD from 18.8 ms (input −0.6 V), every 20 ms.
+- **LED**: 5 V through 150 Ω (20 mA) gives ON; through 47 Ω (≈ 60 mA, Max Current 30 mA) gives OVER.
+- **Bridge diodes** (led_driver `stage_0b_bridge.sim1`, cold lamp): each conducts in its own half-cycle. OVER from 0.63 to 7.9 ms during the inrush: about 5 A against the 1N4007 model's 1 A Max Current. That is the average rating; the real part takes a 30 A surge. One 10 µs ON blip at a zero crossing is real: that circuit's winding and probe capacitances make the current ring there.
 - **5 V regulator** on a 0–10 V triangle into 1 kΩ: OFF to 0.8 ms (input 0.75 V), DROPOUT to 5.8 ms (5.75 V), REGULATING until the input falls below 5.7 V (14.4 ms), OFF below 0.7 V (19.4 ms).
 
 ## Things to keep in mind
