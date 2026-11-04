@@ -43,6 +43,7 @@ The repo has no linter or CI. The only automated test is `tests/cli/smoke.sh` (n
   - `runEvent()`: callback for an event scheduled with `Simulator::self()->addEvent(delay_ps, this)`.
   - `voltChanged()`: called when a connected node's voltage changes. Non-linear elements are iterated until they converge (limited by `maxNlSteps`).
 - `solveCircuit()` re-solves the matrix only when nodes have changed, then processes the non-linear list and the voltage-changed list.
+- Non-linear iterations are limited per step (`maxNlSteps`, default 100000). A step that reaches the limit is taken unconverged and reported (`takeNlReports()`: time, iterations, elements still iterating; the EventLog writes it in red to Messages). The following steps get at most 1000 iterations until one converges, then the full budget again.
 - GUI-rate visual updates go through `Updatable::updateStep()` (called from the main thread's `timerEvent`), not from simulation callbacks.
 - Most core managers are singletons reached through `X::self()` (`Simulator`, `Circuit`, `CircuitWidget`, `ItemLibrary`, `EditorWindow`, `InfoWidget`, ...).
 

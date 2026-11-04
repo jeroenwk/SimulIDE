@@ -36,6 +36,7 @@ Simulator::Simulator( QObject* parent )
     m_stepsPS   = 1e6;
     m_reactStep = 1e6;
     m_maxNlstp  = 100000;
+    m_nlBudget  = m_maxNlstp;
     m_slopeSteps = 0;
 
     m_errors[0] = "";
@@ -192,14 +193,26 @@ void Simulator::solveCircuit()
         {
             m_converged = true;
             while( m_nonLinear ){
+                if( m_nlBudget && m_NLstep+1 >= m_nlBudget && m_nlIds.size() < 16 )   // Last pass: who is
+                {                                                                     // still iterating
+                    QString id = m_nonLinear->getId();
+                    if( !m_nlIds.contains( id ) ) m_nlIds.append( id );
+                }
                 m_nonLinear->added = false;
                 m_nonLinear->voltChanged();
                 m_nonLinear = m_nonLinear->nextChanged;
             }
-            if( m_maxNlstp && (m_NLstep++ >= m_maxNlstp) ) // Max iterations reached: warn, and give the
-            {                                              // next attempt a full budget again (the count
-                m_warning = 1;                             // used to stay over the limit, leaving one pass
-                m_NLstep = 0;                              // per step: stuck after one bad step)
+            if( m_nlBudget && (m_NLstep++ >= m_nlBudget) )  // Max iterations reached: take the step
+            {                                               // unconverged, report it (Messages), and
+                m_warning = 1;                              // allow the next steps 1000 iterations
+                {                                           // until one converges: no long stall on
+                    QMutexLocker lock( &m_nlLock );         // each bad step, and no step left with
+                    if( m_nlReports.size() < 100 )          // a single pass (stuck)
+                        m_nlReports.append({ m_circTime, m_NLstep, m_nlIds });
+                }
+                m_nlIds.clear();
+                m_NLstep = 0;
+                m_nlBudget = qMin( m_maxNlstp, (uint32_t)1000 );
                 return;
             }
             if( m_state < SIM_RUNNING ){ m_converged = false; break; }    // Loop broken without converging
@@ -208,6 +221,7 @@ void Simulator::solveCircuit()
         if( !m_converged ) return; // Don't run linear until nonliear converged (Loop broken)
 
         m_NLstep = 0;
+        m_nlBudget = m_maxNlstp;                   // Converged: full budget again
         while( m_voltChanged )
         {
             m_voltChanged->added = false;
@@ -216,6 +230,14 @@ void Simulator::solveCircuit()
         }
         if( m_state < SIM_RUNNING ) break;    // Loop broken without converging
     }
+}
+
+QList<Simulator::NlReport> Simulator::takeNlReports()
+{
+    QMutexLocker lock( &m_nlLock );
+    QList<NlReport> r = m_nlReports;
+    m_nlReports.clear();
+    return r;
 }
 
 void Simulator::resetSim()
@@ -233,6 +255,9 @@ void Simulator::resetSim()
     m_updtTime = 0;
     m_NLstep   = 0;
     m_converged = true;  // A stop during the non-linear loop leaves it false
+    m_nlBudget  = m_maxNlstp;
+    m_nlIds.clear();
+    { QMutexLocker lock( &m_nlLock ); m_nlReports.clear(); }
     ///m_pauseCirc = false;
     m_simPsPF = 1;
 

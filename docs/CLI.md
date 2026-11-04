@@ -204,6 +204,11 @@ what happens, with the simulated time, coloured like the part-state badges:
   charging, charged, discharging, discharged, above / back within the rated
   voltage. Seen once per frame from 20 ms averages (mains ripple averages
   out), with a 3 % hysteresis, so the time is marked ≈.
+- A step the solver could not converge (the "NonLinear Not Converging" warning)
+  always gets a red line: its time, the iterations, and the parts still
+  iterating ("D1, D5, IC1.Mosfet-28, ..."). The step is then taken as it is
+  and the next steps get at most 1000 iterations until one converges, then
+  the full budget (`nlSteps`) again. `log --kind solver` lists them.
 - Lines follow the toolbar: part states only while **Show Part States** is on,
   capacitors only while **Show Capacitor Charge** is on; with both off the log
   does no work. Switched on during a run, it starts from that moment.
