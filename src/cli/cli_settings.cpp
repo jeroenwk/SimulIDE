@@ -6,6 +6,7 @@
 #include <QJsonArray>
 #include <QMetaEnum>
 
+#include "instrumentview.h"
 #include "uitheme.h"
 #include "cliapi.h"
 #include "mainwindow.h"
@@ -127,6 +128,9 @@ QList<Setting>& settings()
     list.append({"partStatus", "circuit", "Show part states: badges above each part that reports its state (scripted cores: component.setStatus) and its outline in the most severe state's colour (see also: status).",
         [](){ return QJsonValue( StatusView::self()->enabled() ); },
         []( QString v ){ StatusView::self()->setEnabled( parseBool( v ) ); }});
+    list.append({"instruments", "circuit", "Show instruments: scopes, logic analyzers, voltmeters, frequency meters and probes with their leads, lead tunnels and junctions. Off: the circuit alone; they keep measuring (scope data, read).",
+        [](){ return QJsonValue( InstrumentView::self()->shown() ); },
+        []( QString v ){ InstrumentView::self()->setShown( parseBool( v ) ); }});
     list.append({"logParts", "circuit", "Messages: write part state changes with their simulated time (see also: log).",
         [](){ return QJsonValue( EventLog::self()->logParts() ); },
         []( QString v ){ EventLog::self()->setLogParts( parseBool( v ) ); }});

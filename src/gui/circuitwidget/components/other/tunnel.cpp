@@ -8,6 +8,7 @@
 #include "tunnel.h"
 #include "theme.h"
 #include "connector.h"
+#include "instrumentview.h"
 #include "linker.h"
 #include "itemlibrary.h"
 #include "propdialog.h"
@@ -262,18 +263,39 @@ void Tunnel::mousePressEvent( QGraphicsSceneMouseEvent* event )
         Component::mousePressEvent( event ); // Tunnel should not be linked or main component
 }
 
-QColor Tunnel::leadColor()
+Pin* Tunnel::leadPin()
 {
+    // A tunnel wired straight to an instrument input belongs to its lead. The rest of the
+    // group belongs to it too only if it is a single tunnel: the one place the lead clips
+    // on. A group that also distributes a signal through the circuit (source to several
+    // inputs, with a scope tapping it) stays circuit wiring
     QList<Tunnel*>* list = m_tunnels.value( m_name );
-    if( !list ) return QColor();
+    if( !list ) return nullptr;
+
+    Pin* lead = nullptr;
+    Pin* mine = nullptr;
+    int others = 0;
     for( Tunnel* tunnel : *list )
     {
+        Pin* other = nullptr;
         Connector* con = tunnel->m_pin[0]->connector();
-        if( !con ) continue;
-        Pin* other = ( con->startPin() == tunnel->m_pin[0] ) ? con->endPin() : con->startPin();
-        if( other && other->wireColor().isValid() ) return other->wireColor();
+        if( con ) other = ( con->startPin() == tunnel->m_pin[0] ) ? con->endPin() : con->startPin();
+
+        if( other && InstrumentView::isInstrument( other->component() ) )
+        {
+            if( !lead ) lead = other;
+            if( tunnel == this ) mine = other;
+        }
+        else others++;
     }
-    return QColor();
+    if( mine ) return mine;
+    return ( lead && others == 1 ) ? lead : nullptr;
+}
+
+QColor Tunnel::leadColor()
+{
+    Pin* pin = leadPin();
+    return pin ? pin->wireColor() : QColor();
 }
 
 void Tunnel::paint( QPainter* p, const QStyleOptionGraphicsItem *option, QWidget *widget )

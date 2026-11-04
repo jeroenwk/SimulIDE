@@ -6,6 +6,8 @@
 #include <math.h>
 
 #include "connector.h"
+#include "instrumentview.h"
+#include "tunnel.h"
 #include "connectorline.h"
 #include "circuitwidget.h"
 #include "simulator.h"
@@ -401,3 +403,18 @@ QString Connector::startPinId() { return m_startPin->pinId(); }
 QString Connector::endPinId()   { return m_endPin->pinId(); }
 
 double Connector::getVoltage() { return m_startPin->getVoltage(); }
+
+Pin* Connector::leadPin()
+{
+    for( Pin* pin : { m_startPin, m_endPin } )
+        if( pin && InstrumentView::isInstrument( pin->component() ) ) return pin;
+
+    for( Pin* pin : { m_startPin, m_endPin } )
+    {
+        Tunnel* tunnel = pin ? dynamic_cast<Tunnel*>( pin->component() ) : nullptr;
+        if( !tunnel ) continue;
+        Pin* lead = tunnel->leadPin();
+        if( lead ) return lead;
+    }
+    return nullptr;
+}

@@ -153,6 +153,14 @@ void Node::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* 
 {
     if( m_hidden ) return;
 
+    int shown = 0;                      // A junction with a hidden lead is no junction on screen
+    for( Pin* pin : m_pin )
+    {
+        Connector* con = pin ? pin->connector() : nullptr;
+        if( con && !con->lineList()->isEmpty() && con->lineList()->first()->isVisible() ) shown++;
+    }
+    if( shown < 3 ) return;
+
     //p->setBrush( Qt::blue );
     //p->drawRect( boundingRect() );
 

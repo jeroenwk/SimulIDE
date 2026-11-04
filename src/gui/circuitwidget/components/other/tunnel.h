@@ -50,9 +50,10 @@ class Tunnel : public Component
 
  static void clearTunnels();
 
-        // The colour of an instrument lead wired straight to one of this group's tunnels
-        // (invalid if none): the lead continues through the tunnels to the circuit
-        QColor leadColor();
+        // The instrument input wired straight to one of this group's tunnels (nullptr if
+        // none): the lead continues through the tunnels to the circuit
+        Pin* leadPin();
+        QColor leadColor();      // That input's lead colour (invalid if none)
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
 

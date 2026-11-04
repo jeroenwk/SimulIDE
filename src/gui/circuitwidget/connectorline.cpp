@@ -357,15 +357,8 @@ void ConnectorLine::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
 
     QColor color;
     QColor lead;                        // A wire on an instrument's input takes its lead colour
-    Pin* sp = m_pConnector->startPin();
-    Pin* ep = m_pConnector->endPin();
-    if     ( sp && sp->wireColor().isValid() ) lead = sp->wireColor();
-    else if( ep && ep->wireColor().isValid() ) lead = ep->wireColor();
-    else for( Pin* pin : { sp, ep } )   // From a tunnel that continues a lead to the circuit
-    {
-        Tunnel* tunnel = pin ? dynamic_cast<Tunnel*>( pin->component() ) : nullptr;
-        if( tunnel ){ lead = tunnel->leadColor(); if( lead.isValid() ) break; }
-    }
+    Pin* leadPin = m_pConnector->leadPin();
+    if( leadPin ) lead = leadPin->wireColor();
     if( lead.isValid() ) lead = Theme::lead( lead );
 
     if( isSelected() ) color = QColor( Qt::darkGray );

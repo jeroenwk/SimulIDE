@@ -26,6 +26,10 @@ class Connector : public CompBase
 
         QString startPinId();
         QString endPinId();
+        // The instrument input this wire is a lead of: wired to it directly, or through a
+        // tunnel group that one of its tunnels is wired to. nullptr: an ordinary wire
+        Pin* leadPin();
+
         Pin* startPin() { return m_startPin;}
         void setStartPin( Pin* pin ) { m_startPin = pin; }
         Pin* endPin() { return m_endPin; }
