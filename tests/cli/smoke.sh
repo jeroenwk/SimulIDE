@@ -142,6 +142,30 @@ check "changing a color: Custom"    'r["result"]=="Custom"'                    -
 check "unknown preset rejected"     'not r["ok"] and "Classic" in r["error"]'  -- settings set colorTheme banana
 set -- $THEME_COLORS; for k in canvasColor wireColor lineColor textColor bodyColor flowColor nameColor valueColor animHighColor animLowColor outHighColor outLowColor inHighColor inLowColor openHighColor; do cli settings set $k "$1" >/dev/null; shift; done
 
+echo "Export"
+THEME_WAS=$(jcli settings get colorTheme | json 'r["result"]')
+INSTR_WAS=$(jcli settings get instruments | json 'str(r["result"]).lower()')
+cli comp add Probe --at 0,-300 --label PRB >/dev/null
+check "export png (default)"        'r["result"]["format"]=="png" and r["result"]["grid"] is False and __import__("os").path.getsize(r["result"]["file"]) > 1000' -- export --file "$TMP/exp.png"
+check "export svg from extension"   'r["result"]["format"]=="svg" and open(r["result"]["file"]).read().startswith("<?xml")' -- export --file "$TMP/exp.svg"
+check "--format adds the extension" 'r["result"]["file"].endswith("exp2.svg")' -- export --file "$TMP/exp2" --format svg
+check "theme Classic: its canvas"   '"#f0f0d2" in open(r["result"]["file"]).read() and r["result"]["theme"]=="Classic"' -- export --file "$TMP/classic.svg" --theme classic
+check "theme Dark: no classic canvas" '"#f0f0d2" not in open(r["result"]["file"]).read()' -- export --file "$TMP/dark.svg" --theme Dark
+check "...setting unchanged"        'r["result"]=="'"$THEME_WAS"'"'               -- settings get colorTheme
+check "grid show: bigger svg"       '__import__("os").path.getsize(r["result"]["file"]) > __import__("os").path.getsize("'"$TMP"'/exp.svg")+2000' -- export --file "$TMP/grid.svg" --grid show
+check "meters show: probe included" 'r["result"]["meters"] is True' -- export --file "$TMP/m1.png" --meters show
+W1=$(jcli export --file "$TMP/m1.png" --meters show | json 'r["result"]["area"][1]')
+check "meters hide: smaller area"   'r["result"]["meters"] is False and r["result"]["area"][1] > '"$W1" -- export --file "$TMP/m0.png" --meters hide
+check "...instruments setting unchanged" 'str(r["result"]).lower()=="'"$INSTR_WAS"'"' -- settings get instruments
+cli select D1 >/dev/null
+check "export keeps the selection"  'r["ok"]'                                  -- export --file "$TMP/sel.png"
+check "...D1 still selected"        '[c["label"] for c in r["result"]]==["D1"]' -- select
+cli select --none >/dev/null
+check "bad theme rejected"          'not r["ok"] and "Classic" in r["error"]'  -- export --theme banana
+check "bad format rejected"         'not r["ok"]'                              -- export --format jpg
+check "bad meters value rejected"   'not r["ok"]'                              -- export --meters maybe
+cli comp remove PRB >/dev/null
+
 echo "Capture and selection"
 check "capture circuit"         'r["result"]["width"] > 100 and __import__("os").path.getsize(r["result"]["file"]) > 1000' -- capture circuit --file "$TMP/cap.png"
 check "capture window"          'r["ok"]'                                  -- capture window view --file "$TMP/win.png"

@@ -8,6 +8,7 @@
 #include <QClipboard>
 #include <QMimeData>
 #include <QSettings>
+#include <QtMath>
 
 #include "circuit.h"
 #include "instrumentview.h"
@@ -1273,29 +1274,20 @@ void Circuit::dropEvent( QGraphicsSceneDragDropEvent* event )
 
 void Circuit::drawBackground( QPainter*  painter, const QRectF &rect )
 {
-    /*painter->setBrush(QColor( 255, 255, 255 ) );
-    painter->drawRect( m_scenerect );
-    return;*/
-
     painter->setBrush( Theme::canvas() );
     painter->drawRect( m_scenerect );
     painter->setPen( Theme::grid() );
 
     if( m_hideGrid ) return;
 
-    int startx = int(m_scenerect.x());///2;
-    int endx   = int(m_scenerect.width())/2;
-    int starty = int(m_scenerect.y());///2;
-    int endy   = int(m_scenerect.height())/2;
-
-    for( int i=4; i<endx; i+=8 ){
-        painter->drawLine( i, starty, i, endy );
-        painter->drawLine(-i, starty,-i, endy );
-    }
-    for( int i=4; i<endy; i+=8 ){
-        painter->drawLine( startx, i, endx, i);
-        painter->drawLine( startx,-i, endx,-i);
-}   }
+    // Lines at 4 + 8k, only in the exposed part (keeps SVG exports small)
+    QRectF r = rect.intersected( m_scenerect );
+    if( r.isEmpty() ) return;
+    int x0 = 8*qFloor( ( r.left()-4 )/8 )+4, x1 = qCeil( r.right() );
+    int y0 = 8*qFloor( ( r.top() -4 )/8 )+4, y1 = qCeil( r.bottom() );
+    for( int x=x0; x<=x1; x+=8 ) painter->drawLine( QLineF( x, r.top(), x, r.bottom() ) );
+    for( int y=y0; y<=y1; y+=8 ) painter->drawLine( QLineF( r.left(), y, r.right(), y ) );
+}
 
 void Circuit::updatePin( ePin* epin, QString oldId, QString newId )
 {

@@ -382,6 +382,7 @@ look at the window and point at parts.
 |---|---|
 | `capture circuit [comp ...] [--area x,y,w,h] [--margin PX] [--scale S] [--file F.png]` | Render the circuit, or just some parts, to a PNG |
 | `capture window [main\|view\|circuit\|editor] [--scale S] [--file F.png]` | Grab what the window shows |
+| `export [--file F.png\|F.svg] [--format png\|svg] [--theme current\|Classic\|Light\|Dark] [--meters show\|hide] [--grid show\|hide] [--scale S] [--margin PX]` | Export the whole circuit as a PNG or SVG image (the toolbar's Export button) |
 | `select` | List the selected components |
 | `select <comp ...> [--add]` / `select --none` | Select components (highlighted in the GUI), or clear the selection |
 | `view fit\|selected\|reset` | Zoom to everything, to the selection, or to 100% |
@@ -403,6 +404,23 @@ Capture details:
   - `editor`: the code editor.
   - `--scale 1` (the default) gives logical pixels, which is half size on
     HiDPI screens.
+- **`export`** is the image export of the toolbar button (the picture icon
+  after Save As, also in the canvas right-click menu), for documentation
+  rather than for looking:
+  - The format comes from `--format` or the file extension; PNG by default.
+    SVG is vector (1 circuit unit = 1 CSS px).
+  - `--theme` draws with a colour preset (Classic, Light, Dark) for this image
+    only; the setting is not changed. Default: the current colours.
+  - `--meters show|hide`: scopes, logic analyzers, voltmeters, frequency meters
+    and probes with their leads, lead tunnels and the grounds only they use
+    (as the Instruments toolbar button). Ammeters stay: they sit in series.
+    Default: as the canvas shows them now.
+  - `--grid show|hide`: default hide.
+  - The selection is not drawn (it is restored afterwards). The image covers
+    everything that is drawn, plus `--margin` (default 24).
+  - `--scale` (PNG only): pixels per circuit unit, default 2; the longest side
+    is capped at 16000 px.
+  - The reply gives the file, size, scene area and the options used.
 - Without `--file`, images go to `$TMPDIR/simulide-capture/`. The reply gives
   the path.
 - To show the other side what you mean, select parts in the GUI and they run

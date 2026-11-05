@@ -21,7 +21,8 @@ class InstrumentView
         // in series, and hiding them would leave a gap in the drawing
         static bool isInstrument( Component* comp );
 
-        void apply();       // Show or hide every instrument, lead, lead tunnel and junction dot
+        void apply() { apply( m_shown ); } // Show or hide every instrument, lead, lead tunnel and junction dot
+        void apply( bool shown );          // Same, without changing the setting (image export)
 
     private:
         InstrumentView();

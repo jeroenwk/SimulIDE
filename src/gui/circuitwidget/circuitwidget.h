@@ -123,6 +123,7 @@ class CircuitWidget : public QWidget
         QAction* capChargeAct;
         QAction* partStatusAct;
         QAction* instrumentsAct;
+        QAction* exportAct;
         QComboBox* m_timebase = nullptr;   // Simulated time per real second
         QAction* settAppAct;
         QAction* infoAct;

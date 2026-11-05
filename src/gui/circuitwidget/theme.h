@@ -54,10 +54,16 @@ class Theme
         static bool    applyPreset( QString name ); // false: unknown name
         static QString currentPreset();             // Preset matching all colours, or "Custom"
 
+        // Image export: use a preset for a moment without saving it, then put the colours back
+        static bool pushPreset( QString name );     // false: unknown name (nothing changed)
+        static void popColors();
+
     private:
         static void load();
         static bool   m_loaded;
         static QColor m_color[numRoles];
+        static QColor m_saved[numRoles];
+        static bool   m_pushed;
 };
 
 #endif

@@ -25,6 +25,7 @@
 #include <QHBoxLayout>
 #include "circuitwidget.h"
 #include "instrumentview.h"
+#include "exportdialog.h"
 #include "editorwindow.h"
 #include "mainwindow.h"
 #include "simulator.h"
@@ -245,6 +246,10 @@ void CircuitWidget::createActions()
     connect( instrumentsAct, &QAction::toggled,
              []( bool on ){ InstrumentView::self()->setShown( on ); } );
 
+    exportAct = new QAction( QIcon(":/saveimage.svg"),tr("Export as Image (PNG, SVG)..."), this);
+    exportAct->setStatusTip(tr("Export the circuit as a PNG or SVG image, with a choice of theme, instruments and grid"));
+    connect( exportAct, &QAction::triggered, this, [this](){ ExportDialog::run( this ); } );
+
     settAppAct = new QAction( QIcon(":/config.svg"),tr("Settings"), this);
     settAppAct->setStatusTip(tr("Settings"));
     connect( settAppAct, &QAction::triggered,
@@ -292,6 +297,7 @@ void CircuitWidget::createToolBars()
     m_circToolBar.addAction( openCircAct );
     m_circToolBar.addAction( saveCircAct );
     m_circToolBar.addAction( saveCircAsAct );
+    m_circToolBar.addAction( exportAct );
     spacer = new QWidget();
     spacer->setFixedWidth( 15 );
     m_circToolBar.addWidget( spacer );
