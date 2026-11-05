@@ -90,8 +90,9 @@ QJsonObject readComp( Component* comp )
         ChargeView* cv = ChargeView::self();
         o["voltage"]     = num( cap->capVolt() );
         o["level"]       = num( cap->chargeLevel() );
-        o["vref"]        = num( cv->vref() );
-        o["vref_source"] = ChargeView::refSourceStr( cv->refSource() );
+        o["vref"]        = num( cap->chargeRef() );
+        o["vref_source"] = ChargeView::refSourceStr( cap->ownChargeRef() ? (int)ChargeView::refCapacitor
+                                                                         : cv->refSource() );
         if( cap->maxVolt() > 0 ) o["rating"] = num( cap->maxVolt() );
         QStringList flags = cap->chargeFlags();
         if( !flags.isEmpty() ) o["flag"] = flags.join(",");

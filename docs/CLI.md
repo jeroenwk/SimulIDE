@@ -269,10 +269,14 @@ capacitor is charged (the toolbar button next to current flow does the same):
    WaveGen; also inside subcircuits and while switched off);
 3. with no source, the highest capacitor voltage since the start.
 
+A capacitor's own `ChargeScale` property (V, 0 = the circuit's; in its
+Properties panel as "Charge gauge 100 % at") overrides all three for that
+capacitor's gauge, label and plate colours: `comp set C1 ChargeScale=20`.
+
 A capacitor's `MaxVolt` property (rated voltage) makes its gauge red and
 blinking above it, and draws a tick at that level. `read C1` gives the
 numbers: `voltage`, `level` (can exceed 1), `vref`, `vref_source`
-(`override`, `sources` or `peak`), `rating` and `flag` (`overvoltage`,
+(`capacitor`, `override`, `sources` or `peak`), `rating` and `flag` (`overvoltage`,
 `reversed`, `overflow`).
 
 **Colors:** `settings set colorTheme Classic|Light|Dark` picks a preset (Dark
