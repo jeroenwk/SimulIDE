@@ -46,7 +46,10 @@ AppDialog::AppDialog( QWidget* parent )
     currentFlow->setChecked( CurrentFlow::self()->enabled() );
     currentMin->setText( CurrentFlow::currentStr( CurrentFlow::self()->threshold() ) );
     currentRange->setValue( qRound( CurrentFlow::range() ) );
-    capLabel->addItems({ tr("Off"), tr("Volts"), tr("Percent"), tr("Both") });
+    {   // Filling the empty combo selects item 0: without the blocker that would save "Off"
+        QSignalBlocker b( capLabel );
+        capLabel->addItems({ tr("Off"), tr("Volts"), tr("Percent"), tr("Both") });
+    }
     syncCharge();
     buildColors();
     fps->setValue( Simulator::self()->fps() );

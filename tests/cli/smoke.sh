@@ -279,6 +279,9 @@ LABEL_WAS=$(jcli settings get capLabel | json 'r["result"]')
 check "display on"                  'r["ok"]'                                  -- settings set capCharge true
 check "label both"                  'r["ok"]'                                  -- settings set capLabel both
 check "...reads back"               'r["result"]=="both"'                      -- settings get capLabel
+check "open Settings dialog"        'r["ok"]'                                  -- view settings circuit
+check "...label mode kept"          'r["result"]=="both"'                      -- settings get capLabel
+check "close Settings dialog"       'r["ok"]'                                  -- view settings close
 check "bad label mode rejected"     'not r["ok"]'                              -- settings set capLabel loud
 check "run to t = tau (100 ms)"     'r["ok"]'                                  -- sim run --for 100ms
 check "vref 10 V from the source"   'r["result"]["vref"]==10 and r["result"]["vref_source"]=="sources"' -- read C1
