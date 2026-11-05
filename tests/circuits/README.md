@@ -15,3 +15,4 @@ through the CLI). Turn on Show Capacitor Charge and Inductor Current
 | `transformer_layouts.sim1` | Six secondary coils, and a rotated transformer | Gauge placement: labels never overlap; above/below when rotated |
 | `relay_and_rl_decay.sim1` | Relay coil, and 10 mH / 10 Ω decaying from 0.5 A | Relay coil shows nothing; L1 at 37 % (e⁻¹) after 1 ms |
 | `chip_theme.sim1` | LM555, 74HC00 as DIP and as logic symbol, ATtiny25, MT7833A, a resistor | IC bodies, pin names and pin-1 markers per theme (`export --theme Classic|Light|Dark`) |
+| `text_labels.sim1` | Chip-theme circuit plus three Text labels: defaults, own background/border/white text, own red text | New defaults (no background, no border, name colour); own colours stay |

@@ -38,7 +38,7 @@ class TextComponent : public LinkerComponent
         QString fontColor() { return m_fontColor; }
         void setFontColor( QString n );
 
-        QString colorStr() { return m_color.name(); }
+        QString colorStr() { return m_noBack ? "none" : m_color.name(); }
         void setColorStr( QString n );
         
         bool fixedW() { return m_fixedW; }
@@ -57,6 +57,8 @@ class TextComponent : public LinkerComponent
 
         void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
 
+        virtual void updateLabelColors() override;   // Theme changed: themed font colour
+
     public slots:
         void updateGeometry(int, int, int);
 
@@ -74,6 +76,8 @@ class TextComponent : public LinkerComponent
         int  m_border;
 
         bool m_fixedW;
+        bool m_noBack;     // Background colour "none"
+        bool m_themeFont;  // Font colour "theme": the theme's name label colour
         bool m_context;
         
         QString m_font;

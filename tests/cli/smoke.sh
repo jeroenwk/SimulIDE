@@ -184,6 +184,19 @@ check "bad format rejected"         'not r["ok"]'                              -
 check "bad meters value rejected"   'not r["ok"]'                              -- export --meters maybe
 cli comp remove PRB >/dev/null
 
+echo "Text labels"
+cli comp add TextComponent --at 0,-200 --label TXT "Text=Hello" >/dev/null
+check "default: no background"     '[p for p in r["result"]["properties"] if p["name"]=="Color"][0]["value"]=="none"' -- comp get TXT
+check "default: no border"         '[p for p in r["result"]["properties"] if p["name"]=="Border"][0]["value"].startswith("0")' -- comp get TXT
+check "default: theme font colour" '[p for p in r["result"]["properties"] if p["name"]=="Font_Color"][0]["value"]=="theme"' -- comp get TXT
+check "own font colour"            'r["ok"]'                                   -- comp set TXT Font_Color=#c00000
+check "...reads back"              '[p for p in r["result"]["properties"] if p["name"]=="Font_Color"][0]["value"]=="#c00000"' -- comp get TXT
+check "background colour"          'r["ok"]'                                   -- comp set TXT Color=#303e4c
+check "...reads back"              '[p for p in r["result"]["properties"] if p["name"]=="Color"][0]["value"]=="#303e4c"' -- comp get TXT
+check "back to none and theme"     'r["ok"]'                                   -- comp set TXT Color=none Font_Color=theme
+check "...reads back"              '[(p["name"],p["value"]) for p in r["result"]["properties"] if p["name"] in ("Color","Font_Color")]==[("Color","none"),("Font_Color","theme")]' -- comp get TXT
+cli comp remove TXT >/dev/null
+
 echo "Capture and selection"
 check "capture circuit"         'r["result"]["width"] > 100 and __import__("os").path.getsize(r["result"]["file"]) > 1000' -- capture circuit --file "$TMP/cap.png"
 check "capture window"          'r["ok"]'                                  -- capture window view --file "$TMP/win.png"

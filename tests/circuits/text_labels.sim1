@@ -1,0 +1,25 @@
+<circuit version="1.1.0-SR2" rev="261105" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="Lm555" CircId="Lm555-1" mainComp="false" Show_id="false" Show_Val="false" Pos="-200,0" rotation="0" hflip="1" vflip="1" label="U1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Show_State="true" />
+
+<item itemtype="Subcircuit" CircId="74HC00-2" mainComp="false" Show_id="true" Show_Val="false" Pos="-80,0" rotation="0" hflip="1" vflip="1" label="U2" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Input_High_V="2.5 V" Input_Low_V="2.5 V" Input_Imped="1e+09 Ω" Out_High_V="5 V" Out_Low_V="0 V" Out_Imped="40 Ω" Tpd_ps="10 ns" Tr_ps="3 ns" Tf_ps="4 ns" Logic_Symbol="false" />
+
+<item itemtype="Subcircuit" CircId="74HC00-3" mainComp="false" Show_id="true" Show_Val="false" Pos="40,0" rotation="0" hflip="1" vflip="1" label="U3" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Input_High_V="2.5 V" Input_Low_V="2.5 V" Input_Imped="1e+09 Ω" Out_High_V="5 V" Out_Low_V="0 V" Out_Imped="40 Ω" Tpd_ps="10 ns" Tr_ps="3 ns" Tf_ps="4 ns" Logic_Symbol="true" />
+
+<item itemtype="MCU" CircId="tiny25-4" mainComp="false" Show_id="true" Show_Val="false" Pos="160,0" rotation="0" hflip="1" vflip="1" label="U4" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Frequency="16 MHz" Auto_Load="false" saveEepr="true" Logic_Symbol="false" Rst_enabled="false" Ext_Osc="false" Wdt_enabled="false" Clk_Out="false" MainMcu="false" />
+
+<item itemtype="Subcircuit" CircId="MT7833A-5" mainComp="false" Show_id="true" Show_Val="false" Pos="280,0" rotation="0" hflip="1" vflip="1" label="U5" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0">
+<mainCompProps MainCompId="MT7833A_pwm-16" Ton_us_per_V="5" Ton_max_us="25" Period_max_us="60" EA_gm_uS="200" Links="5@Csource-27,5@Csource-49,5@Csource-61," MainMcu="false" />
+
+<mainCompProps MainCompId="MT7833A_supply-1" Hiccup_mA="3" Links="5@Csource-5,5@Csource-7," MainMcu="true" />
+</item>
+
+<item itemtype="Resistor" CircId="Resistor-6" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="380,0" rotation="0" hflip="1" vflip="1" label="R1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="100 Ω" />
+
+<item itemtype="TextComponent" CircId="TextComponent-7" mainComp="false" Show_id="false" Show_Val="false" Pos="-200,80" rotation="0" hflip="1" vflip="1" label="T1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Margin="5 _px" Border="0 _px" Color="none" Opacity="1" Font="Helvetica [Cronyx]" Font_Color="theme" Font_Size="10 _px" Fixed_Width="false" Text="Default label" />
+
+<item itemtype="TextComponent" CircId="TextComponent-8" mainComp="false" Show_id="false" Show_Val="false" Pos="-40,80" rotation="0" hflip="1" vflip="1" label="T2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Margin="5 _px" Border="1 _px" Color="#303e4c" Opacity="1" Font="Helvetica [Cronyx]" Font_Color="#ffffff" Font_Size="10 _px" Fixed_Width="false" Text="Own colours" />
+
+<item itemtype="TextComponent" CircId="TextComponent-9" mainComp="false" Show_id="false" Show_Val="false" Pos="120,80" rotation="0" hflip="1" vflip="1" label="T3" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Margin="5 _px" Border="0 _px" Color="none" Opacity="1" Font="Helvetica [Cronyx]" Font_Color="#c00000" Font_Size="10 _px" Fixed_Width="false" Text="Red text" />
+
+</circuit>

@@ -30,8 +30,10 @@ class ColorVal : public PropVal, private Ui::ColorVal
 
     private:
         void changeColor();
+        void showValue( QString val );
 
-        QColor m_color;
+        QColor  m_color;
+        QString m_keyword;   // Type "color_<keyword>": a value meaning no own colour (theme, none)
 
         bool m_blocked;
 };
