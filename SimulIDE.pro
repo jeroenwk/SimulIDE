@@ -87,6 +87,23 @@ QMAKE_CXXFLAGS_DEBUG -= -O2
 QMAKE_CXXFLAGS_DEBUG -= -O3
 QMAKE_CXXFLAGS_DEBUG += -O0
 
+# Profile-guided optimisation, clang only (specs/pgo-build.md, run tools/pgo_build.sh):
+# CONFIG+=pgo_gen builds an instrumented binary that writes .profraw files while it runs;
+# a normal release build uses pgo/simulide.profdata when it exists (7-15 % faster simulation).
+contains( QMAKE_COMPILER, clang ) {
+    pgo_gen {
+        message( "PGO: instrumented build (-fprofile-instr-generate)" )
+        QMAKE_CXXFLAGS_RELEASE += -fprofile-instr-generate
+        QMAKE_LFLAGS_RELEASE   += -fprofile-instr-generate
+    }
+    else:exists( $$PWD/pgo/simulide.profdata ) {
+        message( "PGO: optimising with $$PWD/pgo/simulide.profdata" )
+        QMAKE_CXXFLAGS_RELEASE += -flto=thin -fprofile-instr-use=$$PWD/pgo/simulide.profdata
+        QMAKE_CXXFLAGS_RELEASE += -Wno-profile-instr-out-of-date -Wno-profile-instr-unprofiled
+        QMAKE_LFLAGS_RELEASE   += -flto=thin
+    }
+}
+
 win32 {
     OS = Windows
     QMAKE_LIBS += -lwsock32

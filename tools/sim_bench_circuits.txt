@@ -1,0 +1,8 @@
+# Circuits for tools/sim_bench.sh (benchmark) and tools/pgo_build.sh (PGO training).
+# One per line: name | simulated time | circuit path from the repo root | optional CLI setup commands, ';' separated
+# Times are chosen so that each run takes about 3-4 s on an M1 at full speed.
+analog_opamp  | 40s  | resources/examples/Active/OP_Amp/wave_gen.sim1
+analog_bjt_lc | 15s  | resources/examples/Active/BJT/Osc_Hartley.sim1
+logic_ff      | 150s | resources/examples/Logic/counter-60_FF.sim1 | comp set Clock-45 Freq=100kHz
+avr_arduino   | 20s  | resources/examples/Micro/Arduino/oscope8544/oscope8544.sim1
+scripted_spi  | 25s  | resources/examples/Scripted/SPI_Digipot/SPIDigipot-test.sim1
