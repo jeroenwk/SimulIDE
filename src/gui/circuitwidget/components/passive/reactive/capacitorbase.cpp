@@ -27,8 +27,9 @@ CapacitorBase::CapacitorBase( QString type, QString id )
     m_pin[1]->setLength( 12 );
 
     m_value = m_capacitance = 0.00001; // Farads
-    m_maxVolt = 0;
-    m_logCharge = false;                     // Rated voltage: 0 = not set
+    m_maxVolt = 0;                           // Rated voltage: 0 = not set
+    m_chargeScale = 0;                       // Gauge scale: 0 = the circuit's
+    m_logCharge = false;
 
     addPropGroup( { tr("Main"), {
         new DoubProp<CapacitorBase>("Capacitance", tr("Capacitance"), "µF"
@@ -42,6 +43,9 @@ CapacitorBase::CapacitorBase( QString type, QString id )
 
         new DoubProp<CapacitorBase>("MaxVolt"    , tr("Rated Voltage (0 = not set)"), "V"
                                    , this, &CapacitorBase::maxVolt, &CapacitorBase::setMaxVolt ),
+
+        new DoubProp<CapacitorBase>("ChargeScale", tr("Charge gauge 100 % at (0 = circuit)"), "V"
+                                   , this, &CapacitorBase::chargeScale, &CapacitorBase::setChargeScale ),
 
         new BoolProp<CapacitorBase>("LogCharge", tr("Log charge in Messages"), ""
                                    , this, &CapacitorBase::logCharge, &CapacitorBase::setLogCharge ),
@@ -67,6 +71,13 @@ void CapacitorBase::setCurrentValue( double c )
 void CapacitorBase::setMaxVolt( double v )
 {
     m_maxVolt = ( v > 0 ) ? v : 0;
+    update();
+}
+
+void CapacitorBase::setChargeScale( double v )
+{
+    m_chargeScale = ( v > 0 ) ? v : 0;
+    if( chargeShown() ) m_gauge->refresh();
     update();
 }
 
@@ -135,9 +146,15 @@ double CapacitorBase::capVolt()
     return m_pin[0]->getVoltage() - m_pin[1]->getVoltage();
 }
 
+double CapacitorBase::chargeRef()
+{
+    if( m_chargeScale > 0 ) return m_chargeScale;
+    return ChargeView::self()->vref();
+}
+
 double CapacitorBase::chargeLevel()
 {
-    double ref = ChargeView::self()->vref();
+    double ref = chargeRef();
     if( ref <= 0 ) return 0;
     return qAbs( capVolt() )/ref;
 }
@@ -156,7 +173,7 @@ void CapacitorBase::setPlatePen( QPainter* p, int side )
 {
     if( !chargeShown() ) return;
     QPen pen = p->pen();
-    pen.setColor( ChargeView::self()->plateColor( m_pin[side]->getVoltage() ) );
+    pen.setColor( ChargeView::self()->plateColor( m_pin[side]->getVoltage(), m_chargeScale ) );
     p->setPen( pen );
 }
 
@@ -234,7 +251,7 @@ void ChargeGauge::refresh()
 void ChargeGauge::paint( QPainter* p, const QStyleOptionGraphicsItem*, QWidget* )
 {
     ChargeView* cv = ChargeView::self();
-    double ref = cv->vref();
+    double ref = m_cap->chargeRef();
     double lvl = m_cap->chargeLevel();
     double maxV = m_cap->maxVolt();
     bool over = maxV > 0 && qAbs( m_cap->capVolt() ) > maxV;

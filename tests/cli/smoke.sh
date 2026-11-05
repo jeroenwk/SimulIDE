@@ -300,6 +300,15 @@ check "...scale saved in circuit"   'r["result"]==40'                          -
 check "rating 5 V"                  'r["ok"]'                                  -- comp set C1 MaxVolt=5
 check "run"                         'r["ok"]'                                  -- sim run --for 500ms
 check "...over-voltage flagged"     '"overvoltage" in r["result"].get("flag","") and r["result"]["rating"]==5' -- read C1
+check "own scale 20 V on C1"        'r["ok"]'                                  -- comp set C1 ChargeScale=20
+check "...used instead of circuit"  'r["result"]["vref"]==20 and r["result"]["vref_source"]=="capacitor" and abs(r["result"]["level"]-0.5) < 0.01' -- read C1
+check "capture with own scale"      'r["ok"]'                                  -- capture circuit C1 --scale 6 --file "$TMP/gauge_own.png"
+check "save with own scale"         'r["ok"]'                                  -- circuit save "$TMP/rc_own.sim1"
+check "reopen"                      'r["ok"]'                                  -- circuit open "$TMP/rc_own.sim1" --discard
+check "...own scale saved"          'r["ok"]'                                  -- sim run --for 500ms
+check "...still 20 V"               'r["result"]["vref"]==20 and r["result"]["vref_source"]=="capacitor"' -- read C1
+check "own scale 0"                 'r["ok"]'                                  -- comp set C1 ChargeScale=0
+check "...circuit scale again"      'r["result"]["vref"]==40 and r["result"]["vref_source"]=="override"' -- read C1
 cli - > "$TMP/peak.out" 2>&1 <<'EOF'
 circuit new --discard
 comp add Capacitor   --label C2 --at 0,0 --rot 90 Capacitance=10u InitVolt=5

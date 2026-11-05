@@ -84,6 +84,7 @@ QString ChargeView::refSourceStr( int s )
         case refOverride: return "override";
         case refSources:  return "sources";
         case refPeak:     return "peak";
+        case refCapacitor: return "capacitor";
     }
     return "none";
 }
@@ -125,9 +126,9 @@ double ChargeView::vref()
     return m_vref = m_peak;
 }
 
-QColor ChargeView::plateColor( double volt )
+QColor ChargeView::plateColor( double volt, double ref )
 {
-    double ref = m_vref;
+    if( ref <= 0 ) ref = m_vref;
     QColor zero = Theme::line();
     if( ref <= 0 ) return zero;
     double t = qBound(-1.0, volt/ref, 1.0 );

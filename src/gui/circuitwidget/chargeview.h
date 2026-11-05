@@ -20,7 +20,7 @@ class ChargeView : public Updatable
         static ChargeView* self();
 
         enum labelMode_t { labelOff=0, labelVolt, labelPercent, labelBoth };
-        enum refSource_t { refNone=0, refOverride, refSources, refPeak };
+        enum refSource_t { refNone=0, refOverride, refSources, refPeak, refCapacitor };
 
         bool enabled() { return m_enabled; }
         void setEnabled( bool en );
@@ -41,8 +41,9 @@ class ChargeView : public Updatable
         // Over-voltage warnings blink at 2 Hz
         bool blinkOn() { return m_blinkOn; }
 
-        // Plate colour for a node voltage on the vref scale
-        QColor plateColor( double volt );
+        // Plate colour for a node voltage on the vref scale, or on `ref` if > 0
+        // (a capacitor's own ChargeScale)
+        QColor plateColor( double volt, double ref=0 );
 
         void attach();      // Register with the current Simulator (on every simulation start)
         void clear();       // Simulation stopped: repaint capacitors without the display

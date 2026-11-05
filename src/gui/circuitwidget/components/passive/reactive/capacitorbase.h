@@ -52,9 +52,14 @@ class CapacitorBase : public Reactive
         double maxVolt() { return m_maxVolt; }
         void setMaxVolt( double v );
 
+        double chargeScale() { return m_chargeScale; }  // Own 100 % (V), 0 = the circuit's
+        void setChargeScale( double v );
+
         // Charge display
         double capVolt();             // V(pin0) - V(pin1)
-        double chargeLevel();         // |V| / vref (may exceed 1)
+        double chargeRef();           // 100 %: own ChargeScale if set, else ChargeView::vref()
+        bool   ownChargeRef() { return m_chargeScale > 0; }
+        double chargeLevel();         // |V| / chargeRef() (may exceed 1)
         QStringList chargeFlags();    // "overvoltage", "reversed", "overflow"
         void chargeDisplayChanged();  // Setting toggled or simulation stopped
 
@@ -80,6 +85,7 @@ class CapacitorBase : public Reactive
 
         double m_capacitance;
         double m_maxVolt;
+        double m_chargeScale;
         bool   m_logCharge;
 
         ChargeGauge* m_gauge;

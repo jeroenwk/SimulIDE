@@ -101,6 +101,17 @@ Why not the other options:
   with each other or with the plate colours. The rating is used for the
   warning only (section 5).
 
+**Per-capacitor override (opt-in).** A capacitor's own `ChargeScale` property
+(V, default 0 = the circuit's `Vref`; "Charge gauge 100 % at" in its
+Properties) replaces `Vref` for that capacitor only: its gauge, % label,
+rating tick and plate colours (`CapacitorBase::chargeRef()`). It is for a cap
+that lives at a very different level from the largest source, e.g. a 5 V
+decoupling cap in a 400 V circuit. The cost is the one above: that gauge is no
+longer comparable with the others, and its plates may be coloured differently
+from another part on the same node. Left at 0, nothing changes. `read` reports
+it as `vref_source: capacitor`. The event log ignores it (its thresholds come
+from each capacitor's own peak).
+
 `level = |V| / Vref`. Above 1 (a boost converter, a voltage doubler) the gauge
 stays full and shows an overflow mark; the label shows the real figure, e.g.
 `112 %`. The reference is computed when the simulation starts and again when a
