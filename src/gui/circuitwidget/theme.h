@@ -36,7 +36,7 @@ class Theme
         static QColor icBody( QColor classColor );
         static QColor icText()   { return get( icTextRole ); }
         static QColor icMarker();
-        // Logic-symbol packages: their own light colour while bodies are the default white
+        // Logic-symbol packages: their own light colour while body and IC body are the defaults
         static QColor lsBody( QColor classColor );
 
         // Instrument leads (scope channels, meter + / COM): the lead's own colour, made to

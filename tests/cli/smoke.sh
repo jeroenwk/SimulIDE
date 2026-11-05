@@ -142,6 +142,10 @@ check "...IC text"                  'r["result"]=="#c8c8c8"'                   -
 check "preset Classic: IC defaults" 'r["ok"]'                                  -- settings set colorTheme Classic
 check "...IC body #323246"          'r["result"]=="#323246"'                   -- settings get icBodyColor
 check "...IC text #fafac8"          'r["result"]=="#fafac8"'                   -- settings get icTextColor
+check "preset Light: white ICs"     'r["ok"]'                                  -- settings set colorTheme Light
+check "...IC body white"            'r["result"]=="#ffffff"'                   -- settings get icBodyColor
+check "...IC text black"            'r["result"]=="#000000"'                   -- settings get icTextColor
+cli settings set colorTheme Classic >/dev/null
 check "custom IC body"              'r["ok"]'                                  -- settings set icBodyColor "#1e2a3a"
 check "...makes the theme Custom"   'r["result"]=="Custom"'                    -- settings get colorTheme
 check "...default resets it"        'r["ok"]'                                  -- settings set icBodyColor default

@@ -152,8 +152,9 @@ QColor Theme::icMarker()
 
 QColor Theme::lsBody( QColor classColor )
 {
-    QColor c = get( bodyRole );
-    return ( c == defaultColor( bodyRole ) ) ? classColor : c;
+    QColor c = get( bodyRole );         // Own light colour only with the classic body colours
+    bool classic = ( c == defaultColor( bodyRole ) ) && ( get( icBodyRole ) == defaultColor( icBodyRole ) );
+    return classic ? classColor : c;
 }
 
 QColor Theme::grid()
@@ -187,7 +188,7 @@ struct Preset { const char* name; const char* colors[Theme::numRoles]; };
 const Preset presetList[] = {
     { "Classic", { "#f0f0d2", "#28283c", "#000000", "#000000", "#ffffff", "#ffbe00", "#000080", "#800000", "#323246", "#fafac8",
                   "#c83232", "#3232c8", "#b40000", "#0000b4", "#fa7800", "#6464fa", "#3c783c" } },
-    { "Light",   { "#ffffff", "#3c3c50", "#000000", "#000000", "#ffffff", "#ff8c00", "#000080", "#800000", "#323246", "#fafac8",
+    { "Light",   { "#ffffff", "#3c3c50", "#000000", "#000000", "#ffffff", "#ff8c00", "#000080", "#800000", "#ffffff", "#000000",
                   "#c83232", "#3232c8", "#b40000", "#0000b4", "#fa7800", "#6464fa", "#3c783c" } },
     // Dark, inspired by EveryCircuit: black canvas, hollow light grey parts, pale green current
     { "Dark",    { "#000000", "#9e9e9e", "#b4b4b4", "#c8c8c8", "#000000", "#b9e3b0", "#9db8e0", "#c8c8c8", "#000000", "#c8c8c8",
