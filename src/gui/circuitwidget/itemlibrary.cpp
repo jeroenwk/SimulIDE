@@ -64,6 +64,7 @@
 #include "latchd.h"
 #include "ldr.h"
 #include "led.h"
+#include "ledstrip.h"
 #include "ledbar.h"
 #include "ledmatrix.h"
 #include "ledrgb.h"
@@ -201,6 +202,7 @@ void ItemLibrary::loadItems()
     addItem( new LibraryItem( QObject::tr("Outputs"), "", "","Outputs", NULL ) );
     addItem( new LibraryItem( QObject::tr("Leds"), "Outputs", "leds.png","Leds", NULL ) );
     addItem( Led::libraryItem() );
+    addItem( LedStrip::libraryItem() );
     addItem( LedRgb::libraryItem() );
     addItem( LedBar::libraryItem() );
     addItem( SevenSegment::libraryItem() );

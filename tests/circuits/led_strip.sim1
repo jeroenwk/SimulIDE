@@ -1,0 +1,32 @@
+<circuit version="1.1.0-SR2" rev="261105" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+<description>
+# Led Strip
+
+`STRIP` is a **Led Strip**: N identical LEDs in series (`Count`), M such strings in parallel (`Strings`), with the forward voltage, resistance and max current given **per LED**. SimulIDE's LED is piecewise linear (off below its forward voltage, then a series resistance), so the strip is one element with N × Vf, N × R / M and M × Imax. The value label shows the totals.
+
+**Try it:** press play. 38 V through 10 Ω into 12 × (2.75 V, 1 Ω) gives (38 − 33) / (10 + 12) = **227 mA**, the strip lit, state ON.
+- `V40` 40 V → 318 mA, above the 300 mA rating: state **OVER** (red outline).
+- `V40` 20 V → below the 33 V knee: no current, OFF.
+- `Strings` 2 → 6 Ω, 600 mA rating: (40 − 33) / 16 = 437.5 mA.
+</description>
+
+
+<item itemtype="LedStrip" CircId="LedStrip-1" mainComp="false" ShowProp="Totals" Show_id="true" Show_Val="true" Pos="0,0" rotation="0" hflip="1" vflip="1" label="STRIP" idLabPos="-24,-28" labelrot="0" valLabPos="-24,12" valLabRot="0" Color="White" Count="12 _LEDs" Strings="1 _Strings" Totals="12× 33 V 12 Ω" Show_State="true" LedVf="2.75 V" LedRes="1 Ω" LedImax="300 mA" />
+
+<item itemtype="Fixed Voltage" CircId="Fixed Voltage-2" mainComp="false" Show_id="false" Show_Val="false" Pos="-160,0" rotation="0" hflip="1" vflip="1" label="V40" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" Voltage="38 V" Out="true" />
+
+<item itemtype="Resistor" CircId="Resistor-3" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-96,0" rotation="0" hflip="1" vflip="1" label="R10" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="10 Ω" />
+
+<item itemtype="Amperimeter" CircId="Amperimeter-4" mainComp="false" Show_id="false" Show_Val="false" Pos="-48,-16" rotation="0" hflip="1" vflip="1" label="A1" idLabPos="-24,-40" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Ground" CircId="Ground-5" mainComp="false" Show_id="false" Show_Val="false" Pos="64,32" rotation="0" hflip="1" vflip="1" label="G" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="Fixed Voltage-2-outnod" endpinid="Resistor-3-lPin" pointList="-144,0,-112,0" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="LedStrip-1-rPin" endpinid="Ground-5-Gnd" pointList="32,0,64,0,64,16" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Resistor-3-rPin" endpinid="Amperimeter-4-lPin" pointList="-80,0,-56,0" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Amperimeter-4-rPin" endpinid="LedStrip-1-lPin" pointList="-40,0,-32,0" />
+
+</circuit>
