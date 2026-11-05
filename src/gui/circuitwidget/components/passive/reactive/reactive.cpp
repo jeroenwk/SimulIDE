@@ -80,3 +80,10 @@ void Reactive::setLinkedValue( double v, int i )
 {
     setCurrentValue( m_value*v/1000 );
 }
+
+double Reactive::seriesCurrent()
+{
+    if( !m_pin[0]->isConnected() || !m_pin[1]->isConnected() ) return 0;
+    if( !m_ePin[2]->getEnode() ) return 0;          // Not stamped yet
+    return m_resistor->current();
+}

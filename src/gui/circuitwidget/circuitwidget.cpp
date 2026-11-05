@@ -224,8 +224,8 @@ void CircuitWidget::createActions()
     connect( currentFlowAct, &QAction::toggled,
              []( bool on ){ CurrentFlow::self()->setEnabled( on ); } );
 
-    capChargeAct = new QAction( QIcon(":/capcharge.svg"),tr("Show Capacitor Charge"), this);
-    capChargeAct->setStatusTip(tr("Show how far each capacitor is charged: a gauge beside it and its plates coloured by voltage"));
+    capChargeAct = new QAction( QIcon(":/capcharge.svg"),tr("Show Capacitor Charge and Inductor Current"), this);
+    capChargeAct->setStatusTip(tr("Show the energy stored in capacitors and inductors: a gauge beside each one, capacitor plates coloured by voltage, coils by current"));
     capChargeAct->setCheckable( true );
     capChargeAct->setChecked( ChargeView::self()->enabled() );
     connect( capChargeAct, &QAction::toggled,

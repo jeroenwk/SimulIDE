@@ -32,6 +32,11 @@ class Reactive : public Comp2Pin, public eReactive
 
         virtual void setLinkedValue( double v, int i=0 ) override;
 
+    protected:
+        // Current from pin 0 to pin 1 through the part: the current of its series
+        // resistor (exact for the companion model). 0 when not connected.
+        double seriesCurrent();
+
     private:
         eNode* m_midEnode;
         eResistor* m_resistor;

@@ -52,6 +52,7 @@ Circuit::Circuit( qreal x, qreal y, qreal width, qreal height, CircuitView*  par
     m_changed    = false;
     m_animate    = false;
     m_chargeScale = 0;
+    m_currentScale = 0;
     m_pasting    = false;
     m_deleting   = false;
     m_loading    = false;
@@ -208,6 +209,7 @@ void Circuit::loadStrDoc( QString &doc )
                 else if( name == "reaStep" ) m_simulator->setreactStep( val.toULongLong() );
                 else if( name == "animate" ) setAnimate( val.toInt() );
                 else if( name == "chargeScale" ) m_chargeScale = val.toDouble();
+                else if( name == "currentScale" ) m_currentScale = val.toDouble();
                 else if( name == "rev"     ) rev = val.toInt();
             }
         }
@@ -490,6 +492,7 @@ QString Circuit::circuitHeader()
     header += "reaStep=\""+QString::number( m_simulator->reactStep() )+"\" ";
     header += "animate=\""+QString::number( m_animate )+"\" ";
     if( m_chargeScale > 0 ) header += "chargeScale=\""+QString::number( m_chargeScale )+"\" ";
+    if( m_currentScale > 0 ) header += "currentScale=\""+QString::number( m_currentScale )+"\" ";
     header += ">\n";
     return header;
 }
@@ -1312,6 +1315,12 @@ void Circuit::setDrawGrid( bool draw )
 void Circuit::setChargeScale( double v )
 {
     m_chargeScale = ( v > 0 ) ? v : 0;
+    setChanged();
+}
+
+void Circuit::setCurrentScale( double a )
+{
+    m_currentScale = ( a > 0 ) ? a : 0;
     setChanged();
 }
 

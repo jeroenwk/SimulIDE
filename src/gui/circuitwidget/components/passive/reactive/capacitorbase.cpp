@@ -9,8 +9,6 @@
 #include "capacitorbase.h"
 #include "chargeview.h"
 #include "simulator.h"
-#include "theme.h"
-#include "label.h"
 #include "pin.h"
 
 #include "doubleprop.h"
@@ -57,7 +55,7 @@ CapacitorBase::CapacitorBase( QString type, QString id )
     setShowProp("Capacitance");
     setPropStr( "Capacitance", "10 µF" );
 
-    m_gauge = new ChargeGauge( this );
+    m_gauge = new ChargeGauge( this, this );
     m_gauge->setVisible( false );
 }
 CapacitorBase::~CapacitorBase(){}
@@ -177,130 +175,23 @@ void CapacitorBase::setPlatePen( QPainter* p, int side )
     p->setPen( pen );
 }
 
-//--- ChargeGauge -----------------------------------------------------------
-
-ChargeGauge::ChargeGauge( CapacitorBase* cap )
-           : QGraphicsItem( cap )
+bool CapacitorBase::gaugeWarn()
 {
-    m_cap = cap;
-    setAcceptedMouseButtons( Qt::NoButton );
-    setAcceptHoverEvents( false );
-    setZValue( 1 );
+    return ( m_maxVolt > 0 && qAbs( capVolt() ) > m_maxVolt ) || isReversed();
 }
 
-void ChargeGauge::refresh()
+double CapacitorBase::gaugeTick()
 {
-    // Undo the parent's rotation and flip: draw in scene-aligned coordinates
-    QTransform st = m_cap->sceneTransform();
-    QTransform lin( st.m11(), st.m12(), st.m21(), st.m22(), 0, 0 );
-    bool ok = false;
-    QTransform inv = lin.inverted( &ok );
-    if( ok && inv != transform() ) setTransform( inv );
-
-    // Leads along screen x: horizontal part
-    QPointF lead = lin.map( QPointF( 1, 0 ) );
-    bool horizontal = qAbs( lead.x() ) > qAbs( lead.y() );
-
-    // Side opposite the value label (if shown), else right / above
-    int side = 1;
-    Label* vl = m_cap->m_valLabel;
-    if( vl && vl->isVisible() && !vl->toPlainText().isEmpty() )
-    {
-        QPointF lc = vl->mapToScene( vl->boundingRect().center() ) - m_cap->scenePos();
-        if( horizontal ) side = ( lc.y() < 0 ) ? -1 : 1;   // Label above: gauge below
-        else             side = ( lc.x() > 0 ) ? -1 : 1;   // Label right: gauge left
-    }
-    QRectF bar;
-    if( horizontal ) bar = ( side > 0 ) ? QRectF(-1.5,-23, 3, 14 ) : QRectF(-1.5, 9, 3, 14 );
-    else             bar = ( side > 0 ) ? QRectF( 9, -7, 3, 14 )   : QRectF(-12, -7, 3, 14 );
-
-    // Label text
-    ChargeView* cv = ChargeView::self();
-    QString text;
-    int mode = cv->labelMode();
-    if( mode != ChargeView::labelOff )
-    {
-        double v = m_cap->capVolt();
-        double lvl = m_cap->chargeLevel();
-        int pct = qRound( lvl*100 );
-        bool zero = qAbs( v ) < 1e-6;
-        QString pctStr = ( !zero && pct < 1 ) ? "<1 %" : QString::number( zero ? 0 : pct )+" %";
-        if     ( mode == ChargeView::labelVolt    ) text = ChargeView::voltStr( v );
-        else if( mode == ChargeView::labelPercent ) text = pctStr;
-        else                                        text = ChargeView::voltStr( v )+" · "+pctStr;
-    }
-    QFont font = m_cap->m_valLabel->font();
-    font.setPixelSize( 7 );
-    QFontMetricsF fm( font );
-    double tw = text.isEmpty() ? 0 : fm.horizontalAdvance( text );
-    QPointF tp;
-    if( horizontal ) tp = QPointF( bar.right()+2, bar.center().y()+fm.ascent()/2-1 );
-    else if( side > 0 ) tp = QPointF( bar.right()+2, bar.center().y()+fm.ascent()/2-1 );
-    else                tp = QPointF( bar.left()-2-tw, bar.center().y()+fm.ascent()/2-1 );
-
-    QRectF bound = bar.adjusted(-1,-5,1,1 );   // Overflow triangle above
-    if( tw > 0 ) bound = bound.united( QRectF( tp.x(), tp.y()-fm.ascent(), tw, fm.height() ) );
-    bound.adjust(-1,-1, 1, 1 );
-
-    if( bound != m_bound ) prepareGeometryChange();
-    m_bar = bar; m_bound = bound; m_textPos = tp; m_text = text;
-    if( !isVisible() ) setVisible( true );
-    update();
+    double ref = chargeRef();
+    if( m_maxVolt > 0 && ref > 0 && m_maxVolt < ref ) return m_maxVolt/ref;
+    return -1;
 }
 
-void ChargeGauge::paint( QPainter* p, const QStyleOptionGraphicsItem*, QWidget* )
+QString CapacitorBase::gaugeText( int mode )
 {
-    ChargeView* cv = ChargeView::self();
-    double ref = m_cap->chargeRef();
-    double lvl = m_cap->chargeLevel();
-    double maxV = m_cap->maxVolt();
-    bool over = maxV > 0 && qAbs( m_cap->capVolt() ) > maxV;
-    bool warn = over || m_cap->isReversed();
-
-    p->setRenderHint( QPainter::Antialiasing, true );
-
-    // Outline
-    QColor outline = Theme::line();
-    outline.setAlphaF( 0.6 );
-    p->setPen( QPen( outline, 0.5 ) );
-    p->setBrush( Qt::NoBrush );
-    p->drawRect( m_bar );
-
-    // Fill, from the bottom up
-    double h = qMin( lvl, 1.0 )*m_bar.height();
-    if( h > 0 )
-    {
-        QColor fill = warn ? QColor( 230, 40, 40 ) : Theme::flow();
-        if( warn && !cv->blinkOn() ) fill.setAlphaF( 0.35 );
-        p->setPen( Qt::NoPen );
-        p->setBrush( fill );
-        p->drawRect( QRectF( m_bar.left(), m_bar.bottom()-h, m_bar.width(), h ) );
-    }
-    // Overflow: a small triangle on top
-    if( lvl > 1 )
-    {
-        QPolygonF tri;
-        tri << QPointF( m_bar.left()-0.5, m_bar.top()-0.5 )
-            << QPointF( m_bar.right()+0.5, m_bar.top()-0.5 )
-            << QPointF( m_bar.center().x(), m_bar.top()-3.5 );
-        p->setPen( Qt::NoPen );
-        p->setBrush( warn ? QColor( 230, 40, 40 ) : Theme::flow() );
-        p->drawPolygon( tri );
-    }
-    // Rating tick
-    if( maxV > 0 && ref > 0 && maxV < ref )
-    {
-        double y = m_bar.bottom() - maxV/ref*m_bar.height();
-        p->setPen( QPen( QColor( 230, 40, 40 ), 0.8 ) );
-        p->drawLine( QPointF( m_bar.left()-1, y ), QPointF( m_bar.right()+1, y ) );
-    }
-    // Label
-    if( !m_text.isEmpty() )
-    {
-        QFont font = m_cap->m_valLabel->font();
-        font.setPixelSize( 7 );
-        p->setFont( font );
-        p->setPen( warn ? QColor( 230, 40, 40 ) : Theme::valLabel() );
-        p->drawText( m_textPos, m_text );
-    }
+    double v = capVolt();
+    QString pct = ChargeView::pctStr( chargeLevel(), qAbs( v ) < 1e-6 );
+    if     ( mode == ChargeView::labelVolt    ) return ChargeView::voltStr( v );
+    else if( mode == ChargeView::labelPercent ) return pct;
+    return ChargeView::voltStr( v )+" · "+pct;
 }

@@ -6,38 +6,14 @@
 #ifndef CAPACITORBASE_H
 #define CAPACITORBASE_H
 
-#include <QGraphicsItem>
 #include <QMutex>
 #include <QVector>
 
 #include "reactive.h"
+#include "chargegauge.h"
 
-class CapacitorBase;
-
-// Charge gauge and live label beside a capacitor (specs/capacitor-charge.md).
-// A child item kept upright on screen: its transform undoes the parent's rotation
-// and flip, so its coordinates are scene-aligned with the origin at the part centre.
-class ChargeGauge : public QGraphicsItem
+class CapacitorBase : public Reactive, public GaugeOwner
 {
-    public:
-        ChargeGauge( CapacitorBase* cap );
-
-        QRectF boundingRect() const override { return m_bound; }
-        void paint( QPainter* p, const QStyleOptionGraphicsItem*, QWidget* ) override;
-
-        void refresh();     // Layout and repaint (once per frame while shown)
-
-    private:
-        CapacitorBase* m_cap;
-        QRectF  m_bar;      // Gauge bar (upright coordinates)
-        QPointF m_textPos;  // Label baseline start
-        QRectF  m_bound;
-        QString m_text;
-};
-
-class CapacitorBase : public Reactive
-{
-    friend class ChargeGauge;
 
     public:
         CapacitorBase( QString type, QString id );
@@ -62,6 +38,12 @@ class CapacitorBase : public Reactive
         double chargeLevel();         // |V| / chargeRef() (may exceed 1)
         QStringList chargeFlags();    // "overvoltage", "reversed", "overflow"
         void chargeDisplayChanged();  // Setting toggled or simulation stopped
+
+        // GaugeOwner
+        virtual double  gaugeLevel() override { return chargeLevel(); }
+        virtual bool    gaugeWarn() override;
+        virtual double  gaugeTick() override;
+        virtual QString gaugeText( int labelMode ) override;
 
         // Charge log (Log charge on): the voltage every sampleStep of simulated time, held
         // between steps, recorded in the simulation thread. takeSamples() hands the EventLog
