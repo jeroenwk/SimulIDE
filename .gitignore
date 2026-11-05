@@ -5,3 +5,7 @@ build_XX/*
 !build_XX/SimulIDE_Build.pro
 *.o
 .qmake.stash
+
+# PGO: instrumented build and profile (tools/pgo_build.sh)
+build_pgo_gen/
+pgo/
