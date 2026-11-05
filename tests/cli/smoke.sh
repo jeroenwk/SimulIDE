@@ -334,6 +334,74 @@ EOF
 if [ $? -eq 0 ]; then ok "reversed electrolytic build script"; else fail "reversed electrolytic build script" "$(cat "$TMP/rev.out")"; fi
 check "run"                         'r["ok"]'                                  -- sim run --for 50ms
 check "reversed flagged"            '"reversed" in r["result"].get("flag","") and r["result"]["voltage"] < 0' -- read C3
+
+echo "Inductor current display"
+cli - > "$TMP/rl.out" 2>&1 <<'EOF'
+circuit new --discard
+comp add Rail        --label V1 --at 0,0 --rot 0 Voltage=10
+comp add Resistor    --label R1 --at 64,0 Resistance=100
+comp add Inductor    --label L1 --at 112,32 --rot 90 Inductance=1
+comp add Ground      --label G  --at 112,96
+wire add V1.outnod R1.lPin
+wire add R1.rPin L1.lPin --via 112,0
+wire add L1.rPin G.Gnd
+EOF
+if [ $? -eq 0 ]; then ok "RL build script"; else fail "RL build script" "$(cat "$TMP/rl.out")"; fi
+check "run to t = tau (10 ms)"      'r["ok"]'                                  -- sim run --for 10ms
+check "current 63 mA, pin 0 to 1"   'abs(r["result"]["current"]-0.0632) < 0.001' -- read L1
+check "auto: peak, full on a rise"  'r["result"]["iref_source"]=="peak" and abs(r["result"]["level"]-1) < 1e-6' -- read L1
+check "circuit scale 0.1 A"         'r["ok"]'                                  -- settings set currentScale 0.1
+check "...level 63 % at tau"        'r["result"]["iref_source"]=="override" and abs(r["result"]["level"]-0.632) < 0.01' -- read L1
+check "negative scale rejected"     'not r["ok"]'                              -- settings set currentScale -1
+check "run to 5 tau"                'r["ok"]'                                  -- sim run --for 40ms
+check "level 99 % at 5 tau"         'abs(r["result"]["level"]-0.993) < 0.01'   -- read L1
+check "own scale 0.2 A, rating 50 mA" 'r["ok"]'                                -- comp set L1 CurrentScale=0.2 MaxCurrent=0.05
+check "...own scale, overcurrent"   'r["result"]["iref_source"]=="part" and abs(r["result"]["level"]-0.497) < 0.01 and "overcurrent" in r["result"].get("flag","") and r["result"]["rating"]==0.05' -- read L1
+check "capture with coil gauge"     'r["ok"]'                                  -- capture circuit L1 --scale 6 --file "$TMP/coil.png"
+check "save"                        'r["ok"]'                                  -- circuit save "$TMP/rl.sim1"
+check "reopen"                      'r["ok"]'                                  -- circuit open "$TMP/rl.sim1" --discard
+check "...circuit scale saved"      'r["result"]==0.1'                         -- settings get currentScale
+check "run"                         'r["ok"]'                                  -- sim run --for 50ms
+check "...own scale saved"          'r["result"]["iref"]==0.2 and r["result"]["iref_source"]=="part"' -- read L1
+check "own scale 0"                 'r["ok"]'                                  -- comp set L1 CurrentScale=0
+check "...circuit scale again"      'r["result"]["iref"]==0.1 and r["result"]["iref_source"]=="override"' -- read L1
+cli - > "$TMP/lc.out" 2>&1 <<'EOF'
+circuit new --discard
+comp add Capacitor --label C1 --at 0,32 --rot 90 Capacitance=10u InitVolt=10
+comp add Inductor  --label L1 --at 64,32 --rot 90 Inductance=1m
+comp add Ground    --label G  --at 0,96
+wire add C1.lPin L1.lPin --via 0,0 64,0
+wire add C1.rPin G.Gnd
+wire add L1.rPin @0,64 --via 64,64
+EOF
+if [ $? -eq 0 ]; then ok "LC tank build script"; else fail "LC tank build script" "$(cat "$TMP/lc.out")"; fi
+check "run to T/4 (157 us)"         'r["ok"]'                                  -- sim run --for 157us
+check "inductor full: 1 A peak"     'abs(r["result"]["current"]-1) < 0.02 and r["result"]["level"] > 0.99' -- read L1
+check "capacitor empty, vref 10 V"  'r["result"]["level"] < 0.02 and abs(r["result"]["vref"]-10) < 1e-6' -- read C1
+check "run to T/2"                  'r["ok"]'                                  -- sim run --for 157us
+check "inductor empty"              'r["result"]["level"] < 0.02'              -- read L1
+check "capacitor full again"        'r["result"]["level"] > 0.98'              -- read C1
+cli - > "$TMP/xf.out" 2>&1 <<'EOF'
+circuit new --discard
+comp add WaveGen     --label W1 --at -64,16 Freq=50 Semi_Ampli=10 Always_On=true
+comp add Ground      --label G1 --at -16,64
+comp add Transformer --label T1 --at 32,8 Secondary=2
+comp add Resistor    --label RL --at 112,24 --rot 90 Resistance=1k
+comp add Ground      --label G2 --at 112,80
+wire add W1.outnod T1.P00Pin --via -40,16 -40,8
+wire add T1.P01Pin G1.Gnd --via -16,32
+wire add T1.S00Pin RL.lPin --via 112,8
+wire add T1.S01Pin RL.rPin --via 80,32 80,40
+wire add RL.rPin G2.Gnd
+EOF
+if [ $? -eq 0 ]; then ok "transformer build script"; else fail "transformer build script" "$(cat "$TMP/xf.out")"; fi
+check "run to a sine peak (45 ms)"  'r["ok"]'                                  -- sim run --for 45ms
+check "secondary: 1:2 into 1 kOhm"  'abs(r["result"]["i_S01"]+0.0198) < 0.0005 and r["result"]["iref_source"]=="peak"' -- read T1
+check "primary carries the most"    'r["result"]["level_P01"] > 0.99 and abs(r["result"]["i_P01"]) > 2*abs(r["result"]["i_S01"])' -- read T1
+check "own scale on a transformer"  'r["ok"]'                                  -- comp set T1 CurrentScale=0.1
+check "...used for its coils"       'r["result"]["iref_source"]=="part" and abs(r["result"]["level_S01"]-0.198) < 0.005' -- read T1
+check "capture with coil gauges"    'r["ok"]'                                  -- capture circuit T1 --scale 6 --file "$TMP/xfmr.png"
+cli settings set currentScale 0 >/dev/null
 cli settings set capCharge "$CHARGE_WAS" >/dev/null
 cli settings set capLabel "$LABEL_WAS" >/dev/null
 

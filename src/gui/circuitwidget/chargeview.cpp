@@ -1,6 +1,6 @@
 /***************************************************************************
- *   Capacitor charge display: gauge, plate colours, live label           *
- *   See specs/capacitor-charge.md                                         *
+ *   Capacitor charge and inductor current display: gauges, colours, label *
+ *   See specs/capacitor-charge.md and specs/inductor-current.md           *
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QtMath>
@@ -13,6 +13,8 @@
 #include "circuitwidget.h"
 #include "simulator.h"
 #include "capacitorbase.h"
+#include "inductor.h"
+#include "transformer.h"
 #include "subcircuit.h"
 #include "theme.h"
 #include "pin.h"
@@ -33,6 +35,9 @@ ChargeView::ChargeView()
     m_vref      = 0;
     m_refSource = refNone;
     m_peak      = 0;
+    m_iref      = 0;
+    m_irefSource = refNone;
+    m_ipeak     = 0;
 }
 
 void ChargeView::setEnabled( bool en )
@@ -64,18 +69,24 @@ void ChargeView::attach()
 {
     if( Simulator::self() ) Simulator::self()->addToUpdateList( this ); // No-op if listed
     m_peak = 0;
+    m_ipeak = 0;
 }
 
 void ChargeView::clear()
 {
     m_peak = 0;
+    m_ipeak = 0;
     repaintCaps();
 }
 
 void ChargeView::repaintCaps()
 {
     for( Component* comp : *Circuit::self()->compList() )
-        if( CapacitorBase* cap = dynamic_cast<CapacitorBase*>( comp ) ) cap->chargeDisplayChanged();
+    {
+        if     ( CapacitorBase* cap = dynamic_cast<CapacitorBase*>( comp ) ) cap->chargeDisplayChanged();
+        else if( Inductor*      ind = dynamic_cast<Inductor*>( comp ) )      ind->chargeDisplayChanged();
+        else if( Transformer*   tr  = dynamic_cast<Transformer*>( comp ) )   tr->chargeDisplayChanged();
+    }
 }
 
 QString ChargeView::refSourceStr( int s )
@@ -85,6 +96,7 @@ QString ChargeView::refSourceStr( int s )
         case refSources:  return "sources";
         case refPeak:     return "peak";
         case refCapacitor: return "capacitor";
+        case refPart:     return "part";
     }
     return "none";
 }
@@ -116,27 +128,58 @@ double ChargeView::vref()
     double src = sourcesMax();
     if( src > 0 ) { m_refSource = refSources; return m_vref = src; }
 
-    // No source: the highest capacitor node voltage since the start
+    // No source: the highest capacitor node voltage since the start. The initial voltages
+    // count too: the peak is only sampled once per frame, and a run can start between frames
     for( Component* comp : *Circuit::self()->compList() )
         if( CapacitorBase* cap = dynamic_cast<CapacitorBase*>( comp ) )
+        {
+            m_peak = qMax( m_peak, qAbs( cap->initVolt() ) );
             for( Pin* pin : cap->getPins() )
                 if( pin && pin->isConnected() ) m_peak = qMax( m_peak, qAbs( pin->getVoltage() ) );
+        }
 
     m_refSource = ( m_peak > 0 ) ? refPeak : refNone;
     return m_vref = m_peak;
 }
 
-QColor ChargeView::plateColor( double volt, double ref )
+double ChargeView::iref()
 {
-    if( ref <= 0 ) ref = m_vref;
+    double scale = Circuit::self()->currentScale();
+    if( scale > 0 ) { m_irefSource = refOverride; return m_iref = scale; }
+
+    if( Simulator::self() && Simulator::self()->isRunning() )
+    {
+        for( Component* comp : *Circuit::self()->compList() )
+        {
+            if( Inductor* ind = dynamic_cast<Inductor*>( comp ) )
+            {
+                if( !ind->ownCurrentRef() && ind->currentShown( false ) )   // Initial current too
+                    m_ipeak = qMax( m_ipeak, qMax( qAbs( cleanAmps( ind->indCurr() ) ), qAbs( ind->initCurr() ) ) );
+            }
+            else if( Transformer* tr = dynamic_cast<Transformer*>( comp ) )
+                if( !tr->ownCurrentRef() ) m_ipeak = qMax( m_ipeak, tr->maxCoilCurrent() );
+        }
+    }
+    m_irefSource = ( m_ipeak > 0 ) ? refPeak : refNone;
+    return m_iref = m_ipeak;
+}
+
+QColor ChargeView::scaleColor( double value, double ref )
+{
     QColor zero = Theme::line();
     if( ref <= 0 ) return zero;
-    double t = qBound(-1.0, volt/ref, 1.0 );
+    double t = qBound(-1.0, value/ref, 1.0 );
     QColor end = Theme::animWire( t >= 0 );
     t = qAbs( t );
     return QColor( zero.red()  +( end.red()  -zero.red()   )*t,
                    zero.green()+( end.green()-zero.green() )*t,
                    zero.blue() +( end.blue() -zero.blue()  )*t );
+}
+
+QColor ChargeView::plateColor( double volt, double ref )
+{
+    if( ref <= 0 ) ref = m_vref;
+    return scaleColor( volt, ref );
 }
 
 void ChargeView::updateStep()
@@ -146,6 +189,7 @@ void ChargeView::updateStep()
     if( !sim || !sim->isRunning() ) return;
 
     vref();
+    iref();
     m_blinkOn = ( QDateTime::currentMSecsSinceEpoch()/250 ) % 2 == 0;
 }
 
@@ -159,4 +203,25 @@ QString ChargeView::voltStr( double v )
     else if( a > 0 && a < 1 ) { val = v*1e3; unit = "mV"; }
     else if( a >= 1e3 )     { val = v*1e-3; unit = "kV"; }
     return QString::number( val, 'g', 3 )+" "+unit;
+}
+
+QString ChargeView::ampStr( double a )
+{
+    double m = qAbs( a );
+    if( m < 1e-9 ) return "0 A";             // Below what the display can mean
+    QString unit = "A";
+    double  val  = a;
+    if( m < 1e-6 )      { val = a*1e9; unit = "nA"; }
+    else if( m < 1e-3 ) { val = a*1e6; unit = "µA"; }
+    else if( m < 1 )    { val = a*1e3; unit = "mA"; }
+    else if( m >= 1e3 ) { val = a*1e-3; unit = "kA"; }
+    return QString::number( val, 'g', 3 )+" "+unit;
+}
+
+QString ChargeView::pctStr( double level, bool zero )
+{
+    int pct = qRound( level*100 );
+    if( zero ) return "0 %";
+    if( pct < 1 ) return "<1 %";
+    return QString::number( pct )+" %";
 }

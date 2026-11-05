@@ -11,6 +11,7 @@
 #include "circuitwidget.h"
 #include "simulator.h"
 #include "circuit.h"
+#include "chargeview.h"
 #include "pin.h"
 
 #include "doubleprop.h"
@@ -38,6 +39,7 @@ Transformer::Transformer( QString type, QString id )
     m_coupCoeff = 0.99;
     m_baseInd = 1;
     m_lenght = 0;
+    m_currentScale = 0;
 
     m_primary.prefix = m_id+"-P";
     m_primary.angle = 180;
@@ -59,12 +61,20 @@ Transformer::Transformer( QString type, QString id )
 
         new StrProp <Transformer>("Secondary", tr("Secondary"), ""
                                  , this, &Transformer::secondary, &Transformer::setSecondary, propNoCopy ),
+
+        new DoubProp<Transformer>("CurrentScale", tr("Current gauge 100 % at (0 = circuit)"), "A"
+                                 , this, &Transformer::currentScale, &Transformer::setCurrentScale ),
     },0 } );
 
     setPrimary("1");
     setSecondary("1");
+
+    Simulator::self()->addToUpdateList( this );
 }
-Transformer::~Transformer() {}
+Transformer::~Transformer()
+{
+    for( CoilGauge* cg : m_coilGauges ) delete cg;   // The gauge items go with the part
+}
 
 void Transformer::stamp()
 {
@@ -232,6 +242,97 @@ void Transformer::createCoils()
 
     if( secTopo == m_secondary.topology ) modify( &m_secondary );
     else                                  create( &m_secondary );
+
+    buildGauges();
+}
+
+//--- Current display (specs/inductor-current.md) ---------------------------
+
+void Transformer::buildGauges()
+{
+    for( CoilGauge* cg : m_coilGauges ) { delete cg->gauge; delete cg; }
+    m_coilGauges.clear();
+
+    for( int i=0; i<2; ++i )             // Same walk as paint(): one gauge per coil
+    {
+        winding_t* w = i? &m_secondary : &m_primary;
+        double x   = i? w->x+1 : w->x-1;  // Just outside the pin ends
+        QPointF out( i? 1 : -1, 0 );
+        int y = w->start-8;
+        int sect = -1;
+        for( eCoil* coil : w->coils )
+        {
+            if( coil->index == 0 ) { y += 8; sect++; }
+            int h = coil->size*8;
+            QString name = QString( i? "S":"P" )+QString::number( sect )+QString::number( coil->index+1 );
+            CoilGauge* cg = new CoilGauge( this, coil, name );
+            cg->gauge = new ChargeGauge( this, cg );
+            cg->gauge->setAnchor( QPointF( x, y+h/2.0 ), out, qMin( 14, h-4 ) );
+            cg->gauge->setVisible( false );
+            m_coilGauges.append( cg );
+            y += h;
+        }
+    }
+}
+
+void Transformer::setCurrentScale( double a )
+{
+    m_currentScale = ( a > 0 ) ? a : 0;
+    if( currentShown() ) for( CoilGauge* cg : m_coilGauges ) cg->gauge->refresh();
+    update();
+}
+
+double Transformer::currentRef()
+{
+    if( m_currentScale > 0 ) return m_currentScale;
+    return ChargeView::self()->iref();
+}
+
+double Transformer::maxCoilCurrent()
+{
+    double max = 0;
+    for( CoilGauge* cg : m_coilGauges ) max = qMax( max, qAbs( ChargeView::cleanAmps( cg->coil->current() ) ) );
+    return max;
+}
+
+bool Transformer::currentShown() { return ChargeView::self()->active(); }
+
+void Transformer::chargeDisplayChanged()
+{
+    bool shown = currentShown();
+    for( CoilGauge* cg : m_coilGauges )
+    {
+        if( shown ) cg->gauge->refresh();
+        else        cg->gauge->setVisible( false );
+    }
+    update();
+}
+
+void Transformer::updateStep()
+{
+    if( currentShown() )
+    {
+        for( CoilGauge* cg : m_coilGauges ) cg->gauge->refresh();
+        update();                          // Coil colours
+    }
+    else for( CoilGauge* cg : m_coilGauges )
+        if( cg->gauge->isVisible() ) { cg->gauge->setVisible( false ); update(); }
+}
+
+double CoilGauge::gaugeLevel()
+{
+    double ref = xfmr->currentRef();
+    if( ref <= 0 ) return 0;
+    return qAbs( ChargeView::cleanAmps( coil->current() ) )/ref;
+}
+
+QString CoilGauge::gaugeText( int mode )
+{
+    double i = coil->current();
+    QString pct = ChargeView::pctStr( gaugeLevel(), ChargeView::cleanAmps( i ) == 0 );
+    if     ( mode == ChargeView::labelVolt    ) return ChargeView::ampStr( i );
+    else if( mode == ChargeView::labelPercent ) return pct;
+    return ChargeView::ampStr( i )+" · "+pct;
 }
 
 int Transformer::getLeght( winding_t* w )
@@ -384,6 +485,10 @@ void Transformer::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QW
     QPen pen = p->pen();
     pen.setWidthF( 2 );
     p->setPen(pen);
+    QColor base = pen.color();
+
+    bool shown = currentShown();
+    double ref = shown ? currentRef() : 0;
 
     for( int i=0; i<2; ++i )
     {
@@ -395,8 +500,14 @@ void Transformer::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QW
 
         for( int coilN=0; coilN<coils.size(); ++coilN )
         {
-            const eCoil* coil = coils.at( coilN );
+            eCoil* coil = coils.at( coilN );
             if( coil->index == 0 ) y += 8;
+
+            if( shown )                    // Coloured by current: + from its first pin to its second
+            {
+                pen.setColor( ChargeView::scaleColor( ChargeView::cleanAmps( coil->current() ), ref ) );
+                p->setPen( pen );
+            }
 
             if( coil->sign >= 0 )
                  p->drawLine( QPointF( x-0.01, y+4 ), QPointF( x+0.01, y+4 ) );
@@ -409,6 +520,8 @@ void Transformer::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QW
             }
         }
     }
+    pen.setColor( base );                  // Core
+    p->setPen( pen );
     p->drawLine(-2, 0,-2, 8*m_lenght );
     p->drawLine( 2, 0, 2, 8*m_lenght );
 

@@ -122,7 +122,7 @@ QList<Setting>& settings()
             if( !ok || d < 1 || d > 6 ) throw CliError("invalid range: "+v+" (1..6 decades)" );
             CurrentFlow::self()->setRange( d );
         }});
-    list.append({"capCharge", "circuit", "Show capacitor charge: a gauge beside each capacitor and its plates coloured by voltage (see also read Cx).",
+    list.append({"capCharge", "circuit", "Show capacitor charge and inductor current: a gauge beside each capacitor, inductor and transformer coil; plates coloured by voltage, coils by current (see also read Cx / Lx / Tx).",
         [](){ return QJsonValue( ChargeView::self()->enabled() ); },
         []( QString v ){ ChargeView::self()->setEnabled( parseBool( v ) ); }});
     list.append({"partStatus", "circuit", "Show part states: badges above each part that reports its state (scripted cores: component.setStatus) and its outline in the most severe state's colour (see also: status).",
@@ -137,7 +137,7 @@ QList<Setting>& settings()
     list.append({"logCaps", "circuit", "Messages: write charge events of capacitors whose LogCharge property is on (see also: log).",
         [](){ return QJsonValue( EventLog::self()->logCaps() ); },
         []( QString v ){ EventLog::self()->setLogCaps( parseBool( v ) ); }});
-    list.append({"capLabel", "circuit", "Live label beside each capacitor while the charge display is on: off, volt, percent or both.",
+    list.append({"capLabel", "circuit", "Live label beside each capacitor, inductor and transformer coil while the display is on: off, volt (the value: V or A), percent or both.",
         [](){ return QJsonValue( ChargeView::labelModes().at( ChargeView::self()->labelMode() ) ); },
         []( QString v ){
             int i = ChargeView::labelModes().indexOf( v.toLower() );
@@ -150,6 +150,13 @@ QList<Setting>& settings()
             bool ok; double d = v.toDouble( &ok );
             if( !ok || d < 0 ) throw CliError("invalid voltage: "+v+" (0 = auto)" );
             Circuit::self()->setChargeScale( d );
+        }});
+    list.append({"currentScale", "circuit", "Inductor and transformer current gauges 100 % in amps, saved in the circuit; 0 = auto (peak current since the start).",
+        [](){ return QJsonValue( Circuit::self()->currentScale() ); },
+        []( QString v ){
+            bool ok; double d = v.toDouble( &ok );
+            if( !ok || d < 0 ) throw CliError("invalid current: "+v+" (0 = auto)" );
+            Circuit::self()->setCurrentScale( d );
         }});
     list.append({"colorTheme", "circuit", "Color preset: Classic, Light or Dark (EveryCircuit style). Reads Custom when colors were changed.",
         [](){ return QJsonValue( Theme::currentPreset() ); },

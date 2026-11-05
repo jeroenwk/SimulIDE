@@ -266,9 +266,7 @@ Tests go in `tests/cli/smoke.sh`, headless through the CLI.
   - It gives each capacitor its target `V∞`, so the label can show
     `→ 19.6 V · 63 %` (the textbook charge curve, 63 % at τ), and the gauge
     can mark the target with a tick.
-- **Inductors:** the gauge shows |I| / Iref, with the same colour logic.
-  Together with the capacitor gauges, this shows energy moving back and forth
-  in an LC tank.
+- **Inductors:** done, see [inductor-current.md](inductor-current.md).
 - **Batteries:** state of charge, if the battery model gets one.
 - **Label formats:** Q = C·V, energy ½CV².
 - **Voltage colouring of wires** on the same scale as the plates, a separate
@@ -299,6 +297,10 @@ Where the code differs from the text above:
   effect, changing an electrolytic's capacitance during a run takes effect at
   once, as it already did for the plain capacitor.
 - **Voltages below 1 µV read `0 V · 0 %`**, not `7.99e-11 µV · <1 %`.
+- **(2026-11-05)** The gauge is now `chargegauge.*`, shared with inductors
+  ([inductor-current.md](inductor-current.md)), and the no-source peak also
+  counts each capacitor's |InitVolt|: it is sampled once per frame, and a short
+  run could end before the first sample saw the initial voltage.
 
 ### Tests (`tests/cli/smoke.sh`, section "Capacitor charge display")
 

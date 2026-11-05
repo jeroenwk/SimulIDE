@@ -41,6 +41,8 @@ class Circuit : public QGraphicsScene
         // Charge display reference voltage (V), 0 = auto (largest source voltage)
         double chargeScale() { return m_chargeScale; }
         void setChargeScale( double v );
+        double currentScale() { return m_currentScale; }   // Inductor gauges 100 % (A), 0 = auto
+        void setCurrentScale( double a );
 
         // What the circuit shows and how to use it (Markdown), saved as <description> in the file
         QString description() { return m_description; }
@@ -181,6 +183,7 @@ class Circuit : public QGraphicsScene
         bool m_compRemoved;
         bool m_animate;
         double m_chargeScale;
+        double m_currentScale;
         QString m_description;
         bool m_changed;
         bool m_busy;

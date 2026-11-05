@@ -9,8 +9,25 @@
 #include "e-element.h"
 #include "component.h"
 #include "e-coil.h"
+#include "chargegauge.h"
 
 class LibraryItem;
+class Transformer;
+
+// Current display of one coil (specs/inductor-current.md)
+class CoilGauge : public GaugeOwner
+{
+    public:
+        CoilGauge( Transformer* t, eCoil* c, QString n ) { xfmr = t; coil = c; name = n; gauge = nullptr; }
+
+        virtual double  gaugeLevel() override;
+        virtual QString gaugeText( int labelMode ) override;
+
+        Transformer* xfmr;
+        eCoil*  coil;
+        QString name;      // "P01", "S11": as the pin at the coil's end
+        ChargeGauge* gauge;
+};
 
 class Transformer : public Component, public eElement
 {
@@ -49,6 +66,18 @@ class Transformer : public Component, public eElement
         double coupCoeff() { return m_coupCoeff; }
         void setCoupCoeff( double c );
 
+        // Current display
+        double currentScale() { return m_currentScale; } // Own 100 % (A), 0 = the circuit's
+        void setCurrentScale( double a );
+        bool   ownCurrentRef() { return m_currentScale > 0; }
+        double currentRef();
+        double maxCoilCurrent();       // Largest |I| of its coils
+        bool   currentShown();
+        void   chargeDisplayChanged();
+        const QList<CoilGauge*>& coilGauges() { return m_coilGauges; }
+
+        virtual void updateStep() override;
+
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
 
     private:
@@ -57,6 +86,7 @@ class Transformer : public Component, public eElement
         int  getLeght( winding_t* w );
         void modify( winding_t* w );
         void create( winding_t* w );
+        void buildGauges();
 
         int m_lenght;
 
@@ -69,6 +99,9 @@ class Transformer : public Component, public eElement
         winding_t m_secondary;
 
         QList<eCoil*> m_coils;
+
+        double m_currentScale;
+        QList<CoilGauge*> m_coilGauges;
 
         std::vector<std::vector<double>> m_inva;
 };

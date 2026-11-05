@@ -28,6 +28,7 @@ class eCoil : public eResistor
         void setEnode( int n, eNode* e );
 
         double getVolt();
+        double current();   // Through the coil, from its first pin to its second (A)
 
         int index;
         int sign;

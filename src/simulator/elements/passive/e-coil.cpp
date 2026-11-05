@@ -64,6 +64,12 @@ double eCoil::getVolt()
     return volt;
 }
 
+double eCoil::current()
+{
+    if( !m_resistor0.getEpin(0)->getEnode() || !m_resistor0.getEpin(1)->getEnode() ) return 0;
+    return m_resistor0.current();            // From the pin's node into the coil
+}
+
 void eCoil::stampCurrent( double current )
 {
     m_currSource += current;

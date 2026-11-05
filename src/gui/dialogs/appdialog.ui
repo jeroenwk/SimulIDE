@@ -625,10 +625,10 @@
            <item>
             <widget class="QCheckBox" name="capCharge">
              <property name="toolTip">
-              <string>A gauge beside each capacitor shows how far it is charged; its plates are coloured by node voltage</string>
+              <string>A gauge beside each capacitor shows how far it is charged, its plates coloured by node voltage; inductors and transformer coils show their current the same way, the coil coloured by its direction</string>
              </property>
              <property name="text">
-              <string>Show Capacitor Charge</string>
+              <string>Show Capacitor Charge and Inductor Current</string>
              </property>
             </widget>
            </item>
@@ -642,7 +642,7 @@
            <item>
             <widget class="QComboBox" name="capLabel">
              <property name="toolTip">
-              <string>Live text beside each capacitor</string>
+              <string>Live text beside each capacitor, inductor and transformer coil (Volts: the value, in A for inductors)</string>
              </property>
             </widget>
            </item>
@@ -666,6 +666,49 @@
              </property>
              <property name="decimals">
               <number>1</number>
+             </property>
+             <property name="maximum">
+              <double>100000.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="currentScaleLayout">
+           <item>
+            <spacer name="currentScaleSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>10</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QLabel" name="currentScaleLabel">
+             <property name="text">
+              <string>Inductors: 100 % at</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QDoubleSpinBox" name="currentScale">
+             <property name="toolTip">
+              <string>Current shown as a full gauge on inductors and transformer coils, saved in the circuit. Auto = the peak current since the start.</string>
+             </property>
+             <property name="specialValueText">
+              <string>Auto</string>
+             </property>
+             <property name="suffix">
+              <string> A</string>
+             </property>
+             <property name="decimals">
+              <number>3</number>
              </property>
              <property name="maximum">
               <double>100000.000000000000000</double>

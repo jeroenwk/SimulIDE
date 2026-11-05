@@ -55,6 +55,7 @@ class AppDialog : public QDialog, private Ui::AppDialog
         void on_uiTheme_activated( int i );
         void on_capLabel_currentIndexChanged( int i );
         void on_chargeScale_valueChanged( double v );
+        void on_currentScale_valueChanged( double a );
         void on_fps_valueChanged( int fps );
         void on_backup_valueChanged( int secs );
 

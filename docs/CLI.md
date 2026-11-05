@@ -273,6 +273,22 @@ A capacitor's own `ChargeScale` property (V, 0 = the circuit's; in its
 Properties panel as "Charge gauge 100 % at") overrides all three for that
 capacitor's gauge, label and plate colours: `comp set C1 ChargeScale=20`.
 
+**Inductors and transformers** (same switch and label setting, see
+`specs/inductor-current.md`): a gauge beside each inductor and each
+transformer coil fills with |I| / Iref, and the coil is coloured by its current
+(Animate high colour from pin 0 to pin 1, low colour the other way; label
+`volt` mode shows amps). Iref is, in order: the part's own `CurrentScale`
+(A, `comp set L1 CurrentScale=0.1`), `settings set currentScale 0.1` (A, saved
+in the circuit; 0 = auto), else the peak |I| of all inductors and coils since
+the start (shared; parts with their own scale left out). An RL step therefore
+reads 100 % during its first rise on Auto: set a scale (e.g. V/R) for that.
+An inductor's `MaxCurrent` (rated current) turns its gauge red above it.
+`read L1` gives `current` (signed, A), `level`, `iref`, `iref_source`
+(`part`, `override`, `peak` or `none`), `rating` and `flag` (`overcurrent`,
+`overflow`); `read T1` gives `i_P01`, `level_P01`, `i_S01`, ... per coil
+(named like the pin at the coil's end) plus `iref` and `iref_source`. A
+relay's coil shows nothing.
+
 A capacitor's `MaxVolt` property (rated voltage) makes its gauge red and
 blinking above it, and draws a tick at that level. `read C1` gives the
 numbers: `voltage`, `level` (can exceed 1), `vref`, `vref_source`

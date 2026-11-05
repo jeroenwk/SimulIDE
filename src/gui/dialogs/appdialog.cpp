@@ -253,10 +253,11 @@ void AppDialog::on_currentFlow_toggled( bool on )
 
 void AppDialog::syncCharge()
 {
-    QSignalBlocker b1( capCharge ), b2( capLabel ), b3( chargeScale );
+    QSignalBlocker b1( capCharge ), b2( capLabel ), b3( chargeScale ), b4( currentScale );
     capCharge->setChecked( ChargeView::self()->enabled() );
     capLabel->setCurrentIndex( ChargeView::self()->labelMode() );
     chargeScale->setValue( Circuit::self()->chargeScale() );
+    currentScale->setValue( Circuit::self()->currentScale() );
 }
 
 void AppDialog::on_reopenLast_toggled( bool on )
@@ -282,6 +283,11 @@ void AppDialog::on_capLabel_currentIndexChanged( int i )
 void AppDialog::on_chargeScale_valueChanged( double v )
 {
     if( v != Circuit::self()->chargeScale() ) Circuit::self()->setChargeScale( v );
+}
+
+void AppDialog::on_currentScale_valueChanged( double a )
+{
+    if( a != Circuit::self()->currentScale() ) Circuit::self()->setCurrentScale( a );
 }
 
 void AppDialog::on_currentRange_valueChanged( int decades )

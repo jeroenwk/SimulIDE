@@ -4,6 +4,8 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "capacitorbase.h"
+#include "inductor.h"
+#include "transformer.h"
 #include "chargeview.h"
 #include "statusview.h"
 #include "statelog.h"
@@ -96,6 +98,30 @@ QJsonObject readComp( Component* comp )
         if( cap->maxVolt() > 0 ) o["rating"] = num( cap->maxVolt() );
         QStringList flags = cap->chargeFlags();
         if( !flags.isEmpty() ) o["flag"] = flags.join(",");
+    }
+    else if( Inductor* ind = dynamic_cast<Inductor*>( comp ) )
+    {
+        ChargeView* cv = ChargeView::self();
+        o["current"]     = num( ind->indCurr() );
+        o["level"]       = num( ind->currentLevel() );
+        o["iref"]        = num( ind->currentRef() );
+        o["iref_source"] = ChargeView::refSourceStr( ind->ownCurrentRef() ? (int)ChargeView::refPart
+                                                                          : cv->irefSource() );
+        if( ind->maxCurrent() > 0 ) o["rating"] = num( ind->maxCurrent() );
+        QStringList flags = ind->currentFlags();
+        if( !flags.isEmpty() ) o["flag"] = flags.join(",");
+    }
+    else if( Transformer* tr = dynamic_cast<Transformer*>( comp ) )
+    {
+        ChargeView* cv = ChargeView::self();
+        for( CoilGauge* cg : tr->coilGauges() )
+        {
+            o["i_"+cg->name]     = num( cg->coil->current() );
+            o["level_"+cg->name] = num( cg->gaugeLevel() );
+        }
+        o["iref"]        = num( tr->currentRef() );
+        o["iref_source"] = ChargeView::refSourceStr( tr->ownCurrentRef() ? (int)ChargeView::refPart
+                                                                         : cv->irefSource() );
     }
     else if( comp->itemType() == "Resistor" )
     {
