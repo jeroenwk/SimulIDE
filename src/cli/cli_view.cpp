@@ -23,6 +23,8 @@
 #include "editorwindow.h"
 #include "theme.h"
 #include "appdialog.h"
+#include "circuitexport.h"
+#include "instrumentview.h"
 
 namespace
 {
@@ -111,6 +113,64 @@ void CliApi::registerView()
         o["area"] = QJsonArray{ rect.x(), rect.y(), rect.width(), rect.height() };
         o["scale"] = scale;
         return o;
+    });
+
+    add("export", "export [--file F.png|F.svg] [--format png|svg] [--theme current|Classic|Light|Dark] "
+        "[--meters show|hide] [--grid show|hide] [--scale S] [--margin PX]",
+        "Export the whole circuit as a PNG or SVG image, as the toolbar's Export button does. The format comes from "
+        "--format or the file extension (default png). --theme renders with a colour preset without changing the "
+        "setting (default: the current colours). --meters: instruments with their leads (default: as on the canvas). "
+        "--grid: default hide. --scale: PNG pixels per unit (default 2). Without --file: a temp file. Works headless.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        auto showOpt = [&c]( QString key, bool def ) -> bool {
+            if( !c.has( key ) ) return def;
+            QString v = c.opt( key ).toLower();
+            if( v == "" || v == "show" || v == "on" || v == "true" || v == "yes" || v == "1" ) return true;
+            if( v == "hide" || v == "off" || v == "false" || v == "no" || v == "0" ) return false;
+            throw CliError("--"+key+" expects show or hide");
+        };
+        ExportOptions opt;
+        QString file = c.opt("file");
+        QString format = c.opt("format").toLower();
+        if( format.isEmpty() && !file.isEmpty() ) format = CircuitExport::formatOf( file );
+        if( format.isEmpty() ) format = "png";
+        if( format != "png" && format != "svg" ) throw CliError("--format must be png or svg");
+        opt.format = format;
+
+        if( file.isEmpty() ){
+            static int count = 0;
+            QDir dir( QDir::tempPath()+"/simulide-capture" );
+            dir.mkpath(".");
+            file = dir.filePath( QString("export-%1-%2.%3").arg( QCoreApplication::applicationPid() ).arg( ++count ).arg( format ) );
+        }else{
+            file = CliApi::self()->resolvePath( file );
+            if( QFileInfo( file ).suffix().isEmpty() ) file += "."+format;
+        }
+        QString theme = c.opt("theme");
+        if( !theme.isEmpty() && theme.toLower() != "current" )
+        {
+            for( QString p : Theme::presets() ) if( p.compare( theme, Qt::CaseInsensitive ) == 0 ) theme = p;
+            opt.theme = theme;
+        }
+        opt.meters = showOpt("meters", InstrumentView::self()->shown() );
+        opt.grid   = showOpt("grid", false );
+        opt.scale  = Cli::parseNum( c.opt("scale","2"), "scale");
+        opt.margin = Cli::parseNum( c.opt("margin","24"), "margin");
+
+        ExportResult r;
+        QString error;
+        if( !CircuitExport::write( file, opt, &r, &error ) ) throw CliError( error );
+        return QJsonObject{
+            {"file",   r.file },
+            {"format", format },
+            {"width",  r.size.width() },
+            {"height", r.size.height() },
+            {"scale",  r.scale },
+            {"theme",  opt.theme.isEmpty() ? Theme::currentPreset() : opt.theme },
+            {"meters", opt.meters },
+            {"grid",   opt.grid },
+            {"area",   QJsonArray{ r.area.x(), r.area.y(), r.area.width(), r.area.height() } } };
     });
 
     add("capture window", "capture window [main|view|circuit|editor|settings] [--scale S] [--file F.png]",

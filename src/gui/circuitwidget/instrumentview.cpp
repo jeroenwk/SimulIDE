@@ -58,7 +58,7 @@ bool InstrumentView::onlyLeads( Component* comp )
     return any;
 }
 
-void InstrumentView::apply()
+void InstrumentView::apply( bool shown )
 {
     Circuit* circ = Circuit::self();
     if( !circ ) return;
@@ -71,12 +71,12 @@ void InstrumentView::apply()
             lead = tunnel && tunnel->leadPin();
         }
         if( !lead ) lead = onlyLeads( comp );
-        if( lead ) comp->setVisible( m_shown );
+        if( lead ) comp->setVisible( shown );
     }
     for( Connector* con : *circ->conList() )
     {
         if( !con->leadPin() ) continue;
-        for( ConnectorLine* line : *con->lineList() ) line->setVisible( m_shown );
+        for( ConnectorLine* line : *con->lineList() ) line->setVisible( shown );
     }
     circ->update();        // Junction dots check their wires when painted
 }

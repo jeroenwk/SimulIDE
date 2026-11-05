@@ -17,6 +17,8 @@
 
 bool   Theme::m_loaded = false;
 QColor Theme::m_color[Theme::numRoles];
+QColor Theme::m_saved[Theme::numRoles];
+bool   Theme::m_pushed = false;
 
 QColor Theme::defaultColor( role_t r )
 {
@@ -194,6 +196,29 @@ bool Theme::applyPreset( QString name )
         return true;
     }
     return false;
+}
+
+bool Theme::pushPreset( QString name )
+{
+    for( const Preset& p : presetList )
+    {
+        if( name.compare( p.name, Qt::CaseInsensitive ) != 0 ) continue;
+        if( !m_loaded ) load();
+        if( !m_pushed ) for( int i=0; i<numRoles; ++i ) m_saved[i] = m_color[i];
+        m_pushed = true;
+        for( int i=0; i<numRoles; ++i ) m_color[i] = QColor( p.colors[i] );
+        apply();
+        return true;
+    }
+    return false;
+}
+
+void Theme::popColors()
+{
+    if( !m_pushed ) return;
+    m_pushed = false;
+    for( int i=0; i<numRoles; ++i ) m_color[i] = m_saved[i];
+    apply();
 }
 
 QString Theme::currentPreset()

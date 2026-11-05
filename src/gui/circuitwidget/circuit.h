@@ -36,6 +36,7 @@ class Circuit : public QGraphicsScene
 
         bool drawGrid() { return !m_hideGrid; }
         void setDrawGrid( bool draw );
+        void setGridShown( bool show ) { m_hideGrid = !show; }   // Not saved (image export)
 
         bool animate() { return m_animate; }
         // Charge display reference voltage (V), 0 = auto (largest source voltage)
