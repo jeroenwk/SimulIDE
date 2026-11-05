@@ -8,6 +8,8 @@
 #include <QStandardPaths>
 #include <QtGui>
 #include <QFileInfo>
+#include <QFileOpenEvent>
+#include <QTimer>
 
 #include "mainwindow.h"
 #include "circuitwidget.h"
@@ -39,6 +41,29 @@ void myMessageOutput( QtMsgType type, const QMessageLogContext &context, const Q
         break;
     }
 }
+
+// macOS: Finder opens a document (double-click, Open With, drop on the Dock icon) with an
+// "open document" Apple event, which Qt delivers as QEvent::FileOpen, not in argv. At
+// launch it arrives once the event loop runs; later it arrives while the app is open.
+class FileOpenFilter : public QObject
+{
+    public:
+        bool opened = false;      // A document was opened this way: don't reopen the last one
+
+    protected:
+        bool eventFilter( QObject* obj, QEvent* ev ) override
+        {
+            if( ev->type() != QEvent::FileOpen ) return QObject::eventFilter( obj, ev );
+            QString file = static_cast<QFileOpenEvent*>( ev )->file();
+            if( file.endsWith(".sim1") || file.endsWith(".simu") )
+            {
+                opened = true;
+                CircuitWidget::self()->loadCirc( QFileInfo( file ).absoluteFilePath() ); // Asks to save changes
+                if( QWidget* w = MainWindow::self() ){ w->raise(); w->activateWindow(); }
+            }
+            return true;
+        }
+};
 
 QString langFile( QString locale )
 {
@@ -106,8 +131,17 @@ int main( int argc, char *argv[] )
             return 2;
         }
     }
+    FileOpenFilter* fileOpen = new FileOpenFilter;
+    app.installEventFilter( fileOpen );
+
     if( !circFile.isEmpty() ) CircuitWidget::self()->loadCirc( QFileInfo( circFile ).absoluteFilePath() );
-    else                      window.reopenLastCircuit();
+    else if( !headless )
+    {
+        // Give a launch "open document" event the first chance, then reopen the last circuit
+        QTimer::singleShot( 300, [fileOpen, &window](){
+            if( !fileOpen->opened ) window.reopenLastCircuit();
+        });
+    }
 
     if( !headless ) window.show();
 

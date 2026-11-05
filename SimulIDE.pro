@@ -98,6 +98,7 @@ linux {
 macx {
     OS = MacOs
     ICON = ../resources/icons/simulide.icns
+    QMAKE_INFO_PLIST = $$PWD/resources/macos/Info.plist   # Adds the .sim1 / .simu document types
     CONFIG += sdk_no_version_check
     OBJECTIVE_SOURCES += $$PWD/src/gui/uitheme_mac.mm   # Light / dark appearance (UiTheme)
     LIBS += -framework AppKit
