@@ -1,0 +1,17 @@
+<circuit version="1.1.0-SR2" rev="261105" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" currentScale="0.1" >
+
+<item itemtype="Rail" CircId="Rail-1" mainComp="false" ShowProp="Voltage" Show_id="false" Show_Val="true" Pos="0,0" rotation="0" hflip="1" vflip="1" label="V1" idLabPos="-5,-10" labelrot="-90" valLabPos="-12,6" valLabRot="-90" Voltage="10 V" />
+
+<item itemtype="Resistor" CircId="Resistor-2" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="64,0" rotation="0" hflip="1" vflip="1" label="R1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="100 Ω" />
+
+<item itemtype="Inductor" CircId="Inductor-3" mainComp="false" ShowProp="Inductance" Show_id="false" Show_Val="true" Pos="112,32" rotation="90" hflip="1" vflip="1" label="L1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Inductance="1 H" Resistance="1 µΩ" InitVolt="0 A" MaxCurrent="0 A" CurrentScale="0 A" ReaStep="0 ns" />
+
+<item itemtype="Ground" CircId="Ground-4" mainComp="false" Show_id="false" Show_Val="false" Pos="112,96" rotation="0" hflip="1" vflip="1" label="G" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="Rail-1-outnod" endpinid="Resistor-2-lPin" pointList="16,0,48,0" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="Resistor-2-rPin" endpinid="Inductor-3-lPin" pointList="80,0,112,0,112,16" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Inductor-3-rPin" endpinid="Ground-4-Gnd" pointList="112,48,112,80" />
+
+</circuit>

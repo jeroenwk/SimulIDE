@@ -309,6 +309,14 @@ Where the code differs from, or adds to, the text above:
 - **Transformer coils are at least 3 turns** (the longer winding gets 3 turns
   per coil, the other is stretched to the same length), so the labels on one
   side are ≥ 24 px apart and never overlap, even with six coils.
+- **Drawn from a per-frame snapshot (2026-11-05):** the gauge stores its
+  level, tick and warning in `refresh()`, and the capacitor plates and coils
+  store their voltage / current in `updateStep()`; `paint()` draws those. Before,
+  the label text came from the last frame but the bar and colours read live
+  values, so a `capture` between frames could show "54 %" over an almost empty
+  bar in the 1.6 Hz tank. Setting a rating refreshes the gauge at once.
+- **Test circuits** for this display and the capacitor one are in
+  `tests/circuits/` (README there).
 - **`Transformer` is now on the update list** (`updateStep()` refreshes its
   gauges and coil colours while the display is shown; otherwise it only checks
   whether a gauge is still visible).

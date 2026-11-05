@@ -69,6 +69,7 @@ void CapacitorBase::setCurrentValue( double c )
 void CapacitorBase::setMaxVolt( double v )
 {
     m_maxVolt = ( v > 0 ) ? v : 0;
+    if( chargeShown() ) m_gauge->refresh();     // The gauge draws a snapshot
     update();
 }
 
@@ -79,8 +80,14 @@ void CapacitorBase::setChargeScale( double v )
     update();
 }
 
+void CapacitorBase::snapPlates()
+{
+    for( int i=0; i<2; ++i ) m_plateVolt[i] = m_pin[i]->isConnected() ? m_pin[i]->getVoltage() : 0;
+}
+
 void CapacitorBase::updateStep()
 {
+    snapPlates();                           // Colours of this frame, also for a capture between frames
     Reactive::updateStep();                 // Repaints the part (plate colours)
     if( chargeShown() ) m_gauge->refresh();
     else if( m_gauge->isVisible() ) m_gauge->setVisible( false );
@@ -133,6 +140,7 @@ bool CapacitorBase::chargeShown()
 
 void CapacitorBase::chargeDisplayChanged()
 {
+    snapPlates();
     if( chargeShown() ) m_gauge->refresh();
     else                m_gauge->setVisible( false );
     update();
@@ -171,7 +179,7 @@ void CapacitorBase::setPlatePen( QPainter* p, int side )
 {
     if( !chargeShown() ) return;
     QPen pen = p->pen();
-    pen.setColor( ChargeView::self()->plateColor( m_pin[side]->getVoltage(), m_chargeScale ) );
+    pen.setColor( ChargeView::self()->plateColor( m_plateVolt[side], m_chargeScale ) );
     p->setPen( pen );
 }
 

@@ -1,0 +1,21 @@
+<circuit version="1.1.0-SR2" rev="261105" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="Rail" CircId="Rail-1" mainComp="false" ShowProp="Voltage" Show_id="false" Show_Val="true" Pos="-64,0" rotation="90" hflip="1" vflip="1" label="V1" idLabPos="-5,-10" labelrot="-90" valLabPos="-12,6" valLabRot="-90" Voltage="5 V" />
+
+<item itemtype="RelaySPST" CircId="RelaySPST-2" mainComp="false" Show_id="false" Show_Val="false" Pos="32,32" rotation="0" hflip="1" vflip="1" label="K1" idLabPos="-16,8" labelrot="0" valLabPos="-16,6" valLabRot="0" Norm_Close="false" DT="false" Poles="1" Show_State="true" IOn="20 mA" IOff="10 mA" Inductance="100 mH" Rcoil="100 Ω" ReaStep="0 ns" />
+
+<item itemtype="Ground" CircId="Ground-3" mainComp="false" Show_id="false" Show_Val="false" Pos="32,112" rotation="0" hflip="1" vflip="1" label="G" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Inductor" CircId="Inductor-4" mainComp="false" ShowProp="Inductance" Show_id="false" Show_Val="true" Pos="0,160" rotation="0" hflip="1" vflip="1" label="L1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Inductance="10 mH" Resistance="1 µΩ" InitVolt="0.5 A" MaxCurrent="0 A" CurrentScale="0 A" ReaStep="0 ns" />
+
+<item itemtype="Resistor" CircId="Resistor-5" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="96,160" rotation="0" hflip="1" vflip="1" label="R1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="10 Ω" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="Rail-1-outnod" endpinid="RelaySPST-2-inductor-lPin" pointList="-64,16,-64,0,0,0,0,32,16,32" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="RelaySPST-2-inductor-rPin" endpinid="Ground-3-Gnd" pointList="48,32,64,32,64,96,32,96" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Inductor-4-rPin" endpinid="Resistor-5-lPin" pointList="16,160,80,160" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="Resistor-5-rPin" endpinid="Inductor-4-lPin" pointList="112,160,128,160,-16,160" />
+
+</circuit>

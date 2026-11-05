@@ -297,9 +297,16 @@ double Transformer::maxCoilCurrent()
 
 bool Transformer::currentShown() { return ChargeView::self()->active(); }
 
+void Transformer::snapCurrents()
+{
+    for( CoilGauge* cg : m_coilGauges ) cg->shownCurr = ChargeView::cleanAmps( cg->coil->current() );
+    m_shownRef = currentRef();
+}
+
 void Transformer::chargeDisplayChanged()
 {
     bool shown = currentShown();
+    if( shown ) snapCurrents();
     for( CoilGauge* cg : m_coilGauges )
     {
         if( shown ) cg->gauge->refresh();
@@ -312,6 +319,7 @@ void Transformer::updateStep()
 {
     if( currentShown() )
     {
+        snapCurrents();                    // Colours of this frame
         for( CoilGauge* cg : m_coilGauges ) cg->gauge->refresh();
         update();                          // Coil colours
     }
@@ -488,7 +496,6 @@ void Transformer::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QW
     QColor base = pen.color();
 
     bool shown = currentShown();
-    double ref = shown ? currentRef() : 0;
 
     for( int i=0; i<2; ++i )
     {
@@ -505,7 +512,9 @@ void Transformer::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QW
 
             if( shown )                    // Coloured by current: + from its first pin to its second
             {
-                pen.setColor( ChargeView::scaleColor( ChargeView::cleanAmps( coil->current() ), ref ) );
+                double cur = 0;            // Last frame
+                for( CoilGauge* cg : m_coilGauges ) if( cg->coil == coil ) cur = cg->shownCurr;
+                pen.setColor( ChargeView::scaleColor( cur, m_shownRef ) );
                 p->setPen( pen );
             }
 

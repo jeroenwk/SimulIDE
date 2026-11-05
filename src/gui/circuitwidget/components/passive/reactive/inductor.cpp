@@ -85,11 +85,14 @@ void Inductor::setCurrentScale( double a )
 void Inductor::setMaxCurrent( double a )
 {
     m_maxCurrent = ( a > 0 ) ? a : 0;
+    if( currentShown() ) m_gauge->refresh();    // The gauge draws a snapshot
     update();
 }
 
 void Inductor::updateStep()
 {
+    m_shownCurr = ChargeView::cleanAmps( indCurr() );   // Colour of this frame
+    m_shownRef  = currentRef();
     Reactive::updateStep();                 // Repaints the part (coil colour)
     if( currentShown() ) m_gauge->refresh();
     else if( m_gauge->isVisible() ) m_gauge->setVisible( false );
@@ -104,6 +107,8 @@ bool Inductor::currentShown( bool active )
 
 void Inductor::chargeDisplayChanged()
 {
+    m_shownCurr = ChargeView::cleanAmps( indCurr() );
+    m_shownRef  = currentRef();
     if( currentShown() ) m_gauge->refresh();
     else                 m_gauge->setVisible( false );
     update();
@@ -158,7 +163,7 @@ void Inductor::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w
     QPen pen = p->pen();
     pen.setWidth( 2 );
     if( currentShown() )                    // Coloured by current: + from pin 0 to pin 1
-        pen.setColor( ChargeView::scaleColor( ChargeView::cleanAmps( indCurr() ), currentRef() ) );
+        pen.setColor( ChargeView::scaleColor( m_shownCurr, m_shownRef ) );   // Last frame
     p->setPen( pen );
     
     p->drawArc( QRectF(-12,-4.5, 10, 10 ),-45*16 , 220*16 );

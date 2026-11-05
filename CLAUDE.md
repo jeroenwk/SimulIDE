@@ -28,6 +28,8 @@ make -j8
 
 The repo has no linter or CI. The only automated test is `tests/cli/smoke.sh` (needs `python3`). It starts a headless instance and drives it through the CLI: it builds a circuit, measures it, and runs the Arduino serial and scripted SPI examples. Otherwise, verify a change by building and running the app, for example with circuits from `resources/examples`. The CLI is also the easiest way to check behaviour without clicking through the GUI (see below).
 
+Circuits built while developing or checking a feature are saved in `tests/circuits/` (listed with what to expect in its README), so they can be opened in the GUI.
+
 ## Architecture
 
 ### Two layers: GUI component and simulation element
