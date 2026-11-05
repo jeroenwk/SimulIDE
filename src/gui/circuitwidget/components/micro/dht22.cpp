@@ -9,6 +9,7 @@
 #include <QGraphicsProxyWidget>
 
 #include "dht22.h"
+#include "appfonts.h"
 #include "theme.h"
 #include "iopin.h"
 #include "simulator.h"
@@ -56,7 +57,7 @@ Dht22::Dht22( QString type, QString id )
     m_pin[3] = new Pin( 180, QPoint(-36, 12), id+"-ncPin", 0, this );
     m_pin[3]->setUnused( true );
 
-    m_font.setFamily("Ubuntu Mono");
+    m_font.setFamily( AppFonts::mono() );
     m_font.setBold( true );
     m_font.setLetterSpacing( QFont::PercentageSpacing, 100 );
     setLabelPos(-28,-32, 0);
@@ -264,7 +265,7 @@ void Dht22::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
     p->drawRoundedRect( QRect(-25,-10, 40, 26 ),2,2 );
 
     m_font.setStretch( 100 );
-    m_font.setPixelSize(6);
+    m_font.setPixelSize(5);   // JetBrains Mono: 5/6 of the Ubuntu Mono size (specs/inter-fonts.md)
     p->setFont( m_font );
     if( m_DHT22 ){
         p->setPen( QColor(250, 250, 250) );
@@ -278,7 +279,7 @@ void Dht22::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
 #else
     m_font.setStretch( 93 );
 #endif
-    m_font.setPixelSize(10);
+    m_font.setPixelSize(8);
     p->setFont( m_font );
     p->setPen( QColor(0, 0, 0) );
     p->drawText( -16, 1, QString::number( m_temp )+"°C" );

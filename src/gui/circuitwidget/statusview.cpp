@@ -8,6 +8,7 @@
 #include <QFontMetricsF>
 
 #include "statusview.h"
+#include "appfonts.h"
 #include "statelog.h"
 #include "mainwindow.h"
 #include "circuit.h"
@@ -141,7 +142,7 @@ StatusBadge::StatusBadge( Component* comp )
 
 static QFont badgeFont()
 {
-    QFont font("Menlo");
+    QFont font( AppFonts::mono() );
     font.setStyleHint( QFont::TypeWriter );
     font.setPixelSize( 7 );
     font.setBold( true );

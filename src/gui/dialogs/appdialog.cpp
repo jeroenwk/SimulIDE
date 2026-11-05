@@ -10,6 +10,8 @@
 #include "chargeview.h"
 #include <QColorDialog>
 #include <QGridLayout>
+#include <QScrollArea>
+#include <QDebug>
 #include <QPushButton>
 #include <QLabel>
 #include <QComboBox>
@@ -88,22 +90,36 @@ AppDialog::AppDialog( QWidget* parent )
     mainLayout->removeWidget( helpText );
     //helpText->setText( help );
 
-    this->adjustSize();
+    tabList->setMinimumHeight( 0 );   // The .ui's fixed 300 px hid the pages' real minimum: widgets got squeezed
+    on_tabList_currentChanged( tabList->currentIndex() );   // Size by the first tab shown
 }
 
 void AppDialog::on_tabList_currentChanged( int tab )
 {
     if( helpText->isVisible() ) updtHelp();
 
-    switch( tab ) {
-        case 0: setMinimumHeight( 250*m_scale ); setMaximumHeight( 350*m_scale ); break;
-        case 1:                                    // Sized by its contents (current flow, colors)
-            setMinimumHeight( 0 ); setMaximumHeight( QWIDGETSIZE_MAX );
-            setMinimumHeight( minimumSizeHint().height() );
-            break;
-        case 2: setMinimumHeight( 350*m_scale ); setMaximumHeight( 450*m_scale ); break;
-    }
-    adjustSize();
+    // Each tab is sized by its own contents, with no height caps: a cap squeezes the
+    // widgets when the font's line height changes (Inter is taller than Ubuntu).
+    // Hidden tabs are ignored vertically, so a short tab gives a short dialog
+    for( int i=0; i<tabList->count(); ++i )
+        tabList->widget( i )->setSizePolicy( QSizePolicy::Preferred,
+                                             ( i == tab ) ? QSizePolicy::Preferred : QSizePolicy::Ignored );
+    setMinimumHeight( 0 );
+    setMaximumHeight( QWIDGETSIZE_MAX );
+    tabList->updateGeometry();               // The policies changed: recompute the hints now
+    layout()->invalidate();
+    layout()->activate();
+    setMinimumHeight( minimumSizeHint().height() );
+    // The tab's preferred height (its page's preferred extra over its minimum). Not
+    // adjustSize(): it caps at 2/3 of the screen; nor sizeHint(): it counts every page
+    QWidget* cur = tabList->widget( tab );
+    int extra = qMax( 0, cur->sizeHint().height()-cur->minimumSizeHint().height() );
+    resize( width(), minimumHeight()+extra );
+    QWidget* page = cur;
+    qDebug() << "[Settings] tab" << tab << "min height" << minimumHeight() << "size" << size()
+             << "page min" << page->minimumSizeHint() << "page layout min" << ( page->layout() ? page->layout()->minimumSize() : QSize() )
+             << "page hint" << page->sizeHint() << "tabs min" << tabList->minimumSizeHint()
+             << "main layout min" << layout()->minimumSize() << "constraint" << layout()->sizeConstraint();
 }
 void AppDialog::updtHelp()
 {
@@ -169,24 +185,41 @@ void AppDialog::on_animate_toggled( bool ani )
 // Circuit colours: a swatch button per colour (opens a colour picker) and a reset
 void AppDialog::buildColors()
 {
-    QGridLayout* grid = new QGridLayout( colorsBox );
-    grid->setContentsMargins( 6, 4, 6, 4 );
+    QVBoxLayout* boxLayout = new QVBoxLayout( colorsBox );
+    boxLayout->setContentsMargins( 6, 4, 6, 4 );
 
-    m_themeBox = new QComboBox( colorsBox );                // Presets
+    QHBoxLayout* top = new QHBoxLayout;                       // Preset and reset: always visible
+    m_themeBox = new QComboBox( colorsBox );
     m_themeBox->addItems( Theme::presets() );
     m_themeBox->setToolTip( tr("Color preset. Dark is inspired by EveryCircuit.") );
     connect( m_themeBox, QOverload<int>::of( &QComboBox::activated ), [this]( int )
     {
         if( Theme::applyPreset( m_themeBox->currentText() ) ) updateColorButtons();
     });
-    grid->addWidget( new QLabel( tr("Theme"), colorsBox ), 0, 0 );
-    grid->addWidget( m_themeBox, 0, 1, 1, 3 );
+    QPushButton* reset = new QPushButton( tr("Reset colors"), colorsBox );
+    reset->setAutoDefault( false );
+    connect( reset, &QPushButton::clicked, [this](){ Theme::reset(); updateColorButtons(); } );
+    top->addWidget( new QLabel( tr("Theme"), colorsBox ) );
+    top->addWidget( m_themeBox, 1 );
+    top->addWidget( reset );
+    boxLayout->addLayout( top );
 
-    const int animRow = 1+(Theme::firstAnimRole+1)/2;           // After the base colours
+    // The swatches scroll in their own area, so the tab keeps a sensible height
+    QScrollArea* scroll = new QScrollArea( colorsBox );
+    scroll->setWidgetResizable( true );
+    scroll->setFrameShape( QFrame::NoFrame );
+    scroll->setHorizontalScrollBarPolicy( Qt::ScrollBarAlwaysOff );
+    scroll->viewport()->setAutoFillBackground( false );
+    QWidget* swatches = new QWidget( scroll );
+    swatches->setAutoFillBackground( false );
+    QGridLayout* grid = new QGridLayout( swatches );
+    grid->setContentsMargins( 0, 2, 6, 2 );                   // Right: room for the scroll bar
+
+    const int animRow = (Theme::firstAnimRole+1)/2;           // After the base colours
     for( int i=0; i<Theme::numRoles; ++i )
     {
         Theme::role_t role = (Theme::role_t)i;
-        QPushButton* b = new QPushButton( colorsBox );
+        QPushButton* b = new QPushButton( swatches );
         b->setFixedSize( 44*m_scale, 20*m_scale );
         b->setToolTip( tr("Click to choose the %1 color").arg( Theme::caption( role ).toLower() ) );
         b->setAutoDefault( false );
@@ -200,17 +233,21 @@ void AppDialog::buildColors()
             updateColorButtons();
         });
         int k   = ( i < Theme::firstAnimRole ) ? i : i-Theme::firstAnimRole;
-        int row = ( i < Theme::firstAnimRole ) ? 1+k/2 : animRow+1+k/2;
-        grid->addWidget( new QLabel( Theme::caption( role ), colorsBox ), row, (k%2)*2 );
+        int row = ( i < Theme::firstAnimRole ) ? k/2 : animRow+1+k/2;
+        grid->addWidget( new QLabel( Theme::caption( role ), swatches ), row, (k%2)*2 );
         grid->addWidget( b, row, (k%2)*2+1 );
     }
-    QLabel* animLabel = new QLabel( tr("Animate"), colorsBox );   // Sub-heading
+    QLabel* animLabel = new QLabel( tr("Animate"), swatches );   // Sub-heading
     QFont f = animLabel->font(); f.setBold( true ); animLabel->setFont( f );
     grid->addWidget( animLabel, animRow, 0, 1, 4 );
-    QPushButton* reset = new QPushButton( tr("Reset colors"), colorsBox );
-    reset->setAutoDefault( false );
-    connect( reset, &QPushButton::clicked, [this](){ Theme::reset(); updateColorButtons(); } );
-    grid->addWidget( reset, animRow+1+(Theme::numRoles-Theme::firstAnimRole+1)/2, 0, 1, 4 );
+    scroll->setWidget( swatches );
+
+    int content = swatches->sizeHint().height();
+    int rowH = qMax( (int)(20*m_scale), animLabel->sizeHint().height() )+grid->verticalSpacing();
+    int shown = qMin( content, 6*rowH );                     // About 6 rows, then scroll
+    scroll->setFixedHeight( shown );
+    qDebug() << "[Settings] colors: content" << content << "px, row" << rowH << "px, shown" << shown << "px";
+    boxLayout->addWidget( scroll );
     updateColorButtons();
 }
 

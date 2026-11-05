@@ -27,6 +27,7 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
     Q_INTERFACES( QGraphicsItem )
 
     public:
+        void openProperties() { slotProperties(); }   // CLI: view props
         QRectF boundingRect() const override { return QRectF( m_area.x()-2, m_area.y()-2, m_area.width()+4, m_area.height()+4 ); }
 
         Component( QString type, QString id );

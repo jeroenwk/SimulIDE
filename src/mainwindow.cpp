@@ -17,6 +17,7 @@
 #include <QProcessEnvironment>
 
 #include "mainwindow.h"
+#include "appfonts.h"
 #include "circuit.h"
 #include "componentselector.h"
 #include "editorwindow.h"
@@ -57,12 +58,7 @@ MainWindow::MainWindow( bool headless )
         m_userDir = getConfigPath("addons");
 
     // Fonts --------------------------------------
-    QFontDatabase::addApplicationFont(":/Ubuntu-R.ttf" );
-    QFontDatabase::addApplicationFont(":/Ubuntu-B.ttf" );
-    QFontDatabase::addApplicationFont(":/UbuntuMono-B.ttf" );
-    QFontDatabase::addApplicationFont(":/UbuntuMono-BI.ttf" );
-    QFontDatabase::addApplicationFont(":/UbuntuMono-R.ttf" );
-    QFontDatabase::addApplicationFont(":/UbuntuMono-RI.ttf" );
+    AppFonts::registerFonts();   // Inter + JetBrains Mono (specs/inter-fonts.md)
 
     float scale = 1.0;
     if( m_settings->contains("fontScale") )
@@ -75,8 +71,14 @@ MainWindow::MainWindow( bool headless )
     setFontScale( scale );
     //----------------------------------------------
 
-    QString fontName = "Ubuntu";
-    if( m_settings->contains("fontName") ) fontName = m_settings->value( "fontName" ).toString();
+    QString fontName = AppFonts::sans();
+    if( m_settings->contains("fontName") )
+    {
+        QString saved = m_settings->value( "fontName" ).toString();
+        fontName = AppFonts::normalize( saved );   // Old default "Ubuntu" -> Inter; a user choice is kept
+        qDebug() << "[Fonts] fontName setting" << saved << "-> using" << fontName;
+    }
+    else qDebug() << "[Fonts] no fontName setting, using" << fontName;
     setDefaultFontName( fontName );
 
     QFont df=qApp->font();

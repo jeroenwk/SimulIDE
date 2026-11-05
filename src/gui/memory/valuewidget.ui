@@ -189,7 +189,7 @@
      </property>
      <property name="font">
       <font>
-       <family>Ubuntu Mono</family>
+       <family>JetBrains Mono</family>
        <pointsize>12</pointsize>
        <weight>75</weight>
        <bold>true</bold>

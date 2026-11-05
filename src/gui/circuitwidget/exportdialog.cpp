@@ -12,6 +12,7 @@
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QSettings>
+#include <QDebug>
 
 #include "exportdialog.h"
 #include "circuitexport.h"
@@ -41,6 +42,9 @@ ExportDialog::ExportDialog( QWidget* parent )
     m_grid = new QCheckBox( tr("Grid"), this );
     m_grid->setChecked( false );
 
+    m_embedFonts = new QCheckBox( tr("Embed fonts (any viewer shows Inter / JetBrains Mono)"), this );
+    m_embedFonts->setChecked( s->value("Export/embedFonts", true ).toBool() );
+
     m_scale = new QDoubleSpinBox( this );
     m_scale->setRange( 0.5, 8 );
     m_scale->setSingleStep( 0.5 );
@@ -55,6 +59,7 @@ ExportDialog::ExportDialog( QWidget* parent )
     form->addRow( tr("Show:"),    m_meters );
     form->addRow( "",             m_grid );
     form->addRow( tr("PNG scale:"), m_scale );
+    form->addRow( tr("SVG:"),       m_embedFonts );
 
     QDialogButtonBox* buttons = new QDialogButtonBox( QDialogButtonBox::Cancel, this );
     QPushButton* exportBtn = buttons->addButton( tr("Export..."), QDialogButtonBox::AcceptRole );
@@ -71,6 +76,7 @@ ExportDialog::ExportDialog( QWidget* parent )
 void ExportDialog::formatChanged()
 {
     m_scale->setEnabled( m_format->currentData().toString() == "png" );
+    m_embedFonts->setEnabled( m_format->currentData().toString() == "svg" );
 }
 
 void ExportDialog::doExport()
@@ -82,6 +88,7 @@ void ExportDialog::doExport()
     opt.meters = m_meters->isChecked();
     opt.grid   = m_grid->isChecked();
     opt.scale  = m_scale->value();
+    opt.embedFonts = m_embedFonts->isChecked();
 
     QString circPath = Circuit::self()->getFilePath();
     QString dir = QFileInfo( circPath ).absolutePath();      // Next to the circuit,
@@ -103,6 +110,7 @@ void ExportDialog::doExport()
     }
     s->setValue("Export/format", opt.format );
     s->setValue("Export/scale",  opt.scale );
+    s->setValue("Export/embedFonts", opt.embedFonts );
     s->setValue("Export/dir",    QFileInfo( file ).absolutePath() );
     accept();
 }
@@ -111,4 +119,12 @@ void ExportDialog::run( QWidget* parent )
 {
     ExportDialog dialog( parent );
     dialog.exec();
+}
+
+void ExportDialog::showNonModal( QWidget* parent )
+{
+    ExportDialog* dialog = new ExportDialog( parent );
+    dialog->setAttribute( Qt::WA_DeleteOnClose );
+    dialog->show();
+    qDebug() << "[CLI] export dialog shown, size" << dialog->size();
 }

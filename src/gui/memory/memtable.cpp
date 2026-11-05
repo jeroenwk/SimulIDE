@@ -8,6 +8,7 @@
 #include <QMenu>
 
 #include "memtable.h"
+#include "appfonts.h"
 #include "mainwindow.h"
 #include "simulator.h"
 #include "utils.h"
@@ -140,7 +141,7 @@ void MemTable::resizeTable( int dataSize )
 
     float scale = MainWindow::self()->fontScale();
     QFont font;
-    font.setFamily("Ubuntu Mono");
+    font.setFamily( AppFonts::mono() );
     font.setPixelSize( round(13*scale) );
 
     table->horizontalHeader()->setFont( font );

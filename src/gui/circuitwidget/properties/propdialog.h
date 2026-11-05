@@ -28,6 +28,10 @@ class PropDialog : public QDialog, private Ui::PropDialog
 
         PropVal* getPropWidget( QString propName );
 
+        int  tabCount() { return tabList->count(); }                       // CLI: view props --tab
+        void showTab( int i ) { tabList->setCurrentIndex( i ); }
+        QString tabName( int i ) { return tabList->tabText( i ); }
+
     public slots:
         void on_labelBox_editingFinished();
         void on_showButton_toggled( bool checked );

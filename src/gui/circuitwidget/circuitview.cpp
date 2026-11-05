@@ -9,6 +9,7 @@
 #include <QGuiApplication>
 #include <QNativeGestureEvent>
 #include <QScrollBar>
+#include <QDebug>
 
 #include "circuitview.h"
 #include "exportdialog.h"
@@ -289,6 +290,13 @@ void CircuitView::contextMenuEvent( QContextMenuEvent* event )
         QAction* saveImgAct = menu.addAction( QIcon(":/saveimage.svg"), tr("Export as Image (PNG, SVG)...") );
         connect( saveImgAct, &QAction::triggered,
                        this, &CircuitView::saveImage, Qt::UniqueConnection );
+
+        QAction* fontsAct = menu.addAction( tr("Convert Fonts to Default") );
+        fontsAct->setToolTip( tr("Text components: use the default fonts (Inter, JetBrains Mono)") );
+        connect( fontsAct, &QAction::triggered, [this](){
+            int n = m_circuit->convertFontsToDefault();
+            qDebug() << "[Fonts] context menu: converted" << n << "Text components";
+        });
 
         /*QAction* createBomAct = menu.addAction(QIcon(":/savecirc.png"), tr("Bill of Materials") );
         connect(createBomAct, &QAction::triggered,

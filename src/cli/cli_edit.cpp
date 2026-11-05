@@ -8,6 +8,7 @@
 #include <QSet>
 #include <QDir>
 #include <QFileInfo>
+#include <QDebug>
 
 #include "cliapi.h"
 #include "clirefs.h"
@@ -334,6 +335,27 @@ QStringList routePoints( QPoint a, QPoint b, QString via, bool startVertical )
 void CliApi::registerEdit()
 {
     //--- Library -------------------------------------------------------------
+
+    add("lib select", "lib select <name> | lib select --none", "Select a category or component in the component list "
+        "(by the name it shows; expands its category and scrolls to it), or clear the selection. "
+        "capture window library grabs the list.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        ComponentSelector* sel = ComponentSelector::self();
+        if( c.has("none") ){ sel->clearSelection(); sel->setCurrentItem( nullptr ); return QJsonObject{ {"selected", ""} }; }
+        QString name = c.arg( 0, "name");
+        QList<QTreeWidgetItem*> found = sel->findItems( name, Qt::MatchFixedString | Qt::MatchRecursive );
+        qDebug() << "[CLI] lib select" << name << "matches:" << found.size();
+        if( found.isEmpty() ) throw CliError("no category or component named "+name+" in the component list");
+        QTreeWidgetItem* item = found.first();
+        for( QTreeWidgetItem* p = item->parent(); p; p = p->parent() ) p->setExpanded( true );
+        sel->clearSelection();
+        sel->setCurrentItem( item );
+        item->setSelected( true );
+        sel->scrollToItem( item );
+        sel->setFocus();   // As a click: the current item gets its focus frame
+        return QJsonObject{ {"selected", item->text( 0 ) }, {"category", item->childCount() > 0 } };
+    });
 
     add("lib list", "lib list [--search TEXT] [--category CAT]", "Component types that can be added (use NAME with comp add).",
         []( CliCtx& c ) -> QJsonValue

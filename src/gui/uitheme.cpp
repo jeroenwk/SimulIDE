@@ -18,6 +18,7 @@
 #include <QEvent>
 
 #include "uitheme.h"
+#include <QAbstractItemView>
 
 #ifdef Q_OS_MACOS
 bool uiMacSystemDark();             // uitheme_mac.mm
@@ -71,29 +72,91 @@ class DarkIconEngine : public QIconEngine
 //---------------------------------------------------------------------------
 // Style: Fusion, with dark-mode icons and item colours
 
+// Item views marked with the property "uiGraySelection" (component list, file explorer,
+// Manage Components): the current row and selected rows get a solid grey fill with strong
+// contrast (as Xcode's navigator), dimmer when the view has no focus; no accent blue and no
+// focus frame. The text keeps its own colour
+static bool wantsGraySelection( const QWidget* w )
+{
+    for( ; w; w = w->parentWidget() ) if( w->property("uiGraySelection").toBool() ) return true;
+    return false;
+}
+
+static const QAbstractItemView* itemViewOf( const QWidget* w )
+{
+    for( ; w; w = w->parentWidget() )
+        if( auto v = qobject_cast<const QAbstractItemView*>( w ) ) return v;
+    return nullptr;
+}
+
+static QColor grayFill( bool dark, bool focused )
+{
+    if( dark ) return focused ? QColor( 76, 76, 82 )    : QColor( 58, 58, 62 );
+    else       return focused ? QColor( 200, 200, 206 ) : QColor( 222, 222, 226 );
+}
+
+static void setGraySelection( QPalette& pal, const QWidget* w )
+{
+    const QAbstractItemView* view = itemViewOf( w );
+    QColor sel = grayFill( UiTheme::self()->isDark(), view && view->hasFocus() );
+    for( QPalette::ColorGroup g : s_groups )
+    {
+        pal.setColor( g, QPalette::Highlight, sel );
+        pal.setColor( g, QPalette::HighlightedText, pal.color( g, QPalette::Text ) );  // Keep the text colour
+    }
+}
+
 class UiStyle : public QProxyStyle
 {
     public:
         UiStyle( QStyle* base ) : QProxyStyle( base ) {}
 
+        void drawPrimitive( PrimitiveElement pe, const QStyleOption* opt, QPainter* p, const QWidget* w ) const override
+        {
+            if( ( pe == PE_PanelItemViewItem || pe == PE_PanelItemViewRow ) && wantsGraySelection( w ) )
+            {
+                if( auto o = qstyleoption_cast<const QStyleOptionViewItem*>( opt ) )
+                {
+                    QStyleOptionViewItem v( *o );
+                    setGraySelection( v.palette, w );
+                    QProxyStyle::drawPrimitive( pe, &v, p, w );
+                    return;
+                }
+            }
+            if( pe == PE_FrameFocusRect && wantsGraySelection( w ) ) return;   // The grey fill shows the current row
+            QProxyStyle::drawPrimitive( pe, opt, p, w );
+        }
+
         void drawControl( ControlElement el, const QStyleOption* opt, QPainter* p, const QWidget* w ) const override
         {
             UiTheme* t = UiTheme::self();
+            if( el == CE_ItemViewItem && wantsGraySelection( w ) )
+            {
+                if( auto o = qstyleoption_cast<const QStyleOptionViewItem*>( opt ) )
+                {
+                    QStyleOptionViewItem v( *o );
+                    if( t->isDark() ) adaptItemDark( v );
+                    const QAbstractItemView* view = itemViewOf( w );
+                    bool current = view && v.index.isValid() && v.index == view->currentIndex();
+                    if( current || ( v.state & State_Selected ) )
+                    {
+                        // Grey as the item's background, not as a selection: a selected item's icon
+                        // gets tinted with the app's accent blue
+                        v.backgroundBrush = grayFill( t->isDark(), view && view->hasFocus() );
+                        v.state &= ~State_Selected;
+                    }
+                    v.state &= ~State_HasFocus;
+                    setGraySelection( v.palette, w );
+                    QProxyStyle::drawControl( el, &v, p, w );
+                    return;
+                }
+            }
             if( !t->isDark() ) { QProxyStyle::drawControl( el, opt, p, w ); return; }
 
             if( auto o = qstyleoption_cast<const QStyleOptionViewItem*>( opt ) )
             {
                 QStyleOptionViewItem v( *o );
-                v.icon = t->icon( v.icon );
-                bool ownBg = v.backgroundBrush.style() != Qt::NoBrush;
-                if( ownBg && UiTheme::isLightBg( v.backgroundBrush.color() ) )
-                {
-                    v.backgroundBrush.setColor( t->bg( v.backgroundBrush.color() ) );
-                    ownBg = false;
-                }
-                if( !ownBg )                          // Item text colours set for a light background
-                    for( QPalette::ColorGroup g : s_groups )
-                        v.palette.setColor( g, QPalette::Text, t->fg( v.palette.color( g, QPalette::Text ) ) );
+                adaptItemDark( v );
                 QProxyStyle::drawControl( el, &v, p, w );
                 return;
             }
@@ -123,6 +186,21 @@ class UiStyle : public QProxyStyle
                 QProxyStyle::drawControl( el, &v, p, w ); return;
             }
             QProxyStyle::drawControl( el, opt, p, w );
+        }
+    private:
+        static void adaptItemDark( QStyleOptionViewItem& v )   // Item colours set for a light background
+        {
+            UiTheme* t = UiTheme::self();
+            v.icon = t->icon( v.icon );
+            bool ownBg = v.backgroundBrush.style() != Qt::NoBrush;
+            if( ownBg && UiTheme::isLightBg( v.backgroundBrush.color() ) )
+            {
+                v.backgroundBrush.setColor( t->bg( v.backgroundBrush.color() ) );
+                ownBg = false;
+            }
+            if( !ownBg )
+                for( QPalette::ColorGroup g : s_groups )
+                    v.palette.setColor( g, QPalette::Text, t->fg( v.palette.color( g, QPalette::Text ) ) );
         }
 };
 

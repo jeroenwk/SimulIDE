@@ -114,6 +114,11 @@ When the user wants to build or try circuits together, follow **`docs/COLLABORAT
 - All events are kept for the CLI `log` command.
 - Checkboxes above Messages and the settings `logParts` / `logCaps` control it.
 
+### Fonts (`src/gui/appfonts.{h,cpp}`, `specs/inter-fonts.md`)
+- The app bundles Inter (GUI, labels) and JetBrains Mono (pins, chips, editor, consoles): subsets made by `tools/fonts_subset.sh` into `resources/fonts/ttf` (Qt) and `resources/fonts/woff2` (embedded in SVG exports). Use `AppFonts::sans()` / `AppFonts::mono()`, never a family name in code.
+- Pin label sizes passed to `Pin::setFontSize` are in the old Ubuntu Mono scale; `Pin` scales them by 5/6 (JetBrains Mono is wider).
+- `CircuitExport` post-processes SVGs: Qt weights → CSS weights, family → fallback stack, `@font-face` for the bundled faces used. Text components keep the font saved in the `.sim1`; `Circuit::convertFontsToDefault()` (right-click menu, CLI `circuit fonts`) converts them.
+
 ### Other areas
 - `src/gui/editorwidget/` contains the code editor plus compiler/debugger integrations in `debuggers/`.
 - `src/gui/dataplotwidget/` contains the oscilloscope and logic-analyzer plots. `src/gui/serial/` contains the serial port and serial monitor.

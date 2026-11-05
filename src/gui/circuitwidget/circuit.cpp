@@ -11,6 +11,7 @@
 #include <QtMath>
 
 #include "circuit.h"
+#include "appfonts.h"
 #include "instrumentview.h"
 #include "theme.h"
 #include "simulator.h"
@@ -1334,3 +1335,31 @@ void Circuit::setAutoBck( int secs )
 }
 
 #include "moc_circuit.cpp"
+
+int Circuit::convertFontsToDefault()
+{
+    QMap<Component*, QString> toChange;   // Component -> new font
+    for( Component* comp : m_compList )
+    {
+        if( comp->itemType() != "TextComponent" ) continue;
+        QString font = comp->getPropStr("Font");
+        QString target = ( AppFonts::normalize( font ) == AppFonts::mono() ) ? AppFonts::mono() : AppFonts::sans();
+        qDebug() << "[Fonts] convert:" << comp->getUid() << "font" << font << "->" << target;
+        if( font != target ) toChange[comp] = target;
+    }
+    if( toChange.isEmpty() ){ qDebug() << "[Fonts] convert: nothing to change"; return 0; }
+
+    beginUndoStep();
+    QMap<QString, QString> old;
+    for( Component* comp : toChange.keys() )
+    {
+        old[comp->getUid()] = comp->getPropStr("Font");
+        comp->setPropStr("Font", toChange[comp] );
+    }
+    calcCircuitChanges();
+    for( QString uid : old.keys() ) addCompChange( uid, "Font", old[uid] );
+    endCircuitBatch();
+    setChanged();
+    qDebug() << "[Fonts] convert: changed" << toChange.size() << "Text components";
+    return toChange.size();
+}

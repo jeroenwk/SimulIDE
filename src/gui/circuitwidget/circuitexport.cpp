@@ -8,11 +8,15 @@
 #include <QFileInfo>
 #include <QGraphicsItem>
 #include <QtMath>
+#include <QFile>
+#include <QRegularExpression>
+#include <QDebug>
 
 #include "circuitexport.h"
 #include "circuit.h"
 #include "instrumentview.h"
 #include "theme.h"
+#include "appfonts.h"
 
 namespace
 {
@@ -61,6 +65,97 @@ class ViewState
         bool m_themed = false;
         QList<QGraphicsItem*> m_selected;
 };
+
+// QSvgGenerator writes the family names only. Replace them by CSS stacks and, if asked,
+// embed the bundled faces the text uses as @font-face rules with WOFF2 data URIs, so any
+// browser shows the fonts SimulIDE laid the text out with
+bool fixSvgFonts( const QString& file, bool embed, QStringList* embedded, QString* error )
+{
+    QFile f( file );
+    if( !f.open( QIODevice::ReadOnly ) ){ *error = "could not read "+file; return false; }
+    QString svg = QString::fromUtf8( f.readAll() );
+    f.close();
+    qDebug() << "[Export] SVG fonts: post-processing" << file << svg.size() << "chars, embed:" << embed;
+
+    // QSvgGenerator writes Qt 5 weights times ten (Medium 57 -> "570"), except Normal (400) and
+    // Bold (700). Map them to the CSS weight of the face Qt draws with, else a browser picks
+    // another face (570 -> SemiBold instead of Medium)
+    QRegularExpression anyWgtRe("font-weight=\"([0-9]+)\"");
+    QMap<int, int> cssWeight;
+    auto wit = anyWgtRe.globalMatch( svg );
+    while( wit.hasNext() )
+    {
+        int w = wit.next().captured( 1 ).toInt();
+        if( w == 400 || w == 700 || cssWeight.contains( w ) ) continue;
+        static const int qtW[]  = {  0,  12,  25,  50,  57,  63,  75,  81,  87 };
+        static const int cssW[] = { 100, 200, 300, 400, 500, 600, 700, 800, 900 };
+        int best = 0;
+        for( int i=1; i<9; ++i ) if( qAbs( qtW[i]*10-w ) < qAbs( qtW[best]*10-w ) ) best = i;
+        cssWeight[w] = cssW[best];
+        qDebug() << "[Export] SVG fonts: Qt weight" << w << "-> CSS weight" << cssW[best];
+    }
+    for( int w : cssWeight.keys() )
+        svg.replace("font-weight=\""+QString::number( w )+"\"", "font-weight=\""+QString::number( cssWeight[w] )+"\"");
+
+    // Faces used by text elements: family, weight, style
+    QMap<QString, const AppFonts::Face*> faces;   // Sort key -> face
+    QSet<QString> seen;
+    QRegularExpression textRe("<text\\b[^>]*>");
+    QRegularExpression famRe ("font-family=\"([^\"]*)\"");
+    QRegularExpression wgtRe ("font-weight=\"([0-9]+)\"");
+    QRegularExpression styRe ("font-style=\"([a-z]+)\"");
+    auto it = textRe.globalMatch( svg );
+    while( it.hasNext() )
+    {
+        QString tag = it.next().captured( 0 );
+        QString family = famRe.match( tag ).captured( 1 );
+        int weight = wgtRe.match( tag ).hasMatch() ? wgtRe.match( tag ).captured( 1 ).toInt() : 400;
+        bool italic = styRe.match( tag ).captured( 1 ) == "italic";
+        QString key = family+"|"+QString::number( weight )+"|"+( italic ? "i" : "n" );
+        if( seen.contains( key ) ) continue;
+        seen.insert( key );
+
+        const AppFonts::Face* face = AppFonts::closestFace( family, weight, italic );
+        qDebug() << "[Export] SVG fonts: text uses" << family << weight << ( italic ? "italic" : "normal" )
+                 << "->" << ( face ? face->woff2 : QString("not bundled, left as is") );
+        if( face ) faces[ face->family+QString::number( face->weight )+( face->italic ? "i" : "" ) ] = face;
+    }
+
+    // Family names -> stacks with fallbacks (also on <g> elements)
+    for( QString fam : { AppFonts::sans(), AppFonts::mono() } )
+        svg.replace("font-family=\""+fam+"\"", "font-family=\""+AppFonts::cssStack( fam )+"\"");
+
+    if( embed && !faces.isEmpty() )
+    {
+        QString css;
+        for( const AppFonts::Face* face : faces )
+        {
+            QFile ff( face->woff2 );
+            if( !ff.open( QIODevice::ReadOnly ) ){ *error = "missing font resource "+face->woff2; return false; }
+            QByteArray data = ff.readAll();
+            css += QString("@font-face{font-family:'%1';font-weight:%2;font-style:%3;"
+                           "src:url(data:font/woff2;base64,%4) format('woff2');}\n")
+                   .arg( face->family ).arg( face->weight ).arg( face->italic ? "italic" : "normal" )
+                   .arg( QString::fromLatin1( data.toBase64() ) );
+            QString name = face->family+" "+QString::number( face->weight )+( face->italic ? " italic" : "" );
+            embedded->append( name );
+            qDebug() << "[Export] SVG fonts: embedded" << name << data.size() << "bytes";
+        }
+        QString style = "<style type=\"text/css\"><![CDATA[\n"+css+"]]></style>\n";
+        // @font-face needs full SVG, not the Tiny profile QSvgGenerator declares
+        svg.replace("version=\"1.2\" baseProfile=\"tiny\"", "version=\"1.1\"");
+        int defs = svg.indexOf("<defs>");
+        if( defs >= 0 ) svg.insert( defs+6, "\n"+style );
+        else{
+            int svgEnd = svg.indexOf('>', svg.indexOf("<svg") );
+            svg.insert( svgEnd+1, "\n<defs>\n"+style+"</defs>\n");
+        }
+    }
+    if( !f.open( QIODevice::WriteOnly | QIODevice::Truncate ) ){ *error = "could not write "+file; return false; }
+    f.write( svg.toUtf8() );
+    qDebug() << "[Export] SVG fonts: done," << embedded->size() << "faces embedded, file" << f.size() << "bytes";
+    return true;
+}
 }
 
 QString CircuitExport::formatOf( QString file )
@@ -107,6 +202,9 @@ bool CircuitExport::write( QString file, const ExportOptions& opt, ExportResult*
         circ->render( &painter, QRectF( QPointF(0,0), QSizeF( size ) ), rect, Qt::KeepAspectRatio );
         painter.end();
         r.size = size;
+
+        QString fontError;
+        if( !fixSvgFonts( file, opt.embedFonts, &r.fonts, &fontError ) ) return fail( fontError );
     }else{
         double scale = opt.scale;
         double maxSide = 16000;

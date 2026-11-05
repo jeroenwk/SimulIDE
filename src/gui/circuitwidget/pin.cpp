@@ -8,7 +8,11 @@
 #include <QApplication>
 #include <QPainter>
 
+#include <QDebug>
+#include <QSet>
+
 #include "pin.h"
+#include "appfonts.h"
 #include "theme.h"
 #include "bus.h"
 #include "node.h"
@@ -17,6 +21,16 @@
 #include "connectorline.h"
 #include "circuit.h"
 #include "simulator.h"
+
+// Pin label sizes in the parts were chosen for Ubuntu Mono (0.5 em wide). JetBrains Mono is
+// 0.6 em wide: scale by 5/6 so labels keep their width inside packages (min 4 px)
+static int labelPixelSize( int size )
+{
+    int px = qMax( 4, qRound( size*5/6.0 ) );
+    static QSet<int> logged;
+    if( !logged.contains( size ) ){ logged.insert( size ); qDebug() << "[Fonts] pin label" << size << "px ->" << px << "px"; }
+    return px;
+}
 
 Pin::Pin( int angle, const QPoint pos, QString id, int index, Component* parent, int length )
    : QGraphicsItem( parent )
@@ -54,8 +68,8 @@ Pin::Pin( int angle, const QPoint pos, QString id, int index, Component* parent,
     m_color[7] = QColor( 250, 120, 0 );
 
     QFont font;
-    font.setFamily("Ubuntu Mono");
-    font.setPixelSize(7);
+    font.setFamily( AppFonts::mono() );
+    font.setPixelSize( labelPixelSize( 7 ) );
     font.setStretch( 100 );
     font.setLetterSpacing( QFont::PercentageSpacing, 100 );
 #ifndef Q_OS_UNIX
@@ -319,7 +333,7 @@ void Pin::updateLabelColor()   // Theme changed
 void Pin::setFontSize( int size )
 {
     QFont font = m_label.font();
-    font.setPixelSize( size );
+    font.setPixelSize( labelPixelSize( size ) );
     m_label.setFont( font );
 }
 

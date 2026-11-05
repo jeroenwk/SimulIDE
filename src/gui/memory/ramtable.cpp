@@ -13,6 +13,7 @@
 #include <math.h>
 
 #include "ramtable.h"
+#include "appfonts.h"
 #include "e_mcu.h"
 #include "cpubase.h"
 #include "circuit.h"
@@ -38,13 +39,13 @@ RamTable::RamTable( QWidget* parent, eMcu* processor ,bool cpuMonitor )
 
     QTableWidgetItem* it;
     QFont fontS;
-    fontS.setFamily("Ubuntu Mono");
+    fontS.setFamily( AppFonts::mono() );
     fontS.setBold( true );
     //fontS.setPointSize( 13 );
     fontS.setPixelSize( round(12.5*scale) );
 
     QFont font;
-    font.setFamily("Ubuntu Mono");
+    font.setFamily( AppFonts::mono() );
     font.setBold( true );
     //font.setPointSize( 14 );
     font.setPixelSize( round(12.5*scale) );

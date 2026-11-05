@@ -19,6 +19,7 @@ FileBrowser::FileBrowser( QWidget *parent )
 {
     m_pSelf = this;
     m_showHidden = false;
+    setProperty("uiGraySelection", true );   // UiTheme: grey selection, as the component list
     
     m_fileSystemModel = new QFileSystemModel(this);
     m_fileSystemModel->setNameFilterDisables( false );

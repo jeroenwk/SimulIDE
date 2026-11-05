@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "strval.h"
+#include "appfonts.h"
 #include "component.h"
 #include "comproperty.h"
 //#include "mainwindow.h"
@@ -24,7 +25,7 @@ void StrVal::setup( bool )
     //valLabel->setFont( font );
 
     QFontMetrics fm( valLabel->font() );
-    float scale = fm.width(" ")/2;
+    float scale = AppFonts::legacySpaceWidth( valLabel->font() )/2;
     value->setFixedWidth( 192.0*scale );
 
     valLabel->setText( m_property->capt() );

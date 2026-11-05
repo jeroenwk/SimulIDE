@@ -32,6 +32,7 @@ manCompDialog::manCompDialog( QWidget* parent )
     m_initialized = false;
 
     table->verticalHeader()->hide(); //setVisible(False)
+    table->setProperty("uiGraySelection", true );   // UiTheme: grey selection
     table->setHorizontalHeaderLabels( QStringList()<<tr("Name")<<tr("ShortCut") );
     table->setColumnWidth( 0, 300 );
     table->setColumnWidth( 1, 90 );
@@ -65,8 +66,7 @@ void manCompDialog::addItem( QTreeWidgetItem* item )
     int childCount = item->childCount();
     if( childCount > 0 )
     {
-        listItem->setBackgroundColor( QColor(240, 235, 245));
-        listItem->setForeground( QBrush( QColor( 110, 95, 50 )));
+        listItem->setForeground( QBrush( QColor( 85, 0, 127 )));   // Category: purple, no background (as the component list)
 
         for( int i=0; i<childCount; i++ ) addItem( item->child( i ) );
     }

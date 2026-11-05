@@ -10,6 +10,7 @@
 #include <QString>
 #include <QRectF>
 #include <QSize>
+#include <QStringList>
 
 struct ExportOptions
 {
@@ -19,6 +20,7 @@ struct ExportOptions
     bool    grid   = false;
     double  scale  = 2;      // PNG pixels per scene unit
     double  margin = 24;     // Scene units around the drawing
+    bool    embedFonts = true; // SVG: embed the bundled fonts used (WOFF2), see specs/inter-fonts.md
 };
 
 struct ExportResult
@@ -27,6 +29,7 @@ struct ExportResult
     QRectF  area;            // Scene area exported
     QSize   size;            // Image size (pixels for PNG, user units for SVG)
     double  scale = 1;
+    QStringList fonts;       // SVG: faces embedded, e.g. "Inter 400"
 };
 
 namespace CircuitExport
