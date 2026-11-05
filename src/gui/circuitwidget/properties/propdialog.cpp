@@ -104,7 +104,7 @@ void PropDialog::setComponent( CompBase* comp, bool isComp )
                 PropVal* mp = NULL;
 
                 if     ( type == "double"  ) mp = new NumVal( this, comp, prop );
-                else if( type == "color"   ) mp = new ColorVal( this, comp, prop );
+                else if( type.startsWith("color") ) mp = new ColorVal( this, comp, prop );
                 else if( type == "uint"    ) mp = new NumVal( this, comp, prop );
                 else if( type == "int"     ) mp = new NumVal( this, comp, prop );
                 else if( type == "string"  ) mp = new StrVal( this, comp, prop );

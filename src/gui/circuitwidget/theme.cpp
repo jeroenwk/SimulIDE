@@ -31,6 +31,8 @@ QColor Theme::defaultColor( role_t r )
         case flowRole:   return QColor( 255, 190,   0 );
         case nameRole:   return QColor(   0,   0, 128 );   // Qt::darkBlue
         case valueRole:  return QColor( 128,   0,   0 );   // Qt::darkRed
+        case icBodyRole: return QColor(  50,  50,  70 );
+        case icTextRole: return QColor( 250, 250, 200 );
         case animHighRole: return QColor( 200,  50,  50 );
         case animLowRole:  return QColor(  50,  50, 200 );
         case outHighRole:  return QColor( 180,   0,   0 );
@@ -44,14 +46,14 @@ QColor Theme::defaultColor( role_t r )
 
 QString Theme::key( role_t r )
 {
-    static const char* keys[] = { "canvasColor", "wireColor", "lineColor", "textColor", "bodyColor", "flowColor", "nameColor", "valueColor",
+    static const char* keys[] = { "canvasColor", "wireColor", "lineColor", "textColor", "bodyColor", "flowColor", "nameColor", "valueColor", "icBodyColor", "icTextColor",
         "animHighColor", "animLowColor", "outHighColor", "outLowColor", "inHighColor", "inLowColor", "openHighColor" };
     return keys[r];
 }
 
 QString Theme::caption( role_t r )
 {
-    static const char* caps[] = { "Canvas", "Wires", "Outlines", "Text", "Bodies", "Current dots", "Names", "Values",
+    static const char* caps[] = { "Canvas", "Wires", "Outlines", "Text", "Bodies", "Current dots", "Names", "Values", "IC bodies", "IC text",
         "Wire high", "Wire low", "Output high", "Output low", "Input high", "Input low", "Open high" };
     return caps[r];
 }
@@ -70,6 +72,9 @@ void Theme::load()
             if( c.isValid() ) m_color[i] = c;
         }
     }
+    // Settings from before the IC colours: take them from the preset the other colours match
+    if( s && !s->contains("Circuit/"+key( icBodyRole )) && !s->contains("Circuit/"+key( icTextRole )) )
+        adoptPresetIcColors();
 }
 
 QColor Theme::get( role_t r )
@@ -131,6 +136,27 @@ QColor Theme::lead( QColor c )
     return c;
 }
 
+QColor Theme::icBody( QColor classColor )
+{
+    QColor c = get( icBodyRole );
+    return ( c == defaultColor( icBodyRole ) ) ? classColor : c;
+}
+
+QColor Theme::icMarker()
+{
+    QColor b = get( icBodyRole ), t = get( icTextRole );
+    if( b == defaultColor( icBodyRole ) && t == defaultColor( icTextRole ) ) return QColor( 170, 170, 150 ); // Classic
+    auto mix = []( int x, int y ){ return x + ( y-x )*3/5; };   // 60 % of the way to the text
+    return QColor( mix( b.red(), t.red() ), mix( b.green(), t.green() ), mix( b.blue(), t.blue() ) );
+}
+
+QColor Theme::lsBody( QColor classColor )
+{
+    QColor c = get( bodyRole );         // Own light colour only with the classic body colours
+    bool classic = ( c == defaultColor( bodyRole ) ) && ( get( icBodyRole ) == defaultColor( icBodyRole ) );
+    return classic ? classColor : c;
+}
+
 QColor Theme::grid()
 {
     QColor c = canvas();
@@ -160,14 +186,28 @@ void Theme::apply()
 namespace {
 struct Preset { const char* name; const char* colors[Theme::numRoles]; };
 const Preset presetList[] = {
-    { "Classic", { "#f0f0d2", "#28283c", "#000000", "#000000", "#ffffff", "#ffbe00", "#000080", "#800000",
+    { "Classic", { "#f0f0d2", "#28283c", "#000000", "#000000", "#ffffff", "#ffbe00", "#000080", "#800000", "#323246", "#fafac8",
                   "#c83232", "#3232c8", "#b40000", "#0000b4", "#fa7800", "#6464fa", "#3c783c" } },
-    { "Light",   { "#ffffff", "#3c3c50", "#000000", "#000000", "#ffffff", "#ff8c00", "#000080", "#800000",
+    { "Light",   { "#ffffff", "#3c3c50", "#000000", "#000000", "#ffffff", "#ff8c00", "#000080", "#800000", "#ffffff", "#000000",
                   "#c83232", "#3232c8", "#b40000", "#0000b4", "#fa7800", "#6464fa", "#3c783c" } },
     // Dark, inspired by EveryCircuit: black canvas, hollow light grey parts, pale green current
-    { "Dark",    { "#000000", "#9e9e9e", "#b4b4b4", "#c8c8c8", "#000000", "#b9e3b0", "#9db8e0", "#c8c8c8",
+    { "Dark",    { "#000000", "#9e9e9e", "#b4b4b4", "#c8c8c8", "#000000", "#b9e3b0", "#9db8e0", "#c8c8c8", "#000000", "#c8c8c8",
                   "#ff6060", "#6f8fff", "#ff6b6b", "#6f8fff", "#ffae42", "#a3b1ff", "#7fd17f" } },
 };
+}
+
+void Theme::adoptPresetIcColors()
+{
+    for( const Preset& p : presetList )
+    {
+        bool same = true;
+        for( int i=0; i<numRoles && same; ++i )
+            if( i != icBodyRole && i != icTextRole ) same = ( m_color[i] == QColor( p.colors[i] ) );
+        if( !same ) continue;
+        m_color[icBodyRole] = QColor( p.colors[icBodyRole] );
+        m_color[icTextRole] = QColor( p.colors[icTextRole] );
+        return;
+    }
 }
 
 QStringList Theme::presets()

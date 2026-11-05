@@ -131,16 +131,30 @@ check "bad color rejected"          'not r["ok"] and "invalid color" in r["error
 check "default resets"              'r["ok"]'                                  -- settings set canvasColor default
 check "...to the classic canvas"    'r["result"]=="#f0f0d2"'                   -- settings get canvasColor
 cli settings set canvasColor "$CANVAS_WAS" >/dev/null
-THEME_COLORS=$(for k in canvasColor wireColor lineColor textColor bodyColor flowColor nameColor valueColor animHighColor animLowColor outHighColor outLowColor inHighColor inLowColor openHighColor; do jcli settings get $k | json 'r["result"]'; done)
+THEME_COLORS=$(for k in canvasColor wireColor lineColor textColor bodyColor flowColor nameColor valueColor icBodyColor icTextColor animHighColor animLowColor outHighColor outLowColor inHighColor inLowColor openHighColor; do jcli settings get $k | json 'r["result"]'; done)
 check "preset Dark"                 'r["ok"]'                                  -- settings set colorTheme Dark
 check "...is reported"              'r["result"]=="Dark"'                      -- settings get colorTheme
 check "...black canvas"             'r["result"]=="#000000"'                   -- settings get canvasColor
 check "...value label color"        'r["result"]=="#c8c8c8"'                   -- settings get valueColor
 check "...animate wire high"        'r["result"]=="#ff6060"'                   -- settings get animHighColor
+check "...IC body"                  'r["result"]=="#000000"'                   -- settings get icBodyColor
+check "...IC text"                  'r["result"]=="#c8c8c8"'                   -- settings get icTextColor
+check "preset Classic: IC defaults" 'r["ok"]'                                  -- settings set colorTheme Classic
+check "...IC body #323246"          'r["result"]=="#323246"'                   -- settings get icBodyColor
+check "...IC text #fafac8"          'r["result"]=="#fafac8"'                   -- settings get icTextColor
+check "preset Light: white ICs"     'r["ok"]'                                  -- settings set colorTheme Light
+check "...IC body white"            'r["result"]=="#ffffff"'                   -- settings get icBodyColor
+check "...IC text black"            'r["result"]=="#000000"'                   -- settings get icTextColor
+cli settings set colorTheme Classic >/dev/null
+check "custom IC body"              'r["ok"]'                                  -- settings set icBodyColor "#1e2a3a"
+check "...makes the theme Custom"   'r["result"]=="Custom"'                    -- settings get colorTheme
+check "...default resets it"        'r["ok"]'                                  -- settings set icBodyColor default
+check "...back to Classic"          'r["result"]=="Classic"'                   -- settings get colorTheme
+cli settings set colorTheme Dark >/dev/null
 cli settings set wireColor "#123456" >/dev/null
 check "changing a color: Custom"    'r["result"]=="Custom"'                    -- settings get colorTheme
 check "unknown preset rejected"     'not r["ok"] and "Classic" in r["error"]'  -- settings set colorTheme banana
-set -- $THEME_COLORS; for k in canvasColor wireColor lineColor textColor bodyColor flowColor nameColor valueColor animHighColor animLowColor outHighColor outLowColor inHighColor inLowColor openHighColor; do cli settings set $k "$1" >/dev/null; shift; done
+set -- $THEME_COLORS; for k in canvasColor wireColor lineColor textColor bodyColor flowColor nameColor valueColor icBodyColor icTextColor animHighColor animLowColor outHighColor outLowColor inHighColor inLowColor openHighColor; do cli settings set $k "$1" >/dev/null; shift; done
 
 echo "Export"
 THEME_WAS=$(jcli settings get colorTheme | json 'r["result"]')
@@ -152,6 +166,10 @@ check "--format adds the extension" 'r["result"]["file"].endswith("exp2.svg")' -
 check "theme Classic: its canvas"   '"#f0f0d2" in open(r["result"]["file"]).read() and r["result"]["theme"]=="Classic"' -- export --file "$TMP/classic.svg" --theme classic
 check "theme Dark: no classic canvas" '"#f0f0d2" not in open(r["result"]["file"]).read()' -- export --file "$TMP/dark.svg" --theme Dark
 check "...setting unchanged"        'r["result"]=="'"$THEME_WAS"'"'               -- settings get colorTheme
+cli comp add tiny25 --at 0,300 --label UCHIP >/dev/null
+check "Classic: MCU keeps its navy"  '"#141e3c" in open(r["result"]["file"]).read()' -- export --file "$TMP/ic_classic.svg" --theme Classic
+check "Dark: MCU body themed"        '"#141e3c" not in open(r["result"]["file"]).read()' -- export --file "$TMP/ic_dark.svg" --theme Dark
+cli comp remove UCHIP >/dev/null
 check "grid show: bigger svg"       '__import__("os").path.getsize(r["result"]["file"]) > __import__("os").path.getsize("'"$TMP"'/exp.svg")+2000' -- export --file "$TMP/grid.svg" --grid show
 check "meters show: probe included" 'r["result"]["meters"] is True' -- export --file "$TMP/m1.png" --meters show
 W1=$(jcli export --file "$TMP/m1.png" --meters show | json 'r["result"]["area"][1]')
@@ -165,6 +183,19 @@ check "bad theme rejected"          'not r["ok"] and "Classic" in r["error"]'  -
 check "bad format rejected"         'not r["ok"]'                              -- export --format jpg
 check "bad meters value rejected"   'not r["ok"]'                              -- export --meters maybe
 cli comp remove PRB >/dev/null
+
+echo "Text labels"
+cli comp add TextComponent --at 0,-200 --label TXT "Text=Hello" >/dev/null
+check "default: no background"     '[p for p in r["result"]["properties"] if p["name"]=="Color"][0]["value"]=="none"' -- comp get TXT
+check "default: no border"         '[p for p in r["result"]["properties"] if p["name"]=="Border"][0]["value"].startswith("0")' -- comp get TXT
+check "default: theme font colour" '[p for p in r["result"]["properties"] if p["name"]=="Font_Color"][0]["value"]=="theme"' -- comp get TXT
+check "own font colour"            'r["ok"]'                                   -- comp set TXT Font_Color=#c00000
+check "...reads back"              '[p for p in r["result"]["properties"] if p["name"]=="Font_Color"][0]["value"]=="#c00000"' -- comp get TXT
+check "background colour"          'r["ok"]'                                   -- comp set TXT Color=#303e4c
+check "...reads back"              '[p for p in r["result"]["properties"] if p["name"]=="Color"][0]["value"]=="#303e4c"' -- comp get TXT
+check "back to none and theme"     'r["ok"]'                                   -- comp set TXT Color=none Font_Color=theme
+check "...reads back"              '[(p["name"],p["value"]) for p in r["result"]["properties"] if p["name"] in ("Color","Font_Color")]==[("Color","none"),("Font_Color","theme")]' -- comp get TXT
+cli comp remove TXT >/dev/null
 
 echo "Capture and selection"
 check "capture circuit"         'r["result"]["width"] > 100 and __import__("os").path.getsize(r["result"]["file"]) > 1000' -- capture circuit --file "$TMP/cap.png"

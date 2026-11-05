@@ -14,6 +14,7 @@
 #include "simulator.h"
 #include "circuit.h"
 #include "circuitwidget.h"
+#include "theme.h"
 
 #include "stringprop.h"
 #include "doubleprop.h"
@@ -41,7 +42,9 @@ TextComponent::TextComponent( QString type, QString id )
     m_graphical = true;
     m_changed   = false;
     m_opac = 1;
-    m_color = QColor( 255, 255, 220 );
+    m_color = QColor( 255, 255, 220 );   // Used when a background colour is chosen
+    m_noBack    = true;                  // Default: no background, no border, theme font colour
+    m_themeFont = true;
     m_font  = "Helvetica [Cronyx]";
 
     QFont sansFont( m_font, 10 );
@@ -52,8 +55,8 @@ TextComponent::TextComponent( QString type, QString id )
     #endif
     sansFont.setFixedPitch(true);
 
-    QColor color = Qt::darkBlue;
-    m_fontColor = color.name();
+    QColor color = Theme::idLabel();
+    m_fontColor = "theme";
     m_text = new QGraphicsTextItem( this );
     m_text->setTextInteractionFlags( 0 );
     m_text->setTextWidth( 90 );
@@ -69,7 +72,7 @@ TextComponent::TextComponent( QString type, QString id )
     m_margin = 5;
     m_docMargin = m_text->document()->documentMargin();
     m_context = false;
-    m_border = 1;
+    m_border = 0;
     updateGeometry( 0, 0, 0 );
     
     setFontSize( 10 );
@@ -86,7 +89,7 @@ TextComponent::TextComponent( QString type, QString id )
                                    , this, &TextComponent::border, &TextComponent::setBorder,0,"uint" ),
 
         new StrProp <TextComponent>("Color", tr("Background Color"),""
-                                   , this, &TextComponent::colorStr,&TextComponent::setColorStr,0,"color" ),
+                                   , this, &TextComponent::colorStr,&TextComponent::setColorStr,0,"color_none" ),
 
         new DoubProp<TextComponent>("Opacity", tr("Opacity"),""
                                    , this, &TextComponent::opac, &TextComponent::setOpac )
@@ -97,7 +100,7 @@ TextComponent::TextComponent( QString type, QString id )
                                    , this, &TextComponent::getFont , &TextComponent::setFont ),
 
         new StrProp <TextComponent>("Font_Color", tr("Font Color"),""
-                                   , this, &TextComponent::fontColor, &TextComponent::setFontColor,0,"color" ),
+                                   , this, &TextComponent::fontColor, &TextComponent::setFontColor,0,"color_theme" ),
 
         new IntProp <TextComponent>("Font_Size", tr("Font Size") ,"_px"
                                    , this, &TextComponent::fontSize , &TextComponent::setFontSize ),
@@ -158,7 +161,9 @@ void TextComponent::setMargin( int margin )
 
 void TextComponent::setColorStr( QString color )
 {
-    m_color = QColor( color);
+    QString c = color.trimmed().toLower();
+    m_noBack = ( c == "none" || c.isEmpty() || c == "transparent" );
+    if( !m_noBack && QColor( color ).isValid() ) m_color = QColor( color );
     update();
 }
 
@@ -194,9 +199,18 @@ void TextComponent::setFontSize( int size )
 
 void TextComponent::setFontColor( QString color )
 {
-    m_fontColor = color;
-    m_text->setDefaultTextColor( QColor( color) );
+    QString c = color.trimmed().toLower();
+    m_themeFont = ( c == "theme" || c.isEmpty() || c == "default" );
+    if( !m_themeFont && !QColor( color ).isValid() ) return;
+    m_fontColor = m_themeFont ? "theme" : QColor( color ).name();
+    m_text->setDefaultTextColor( m_themeFont ? Theme::idLabel() : QColor( color ) );
     update();
+}
+
+void TextComponent::updateLabelColors()
+{
+    Component::updateLabelColors();
+    if( m_themeFont ) m_text->setDefaultTextColor( Theme::idLabel() );
 }
 
 void TextComponent::setFixedW( bool fixedW ) 
@@ -256,10 +270,16 @@ void TextComponent::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
     QPen pen( Qt::black, m_border, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
     p->setPen( pen );
 
-    double opacity = p->opacity();
-    p->setOpacity( opacity*m_opac );
-    p->drawRect( m_area );
-    p->setOpacity( opacity );
+    if( !m_noBack )
+    {
+        p->setBrush( m_color );
+        p->setPen( m_border > 0 ? pen : QPen( Qt::NoPen ) );
+        double opacity = p->opacity();
+        p->setOpacity( opacity*m_opac );
+        p->drawRect( m_area );
+        p->setOpacity( opacity );
+        p->setPen( pen );
+    }
 
     if( m_border > 0 )
     {

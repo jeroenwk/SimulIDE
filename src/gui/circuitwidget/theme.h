@@ -14,6 +14,7 @@ class Theme
 {
     public:
         enum role_t { canvasRole=0, wireRole, lineRole, textRole, bodyRole, flowRole, nameRole, valueRole,
+                      icBodyRole, icTextRole,   // Chips, subcircuits and MCUs
                       // Animate mode: wires by voltage, pins by logic state
                       animHighRole, animLowRole, outHighRole, outLowRole, inHighRole, inLowRole, openHighRole,
                       numRoles };
@@ -29,6 +30,14 @@ class Theme
 
         static QColor idLabel()  { return get( nameRole ); }  // Component name labels ("R1")
         static QColor valLabel() { return get( valueRole ); } // Component value labels ("470 Ω")
+
+        // IC packages (chips, subcircuits, MCUs). At the default IC body colour each kind keeps
+        // its own classic shade (classColor); the pin-1 marker is derived from body and text
+        static QColor icBody( QColor classColor );
+        static QColor icText()   { return get( icTextRole ); }
+        static QColor icMarker();
+        // Logic-symbol packages: their own light colour while body and IC body are the defaults
+        static QColor lsBody( QColor classColor );
 
         // Instrument leads (scope channels, meter + / COM): the lead's own colour, made to
         // stand out on the canvas (contrast >= 3:1, darker on light canvases). A grey lead
@@ -60,6 +69,7 @@ class Theme
 
     private:
         static void load();
+        static void adoptPresetIcColors();
         static bool   m_loaded;
         static QColor m_color[numRoles];
         static QColor m_saved[numRoles];

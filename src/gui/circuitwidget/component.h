@@ -159,7 +159,7 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
         void remSignalPin( Pin* pin );
 
         virtual void paint( QPainter* painter, const QStyleOptionGraphicsItem*, QWidget* ) override;
-        void updateLabelColors();   // Re-apply the theme's label colours
+        virtual void updateLabelColors();   // Re-apply the theme's label colours
 
         virtual QVariant itemChange( GraphicsItemChange change, const QVariant &value ) override;
         // Link components

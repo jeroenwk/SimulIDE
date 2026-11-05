@@ -64,7 +64,7 @@ Pin::Pin( int angle, const QPoint pos, QString id, int index, Component* parent,
 #endif
     m_label.setFont( font );
     m_label.setText("");
-    m_label.setBrush( QColor( 250, 250, 200 ) );
+    m_label.setBrush( Theme::icText() );    // Default: pin names inside an IC
 
     /// setObjectName( id );
     setConnector( NULL );
@@ -297,13 +297,23 @@ void Pin::setLabelPos()
 
 void Pin::setLabelColor( QColor color )
 {
-    m_themedLabel = ( color == QColor( 0, 0, 0 ) );  // Black = default text: follows the theme
-    m_label.setBrush( QBrush( m_themedLabel ? Theme::text() : color ) );
+    // Black = default text, light yellow = default IC text: both follow the theme
+    if     ( color == QColor(   0,   0,   0 ) ) m_labelTheme = 1;
+    else if( color == QColor( 250, 250, 200 ) ) m_labelTheme = 2;
+    else                                        m_labelTheme = 0;
+    m_label.setBrush( QBrush( labelColor( color ) ) );
+}
+
+QColor Pin::labelColor( QColor own )
+{
+    if( m_labelTheme == 1 ) return Theme::text();
+    if( m_labelTheme == 2 ) return Theme::icText();
+    return own;
 }
 
 void Pin::updateLabelColor()   // Theme changed
 {
-    if( m_themedLabel ) m_label.setBrush( QBrush( Theme::text() ) );
+    if( m_labelTheme ) m_label.setBrush( QBrush( labelColor( QColor() ) ) );
 }
 
 void Pin::setFontSize( int size )

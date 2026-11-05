@@ -6,6 +6,7 @@
 #include <QDomDocument>
 
 #include "chip.h"
+#include "theme.h"
 #include "circuitwidget.h"
 #include "mainwindow.h"
 #include "simulator.h"
@@ -288,9 +289,20 @@ QString Chip::getDevice( QString id ) // Static
     return device;
 }
 
+void Chip::updateLabelColors()
+{
+    Component::updateLabelColors();
+    for( Pin* pin : m_unusedPins ) if( pin ) pin->updateLabelColor();
+}
+
 void Chip::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
 {
     Component::paint( p, o, w );
+    if( m_background.isEmpty() )                // Default package colours follow the theme
+    {
+        if( m_isLS ) { if( m_color == m_lsColor ) p->setBrush( Theme::lsBody( m_lsColor ) ); }
+        else if( m_color == m_icColor )           p->setBrush( Theme::icBody( m_icColor ) );
+    }
 
     QRect imgArea = QRect( m_area.x()+m_leftMargin
                          , m_area.y()+m_topMargin
@@ -323,7 +335,7 @@ void Chip::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
         }
         else if( !m_isLS && m_background.isEmpty() )
         {
-            p->setPen( QColor( 170, 170, 150 ) );
+            p->setPen( Theme::icMarker() );
             if( m_width == m_height ) p->drawEllipse( 4, 4, 4, 4);
             else                      p->drawArc( boundingRect().width()/2-6, -4, 8, 8, 0, -2880 /* -16*180 */ );
         }
