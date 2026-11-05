@@ -1,0 +1,27 @@
+<circuit version="1.1.0-SR2" rev="261105" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="WaveGen" CircId="WaveGen-1" mainComp="false" Show_id="false" Show_Val="false" Pos="-64,16" rotation="0" hflip="1" vflip="1" label="W1" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" Out="true" Running="true" Wave_Type="Sine" Freq="50 Hz" Phase="0 _º" Steps="100 _Steps" Duty="50 _%" Always_On="true" Bipolar="false" Floating="false" Semi_Ampli="10 V" Mid_Volt="0 V" />
+
+<item itemtype="Ground" CircId="Ground-2" mainComp="false" Show_id="false" Show_Val="false" Pos="-16,64" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Transformer" CircId="Transformer-3" mainComp="false" Show_id="false" Show_Val="false" Pos="32,8" rotation="0" hflip="1" vflip="1" label="T1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" CoupCoeff="0.99" BaseInd="1 H" Primary="1" Secondary="2" CurrentScale="0 A" />
+
+<item itemtype="Resistor" CircId="Resistor-4" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="176,24" rotation="90" hflip="1" vflip="1" label="RL" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="1 kΩ" />
+
+<item itemtype="Ground" CircId="Ground-5" mainComp="false" Show_id="false" Show_Val="false" Pos="176,80" rotation="0" hflip="1" vflip="1" label="G2" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Node" CircId="Node-6" mainComp="false" Pos="160,40" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="WaveGen-1-outnod" endpinid="Transformer-3-P00Pin" pointList="-48,16,-40,16,-40,8,16,8" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="Transformer-3-P01Pin" endpinid="Ground-2-Gnd" pointList="16,32,-16,32,-16,48" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Transformer-3-S00Pin" endpinid="Resistor-4-lPin" pointList="48,8,176,8" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Node-6-1" endpinid="Ground-5-Gnd" pointList="160,40,176,40,176,64" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Transformer-3-S01Pin" endpinid="Node-6-0" pointList="48,32,144,32,144,40,160,40" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="Node-6-2" endpinid="Resistor-4-rPin" pointList="160,40,176,40" />
+
+</circuit>

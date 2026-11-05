@@ -80,6 +80,10 @@ void ChargeGauge::refresh()
         if( !horizontal && side < 0 ) textSide = -1;
     }
 
+    m_level = m_owner->gaugeLevel();
+    m_tick  = m_owner->gaugeTick();
+    m_warn  = m_owner->gaugeWarn();
+
     // Label text
     int mode = ChargeView::self()->labelMode();
     QString text = ( mode == ChargeView::labelOff ) ? "" : m_owner->gaugeText( mode );
@@ -104,9 +108,9 @@ void ChargeGauge::refresh()
 void ChargeGauge::paint( QPainter* p, const QStyleOptionGraphicsItem*, QWidget* )
 {
     ChargeView* cv = ChargeView::self();
-    double lvl  = m_owner->gaugeLevel();
-    double tick = m_owner->gaugeTick();
-    bool   warn = m_owner->gaugeWarn();
+    double lvl  = m_level;              // Snapshot of the last refresh()
+    double tick = m_tick;
+    bool   warn = m_warn;
 
     p->setRenderHint( QPainter::Antialiasing, true );
 

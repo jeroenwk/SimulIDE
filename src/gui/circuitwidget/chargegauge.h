@@ -56,6 +56,12 @@ class ChargeGauge : public QGraphicsItem
         QPointF m_textPos;  // Label baseline start
         QRectF  m_bound;
         QString m_text;
+
+        // Snapshot taken in refresh(), once per frame: paint() draws these, so a
+        // capture between frames shows the bar and the text of the same moment
+        double  m_level = 0;
+        double  m_tick  = -1;
+        bool    m_warn  = false;
 };
 
 #endif

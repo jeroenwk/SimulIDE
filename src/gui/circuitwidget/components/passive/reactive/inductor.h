@@ -56,6 +56,9 @@ class Inductor : public Reactive, public GaugeOwner
         virtual double updtCurr() override { return m_curSource - m_volt*m_admit; }
 
         double m_inductance;
+        double m_shownCurr = 0;       // Current at the last frame (coil colour)
+        double m_shownRef  = 0;
+
         double m_currentScale;
         double m_maxCurrent;
 

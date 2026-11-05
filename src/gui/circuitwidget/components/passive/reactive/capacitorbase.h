@@ -65,6 +65,9 @@ class CapacitorBase : public Reactive, public GaugeOwner
         virtual void voltSample() override;
         void fillTo( uint64_t time );          // Grid points before `time` at the held voltage
 
+        double m_plateVolt[2] = { 0, 0 };    // Node voltages at the last frame (plate colours)
+        void   snapPlates();
+
         double m_capacitance;
         double m_maxVolt;
         double m_chargeScale;

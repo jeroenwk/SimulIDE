@@ -1,0 +1,19 @@
+<circuit version="1.1.0-SR2" rev="261105" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="Capacitor" CircId="Capacitor-1" mainComp="false" ShowProp="Capacitance" Show_id="false" Show_Val="true" Pos="0,32" rotation="90" hflip="1" vflip="1" label="C1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Capacitance="1000 µF" Resistance="1 µΩ" InitVolt="10 V" MaxVolt="0 V" ChargeScale="0 V" LogCharge="false" ReaStep="0 ns" />
+
+<item itemtype="Inductor" CircId="Inductor-2" mainComp="false" ShowProp="Inductance" Show_id="false" Show_Val="true" Pos="96,32" rotation="90" hflip="1" vflip="1" label="L1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Inductance="10 H" Resistance="1 µΩ" InitVolt="0 A" MaxCurrent="0 A" CurrentScale="0 A" ReaStep="0 ns" />
+
+<item itemtype="Ground" CircId="Ground-3" mainComp="false" Show_id="false" Show_Val="false" Pos="0,112" rotation="0" hflip="1" vflip="1" label="G" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Node" CircId="Node-4" mainComp="false" Pos="0,80" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="Capacitor-1-lPin" endpinid="Inductor-2-lPin" pointList="0,16,0,0,96,0,96,16" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Inductor-2-rPin" endpinid="Node-4-1" pointList="96,48,96,80,0,80" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="Capacitor-1-rPin" endpinid="Node-4-0" pointList="0,48,0,80" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Node-4-2" endpinid="Ground-3-Gnd" pointList="0,80,0,96" />
+
+</circuit>

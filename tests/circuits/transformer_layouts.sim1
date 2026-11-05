@@ -1,0 +1,7 @@
+<circuit version="1.1.0-SR2" rev="261105" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="Transformer" CircId="Transformer-1" mainComp="false" Show_id="false" Show_Val="false" Pos="0,0" rotation="0" hflip="1" vflip="1" label="T1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" CoupCoeff="0.99" BaseInd="1 H" Primary="1" Secondary="1,1,1,1,1,1" CurrentScale="0 A" />
+
+<item itemtype="Transformer" CircId="Transformer-2" mainComp="false" Show_id="false" Show_Val="false" Pos="200,16" rotation="90" hflip="1" vflip="1" label="T2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" CoupCoeff="0.99" BaseInd="1 H" Primary="1" Secondary="1" CurrentScale="0 A" />
+
+</circuit>

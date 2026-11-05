@@ -27,6 +27,7 @@ class CoilGauge : public GaugeOwner
         eCoil*  coil;
         QString name;      // "P01", "S11": as the pin at the coil's end
         ChargeGauge* gauge;
+        double shownCurr = 0;   // At the last frame (coil colour)
 };
 
 class Transformer : public Component, public eElement
@@ -101,6 +102,8 @@ class Transformer : public Component, public eElement
         QList<eCoil*> m_coils;
 
         double m_currentScale;
+        double m_shownRef = 0;
+        void   snapCurrents();
         QList<CoilGauge*> m_coilGauges;
 
         std::vector<std::vector<double>> m_inva;
