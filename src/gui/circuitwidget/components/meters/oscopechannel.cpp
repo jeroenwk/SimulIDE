@@ -16,6 +16,11 @@ OscopeChannel::OscopeChannel( Oscope* oscope, QString id )
 {
     m_oscope = oscope;
     m_filter = 0.0;
+    m_trigReset = true;
+    m_trigCount = 0;
+    m_trigArmed = false;
+    m_trigPrevData = 0;
+    m_trigPrevTime = 0;
 }
 OscopeChannel::~OscopeChannel()  { }
 
@@ -45,6 +50,7 @@ void OscopeChannel::initialize()
     m_bufferCounter = 0;
 
     m_freq = 0;
+    m_trigReset = true;
 
     m_buffer.fill(0);
     m_time.fill(0);
@@ -172,6 +178,8 @@ void OscopeChannel::findEdges( double data, uint64_t simTime )
     // armed once the signal is below mid - h, fired when it then goes above mid + h, with h 15 %
     // of the last cycle's amplitude (at least the noise filter). Counting local minima instead
     // made any small wiggle a cycle: a 0.5 V step at a rectifier's zero crossing read 150 Hz.
+    if( m_trigger && !m_oscope->trigAuto() ) findTrigEdge( data, simTime );
+
     if( data > m_maxVal ) m_maxVal = data;
     if( data < m_minVal ) m_minVal = data;
 
@@ -206,6 +214,62 @@ void OscopeChannel::findEdges( double data, uint64_t simTime )
         m_maxVal  =-1e12;
         m_minVal  = 1e12;
 }   }
+
+void OscopeChannel::findTrigEdge( double data, uint64_t simTime )
+{
+    // A rising edge at a fixed level, as on a real scope: armed once the signal is below
+    // level - hysteresis (the noise filter), fired when it reaches the level. The crossing time
+    // is interpolated between the two settled steps around it.
+    static const bool dbg = qEnvironmentVariableIsSet("SIMULIDE_SCOPE_DEBUG");
+
+    if( m_trigReset ){
+        m_trigReset = false;
+        m_trigCount = 0;
+        m_trigArmed = false;
+        m_trigPrevTime = simTime;
+        m_trigPrevData = data;
+        if( dbg ) qDebug() << "[ScopeTrig] ch" << m_channel << "edges cleared at" << simTime*1e-12 << "s";
+    }
+    double level = m_oscope->trigLevel();
+    double hyst  = m_filter > 0 ? m_filter : 1e-9;
+
+    if( data < level-hyst )
+    {
+        if( dbg && !m_trigArmed ) qDebug() << "[ScopeTrig] ch" << m_channel << "armed at" << simTime*1e-12 << "s" << data << "V";
+        m_trigArmed = true;
+    }
+    else if( m_trigArmed && data >= level )
+    {
+        m_trigArmed = false;
+        uint64_t edge = simTime;
+        if( m_trigPrevData < level && simTime > m_trigPrevTime )
+            edge = m_trigPrevTime + (uint64_t)( (level-m_trigPrevData)/(data-m_trigPrevData)*(double)(simTime-m_trigPrevTime) );
+
+        uint64_t minGap = m_oscope->timeDiv()*10/16;   // Keep the ring spanning 4 screens or more
+        uint64_t last = m_trigCount ? m_trigEdges[(m_trigCount-1)%TRIG_EDGES] : 0;
+        if( m_trigCount == 0 || edge-last >= minGap )
+        {
+            m_trigEdges[m_trigCount%TRIG_EDGES] = edge;
+            m_trigCount++;
+            if( m_trigCount >= 2*TRIG_EDGES ) m_trigCount -= TRIG_EDGES; // No overflow, same slots
+            if( dbg ) qDebug() << "[ScopeTrig] ch" << m_channel << "edge at" << edge*1e-12 << "s level" << level << "V";
+        }
+    }
+    m_trigPrevData = data;
+    m_trigPrevTime = simTime;
+}
+
+bool OscopeChannel::trigEdgeBefore( uint64_t t, uint64_t* edge )
+{
+    if( m_trigReset ) return false;
+    int n = m_trigCount < TRIG_EDGES ? m_trigCount : TRIG_EDGES;
+    for( int i=1; i<=n; ++i )                   // Newest first
+    {
+        uint64_t e = m_trigEdges[(m_trigCount-i)%TRIG_EDGES];
+        if( e <= t ){ *edge = e; return true; }
+    }
+    return false;
+}
 
 void OscopeChannel::setFilter( double f )
 {

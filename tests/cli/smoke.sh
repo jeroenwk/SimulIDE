@@ -301,6 +301,10 @@ check "scope set"               'r["result"]["timeDiv"]=="5 ms" and r["result"][
 check "scope set one channel"   '[c["voltDiv"] for c in r["result"]["channels"]]==[5,2,5,5]' -- scope set S --ch 1 --voltdiv 2
 check "bad value rejected"      'not r["ok"]'                              -- scope set S --timediv 1s --trigger 9
 check "...and nothing changed"  'r["result"]["timeDiv"]=="5 ms" and r["result"]["trigger"]==0' -- scope get S
+check "trigger level default"   'r["result"]["trigLevel"]=="auto"'          -- scope get S
+check "trigger level set"       'r["result"]["trigLevel"]==2.5'             -- scope set S --triglevel 2.5
+check "bad trigger level"       'not r["ok"]'                              -- scope set S --triglevel abc
+check "trigger level auto"      'r["result"]["trigLevel"]=="auto"'          -- scope set S --triglevel auto
 
 echo "Reopen last circuit setting"
 REOPEN_WAS=$(jcli settings get reopenLast | json 'str(r["result"]).lower()')

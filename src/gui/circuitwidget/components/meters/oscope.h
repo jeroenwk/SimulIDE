@@ -45,6 +45,13 @@ class Oscope : public PlotBase
 
         virtual void setTrigger( int ch ) override;
 
+        // Trigger level: Auto = middle of the last cycle (the old behaviour), else a fixed level
+        bool trigAuto() { return m_trigAuto; }
+        void setTrigAuto( bool a );
+        double trigLevel() { return m_trigLevel; }
+        void setTrigLevel( double l );
+        virtual bool trigLevelOn( double* level ) override;
+
         virtual void updateStep() override;
 
         virtual void setTimeDiv( uint64_t td ) override;
@@ -68,7 +75,13 @@ class Oscope : public PlotBase
         DataWidget* dataW() { return m_dataWidget; }
 
     private:
+        uint64_t fixedLevelEnd( uint64_t now, uint64_t timeFrame );
+
         double m_filter;
+
+        bool   m_trigAuto;
+        double m_trigLevel;
+        int    m_trigState;   // Display state with a fixed level, for the debug log: -1 unset, 0 free running, 1 triggered
 
         int m_auto;
 
