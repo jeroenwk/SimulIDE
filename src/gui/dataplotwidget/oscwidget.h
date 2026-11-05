@@ -34,6 +34,8 @@ class OscWidget : public QDialog, private Ui::OscWidget
         void updateColors();
         void setAuto( int ch );
         void setTrigger( int ch );
+        void setTrigAuto( bool a );
+        void setTrigLevel( double l );
         void hideChannel( int ch, bool hide );
         void setTracks( int tr ) { trackGroup->button( tr )->setChecked( true ); }
 
@@ -58,6 +60,8 @@ class OscWidget : public QDialog, private Ui::OscWidget
         void on_channelGroup_buttonClicked( int ch );
         void on_autoGroup_buttonClicked( int ch );
         void on_triggerGroup_buttonClicked( int ch );
+        void on_trigAutoCheck_toggled( bool a );
+        void on_trigLevelBox_valueChanged( double l );
         void on_hideGroup_buttonClicked( int ch );
         void on_trackGroup_buttonClicked( int ch );
 

@@ -4,6 +4,8 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QWheelEvent>
+#include <QSignalBlocker>
+#include <QDebug>
 
 #include "oscwidget.h"
 #include "oscope.h"
@@ -43,6 +45,11 @@ OscWidget::OscWidget( QWidget* parent , Oscope* oscope )
     triggerGroup->addButton( triggerCheck4, 3 );
     triggerGroup->addButton( triggerCheck5, 4 );
     triggerGroup->button( 4 )->setChecked( true );
+    {                       // The Oscope is still being built: don't call it back
+        QSignalBlocker b( trigAutoCheck );
+        trigAutoCheck->setChecked( true );
+        trigLevelBox->setEnabled( false );
+    }
 
     hideGroup->addButton( hideCheck1, 0 );
     hideGroup->addButton( hideCheck2, 1 );
@@ -341,6 +348,38 @@ void OscWidget::setTrigger( int ch )
 {
     triggerGroup->button( ch )->setChecked( true );
     trigLabel->setStyleSheet( UiTheme::self()->chipSheet( m_oscope->getColor( ch ) ) );
+}
+
+void OscWidget::on_trigAutoCheck_toggled( bool a )
+{
+    trigLevelBox->setEnabled( !a );
+    if( m_blocked ) return;
+    m_blocked = true;
+    qDebug() << "[ScopeTrig] panel: Auto level" << a;
+    m_oscope->setTrigAuto( a );
+    m_blocked = false;
+}
+
+void OscWidget::on_trigLevelBox_valueChanged( double l )
+{
+    if( m_blocked ) return;
+    m_blocked = true;
+    qDebug() << "[ScopeTrig] panel: level" << l << "V";
+    m_oscope->setTrigLevel( l );
+    m_blocked = false;
+}
+
+void OscWidget::setTrigAuto( bool a )
+{
+    QSignalBlocker b( trigAutoCheck );
+    trigAutoCheck->setChecked( a );
+    trigLevelBox->setEnabled( !a );
+}
+
+void OscWidget::setTrigLevel( double l )
+{
+    QSignalBlocker b( trigLevelBox );
+    trigLevelBox->setValue( l );
 }
 
 void OscWidget::on_hideGroup_buttonClicked( int ch )

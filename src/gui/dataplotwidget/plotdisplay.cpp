@@ -360,6 +360,26 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
     p.fillRect( 0,                   0, m_marginX-1, height(), QColor( 10, 15, 50 ) );
     p.fillRect( m_sizeX+m_marginX+1, 0, m_marginX-1, height(), QColor( 10, 15, 50 ) );
 
+    double trigLevel;            // Fixed trigger level: dashed line in the trigger channel's colour
+    if( m_component && m_component->trigLevelOn( &trigLevel ) )
+    {
+        int ch = m_component->trigger();
+        if( ch < m_channels && !m_hideCh[ch] )
+        {
+            double y = m_posY[ch]-trigLevel*m_scaleY[ch];
+            QPen penT( m_color[ch], 1, Qt::DashLine, Qt::FlatCap, Qt::MiterJoin );
+            p.setPen( penT );
+            if( y >= m_ceroY && y <= m_endY ) p.drawLine( QPointF( m_ceroX, y ), QPointF( m_endX, y ) );
+
+            double yc = qBound( m_ceroY, y, m_endY );   // Arrow at the right edge, clamped when off screen
+            QPolygonF arrow;
+            arrow << QPointF( m_endX, yc ) << QPointF( m_endX+6, yc-4 ) << QPointF( m_endX+6, yc+4 );
+            p.setBrush( m_color[ch] );
+            p.setPen( Qt::NoPen );
+            p.drawPolygon( arrow );
+            p.setBrush( Qt::NoBrush );
+    }   }
+
     if( !m_expand ) { p.end(); return; }
 
     double t0 = m_timeZero*width()/100;

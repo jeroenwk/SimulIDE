@@ -21,6 +21,7 @@
 #include "stringprop.h"
 #include "doubleprop.h"
 #include "intprop.h"
+#include "boolprop.h"
 
 #define tr(str) simulideTr("Oscope",str)
 
@@ -43,6 +44,9 @@ Oscope::Oscope( QString type, QString id )
     m_numChannels = 4;
     m_trigger = 4;
     m_auto    = 4;
+    m_trigAuto  = true;
+    m_trigLevel = 0;
+    m_trigState = -1;
 
     m_oscWidget  = new OscWidget( CircuitWidget::self(), this );
     m_dataWidget = new DataWidget( NULL, this );
@@ -100,7 +104,13 @@ Oscope::Oscope( QString type, QString id )
                             , this, &Oscope::hideCh, &Oscope::setHideCh ),
 
         new StrProp <Oscope>("VolPos" ,"", ""
-                            , this, &Oscope::volPos, &Oscope::setVolPos )
+                            , this, &Oscope::volPos, &Oscope::setVolPos ),
+
+        new BoolProp<Oscope>("TrigAuto" ,"", ""
+                            , this, &Oscope::trigAuto, &Oscope::setTrigAuto ),
+
+        new DoubProp<Oscope>("TrigLevel", "", "V"
+                            , this, &Oscope::trigLevel, &Oscope::setTrigLevel )
     }, groupHidden } );
 }
 Oscope::~Oscope()
@@ -121,9 +131,12 @@ void Oscope::updateStep()
 
     if( !Simulator::self()->isPaused() )
     {
-        if( m_trigger < 4  ) period = m_channel[m_trigger]->m_period; // We want a trigger
+        bool fixedLevel = m_trigger < 4 && !m_trigAuto;
+        if( !fixedLevel && m_trigger < 4 ) period = m_channel[m_trigger]->m_period; // We want a trigger
 
-        if( period > 10 ) // We have a Trigger
+        if( fixedLevel ) // Trigger at a fixed level: the crossings the channel found
+            simTime = fixedLevelEnd( Simulator::self()->circTime(), timeFrame );
+        else if( period > 10 ) // We have a Trigger
         {
             uint64_t risEdge = m_channel[m_trigger]->m_risEdge;
 
@@ -213,12 +226,61 @@ void Oscope::setTrigger( int ch )
 {
     m_trigger = ch;
     m_oscWidget->setTrigger( ch );
+    m_trigState = -1;
+    for( int i=0; i<4; ++i ) ((OscopeChannel*)m_channel[i])->resetTrig(); // Edges were of the old channel
 
     if( ch > 3 ) return;
     for( int i=0; i<4; ++i ){
         if( ch == i ) m_channel[i]->m_trigger = true;
         else          m_channel[i]->m_trigger = false;
 }   }
+
+uint64_t Oscope::fixedLevelEnd( uint64_t now, uint64_t timeFrame )
+{
+    // Like a real scope in Auto sweep: the trigger point (a crossing of the level) goes in the
+    // middle of the screen, so the latest edge with half a screen of data after it is shown.
+    // No such edge in the last 10 screens (the buffer holds about 12): free running.
+    OscopeChannel* ch = (OscopeChannel*)m_channel[m_trigger];
+    uint64_t half = timeFrame/2;
+    uint64_t edge = 0;
+    bool found = ( now > half ) && ch->trigEdgeBefore( now-half, &edge )
+              && ( now-edge <= timeFrame*10 );
+    int state = found ? 1 : 0;
+    if( state != m_trigState ){
+        m_trigState = state;
+        qDebug() << "[ScopeTrig]" << getUid() << ( found ? "triggered" : "free running (no edge at the level)" )
+                 << "ch" << m_trigger << "level" << m_trigLevel << "V t" << now*1e-12 << "s";
+    }
+    if( !found ) return now;
+    return edge+half;
+}
+
+void Oscope::setTrigAuto( bool a )
+{
+    if( a != m_trigAuto ) qDebug() << "[ScopeTrig]" << getUid() << "level mode" << ( a ? "Auto" : "fixed" ) << m_trigLevel << "V";
+    m_trigAuto = a;
+    m_trigState = -1;
+    for( int i=0; i<4; ++i ) ((OscopeChannel*)m_channel[i])->resetTrig();
+    m_oscWidget->setTrigAuto( a );
+    if( m_display ) m_display->update();
+}
+
+void Oscope::setTrigLevel( double l )
+{
+    if( l != m_trigLevel ) qDebug() << "[ScopeTrig]" << getUid() << "level" << m_trigLevel << "->" << l << "V";
+    m_trigLevel = l;
+    m_trigState = -1;
+    for( int i=0; i<4; ++i ) ((OscopeChannel*)m_channel[i])->resetTrig();
+    m_oscWidget->setTrigLevel( l );
+    if( m_display ) m_display->update();
+}
+
+bool Oscope::trigLevelOn( double* level )
+{
+    if( m_trigAuto || m_trigger > 3 ) return false;
+    *level = m_trigLevel;
+    return true;
+}
 
 void Oscope::setTunnels( QString tunnels )
 {

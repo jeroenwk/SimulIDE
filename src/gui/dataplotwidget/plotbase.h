@@ -58,6 +58,9 @@ class PlotBase : public Component, public ScriptModule
         int trigger() { return m_trigger; }
         virtual void setTrigger( int ch )=0;
 
+        // Fixed trigger level in use (not Auto, a trigger channel chosen): its level in V
+        virtual bool trigLevelOn( double* level ) { (void)level; return false; }
+
         virtual QString tunnels();
         virtual void setTunnels( QString tunnels )=0;
 

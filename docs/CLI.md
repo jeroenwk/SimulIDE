@@ -353,8 +353,8 @@ Removing wires around a junction works as in the GUI:
 | `log [--since T] [--kind part\|cap] [--comp C] [--last N]` | Event log of the run, as in Messages: part state changes and charge events of capacitors with Log charge on (time, approx, comp, kind, level, text, shown) |
 | `status <comp> [--last N]` | States a part reports with `component.setStatus`: now, and every change since the start with its simulated time (block, text, level `off`/`on`/`wait`/`fault`), oldest first. Restart times and blink rates come straight from it |
 | `scope data <comp> [--ch N] [--last TIME] [--max N]` | Oscilloscope or logic analyzer samples as `[time_s, value]`, oldest first |
-| `scope get <comp>` | Display settings: time/div, trigger, auto-scale, and per channel volts/div and positions |
-| `scope set <comp> [--timediv T] [--trigger CH\|none] [--voltdiv V\|a,b,c,d] [--voltpos ...] [--timepos ...] [--ch CH] [--autoscale CH\|none]` | Change display settings, as in the Expand panel |
+| `scope get <comp>` | Display settings: time/div, trigger, trigger level, auto-scale, and per channel volts/div and positions |
+| `scope set <comp> [--timediv T] [--trigger CH\|none] [--triglevel V\|auto] [--voltdiv V\|a,b,c,d] [--voltpos ...] [--timepos ...] [--ch CH] [--autoscale CH\|none]` | Change display settings, as in the Expand panel |
 
 For `scope set`, channels are 0..3 (`Pin0`..`Pin3`). A single
 `--voltdiv`/`--voltpos`/`--timepos` value applies to the channel given with
@@ -362,6 +362,15 @@ For `scope set`, channels are 0..3 (`Pin0`..`Pin3`). A single
 checked before anything changes. For example,
 `scope set SCOPE --timediv 5ms --voltdiv 5 --trigger 0` shows a 50 Hz, 10 V
 sine. The defaults (1 ms, 1 V/div) clip most signals.
+
+`--triglevel` sets the oscilloscope's trigger level (Expand panel: Trig
+level). `auto`, the default, triggers in the middle of the last cycle. A
+value in volts triggers on a rising edge through that level, with the Filter
+setting as hysteresis: the crossing goes in the middle of the screen, drawn
+as a dashed line with an arrow in the trigger channel's colour. With no
+crossing in the last 10 screens the scope runs free, like a real scope in
+Auto sweep. Example: `scope set SCOPE --trigger 0 --triglevel 300` on a
+rectified mains bus.
 
 `sim run` waits for one display frame after pausing, so `read` returns values
 that match the end of the run.

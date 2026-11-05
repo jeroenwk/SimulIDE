@@ -3,6 +3,8 @@
  *   Measurement and interaction commands                                  *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <QDebug>
+
 #include "capacitorbase.h"
 #include "inductor.h"
 #include "transformer.h"
@@ -327,6 +329,7 @@ QJsonObject scopeSettings( PlotBase* plot )
                 {"timePos", Cli::timeStr( (uint64_t)qAbs( timePos.value( i ).toLongLong() ) ).prepend( timePos.value( i ).startsWith('-') ? "-":"" ) } } );
         o["channels"] = chans;
         o["autoScale"] = osc->autoSC() > 3 ? QJsonValue("none") : QJsonValue( osc->autoSC() );
+        o["trigLevel"] = osc->trigAuto() ? QJsonValue("auto") : QJsonValue( osc->trigLevel() );
     }
     else if( LAnalizer* la = dynamic_cast<LAnalizer*>( plot ) )
     {
@@ -471,9 +474,10 @@ void CliApi::registerMeasure()
     });
 
     add("scope set", "scope set <comp> [--timediv T] [--trigger CH|none] [--voltdiv V|a,b,c,d] [--voltpos V|a,b,c,d] "
-        "[--timepos T|a,b,c,d] [--ch CH] [--autoscale CH|none]",
+        "[--timepos T|a,b,c,d] [--ch CH] [--autoscale CH|none] [--triglevel V|auto]",
         "Change display settings, as in the Expand panel. Channels are 0..3 (Pin0..Pin3). A single --voltdiv/--voltpos/--timepos "
-        "value applies to --ch, or to all channels; a comma list sets each channel. Example: scope set SCOPE --timediv 5ms --voltdiv 5 --trigger 0",
+        "value applies to --ch, or to all channels; a comma list sets each channel. --triglevel: trigger on a rising edge through "
+        "V volts (hysteresis = the Filter setting), or auto (the middle of the last cycle). Example: scope set SCOPE --timediv 5ms --voltdiv 5 --trigger 0 --triglevel 2.5",
         []( CliCtx& c ) -> QJsonValue
     {
         Component* comp = CliRefs::comp( c.arg( 0, "oscilloscope or logic analyzer") );
@@ -491,6 +495,15 @@ void CliApi::registerMeasure()
         int trigger = c.has("trigger") ? parseChannel( c.opt("trigger"), "--trigger") : -1;
         int autoSc  = c.has("autoscale") ? parseChannel( c.opt("autoscale"), "--autoscale") : -1;
         if( autoSc >= 0 && !osc ) throw CliError("--autoscale is only for the oscilloscope");
+        bool setTrigLevel = c.has("triglevel");
+        bool trigAuto = false;
+        double trigLevel = 0;
+        if( setTrigLevel ){
+            if( !osc ) throw CliError("--triglevel is only for the oscilloscope");
+            QString v = c.opt("triglevel").trimmed();
+            if( v.toLower() == "auto") trigAuto = true;
+            else trigLevel = Cli::parseNum( v, "triglevel");
+        }
 
         QList<QPair<int,double>> voltDiv, voltPos;
         QList<QPair<int,int64_t>> timePos;
@@ -504,13 +517,18 @@ void CliApi::registerMeasure()
             for( auto& p : perChannel( c, "voltpos") ) voltPos.append({ p.first, Cli::parseNum( p.second, "voltpos") });
         }
         if( c.has("timepos") ) for( auto& p : perChannel( c, "timepos") ) timePos.append({ p.first, parseSignedTime( p.second ) });
-        if( !c.has("timediv") && trigger < 0 && autoSc < 0 && voltDiv.isEmpty() && voltPos.isEmpty() && timePos.isEmpty() )
+        if( !c.has("timediv") && trigger < 0 && autoSc < 0 && !setTrigLevel && voltDiv.isEmpty() && voltPos.isEmpty() && timePos.isEmpty() )
             throw CliError("nothing to set (see: help scope set)");
 
         if( timeDiv ) plot->setTimeDiv( timeDiv );
         if( trigger >= 0 ) plot->setTrigger( trigger );
         if( osc ){
             if( autoSc >= 0 ) osc->setAutoSC( autoSc );
+            if( setTrigLevel ){
+                qDebug() << "[CLI] scope set" << comp->getUid() << "triglevel" << ( trigAuto ? QString("auto") : QString::number( trigLevel ) );
+                if( !trigAuto ) osc->setTrigLevel( trigLevel );
+                osc->setTrigAuto( trigAuto );
+            }
             for( auto& p : voltDiv ) osc->setVoltDiv( p.first, p.second );
             for( auto& p : voltPos ) osc->setVoltPos( p.first, p.second );
             for( auto& p : timePos ) osc->setTimePos( p.first, p.second );
