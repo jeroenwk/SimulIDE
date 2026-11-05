@@ -14,3 +14,4 @@ through the CLI). Turn on Show Capacitor Charge and Inductor Current
 | `transformer_1to2_load.sim1` | 10 V 50 Hz into a 1:2 transformer, 1 kΩ load | Secondary 19.8 mA at the sine peak; primary 2× that plus ~30 mA magnetising |
 | `transformer_layouts.sim1` | Six secondary coils, and a rotated transformer | Gauge placement: labels never overlap; above/below when rotated |
 | `relay_and_rl_decay.sim1` | Relay coil, and 10 mH / 10 Ω decaying from 0.5 A | Relay coil shows nothing; L1 at 37 % (e⁻¹) after 1 ms |
+| `chip_theme.sim1` | LM555, 74HC00 as DIP and as logic symbol, ATtiny25, MT7833A, a resistor | IC bodies, pin names and pin-1 markers per theme (`export --theme Classic|Light|Dark`) |
