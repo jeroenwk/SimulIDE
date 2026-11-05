@@ -9,3 +9,7 @@ build_XX/*
 # PGO: instrumented build and profile (tools/pgo_build.sh)
 build_pgo_gen/
 pgo/
+
+# Python bytecode cache (tools/*.py)
+__pycache__/
+*.pyc
