@@ -134,7 +134,9 @@ class Pin : public QGraphicsItem, public ePin, public Updatable
         bool m_isBus;
         bool m_unused;
         bool m_animate;
-        bool m_themedLabel = false;   // Label uses Theme::text()
+        QColor labelColor( QColor own );   // Theme colour for themed labels, else own
+
+        int  m_labelTheme = 2;        // Label colour: 0 own, 1 Theme::text(), 2 Theme::icText()
         bool m_warning;
 
         double  m_opCount;

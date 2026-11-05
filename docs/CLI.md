@@ -298,10 +298,16 @@ numbers: `voltage`, `level` (can exceed 1), `vref`, `vref_source`
 **Colors:** `settings set colorTheme Classic|Light|Dark` picks a preset (Dark
 is inspired by EveryCircuit: black canvas, hollow light grey parts, pale green
 current dots); it reads `Custom` once a color was changed.
-`settings set canvasColor|wireColor|lineColor|textColor|bodyColor|flowColor|nameColor|valueColor <color>`
+`settings set canvasColor|wireColor|lineColor|textColor|bodyColor|flowColor|nameColor|valueColor|icBodyColor|icTextColor <color>`
 sets the canvas, wires, component outlines (lines, pins, arrowheads), text
 inside components (pin names), component bodies (parts drawn white by default),
-current flow dots, and the name (R1) and value (470 Ω) labels. Animate colors:
+current flow dots, and the name (R1) and value (470 Ω) labels.
+`icBodyColor`/`icTextColor` color IC packages (chips, subcircuits, MCUs) and the
+pin names inside them; the pin-1 marker is derived from both. At the default
+IC body each kind keeps its classic shade (chips, subcircuits and MCUs differ
+slightly); packages with their own background image or color keep it, and
+logic-symbol packages follow the body color once it is not the default white.
+Dark makes ICs hollow like the other parts. Animate colors:
 `animHighColor`/`animLowColor` (wires above/below 2.5 V), `outHighColor`/`outLowColor`
 (output pins), `inHighColor`/`inLowColor` (input pins) and `openHighColor`
 (open-drain output released). A color is `#rrggbb` or a name (`white`, `navy`); `default` restores

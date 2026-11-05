@@ -174,7 +174,9 @@ QList<Setting>& settings()
             "Component body (fill) color, for parts drawn white by default: #rrggbb, a color name, or default.",
             "Current flow dot color: #rrggbb, a color name, or default.",
             "Component name label color (R1, U1): #rrggbb, a color name, or default.",
-            "Component value label color (470 Ω): #rrggbb, a color name, or default." };
+            "Component value label color (470 Ω): #rrggbb, a color name, or default.",
+            "IC body color (chips, subcircuits, MCUs without their own background): #rrggbb, a color name, or default (each kind keeps its classic shade).",
+            "Text inside ICs (pin names) color; the pin-1 marker is derived from it and the IC body: #rrggbb, a color name, or default." };
         QString desc = ( i < Theme::firstAnimRole ) ? QString( help[i] )
                      : "Animate color, "+Theme::caption( role ).toLower()+": #rrggbb, a color name, or default.";
         list.append({ Theme::key( role ), "circuit", desc,

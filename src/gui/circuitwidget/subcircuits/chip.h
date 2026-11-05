@@ -42,6 +42,7 @@ class Chip : public Component, public eElement
         virtual void setflip() override;
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w ) override;
+        virtual void updateLabelColors() override;   // Also the unused pins
 
  static QString getDevice( QString id );
 
