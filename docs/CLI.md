@@ -85,6 +85,7 @@ shows one.
 | `circuit save [file.sim1]` | Save it (to its current file, or a new one) |
 | `circuit info` | File, modified flag, counts, simulation settings, and `matrix`: each group of connected nodes the solver handles, with its size and how many times it was factorized and solved since the simulation started (a solver load check) |
 | `circuit export` | The circuit as `.sim1` XML |
+| `circuit fonts` | Convert Text components to the default fonts (Inter; JetBrains Mono for monospace names), one undo step; returns `converted` (same as the canvas right-click menu's **Convert Fonts to Default**) |
 | `undo`, `redo` | Same as Ctrl+Z / Ctrl+Y |
 | `quit [--discard]` | Close SimulIDE |
 
@@ -95,6 +96,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | Command | |
 |---|---|
 | `lib list [--search TEXT] [--category CAT]` | Everything that can be added: built-in parts, MCUs, ICs, boards |
+| `lib select <name>` / `lib select --none` | Select a category or component in the component list (expands and scrolls to it), or clear it; `capture window library` grabs the list |
 | `comp add <name> [--at x,y] [--label L] [--rot DEG] [prop=value ...]` | Add a part. Prints its uid and where each pin is (`pos` x,y and the `side` it points to) |
 | `comp list [--type TYPE]` | Components in the circuit |
 | `comp get <comp> [--all]` | Properties (with units, or the allowed options for choice properties) and pins (with position, connections, and voltages while running). `--all` adds hidden properties, marked `hidden` |
@@ -388,14 +390,17 @@ look at the window and point at parts.
 | Command | |
 |---|---|
 | `capture circuit [comp ...] [--area x,y,w,h] [--margin PX] [--scale S] [--file F.png]` | Render the circuit, or just some parts, to a PNG |
-| `capture window [main\|view\|circuit\|editor] [--scale S] [--file F.png]` | Grab what the window shows |
-| `export [--file F.png\|F.svg] [--format png\|svg] [--theme current\|Classic\|Light\|Dark] [--meters show\|hide] [--grid show\|hide] [--scale S] [--margin PX]` | Export the whole circuit as a PNG or SVG image (the toolbar's Export button) |
+| `capture window [main\|view\|circuit\|editor\|settings\|library\|props <comp>\|dialog <title>] [--scale S] [--file F.png]` | Grab what the window shows, or an open dialog |
+| `export [--file F.png\|F.svg] [--format png\|svg] [--theme current\|Classic\|Light\|Dark] [--meters show\|hide] [--grid show\|hide] [--scale S] [--margin PX] [--no-embed-fonts]` | Export the whole circuit as a PNG or SVG image (the toolbar's Export button) |
 | `select` | List the selected components |
 | `select <comp ...> [--add]` / `select --none` | Select components (highlighted in the GUI), or clear the selection |
 | `view fit\|selected\|reset` | Zoom to everything, to the selection, or to 100% |
 | `view zoom <factor>` / `view center <comp\|x,y>` | Zoom by a factor, or center on a part or point |
 | `view show <comp ...>` | Select the parts and zoom to them |
 | `view raise` | Bring the window to the front |
+| `view settings [app\|circuit\|simulation\|close]` | Open the Settings dialog on a tab, or close it |
+| `view props <comp> [--tab N\|NAME] [--close]` | Open a component's property dialog (on a tab, by number or name), or close it |
+| `view export` | Show the Export dialog without blocking (the toolbar's Export button opens it modally) |
 
 Capture details:
 
@@ -408,7 +413,13 @@ Capture details:
   - `main`: the whole window (the default),
   - `view`: the circuit as you currently see it,
   - `circuit`: the circuit panel with its toolbar,
-  - `editor`: the code editor.
+  - `editor`: the code editor,
+  - `settings`: the Settings dialog (`view settings` opens it),
+  - `library`: the component list (`lib select <name>` selects a category or component in it),
+  - `props <comp>`: that component's property dialog (`view props` opens it),
+  - `dialog <title>`: any open dialog whose title contains the text, e.g.
+    `capture window dialog Export` after `view export`. The error lists the
+    open dialogs when none matches.
   - `--scale 1` (the default) gives logical pixels, which is half size on
     HiDPI screens.
 - **`export`** is the image export of the toolbar button (the picture icon
@@ -423,6 +434,12 @@ Capture details:
     (as the Instruments toolbar button). Ammeters stay: they sit in series.
     Default: as the canvas shows them now.
   - `--grid show|hide`: default hide.
+  - SVG embeds the bundled fonts its text uses (Inter, JetBrains Mono, as
+    WOFF2 `@font-face` rules; about 30 to 60 KB each), so any browser shows
+    the text as SimulIDE laid it out; `fonts` in the reply lists the faces.
+    `--no-embed-fonts` leaves them out; `font-family` still lists fallbacks.
+    Fonts that are not bundled (a Text component with another font) are not
+    embedded: `circuit fonts` converts those.
   - The selection is not drawn (it is restored afterwards). The image covers
     everything that is drawn, plus `--margin` (default 24).
   - `--scale` (PNG only): pixels per circuit unit, default 2; the longest side

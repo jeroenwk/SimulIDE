@@ -19,6 +19,7 @@
 #include <QDebug>
 
 #include "subpackage.h"
+#include "appfonts.h"
 #include "packagepin.h"
 #include "itemlibrary.h"
 #include "circuitwidget.h"
@@ -709,7 +710,7 @@ EditDialog::EditDialog( SubPackage* pack, Pin* eventPin, QWidget* parent )
     layout->addWidget( bb );
 
     QFontMetrics fm( m_nameLabel->font() );
-    double scale = fm.width(" ")/2.0;
+    double scale = AppFonts::legacySpaceWidth( m_nameLabel->font() )/2.0;
     m_nameLineEdit->setFixedWidth( 60*scale );
     m_idLineEdit->setFixedWidth( 60*scale );
     m_spaceBox->setFixedWidth( 60*scale );

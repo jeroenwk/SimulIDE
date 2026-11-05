@@ -9,6 +9,7 @@
 #include <QGuiApplication>
 
 #include "textcomponent.h"
+#include "appfonts.h"
 #include "itemlibrary.h"
 #include "circuit.h"
 #include "simulator.h"
@@ -45,7 +46,7 @@ TextComponent::TextComponent( QString type, QString id )
     m_color = QColor( 255, 255, 220 );   // Used when a background colour is chosen
     m_noBack    = true;                  // Default: no background, no border, theme font colour
     m_themeFont = true;
-    m_font  = "Helvetica [Cronyx]";
+    m_font  = AppFonts::sans();
 
     QFont sansFont( m_font, 10 );
     #if QT_VERSION >= QT_VERSION_CHECK(5, 9, 0)

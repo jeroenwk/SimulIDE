@@ -7,6 +7,7 @@
 #include <math.h>
 
 #include "watcher.h"
+#include "appfonts.h"
 #include "valuewidget.h"
 #include "headerwidget.h"
 #include "mainwindow.h"
@@ -29,7 +30,7 @@ Watcher::Watcher( QWidget* parent, CoreBase* cpu )
 
     QFont font;
     float scale = MainWindow::self()->fontScale();
-    font.setFamily("Ubuntu Mono");
+    font.setFamily( AppFonts::mono() );
     font.setBold( true );
     //font.setPointSize( 14 );
     font.setPixelSize( round(12.5*scale) );

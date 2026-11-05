@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "numval.h"
+#include "appfonts.h"
 #include "component.h"
 #include "propdialog.h"
 #include "comproperty.h"
@@ -30,7 +31,7 @@ void NumVal::setup( bool isComp )
 
     //QFont font = valueBox->font();
     QFontMetrics fm( valLabel->font() );
-    float scale = fm.width(" ")/2;
+    float scale = AppFonts::legacySpaceWidth( valLabel->font() )/2;
     //font.setPixelSize( 11.0*scale );
     //unitBox->setFont( font );
     //valueBox->setFont( font );

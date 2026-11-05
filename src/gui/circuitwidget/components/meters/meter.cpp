@@ -8,6 +8,7 @@
 #include <QPainter>
 
 #include "meter.h"
+#include "appfonts.h"
 #include "simulator.h"
 #include "iopin.h"
 #include "label.h"
@@ -39,7 +40,7 @@ Meter::Meter( QString type, QString id )
     m_idLabel->setPos(-12,-24);
     setLabelPos(-24,-40, 0);
 
-    QFont f( "Helvetica [Cronyx]", 10, QFont::Bold );
+    QFont f( AppFonts::sans(), 10, QFont::Bold );
     f.setPixelSize(12);
     m_display.setFont(f);
     m_display.setBrush(  Qt::yellow );

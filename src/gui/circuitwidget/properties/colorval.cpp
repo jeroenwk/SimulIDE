@@ -7,6 +7,7 @@
 #include <QToolButton>
 
 #include "colorval.h"
+#include "appfonts.h"
 #include "component.h"
 #include "comproperty.h"
 #include "propdialog.h"
@@ -31,7 +32,7 @@ void ColorVal::setup( bool )
     //valueBox->setFont( font );
 
     QFontMetrics fm( colorW->font() );
-    float scale = fm.width(" ")/2;
+    float scale = AppFonts::legacySpaceWidth( colorW->font() )/2;
     colorW->setFixedWidth( 170.0*scale );
 
     valLabel->setText( m_property->capt() );

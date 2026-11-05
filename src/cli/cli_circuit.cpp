@@ -148,6 +148,14 @@ void CliApi::registerCircuit()
         return QJsonObject{ {"description", circ->description() }, {"modified", isModified() } };
     });
 
+    add("circuit fonts", "circuit fonts", "Convert Text components to the default fonts "
+        "(Inter; JetBrains Mono for monospace names). One undo step.",
+        []( CliCtx& ) -> QJsonValue
+    {
+        int n = Circuit::self()->convertFontsToDefault();
+        return QJsonObject{ {"converted", n } };
+    });
+
     add("circuit export", "circuit export", "Circuit contents in SimulIDE's .sim1 XML format.",
         []( CliCtx& ) -> QJsonValue
     {

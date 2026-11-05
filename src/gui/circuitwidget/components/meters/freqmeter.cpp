@@ -7,6 +7,7 @@
 #include <QFont>
 
 #include "freqmeter.h"
+#include "appfonts.h"
 #include "itemlibrary.h"
 #include "simulator.h"
 #include "pin.h"
@@ -45,7 +46,7 @@ FreqMeter::FreqMeter( QString type, QString id )
     m_idLabel->setPos(-12,-24);
     setLabelPos(-32,-24, 0);
 
-    QFont f( "Helvetica [Cronyx]", 10, QFont::Bold );
+    QFont f( AppFonts::sans(), 10, QFont::Bold );
     f.setPixelSize( 12 );
     m_display.setFont( f );
     m_display.setBrush( Qt::yellow );

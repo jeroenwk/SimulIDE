@@ -1,12 +1,23 @@
 <RCC>
     <qresource prefix="/">
-    
-        <file alias="Ubuntu-R.ttf">../resources/fonts/Ubuntu-R.ttf</file>
-        <file alias="Ubuntu-B.ttf">../resources/fonts/Ubuntu-B.ttf</file>
-        <file alias="UbuntuMono-B.ttf">../resources/fonts/UbuntuMono-B.ttf</file>
-        <file alias="UbuntuMono-BI.ttf">../resources/fonts/UbuntuMono-BI.ttf</file>
-        <file alias="UbuntuMono-R.ttf">../resources/fonts/UbuntuMono-R.ttf</file>
-        <file alias="UbuntuMono-RI.ttf">../resources/fonts/UbuntuMono-RI.ttf</file>
+        <file alias="fonts/Inter-Bold.ttf">../resources/fonts/ttf/Inter-Bold.ttf</file>
+        <file alias="fonts/Inter-Medium.ttf">../resources/fonts/ttf/Inter-Medium.ttf</file>
+        <file alias="fonts/Inter-Regular.ttf">../resources/fonts/ttf/Inter-Regular.ttf</file>
+        <file alias="fonts/Inter-SemiBold.ttf">../resources/fonts/ttf/Inter-SemiBold.ttf</file>
+        <file alias="fonts/JetBrainsMono-Bold.ttf">../resources/fonts/ttf/JetBrainsMono-Bold.ttf</file>
+        <file alias="fonts/JetBrainsMono-Italic.ttf">../resources/fonts/ttf/JetBrainsMono-Italic.ttf</file>
+        <file alias="fonts/JetBrainsMono-Medium.ttf">../resources/fonts/ttf/JetBrainsMono-Medium.ttf</file>
+        <file alias="fonts/JetBrainsMono-Regular.ttf">../resources/fonts/ttf/JetBrainsMono-Regular.ttf</file>
+        <file alias="fonts/JetBrainsMono-SemiBold.ttf">../resources/fonts/ttf/JetBrainsMono-SemiBold.ttf</file>
+        <file alias="fonts/Inter-Bold.woff2">../resources/fonts/woff2/Inter-Bold.woff2</file>
+        <file alias="fonts/Inter-Medium.woff2">../resources/fonts/woff2/Inter-Medium.woff2</file>
+        <file alias="fonts/Inter-Regular.woff2">../resources/fonts/woff2/Inter-Regular.woff2</file>
+        <file alias="fonts/Inter-SemiBold.woff2">../resources/fonts/woff2/Inter-SemiBold.woff2</file>
+        <file alias="fonts/JetBrainsMono-Bold.woff2">../resources/fonts/woff2/JetBrainsMono-Bold.woff2</file>
+        <file alias="fonts/JetBrainsMono-Italic.woff2">../resources/fonts/woff2/JetBrainsMono-Italic.woff2</file>
+        <file alias="fonts/JetBrainsMono-Medium.woff2">../resources/fonts/woff2/JetBrainsMono-Medium.woff2</file>
+        <file alias="fonts/JetBrainsMono-Regular.woff2">../resources/fonts/woff2/JetBrainsMono-Regular.woff2</file>
+        <file alias="fonts/JetBrainsMono-SemiBold.woff2">../resources/fonts/woff2/JetBrainsMono-SemiBold.woff2</file>
         
         <file alias="simulide_az.qm">../resources/qm/simulide_az.qm</file>
         <file alias="simulide_cz.qm">../resources/qm/simulide_cz.qm</file>

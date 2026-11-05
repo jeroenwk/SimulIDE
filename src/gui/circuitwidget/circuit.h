@@ -77,6 +77,10 @@ class Circuit : public QGraphicsScene
 
         void setChanged();
 
+        // Text components with a font other than the bundled ones get Inter (JetBrains Mono
+        // for monospace names). One undo step. Returns the number of components changed
+        int convertFontsToDefault();
+
         void accepKeys( bool a ) { m_acceptKeys = a; }
 
         Pin* findPin( int x, int y, QString id );

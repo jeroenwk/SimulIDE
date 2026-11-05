@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "mcumonitor.h"
+#include "appfonts.h"
 #include "simulator.h"
 #include "e_mcu.h"
 #include "cpubase.h"
@@ -187,7 +188,7 @@ void MCUMonitor::createStatusPC()
 
     QTableWidgetItem* it;
     QFont font;
-    font.setFamily("Ubuntu Mono");
+    font.setFamily( AppFonts::mono() );
     font.setBold( true );
     font.setPixelSize( font_size );
     m_status.setFont( font );

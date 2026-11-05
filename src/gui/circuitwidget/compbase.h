@@ -58,6 +58,8 @@ class CompBase
 
         virtual bool isHidden() { return false;}
 
+        PropDialog* propDialog() { return m_propDialog; }   // CLI: view props / capture window props
+
     protected:
         QString m_id;
         QString m_type;

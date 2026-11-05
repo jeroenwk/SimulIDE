@@ -8,6 +8,7 @@
 #include <QTextCursor>
 
 #include "console.h"
+#include "appfonts.h"
 #include "corebase.h"
 #include "mainwindow.h"
 #include "simulator.h"
@@ -22,7 +23,7 @@ Console::Console( CoreBase* cpu, QWidget* parent )
     document()->setMaximumBlockCount( 100 );
 
     QFont font;
-    font.setFamily("Ubuntu Mono");
+    font.setFamily( AppFonts::mono() );
     font.setWeight( 50 );
     font.setFixedPitch(true);
     font.setPixelSize( 13*MainWindow::self()->fontScale() );

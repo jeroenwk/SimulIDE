@@ -6,6 +6,7 @@
 #include <QDomDocument>
 
 #include "chip.h"
+#include "appfonts.h"
 #include "theme.h"
 #include "circuitwidget.h"
 #include "mainwindow.h"
@@ -46,10 +47,12 @@ Chip::Chip( QString type, QString id, QString device )
     m_icColor = QColor( 50, 50, 70 );
 
     QFont f;
-    f.setFamily("Ubuntu Mono");
+    f.setFamily( AppFonts::mono() );
     f.setWeight( 65 );
 #ifdef Q_OS_UNIX
-    f.setLetterSpacing( QFont::PercentageSpacing, 120 );
+    // 120 % was for Ubuntu Mono; JetBrains Mono at 100 % has the same width (and SVG
+    // exports carry no letter spacing, so 100 % keeps them identical)
+    f.setLetterSpacing( QFont::PercentageSpacing, 100 );
 #else
     //f.setLetterSpacing( QFont::AbsoluteSpacing, -1 );
     f.setWeight( 100 );

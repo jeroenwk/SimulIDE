@@ -6,6 +6,7 @@
 //#include <math.h>
 
 #include "valuewidget.h"
+#include "appfonts.h"
 #include "mainwindow.h"
 #include "e_mcu.h"
 #include "cpubase.h"
@@ -22,12 +23,12 @@ ValueWidget::ValueWidget( QString name, QString type, CoreBase* core, QWidget* p
 
     float scale = MainWindow::self()->fontScale();
     QFont fontS;
-    fontS.setFamily("Ubuntu Mono");
+    fontS.setFamily( AppFonts::mono() );
     fontS.setBold( true );
     fontS.setPixelSize( round(12.5*scale) );
 
     QFont font;
-    font.setFamily("Ubuntu Mono");
+    font.setFamily( AppFonts::mono() );
     font.setBold( true );
     font.setPixelSize( round(12.5*scale) );
 

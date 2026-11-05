@@ -5,7 +5,10 @@
 
 #include <QAbstractSpinBox>
 
+#include <QDebug>
+
 #include "propdialog.h"
+#include "appfonts.h"
 #include "component.h"
 #include "circuit.h"
 
@@ -41,7 +44,7 @@ PropDialog::PropDialog( QWidget* parent, QString help )
 void PropDialog::setComponent( CompBase* comp, bool isComp )
 {
     QFontMetrics fm( labelLabel->font() );
-    m_scale = fm.width(" ")/2.0;
+    m_scale = AppFonts::legacySpaceWidth( labelLabel->font() )/2.0;
     m_minW  = 265*m_scale;
     m_minH  = 100*m_scale;
 
@@ -189,7 +192,14 @@ void PropDialog::adjustWidgets()
             if( !widget->layout()->itemAt(i)->widget()->isHidden() )
                 count++;
 
-        h = count*24*m_scale+90*m_scale;
+        // 24 px per row was sized for Ubuntu; a taller font (Inter) may need more: take the
+        // rows' minimum height when it is larger, so nothing is squeezed. Not their size
+        // hint: the row widgets ask for much more and the rows would spread out
+        int estimate = count*24*m_scale;
+        int minRows  = widget->layout()->minimumSize().height();
+        h = qMax( estimate, minRows )+90*m_scale;
+        qDebug() << "[PropDialog] rows" << count << "estimate" << estimate << "layout min" << minRows
+                 << "layout hint" << widget->layout()->sizeHint().height() << "-> height" << h;
     }
     if( h < m_minH ) h = m_minH;
 

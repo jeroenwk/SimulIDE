@@ -10,6 +10,7 @@
 #include <math.h>
 
 #include "ds1621.h"
+#include "appfonts.h"
 #include "theme.h"
 #include "itemlibrary.h"
 #include "circuit.h"
@@ -87,13 +88,13 @@ DS1621::DS1621( QString type, QString id )
     QObject::connect( u_button, &QPushButton::pressed, [=](){ upbuttonclicked(); } );
     QObject::connect( d_button, &QPushButton::pressed, [=](){ downbuttonclicked(); } );
 
-    m_font.setFamily("Ubuntu Mono");
+    m_font.setFamily( AppFonts::mono() );
 #ifdef _WIN32
     m_font.setStretch( 99 );
 #else
     m_font.setStretch( 93 );
 #endif
-    m_font.setPixelSize( 10 );
+    m_font.setPixelSize( 8 );   // JetBrains Mono: 5/6 of the Ubuntu Mono size (specs/inter-fonts.md)
     m_font.setBold( true );
     m_font.setLetterSpacing( QFont::PercentageSpacing, 100 );
     setLabelPos(-24,-28 );

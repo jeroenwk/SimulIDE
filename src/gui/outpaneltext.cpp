@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "outpaneltext.h"
+#include "appfonts.h"
 #include "mainwindow.h"
 #include "simulator.h"
 #include "circuit.h"
@@ -25,7 +26,7 @@ OutPanelText::OutPanelText( QWidget* parent )
     setPalette(p);
     
     QFont font;
-    font.setFamily("Ubuntu Mono");
+    font.setFamily( AppFonts::mono() );
     font.setWeight( 50 );
     font.setFixedPitch(true);
     font.setPixelSize( 13*MainWindow::self()->fontScale() );

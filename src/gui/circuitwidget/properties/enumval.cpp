@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "enumval.h"
+#include "appfonts.h"
 #include "component.h"
 #include "propdialog.h"
 #include "comproperty.h"
@@ -27,7 +28,7 @@ void EnumVal::setup( bool isComp )
     valueBox->setCurrentIndex( m_enums.indexOf( valStr) );
 
     QFontMetrics fm( valueBox->font() );
-    float scale = fm.width(" ")/2;
+    float scale = AppFonts::legacySpaceWidth( valueBox->font() )/2;
     valueBox->setFixedWidth( 170.0*scale );
 
     if( !isComp ) showVal->setVisible( false );

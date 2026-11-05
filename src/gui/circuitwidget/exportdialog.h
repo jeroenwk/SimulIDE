@@ -19,6 +19,7 @@ class ExportDialog : public QDialog
         ExportDialog( QWidget* parent );
 
         static void run( QWidget* parent );   // Show it; on Export ask for the file and write it
+        static void showNonModal( QWidget* parent ); // CLI: view export (deleted when closed)
 
     private:
         void doExport();
@@ -28,6 +29,7 @@ class ExportDialog : public QDialog
         QComboBox*      m_theme;
         QCheckBox*      m_meters;
         QCheckBox*      m_grid;
+        QCheckBox*      m_embedFonts;
         QDoubleSpinBox* m_scale;
 };
 

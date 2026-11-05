@@ -11,6 +11,9 @@
 #include <QFileInfo>
 #include <QCoreApplication>
 #include <QGraphicsItem>
+#include <QDebug>
+#include <QDialog>
+#include <QApplication>
 
 #include "cliapi.h"
 #include "clirefs.h"
@@ -23,6 +26,9 @@
 #include "editorwindow.h"
 #include "theme.h"
 #include "appdialog.h"
+#include "propdialog.h"
+#include "componentselector.h"
+#include "exportdialog.h"
 #include "circuitexport.h"
 #include "instrumentview.h"
 
@@ -116,11 +122,12 @@ void CliApi::registerView()
     });
 
     add("export", "export [--file F.png|F.svg] [--format png|svg] [--theme current|Classic|Light|Dark] "
-        "[--meters show|hide] [--grid show|hide] [--scale S] [--margin PX]",
+        "[--meters show|hide] [--grid show|hide] [--scale S] [--margin PX] [--no-embed-fonts]",
         "Export the whole circuit as a PNG or SVG image, as the toolbar's Export button does. The format comes from "
         "--format or the file extension (default png). --theme renders with a colour preset without changing the "
         "setting (default: the current colours). --meters: instruments with their leads (default: as on the canvas). "
-        "--grid: default hide. --scale: PNG pixels per unit (default 2). Without --file: a temp file. Works headless.",
+        "--grid: default hide. --scale: PNG pixels per unit (default 2). SVG embeds the bundled fonts it uses "
+        "(Inter, JetBrains Mono) unless --no-embed-fonts. Without --file: a temp file. Works headless.",
         []( CliCtx& c ) -> QJsonValue
     {
         auto showOpt = [&c]( QString key, bool def ) -> bool {
@@ -157,6 +164,7 @@ void CliApi::registerView()
         opt.grid   = showOpt("grid", false );
         opt.scale  = Cli::parseNum( c.opt("scale","2"), "scale");
         opt.margin = Cli::parseNum( c.opt("margin","24"), "margin");
+        opt.embedFonts = !c.has("no-embed-fonts");
 
         ExportResult r;
         QString error;
@@ -170,12 +178,15 @@ void CliApi::registerView()
             {"theme",  opt.theme.isEmpty() ? Theme::currentPreset() : opt.theme },
             {"meters", opt.meters },
             {"grid",   opt.grid },
+            {"fonts",  QJsonArray::fromStringList( r.fonts ) },
             {"area",   QJsonArray{ r.area.x(), r.area.y(), r.area.width(), r.area.height() } } };
     });
 
-    add("capture window", "capture window [main|view|circuit|editor|settings] [--scale S] [--file F.png]",
+    add("capture window", "capture window [main|view|circuit|editor|settings|library|props <comp>|dialog <title>] [--scale S] [--file F.png]",
         "Grab what the window shows: the whole main window (default), the circuit view as the user sees it "
-        "(zoom and scroll included), the circuit panel with its toolbar, or the code editor. Returns the file path.",
+        "(zoom and scroll included), the circuit panel with its toolbar, the code editor, the Settings dialog, "
+        "a component's property dialog (view props opens it) or any open dialog whose title contains <title>. "
+        "Returns the file path.",
         []( CliCtx& c ) -> QJsonValue
     {
         QString part = c.argOr( 0, "main").toLower();
@@ -188,7 +199,26 @@ void CliApi::registerView()
             w = CircuitWidget::self()->appDialog();
             if( !w || !w->isVisible() ) throw CliError("the Settings dialog is not open (view settings opens it)");
         }
-        else throw CliError("unknown part: "+part+" (main, view, circuit, editor, settings)");
+        else if( part == "library" ) w = ComponentSelector::self();
+        else if( part == "props" ){
+            Component* comp = CliRefs::comp( c.arg( 1, "comp") );
+            w = comp->propDialog();
+            if( !w || !w->isVisible() ) throw CliError("the property dialog of "+comp->getUid()+" is not open (view props opens it)");
+        }
+        else if( part == "dialog" ){
+            QString title = c.arg( 1, "title");
+            QStringList open;
+            for( QWidget* tw : QApplication::topLevelWidgets() )
+            {
+                QDialog* d = qobject_cast<QDialog*>( tw );
+                if( !d || !d->isVisible() ) continue;
+                open << d->windowTitle();
+                if( !w && d->windowTitle().contains( title, Qt::CaseInsensitive ) ) w = d;
+            }
+            qDebug() << "[CLI] capture window dialog" << title << "open dialogs:" << open;
+            if( !w ) throw CliError("no open dialog titled \""+title+"\" (open: "+open.join(", ")+")");
+        }
+        else throw CliError("unknown part: "+part+" (main, view, circuit, editor, settings, library, props, dialog)");
 
         if( !w->isVisible() && !CliApi::self()->headless() )
             CliApi::self()->addMessage( part+" is not visible: the image may be empty");
@@ -200,9 +230,11 @@ void CliApi::registerView()
         return saveImage( img, outFile( c, "window-"+part ) );
     });
 
-    add("view", "view fit|selected|reset|zoom <factor>|center <comp|x,y>|show <comp ...>|raise|settings [app|circuit|simulation|close]",
+    add("view", "view fit|selected|reset|zoom <factor>|center <comp|x,y>|show <comp ...>|raise|settings [app|circuit|simulation|close]|props <comp> [--tab N|NAME] [--close]|export",
         "Control what the circuit view shows: fit all, fit selection, 100%, zoom by a factor, center on a component "
-        "or point, show (select + fit) components, or bring the window to the front.",
+        "or point, show (select + fit) components, bring the window to the front, open the Settings dialog, or open "
+        "(or --close) a component's property dialog, on a tab given by number or name, or show the Export dialog "
+        "(capture window dialog Export grabs it).",
         []( CliCtx& c ) -> QJsonValue
     {
         CircuitView* view = CircuitView::self();
@@ -246,6 +278,36 @@ void CliApi::registerView()
                 CircuitWidget::self()->appDialog()->raise();
             }
         }
+        else if( verb == "props" )                // Open a component's property dialog (on a tab), or close it
+        {
+            Component* comp = CliRefs::comp( c.arg( 1, "comp") );
+            if( c.has("close") ){
+                if( comp->propDialog() ) comp->propDialog()->close();
+                qDebug() << "[CLI] view props: closed" << comp->getUid();
+            }else{
+                comp->openProperties();
+                PropDialog* d = comp->propDialog();
+                QString tab = c.opt("tab");
+                if( d && !tab.isEmpty() )
+                {
+                    bool num = false;
+                    int i = tab.toInt( &num );
+                    if( !num ){
+                        i = -1;
+                        for( int k=0; k<d->tabCount(); ++k )
+                            if( d->tabName( k ).compare( tab, Qt::CaseInsensitive ) == 0 ) i = k;
+                    }
+                    if( i < 0 || i >= d->tabCount() ){
+                        QStringList names;
+                        for( int k=0; k<d->tabCount(); ++k ) names << d->tabName( k );
+                        throw CliError("unknown tab: "+tab+" ("+names.join(", ")+")");
+                    }
+                    d->showTab( i );
+                }
+                qDebug() << "[CLI] view props: opened" << comp->getUid() << "tab" << tab << "size" << ( d ? d->size() : QSize() );
+            }
+        }
+        else if( verb == "export" ) ExportDialog::showNonModal( MainWindow::self() );
         else if( verb == "raise" )
         {
             MainWindow* mw = MainWindow::self();
@@ -253,7 +315,7 @@ void CliApi::registerView()
             mw->raise();
             mw->activateWindow();
         }
-        else throw CliError("unknown view action: "+verb+" (fit, selected, reset, zoom, center, show, raise, settings)");
+        else throw CliError("unknown view action: "+verb+" (fit, selected, reset, zoom, center, show, raise, settings, props, export)");
 
         QRectF visible = view->mapToScene( view->viewport()->rect() ).boundingRect();
         return QJsonObject{

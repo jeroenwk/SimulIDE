@@ -31,6 +31,7 @@ ComponentSelector::ComponentSelector( QWidget* parent )
     setDragDropMode( QAbstractItemView::DragOnly );
     //setAlternatingRowColors(true);
     setIndentation( 12 );
+    setProperty("uiGraySelection", true );   // UiTheme: grey selection, not the accent blue
     setRootIsDecorated( true );
     setCursor( Qt::OpenHandCursor );
     headerItem()->setHidden( true );
@@ -273,8 +274,7 @@ QTreeWidgetItem* ComponentSelector::addCategory( QString nameTr, QString name, Q
     {
         catItem = new QTreeWidgetItem( this );
         catItem->setIcon( 0, QIcon(":/null-0.png") );
-        catItem->setTextColor( 0, QColor( 110, 95, 50 ) );
-        catItem->setBackground( 0, QBrush(QColor(240, 235, 245)) );
+        catItem->setTextColor( 0, QColor( 85, 0, 127 ) );   // Purple, as the Settings headings (light purple in dark mode)
         font.setPixelSize( 13*fontScale );
         expanded = true;
     }else{

@@ -16,6 +16,7 @@
 #include <QSettings>
 
 #include "editorwidget.h"
+#include "appfonts.h"
 #include "findreplace.h"
 #include "propdialog.h"
 #include "scrollbar.h"
@@ -493,7 +494,7 @@ void EditorWidget::readSettings()
     m_fontSize = 14;
     m_tabSize = 4;
 
-    m_font.setFamily("Ubuntu Mono");
+    m_font.setFamily( AppFonts::mono() );
     m_font.setWeight( 50 );
     m_font.setPixelSize( m_fontSize );
 
