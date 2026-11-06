@@ -130,9 +130,10 @@ void LedStrip::drawBackground( QPainter* p )
 
 void LedStrip::drawForeground( QPainter* p )
 {
-    // Filled with the glow colour (the brush LedBase set: black when off), outlined in the
-    // line colour so the three LED symbols stay visible on the dark body when the strip is off
-    QPen outline( Theme::line(), 1, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    // Filled with the LED colour as it lights up (the brush LedBase set), outlined with the
+    // pen LedBase set (the line colour, red on over current), thinner for the small symbols
+    QPen outline = p->pen();
+    outline.setWidthF( 1 );
 
     p->setPen( outline );
     p->drawLine(-26, 0, 26, 0 );
