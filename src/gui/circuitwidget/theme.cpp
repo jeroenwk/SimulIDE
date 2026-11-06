@@ -14,11 +14,13 @@
 #include "pin.h"
 #include "circuitwidget.h"
 #include "appdialog.h"
+#include "uitheme.h"
 
 bool   Theme::m_loaded = false;
 QColor Theme::m_color[Theme::numRoles];
 QColor Theme::m_saved[Theme::numRoles];
 bool   Theme::m_pushed = false;
+bool   Theme::m_follow = false;
 
 QColor Theme::defaultColor( role_t r )
 {
@@ -75,6 +77,32 @@ void Theme::load()
     // Settings from before the IC colours: take them from the preset the other colours match
     if( s && !s->contains("Circuit/"+key( icBodyRole )) && !s->contains("Circuit/"+key( icTextRole )) )
         adoptPresetIcColors();
+
+    // "System": the Light or Dark preset, following the OS appearance (also while the app runs)
+    QObject::connect( UiTheme::self(), &UiTheme::systemAppearance, []( bool dark ){ systemChanged( dark ); } );
+    m_follow = s && s->value("Circuit/colorThemeSystem", false ).toBool();
+    if( m_follow ) setPreset( UiTheme::self()->systemDark() ? "Dark" : "Light" );
+}
+
+bool Theme::followsSystem()
+{
+    if( !m_loaded ) load();
+    return m_follow;
+}
+
+void Theme::setFollowSystem( bool on )
+{
+    m_follow = on;
+    if( !MainWindow::self() ) return;
+    if( on ) MainWindow::self()->settings()->setValue("Circuit/colorThemeSystem", true );
+    else     MainWindow::self()->settings()->remove("Circuit/colorThemeSystem");
+}
+
+void Theme::systemChanged( bool dark )
+{
+    if( !m_follow || m_pushed ) return;
+    QString want = dark ? "Dark" : "Light";
+    if( setPreset( want ) ) apply();
 }
 
 QColor Theme::get( role_t r )
@@ -87,6 +115,7 @@ void Theme::set( role_t r, QColor c )
 {
     if( !c.isValid() ) return;
     if( !m_loaded ) load();
+    setFollowSystem( false );
     m_color[r] = c;
     if( MainWindow::self() ) MainWindow::self()->settings()->setValue("Circuit/"+key( r ), c.name() );
     apply();
@@ -95,6 +124,7 @@ void Theme::set( role_t r, QColor c )
 void Theme::reset()
 {
     if( !m_loaded ) load();
+    setFollowSystem( false );
     for( int i=0; i<numRoles; ++i )
     {
         m_color[i] = defaultColor( (role_t)i );
@@ -217,7 +247,12 @@ QStringList Theme::presets()
     return list;
 }
 
-bool Theme::applyPreset( QString name )
+QStringList Theme::choices()
+{
+    return QStringList("System") + presets();
+}
+
+bool Theme::setPreset( QString name )
 {
     for( const Preset& p : presetList )
     {
@@ -232,10 +267,20 @@ bool Theme::applyPreset( QString name )
                 else s->setValue("Circuit/"+key( (role_t)i ), m_color[i].name() );
             }
         }
-        apply();
         return true;
     }
     return false;
+}
+
+bool Theme::applyPreset( QString name )
+{
+    if( !m_loaded ) load();
+    bool system = name.compare("System", Qt::CaseInsensitive ) == 0;
+    if( system ) name = UiTheme::self()->systemDark() ? "Dark" : "Light";
+    if( !setPreset( name ) ) return false;
+    setFollowSystem( system );
+    apply();
+    return true;
 }
 
 bool Theme::pushPreset( QString name )
@@ -263,6 +308,7 @@ void Theme::popColors()
 
 QString Theme::currentPreset()
 {
+    if( followsSystem() && !m_pushed ) return "System";
     for( const Preset& p : presetList )
     {
         bool same = true;

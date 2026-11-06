@@ -16,6 +16,7 @@
 
 #include <QObject>
 #include <QColor>
+#include <QFont>
 #include <QIcon>
 #include <QHash>
 #include <QPalette>
@@ -44,6 +45,8 @@ class UiTheme : public QObject
         // Dark-mode versions of colours and icons drawn for a light background (identity in light mode)
         QColor fg( QColor c );          // Text: dark colours become light, hue kept
         QColor bg( QColor c );          // Light greyish backgrounds become dark, hue kept
+        // The other way: a text colour chosen for a dark background, made readable on a light one
+        static QColor onLight( QColor c );
 
         // A text widget filled with a signal colour (scope channel buttons and boxes): the colour
         // with black text in light mode; in dark mode a dark shade of it, with the colour as text
@@ -53,10 +56,17 @@ class UiTheme : public QObject
 
         static bool isLightBg( const QColor &c );
 
+        // Section headings (component list categories, Settings sections, property dialog type):
+        // purple (lightened by fg() in dark mode), bold, 13 px times the app font scale
+        static QColor  headingColor() { return QColor( 85, 0, 127 ); }
+        static QFont   headingFont();
+        static QString headingSheet();
+
         bool eventFilter( QObject* obj, QEvent* e ) override;
 
     signals:
         void changed( bool dark );
+        void systemAppearance( bool dark );   // The OS appearance changed (whatever the app's mode)
 
     private:
         UiTheme();

@@ -297,9 +297,11 @@ numbers: `voltage`, `level` (can exceed 1), `vref`, `vref_source`
 (`capacitor`, `override`, `sources` or `peak`), `rating` and `flag` (`overvoltage`,
 `reversed`, `overflow`).
 
-**Colors:** `settings set colorTheme Classic|Light|Dark` picks a preset (Dark
+**Colors:** `settings set colorTheme System|Classic|Light|Dark` picks a preset (Dark
 is inspired by EveryCircuit: black canvas, hollow light grey parts, pale green
-current dots); it reads `Custom` once a color was changed.
+current dots; System is Light or Dark following the OS appearance, also when it
+changes while SimulIDE runs, until another preset or a color is chosen); it reads
+`Custom` once a color was changed.
 `settings set canvasColor|wireColor|lineColor|textColor|bodyColor|flowColor|nameColor|valueColor|icBodyColor|icTextColor <color>`
 sets the canvas, wires, component outlines (lines, pins, arrowheads), text
 inside components (pin names), component bodies (parts drawn white by default),

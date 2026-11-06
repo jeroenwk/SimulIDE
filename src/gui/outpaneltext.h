@@ -18,8 +18,10 @@ class OutHighlighter;
 class PlainBlock : public QTextBlockUserData      // Block shown in one colour (OutPanelText::appendPlain)
 {
     public:
-        PlainBlock( QColor c, QString u="", int64_t t=-1 ) : color( c ), uid( u ), time( t ) {}
-        QColor color;
+        PlainBlock( QColor c, QString u="", int64_t t=-1, QColor lc=QColor() )
+            : color( c ), lightColor( lc ), uid( u ), time( t ) {}
+        QColor color;      // For the dark background
+        QColor lightColor; // For the light background (invalid: derived from color)
         QString uid;      // Part this line is about (event log): a click selects it
         int64_t time;     // Simulated time of an event log line (ps), -1 for other text
 };
@@ -39,12 +41,19 @@ class OutPanelText : public QPlainTextEdit, public Updatable
         // Lines shown in one colour, no highlighting. With a simulated time (event log), the line
         // goes in time order among the event lines above it: a line found later (a capacitor's
         // "charged", dated back to when it happened) is not left below later events
-        void appendPlain( const QString text, QColor color, QString uid="", int64_t time=-1 );
+        // Colours are for the dark background; on the light one (light UI theme) they are darkened,
+        // or lightColor is used when given
+        void appendPlain( const QString text, QColor color, QString uid="", int64_t time=-1, QColor lightColor=QColor() );
+
+        bool isDark() const { return m_dark; }
 
     protected:
         virtual void mouseReleaseEvent( QMouseEvent* event ) override;
 
     private:
+        void applyTheme( bool dark );   // Follows the UI theme: dark (navy) or light background
+
+        bool m_dark = true;
         QString m_textBuffer;
         QString* m_capture = nullptr;
  
@@ -61,6 +70,8 @@ class OutHighlighter : public QSyntaxHighlighter
         OutHighlighter( QTextDocument* parent = 0 );
         ~OutHighlighter();
 
+        void setLight( bool light ) { m_light = light; }
+
     protected:
         void highlightBlock( const QString &text ) override;
 
@@ -71,6 +82,7 @@ class OutHighlighter : public QSyntaxHighlighter
             QTextCharFormat format;
         };
         QVector<HighlightingRule> highlightingRules;
+        bool m_light = false;
 };
 
 #endif

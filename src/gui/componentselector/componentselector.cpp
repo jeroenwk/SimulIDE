@@ -15,6 +15,7 @@
 
 #include "componentselector.h"
 #include "mainwindow.h"
+#include "uitheme.h"
 
 ComponentSelector* ComponentSelector::m_pSelf = NULL;
 
@@ -264,9 +265,7 @@ QTreeWidgetItem* ComponentSelector::addCategory( QString nameTr, QString name, Q
 {
     QTreeWidgetItem* catItem = NULL;
 
-    QFont font;
-    font.setFamily( MainWindow::self()->defaultFontName() );
-    font.setBold( true );
+    QFont font = UiTheme::headingFont();
     float fontScale = MainWindow::self()->fontScale();
     bool expanded = false;
 
@@ -274,8 +273,7 @@ QTreeWidgetItem* ComponentSelector::addCategory( QString nameTr, QString name, Q
     {
         catItem = new QTreeWidgetItem( this );
         catItem->setIcon( 0, QIcon(":/null-0.png") );
-        catItem->setTextColor( 0, QColor( 85, 0, 127 ) );   // Purple, as the Settings headings (light purple in dark mode)
-        font.setPixelSize( 13*fontScale );
+        catItem->setTextColor( 0, UiTheme::headingColor() );   // Light purple in dark mode
         expanded = true;
     }else{
         catItem = new QTreeWidgetItem(0);

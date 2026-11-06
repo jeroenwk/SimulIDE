@@ -109,7 +109,7 @@
               </font>
              </property>
              <property name="styleSheet">
-              <string notr="true">font: 12pt &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
+              <string notr="true">font: bold 13px &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
              </property>
              <property name="text">
               <string>App Settings</string>
@@ -514,7 +514,7 @@
               </font>
              </property>
              <property name="styleSheet">
-              <string notr="true">font: 12pt &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
+              <string notr="true">font: bold 13px &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
              </property>
              <property name="text">
               <string>Circuit Canvas</string>
@@ -816,7 +816,7 @@
             </font>
            </property>
            <property name="styleSheet">
-            <string notr="true">font: 12pt &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
+            <string notr="true">font: bold 13px &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
            </property>
            <property name="text">
             <string>Other</string>
@@ -945,7 +945,7 @@
               </font>
              </property>
              <property name="styleSheet">
-              <string notr="true">font: 12pt &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
+              <string notr="true">font: bold 13px &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
              </property>
              <property name="text">
               <string>Speed</string>
@@ -1091,7 +1091,7 @@
               </font>
              </property>
              <property name="styleSheet">
-              <string notr="true">font: 12pt &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
+              <string notr="true">font: bold 13px &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
              </property>
              <property name="text">
               <string> 0%</string>
@@ -1331,7 +1331,7 @@
             </font>
            </property>
            <property name="styleSheet">
-            <string notr="true">font: 12pt &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
+            <string notr="true">font: bold 13px &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
            </property>
            <property name="text">
             <string>Reactive</string>
@@ -1455,7 +1455,7 @@
             </font>
            </property>
            <property name="styleSheet">
-            <string notr="true">font: 12pt &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
+            <string notr="true">font: bold 13px &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
            </property>
            <property name="text">
             <string>NonLinear</string>
@@ -1550,7 +1550,7 @@
             </font>
            </property>
            <property name="styleSheet">
-            <string notr="true">font: 12pt &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
+            <string notr="true">font: bold 13px &quot;Inter&quot;; color: rgb(85, 0, 127)</string>
            </property>
            <property name="text">
             <string>Logic Outputs Edges</string>

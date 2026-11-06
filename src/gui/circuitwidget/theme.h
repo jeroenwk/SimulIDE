@@ -60,8 +60,10 @@ class Theme
 
         // Presets: Classic (default), Light, Dark (EveryCircuit style)
         static QStringList presets();
-        static bool    applyPreset( QString name ); // false: unknown name
-        static QString currentPreset();             // Preset matching all colours, or "Custom"
+        static QStringList choices();               // "System" + presets (Settings, CLI)
+        static bool    applyPreset( QString name ); // false: unknown name. "System": Light or Dark, following the OS
+        static QString currentPreset();             // "System" while following the OS, the preset matching all colours, or "Custom"
+        static bool    followsSystem();
 
         // Image export: use a preset for a moment without saving it, then put the colours back
         static bool pushPreset( QString name );     // false: unknown name (nothing changed)
@@ -70,6 +72,10 @@ class Theme
     private:
         static void load();
         static void adoptPresetIcColors();
+        static bool setPreset( QString name );     // Colours of a preset, saved (no change to following)
+        static void setFollowSystem( bool on );
+        static void systemChanged( bool dark );
+        static bool   m_follow;
         static bool   m_loaded;
         static QColor m_color[numRoles];
         static QColor m_saved[numRoles];

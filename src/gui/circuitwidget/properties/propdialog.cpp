@@ -21,6 +21,7 @@
 #include "boolval.h"
 #include "colorval.h"
 #include "mainwindow.h"
+#include "uitheme.h"
 
 #include "comproperty.h"
 
@@ -33,6 +34,8 @@ PropDialog::PropDialog( QWidget* parent, QString help )
                   | Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint );
 
     m_component = NULL;
+
+    type->setStyleSheet( UiTheme::headingSheet() );
 
     m_helpExpanded = false;
     mainLayout->removeWidget( helpText );
