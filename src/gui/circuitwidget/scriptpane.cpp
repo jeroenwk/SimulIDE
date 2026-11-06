@@ -89,6 +89,7 @@ ScriptPane::ScriptPane( QWidget* parent )
     bar->addWidget( m_args, 1 );
     bar->addWidget( m_runButton );
     bar->addWidget( m_stopButton );
+    bar->addSpacing( 8 );                    // Status text clear of the buttons
     bar->addWidget( m_state );
 
     m_desc = new QPlainTextEdit( this );
@@ -109,7 +110,7 @@ ScriptPane::ScriptPane( QWidget* parent )
     layout->setContentsMargins( 0, 0, 0, 0 );
     layout->setSpacing( 0 );
     layout->addLayout( bar );
-    layout->addWidget( split );
+    layout->addWidget( split, 1 );           // The panes take the extra height, the bar stays at the top
 
     QTimer* tick = new QTimer( this );       // Elapsed time while running
     connect( tick, &QTimer::timeout, [this](){ if( running() ) updateState(); } );

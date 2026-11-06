@@ -12,6 +12,7 @@
 #include <QSettings>
 #include <QTimer>
 #include <QKeySequence>
+#include <QStylePainter>
 
 #include "scriptpane.h"
 #include "descriptionwidget.h"
@@ -36,6 +37,40 @@
 #include "about.h"
 #include "utils.h"
 #include "cliapi.h"
+
+// The speed box: while the simulation can't keep up, it shows the real speed in orange
+class SpeedBox : public QComboBox
+{
+    public:
+        SpeedBox( QWidget* parent ) : QComboBox( parent ) {}
+
+        void setOverride( QString text )
+        {
+            if( text == m_override ) return;
+            m_override = text;
+            update();
+        }
+
+    protected:
+        void paintEvent( QPaintEvent* ) override
+        {
+            QStylePainter p( this );
+            QStyleOptionComboBox opt;
+            initStyleOption( &opt );
+            if( !m_override.isEmpty() )
+            {
+                opt.currentText = m_override;
+                QColor orange = InfoWidget::slowColor();
+                opt.palette.setColor( QPalette::ButtonText, orange );
+                opt.palette.setColor( QPalette::Text, orange );
+            }
+            p.drawComplexControl( QStyle::CC_ComboBox, opt );
+            p.drawControl( QStyle::CE_ComboBoxLabel, opt );
+        }
+
+    private:
+        QString m_override;
+};
 
 CircuitWidget* CircuitWidget::m_pSelf = 0l;
 
@@ -67,6 +102,8 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
 
     m_infoWidget = new InfoWidget( this );
     m_infoWidget->setTargetSpeed( 100 );
+    m_infoWidget->setFixedWidth( 322*MainWindow::self()->fontScale() );
+    m_infoWidget->setVisible( MainWindow::self()->settings()->value("showInfoPanel", false ).toBool() );
 
     m_panelSplitter = new QSplitter( this );
     m_panelSplitter->setObjectName("Panelplitter");
@@ -319,7 +356,7 @@ void CircuitWidget::createToolBars()
     m_circToolBar.addSeparator();//..........................
 
     // Timebase: simulated time per real second (like a speed dial), before play
-    m_timebase = new QComboBox( this );
+    m_timebase = new SpeedBox( this );
     m_timebase->setToolTip( tr("Simulation speed: simulated time per real second.\n"
                                "1 s/s is real time. Faster than the computer can manage\n"
                                "runs as fast as it can (see Real Speed).") );
@@ -361,6 +398,31 @@ void CircuitWidget::createToolBars()
     m_infoMenu.addAction( infoAct );
     m_infoMenu.addAction( aboutAct );
     m_infoMenu.addAction( aboutQtAct );
+
+    QLabel* timeLabel = new QLabel( this );            // Simulation time, right-aligned before Info
+    QFont tf = timeLabel->font();
+    tf.setPixelSize( 12*MainWindow::self()->fontScale() );
+    timeLabel->setFont( tf );
+    m_circToolBar.addWidget( timeLabel );
+    m_infoWidget->setToolbarTime( timeLabel );
+
+    QToolButton* infoPanelButton = new QToolButton( this );   // Shows / hides the speed and load pane
+    infoPanelButton->setCheckable( true );
+    infoPanelButton->setChecked( m_infoWidget->isVisibleTo( this ) );
+    auto syncPanelButton = [this, infoPanelButton]( bool on )
+    {
+        infoPanelButton->setArrowType( on ? Qt::UpArrow : Qt::DownArrow );
+        infoPanelButton->setToolTip( on ? tr("Hide the simulation info pane (speed, load, FPS)")
+                                        : tr("Show the simulation info pane (speed, load, FPS)") );
+    };
+    syncPanelButton( infoPanelButton->isChecked() );
+    connect( infoPanelButton, &QToolButton::toggled, [this, syncPanelButton]( bool on )
+    {
+        m_infoWidget->setVisible( on );
+        MainWindow::self()->settings()->setValue("showInfoPanel", on );
+        syncPanelButton( on );
+    });
+    m_circToolBar.addWidget( infoPanelButton );
 
     QToolButton* infoButton = new QToolButton( this );
     infoButton->setToolTip( tr("Info") );
@@ -703,16 +765,23 @@ void CircuitWidget::syncTimebase( uint64_t psPerSec )
         return;
     }
     // Not a preset (set in Settings or by the CLI): show it as a custom entry
-    double s = psPerSec/1e12;
-    QString txt;
-    if     ( s >= 1    ) txt = QString::number( s, 'g', 3 )+" s/s";
-    else if( s >= 1e-3 ) txt = QString::number( s*1e3, 'g', 3 )+" ms/s";
-    else if( s >= 1e-6 ) txt = QString::number( s*1e6, 'g', 3 )+" µs/s";
-    else                 txt = QString::number( s*1e9, 'g', 3 )+" ns/s";
+    QString txt = InfoWidget::speedText( psPerSec );
     if( custom < 0 ) { m_timebase->addItem( txt, QVariant::fromValue( (qulonglong)0 ) ); custom = m_timebase->count()-1; }
     else m_timebase->setItemText( custom, txt );
     m_timebase->setCurrentIndex( custom );
     m_timebase->blockSignals( false );
+}
+
+void CircuitWidget::showRealSpeed( double realPsPerSec )
+{
+    if( !m_timebase ) return;
+    QString text = ( realPsPerSec > 0 ) ? InfoWidget::speedText( realPsPerSec ) : "";
+    m_timebase->setOverride( text );
+    QString tip = tr("Simulation speed: simulated time per real second.\n"
+                     "1 s/s is real time. Faster than the computer can manage\n"
+                     "runs as fast as it can (see Real Speed).");
+    if( !text.isEmpty() ) tip = tr("Running slower than set: %1 real, %2 set.").arg( text, m_timebase->currentText() )+"\n\n"+tip;
+    m_timebase->setToolTip( tip );
 }
 
 #include "moc_circuitwidget.cpp"
