@@ -18,6 +18,11 @@
 #define tr(str) simulideTr("Csource",str)
 
 #define zero_d 1e-9
+// Output impedance as a voltage source: 1 mΩ, not ~0, as for the floating WaveGen. The pair's
+// potential to the rest of the circuit may hang on small conductances only (e.g. an IC model on
+// a floating, isolated supply: nF to ground). Next to 1e9 S rounding errors leak current into
+// that net every step and its potential runs away; next to 1e3 S it is kept
+#define out_imp 1e-3
 
 Component* Csource::construct( QString type, QString id )
 { return new Csource( type, id ); }
@@ -147,8 +152,8 @@ void Csource::updateStep()
         m_pin[2]->stampAdmitance( 0 );
         m_pin[3]->stampAdmitance( 0 );
     }else{
-        m_pin[2]->stampAdmitance( 1/zero_d );
-        m_pin[3]->stampAdmitance( 1/zero_d );
+        m_pin[2]->stampAdmitance( 1/out_imp );
+        m_pin[3]->stampAdmitance( 1/out_imp );
     }
 
     if( !m_controlPins && !m_linkedTo )
@@ -161,8 +166,8 @@ void Csource::updateStep()
             m_pin[2]->stampCurrent(-m_curr );
             m_pin[3]->stampCurrent( m_curr );
         }else{
-            m_pin[2]->stampCurrent( m_volt/zero_d );
-            m_pin[3]->stampCurrent(-m_volt/zero_d );
+            m_pin[2]->stampCurrent( m_volt/out_imp );
+            m_pin[3]->stampCurrent(-m_volt/out_imp );
         }
     }
     else voltChanged();
@@ -214,7 +219,7 @@ void Csource::setVoltage( double v )
     //m_lastOut = out;
 
     if     ( m_currSource  ) out = -out;       // Current source
-    else if( out != 0      ) out /= zero_d; // Voltage source
+    else if( out != 0      ) out /= out_imp; // Voltage source
     if     ( m_currControl ) out *= m_admit;   // Current controlled
 
 
