@@ -40,6 +40,8 @@ class CircuitWidget : public QWidget
         void setMsg(QString msg , int type);
 
         void syncTimebase( uint64_t psPerSec );   // Show the simulation speed in the toolbar
+        // Running slower than the set speed: the speed box shows the real speed in orange (realPsPerSec 0: off)
+        void showRealSpeed( double realPsPerSec );
         void syncCurrentFlow( bool on ) { if( currentFlowAct->isChecked() != on ) currentFlowAct->setChecked( on ); }
         QString curCirc() { return m_curCirc; }   // File of the open circuit (empty: unsaved)
         void syncCapCharge( bool on ) { if( capChargeAct->isChecked() != on ) capChargeAct->setChecked( on ); }
@@ -124,7 +126,7 @@ class CircuitWidget : public QWidget
         QAction* partStatusAct;
         QAction* instrumentsAct;
         QAction* exportAct;
-        QComboBox* m_timebase = nullptr;   // Simulated time per real second
+        class SpeedBox* m_timebase = nullptr;   // Simulated time per real second
         QAction* settAppAct;
         QAction* infoAct;
         QAction* aboutAct;
