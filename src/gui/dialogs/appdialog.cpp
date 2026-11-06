@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "uitheme.h"
+#include "appfonts.h"
 #include "currentflow.h"
 #include "chargeview.h"
 #include <QColorDialog>
@@ -40,6 +41,22 @@ AppDialog::AppDialog( QWidget* parent )
     language->setFixedWidth( 80*m_scale );
     fontName->setCurrentText( MainWindow::self()->defaultFontName() );
     fontName->setFixedWidth( 80*m_scale );
+    {
+        QPushButton* fontDefault = new QPushButton( tr("Default"), this );   // Back to the bundled font
+        fontDefault->setAutoDefault( false );
+        fontDefault->setSizePolicy( QSizePolicy::Fixed, QSizePolicy::Fixed );
+        fontDefault->setToolTip( tr("Use the default font (%1). Restart to apply.").arg( AppFonts::sans() ) );
+        auto sync = [fontDefault](){ fontDefault->setEnabled( MainWindow::self()->defaultFontName() != AppFonts::sans() ); };
+        sync();
+        connect( fontDefault, &QPushButton::clicked, [this, sync]()
+        {
+            fontName->setCurrentFont( QFont( AppFonts::sans() ) );
+            MainWindow::self()->setDefaultFontName( AppFonts::sans() );
+            sync();
+        });
+        connect( fontName, &QFontComboBox::currentFontChanged, [sync](){ sync(); } );
+        horizontalLayout_15->addWidget( fontDefault );
+    }
     fontScale->setValue( m_scale );
     fontScale->setFixedWidth( 80*m_scale );
     userPath->setText( MainWindow::self()->userPath() );

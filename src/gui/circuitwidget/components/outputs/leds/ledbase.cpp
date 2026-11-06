@@ -160,42 +160,40 @@ void LedBase::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w 
 {
     Component::paint( p, o, w );
 
-    QPen pen( Qt::black, 4, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
-    QColor foreColor;
-    QColor backColor = QColor(0,0,0);
+    // Body in the theme's body colour (white on light canvases, black on dark ones), LED symbols
+    // outlined in the line colour and filled with the LED colour as it lights up, so an LED is
+    // recognisable when off on any canvas. Above Max Current the body glows (over-bright); far
+    // above it (crashed) the body turns white with red symbols
+    QColor body = Theme::body();
+    QColor full = getColor( m_ledColor, 255 );
+    getColor( m_ledColor, m_intensity );                 // Sets m_overBright
+    double t = qMin( m_intensity, (uint32_t)255 )/255.0;
+    auto mix = [t]( int a, int b ){ return int( a + ( b-a )*t ); };
+    QColor fill( mix( body.red(), full.red() ), mix( body.green(), full.green() ), mix( body.blue(), full.blue() ) );
+    QColor symbolLine = Theme::line();
 
-    if( m_warning/*m_current > m_maxCurrent*1.2*/ ) // Led overcurrent
+    if( m_crashed )                                      // Extreme over current
     {
-        p->setBrush( QColor( 255, 150, 0 ) );
-        foreColor = QColor( Qt::red );
-        pen.setColor( foreColor );
+        body = Qt::white;
+        fill = Qt::white;
+        symbolLine = Qt::red;
     }
-    if( m_crashed )  // Led extreme overcurrent
+    else if( m_overBright > 0 )                          // Over-bright: body glows with the excess
     {
-        p->setBrush( Qt::white );
-        foreColor = QColor( Qt::white );
-        pen.setColor( foreColor );
-    }else{
-        foreColor = getColor( m_ledColor, m_intensity );
-        int over = m_overBright*2;
-        backColor = QColor( over, over, m_overBright );
+        int over = qMin( m_overBright*2, 255 );
+        auto glow = [over]( int a, int b ){ return a + ( b-a )*over/255; };
+        body = QColor( glow( body.red(), full.red() ), glow( body.green(), full.green() ), glow( body.blue(), full.blue() ) );
     }
-    // Thin ring in the outline colour around the dark body, so an LED that is
-    // off stays visible on a dark canvas (classic: black on black, unchanged)
-    QPen ring( Theme::line(), 5.2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+    if( m_warning && !m_crashed ) symbolLine = Qt::red;  // Over current
+
+    QPen ring( Theme::line(), 1.2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );   // Body outline
     p->setPen( ring );
-    p->setBrush( Qt::NoBrush );
+    p->setBrush( body );
     drawBackground( p );
 
-    pen.setColor( backColor );
+    QPen pen( symbolLine, 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
     p->setPen( pen );
-    p->setBrush( backColor );
-    drawBackground( p );
-    
-    pen.setColor( foreColor );
-    pen.setWidth( 2 );
-    p->setPen( pen );
-    p->setBrush( foreColor );
+    p->setBrush( fill );
     drawForeground( p );
 
     Component::paintSelected( p );
