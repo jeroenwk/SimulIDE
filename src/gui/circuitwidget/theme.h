@@ -45,6 +45,14 @@ class Theme
         static QColor lead( QColor c );
         static double contrast( QColor a, QColor b );  // WCAG contrast ratio, 1..21
 
+        // Instrument screens (meter displays, scope and logic analyzer screens) follow the canvas:
+        // light screens with dark text and darkened traces on a light canvas, black ones on a dark canvas
+        static bool   lightScreens() { return canvas().lightness() >= 128; }
+        static QColor screenBg()     { return lightScreens() ? QColor( 246, 246, 240 ) : QColor( 0, 0, 0 ); }
+        static QColor screenText()   { return lightScreens() ? QColor( 25, 25, 25 ) : QColor( Qt::yellow ); }
+        static QColor screenTrace( QColor c );     // A channel colour made readable on the screen
+        static QColor instrumentBody() { return lightScreens() ? QColor( 230, 230, 230 ) : QColor( 58, 58, 62 ); }
+
         static QColor animWire( bool high ) { return get( high ? animHighRole : animLowRole ); }
         static QColor pinState( int state, QColor undefColor ); // Animate colour of a pinState_t
 

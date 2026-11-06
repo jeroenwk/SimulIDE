@@ -31,6 +31,7 @@ class FreqMeter : public Component, public eElement
         void setFilter( double f ) { m_filter = f; }
         
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
+        virtual void updateLabelColors() override;   // Display colours follow the theme
         
     protected:
         virtual void setflip() override;

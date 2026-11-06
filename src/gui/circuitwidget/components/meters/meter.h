@@ -27,6 +27,7 @@ class Meter : public Component, public eResistor
 
         virtual void initialize() override { m_crashed = false;}
         virtual void updateStep() override;
+        virtual void updateLabelColors() override;   // Display colours follow the theme
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
 

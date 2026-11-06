@@ -3,6 +3,7 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include "theme.h"
 #include "plotbase.h"
 #include "plotdisplay.h"
 #include "simulator.h"
@@ -272,12 +273,17 @@ void PlotBase::remove()
     Component::remove();
 }
 
+void PlotBase::updateLabelColors()
+{
+    Component::updateLabelColors();
+    if( m_display ) m_display->update();
+}
+
 void PlotBase::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
 {
     Component::paint( p, o, w );
     
-    //p->setBrush( Qt::darkGray );
-    p->setBrush(QColor( 230, 230, 230 ));
+    p->setBrush( Theme::instrumentBody() );
     p->drawRoundedRect( m_area, 4, 4 );
     
     p->setBrush( Qt::white );
