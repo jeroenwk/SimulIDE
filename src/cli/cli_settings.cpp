@@ -158,10 +158,10 @@ QList<Setting>& settings()
             if( !ok || d < 0 ) throw CliError("invalid current: "+v+" (0 = auto)" );
             Circuit::self()->setCurrentScale( d );
         }});
-    list.append({"colorTheme", "circuit", "Color preset: Classic, Light or Dark (EveryCircuit style). Reads Custom when colors were changed.",
+    list.append({"colorTheme", "circuit", "Color preset: System (Light or Dark, following the OS appearance), Classic, Light or Dark (EveryCircuit style). Reads Custom when colors were changed.",
         [](){ return QJsonValue( Theme::currentPreset() ); },
         []( QString v ){
-            if( !Theme::applyPreset( v ) ) throw CliError("unknown color theme: "+v+" ("+Theme::presets().join(", ")+")");
+            if( !Theme::applyPreset( v ) ) throw CliError("unknown color theme: "+v+" ("+Theme::choices().join(", ")+")");
         }});
     for( int i=0; i<Theme::numRoles; ++i )
     {

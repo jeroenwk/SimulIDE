@@ -31,6 +31,9 @@ AppDialog::AppDialog( QWidget* parent )
     setWindowFlags( Qt::Window | Qt::WindowTitleHint | Qt::Tool
                    | Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint );
 
+    for( QLabel* l : findChildren<QLabel*>() )   // Section headings: the app font and scale
+        if( l->styleSheet().contains("bold 13px") ) l->setStyleSheet( UiTheme::headingSheet() );
+
     // App Settings
     m_scale = MainWindow::self()->fontScale();
     language->setCurrentIndex( (int)MainWindow::self()->lang() );
@@ -190,8 +193,8 @@ void AppDialog::buildColors()
 
     QHBoxLayout* top = new QHBoxLayout;                       // Preset and reset: always visible
     m_themeBox = new QComboBox( colorsBox );
-    m_themeBox->addItems( Theme::presets() );
-    m_themeBox->setToolTip( tr("Color preset. Dark is inspired by EveryCircuit.") );
+    m_themeBox->addItems( Theme::choices() );
+    m_themeBox->setToolTip( tr("Color preset. System: Light or Dark, following the OS appearance. Dark is inspired by EveryCircuit.") );
     connect( m_themeBox, QOverload<int>::of( &QComboBox::activated ), [this]( int )
     {
         if( Theme::applyPreset( m_themeBox->currentText() ) ) updateColorButtons();

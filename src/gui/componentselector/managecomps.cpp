@@ -23,6 +23,7 @@
 #include "managecomps.h"
 #include "componentselector.h"
 #include "mainwindow.h"
+#include "uitheme.h"
 
 manCompDialog::manCompDialog( QWidget* parent )
              : QDialog( parent )
@@ -66,7 +67,8 @@ void manCompDialog::addItem( QTreeWidgetItem* item )
     int childCount = item->childCount();
     if( childCount > 0 )
     {
-        listItem->setForeground( QBrush( QColor( 85, 0, 127 )));   // Category: purple, no background (as the component list)
+        listItem->setForeground( QBrush( UiTheme::headingColor() ));   // Category: as the component list, no background
+        listItem->setFont( UiTheme::headingFont() );
 
         for( int i=0; i<childCount; i++ ) addItem( item->child( i ) );
     }

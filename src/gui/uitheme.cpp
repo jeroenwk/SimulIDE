@@ -18,6 +18,7 @@
 #include <QEvent>
 
 #include "uitheme.h"
+#include "mainwindow.h"
 #include <QAbstractItemView>
 
 #ifdef Q_OS_MACOS
@@ -307,7 +308,12 @@ void UiTheme::apply()
 void UiTheme::systemChanged()
 {
     // The app's effective appearance follows the system a moment after the notification
-    QTimer::singleShot( 150, this, [this](){ if( m_mode == System && systemDark() != m_dark ) apply(); } );
+    QTimer::singleShot( 150, this, [this]()
+    {
+        bool dark = systemDark();
+        if( m_mode == System && dark != m_dark ) apply();
+        emit systemAppearance( dark );
+    });
 }
 
 bool UiTheme::eventFilter( QObject* obj, QEvent* e )
@@ -325,7 +331,7 @@ bool UiTheme::eventFilter( QObject* obj, QEvent* e )
             }
             break;
         case QEvent::ThemeChange:          // OS appearance changed (platforms that send it)
-            if( m_mode == System && !m_busy ) systemChanged();
+            if( !m_busy ) systemChanged();
             break;
         default: break;
     }
@@ -351,10 +357,36 @@ QColor UiTheme::fg( QColor c )
     return QColor::fromHsl( h, s, l, c.alpha() );
 }
 
+QColor UiTheme::onLight( QColor c )
+{
+    if( !c.isValid() ) return c;
+    int h = qMax( 0, c.hslHue() ), s = c.hslSaturation(), l = c.lightness();
+    if( s < 40 ) l = qBound( 30, 255-l, 110 );   // White and light greys: dark grey
+    else         l = qMin( l, 95 );               // Colours: same hue, dark
+    return QColor::fromHsl( h, s, l, c.alpha() );
+}
+
 QColor UiTheme::bg( QColor c )
 {
     if( !m_dark || !isLightBg( c ) ) return c;
     return QColor::fromHsl( c.hslHue(), c.hslSaturation(), 45+(255-c.lightness()), c.alpha() );
+}
+
+QFont UiTheme::headingFont()
+{
+    QFont font;
+    font.setFamily( MainWindow::self()->defaultFontName() );
+    font.setBold( true );
+    font.setPixelSize( 13*MainWindow::self()->fontScale() );
+    return font;
+}
+
+QString UiTheme::headingSheet() // Light-mode colour: adaptStyleSheet() lightens it in dark mode
+{
+    QFont f = headingFont();
+    QColor c = headingColor();
+    return QString("font-family: \"%1\"; font-weight: bold; font-size: %2px; color: rgb(%3, %4, %5)")
+           .arg( f.family() ).arg( f.pixelSize() ).arg( c.red() ).arg( c.green() ).arg( c.blue() );
 }
 
 QString UiTheme::chipSheet( QColor c )

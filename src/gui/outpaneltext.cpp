@@ -10,6 +10,7 @@
 #include "circuit.h"
 #include "circuitview.h"
 #include "component.h"
+#include "uitheme.h"
 #include <QMouseEvent>
 
 OutPanelText::OutPanelText( QWidget* parent )
@@ -20,10 +21,9 @@ OutPanelText::OutPanelText( QWidget* parent )
 
     m_highlighter = new OutHighlighter( document() );
 
-    QPalette p;
-    p.setColor( QPalette::Base, QColor( 35, 30, 60 ) );
-    p.setColor( QPalette::Text, QColor( 190, 190, 150) );
-    setPalette(p);
+    setProperty("uiThemeKeep", true );     // Sets its own colours for both themes
+    applyTheme( UiTheme::self()->isDark() );
+    connect( UiTheme::self(), &UiTheme::changed, this, &OutPanelText::applyTheme );
     
     QFont font;
     font.setFamily( AppFonts::mono() );
@@ -38,6 +38,20 @@ OutPanelText::OutPanelText( QWidget* parent )
 }
 OutPanelText::~OutPanelText(){}
 
+void OutPanelText::applyTheme( bool dark )
+{
+    m_dark = dark;
+    QPalette p = palette();
+    for( QPalette::ColorGroup g : { QPalette::Active, QPalette::Inactive, QPalette::Disabled } )
+    {
+        p.setColor( g, QPalette::Base, dark ? QColor( 35, 30, 60 )    : QColor( 255, 255, 255 ) );
+        p.setColor( g, QPalette::Text, dark ? QColor( 190, 190, 150 ) : QColor( 45, 45, 40 ) );
+    }
+    setPalette( p );
+    m_highlighter->setLight( !dark );
+    m_highlighter->rehighlight();
+}
+
 void OutPanelText::appendLine( const QString text )
 {
     m_textBuffer.append( text+"\n" );
@@ -49,7 +63,7 @@ void OutPanelText::appendLine( const QString text )
     }
 }
 
-void OutPanelText::appendPlain( const QString text, QColor color, QString uid, int64_t time )
+void OutPanelText::appendPlain( const QString text, QColor color, QString uid, int64_t time, QColor lightColor )
 {
     updateStep();                                  // Keep the order with buffered text
     if( m_capture ) m_capture->append( text+"\n" );
@@ -74,7 +88,7 @@ void OutPanelText::appendPlain( const QString text, QColor color, QString uid, i
     for( int i=first; i<last; ++i )               // Mark the blocks: the highlighter paints them in one colour
     {
         QTextBlock b = document()->findBlockByNumber( i );
-        b.setUserData( new PlainBlock( color, uid, time ) );
+        b.setUserData( new PlainBlock( color, uid, time, lightColor ) );
         m_highlighter->rehighlightBlock( b );
     }
     moveCursor( QTextCursor::End );
@@ -175,7 +189,9 @@ void OutHighlighter::highlightBlock( const QString &text )
     if( PlainBlock* p = dynamic_cast<PlainBlock*>( currentBlockUserData() ) )
     {
         QTextCharFormat f;
-        f.setForeground( p->color );
+        if( !m_light )                   f.setForeground( p->color );
+        else if( p->lightColor.isValid() ) f.setForeground( p->lightColor );
+        else                             f.setForeground( UiTheme::onLight( p->color ) );
         setFormat( 0, text.length(), f );
         return;
     }
@@ -189,7 +205,10 @@ void OutHighlighter::highlightBlock( const QString &text )
         while( index >= 0 )
         {
             int length = expression.matchedLength();
-            setFormat( index, length, rule.format );
+            QTextCharFormat format = rule.format;
+            if( m_light && !format.hasProperty( QTextFormat::BackgroundBrush ) )   // Colours made for the dark background
+                format.setForeground( UiTheme::onLight( format.foreground().color() ) );
+            setFormat( index, length, format );
             index = expression.indexIn( upText, index + length );
 }   }   }
 
