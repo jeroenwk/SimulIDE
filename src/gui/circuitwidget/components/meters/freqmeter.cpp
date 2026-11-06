@@ -6,6 +6,7 @@
 #include <QPainter>
 #include <QFont>
 
+#include "theme.h"
 #include "freqmeter.h"
 #include "appfonts.h"
 #include "itemlibrary.h"
@@ -49,7 +50,7 @@ FreqMeter::FreqMeter( QString type, QString id )
     QFont f( AppFonts::sans(), 10, QFont::Bold );
     f.setPixelSize( 12 );
     m_display.setFont( f );
-    m_display.setBrush( Qt::yellow );
+    m_display.setBrush( Theme::screenText() );
     m_display.setPos( -30, -6 );
     m_display.setVisible( true );
 
@@ -170,10 +171,16 @@ void FreqMeter::setflip()
     m_display.setTransform( QTransform::fromScale( m_Hflip, m_Vflip ) );
 }
 
+void FreqMeter::updateLabelColors()
+{
+    Component::updateLabelColors();
+    m_display.setBrush( Theme::screenText() );
+}
+
 void FreqMeter::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
     Component::paint( p, option, widget );
-    p->setBrush( Qt::black);
+    p->setBrush( Theme::screenBg() );
     p->drawRoundedRect( m_area, 1, 1);
 
     Component::paintSelected( p );

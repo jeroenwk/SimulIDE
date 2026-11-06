@@ -166,6 +166,14 @@ QColor Theme::lead( QColor c )
     return c;
 }
 
+QColor Theme::screenTrace( QColor c )
+{
+    if( !lightScreens() ) return c;
+    int h = qMax( 0, c.hslHue() ), s = c.hslSaturation(), l = c.lightness();
+    if( s < 40 ) return QColor::fromHsl( h, s, 40 );          // White / grey traces: dark grey
+    return QColor::fromHsl( h, s, qMin( l, 105 ) );            // Same hue, dark enough for a light screen
+}
+
 QColor Theme::icBody( QColor classColor )
 {
     QColor c = get( icBodyRole );

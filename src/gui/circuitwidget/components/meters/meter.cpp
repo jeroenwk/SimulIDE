@@ -7,6 +7,7 @@
 #include <QFont>
 #include <QPainter>
 
+#include "theme.h"
 #include "meter.h"
 #include "appfonts.h"
 #include "simulator.h"
@@ -43,7 +44,7 @@ Meter::Meter( QString type, QString id )
     QFont f( AppFonts::sans(), 10, QFont::Bold );
     f.setPixelSize(12);
     m_display.setFont(f);
-    m_display.setBrush(  Qt::yellow );
+    m_display.setBrush( Theme::screenText() );
     m_display.setPos( -22, -22 );
     m_display.setVisible( true );
 
@@ -112,10 +113,16 @@ void Meter::setflip()
     m_display.setTransform( QTransform::fromScale( m_Hflip, m_Vflip ) );
 }
 
+void Meter::updateLabelColors()
+{
+    Component::updateLabelColors();
+    m_display.setBrush( Theme::screenText() );
+}
+
 void Meter::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
     Component::paint( p, option, widget );
-    p->setBrush( Qt::black);
+    p->setBrush( Theme::screenBg() );
     p->drawRoundedRect( QRectF(-24,-24, 48, 32 ), 1, 1 );
 
     /*if( m_hidden ) return;

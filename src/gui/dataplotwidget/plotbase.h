@@ -91,6 +91,7 @@ class PlotBase : public Component, public ScriptModule
         virtual void remove() override;
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w ) override;
+        virtual void updateLabelColors() override;   // Screen colours follow the theme
 
     protected:
         virtual void slotProperties() override;

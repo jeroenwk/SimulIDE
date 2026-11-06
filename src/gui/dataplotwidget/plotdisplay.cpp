@@ -8,6 +8,7 @@
 #include <QBrush>
 #include <QPen>
 
+#include "theme.h"
 #include "plotdisplay.h"
 #include "datachannel.h"
 #include "plotbase.h"
@@ -143,7 +144,11 @@ void PlotDisplay::wheelEvent( QWheelEvent* event )
 
 void PlotDisplay::drawBackground( QPainter* p )
 {
-    p->setBrush( QColor( 0, 0, 0 ) );
+    bool light = Theme::lightScreens();               // Screen follows the canvas (light or dark)
+    m_scaleColor[0] = light ? QColor( 215, 215, 210 ) : QColor( 70, 70, 70 );     // Grid
+    m_scaleColor[1] = light ? QColor( 170, 170, 165 ) : QColor( 100, 100, 100 );  // Centre lines, marks
+    m_scaleColor[2] = light ? QColor( 90, 90, 90 )    : QColor( 200, 200, 200 );  // Time 0, cursor
+    p->setBrush( Theme::screenBg() );
     p->drawRoundRect( 0, 0, width(), height(), 7, 7 );
 
     double divs = 10*m_tracks;
@@ -211,7 +216,7 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
     {
         if( m_hideCh[i] || m_ncCh[i] ) continue;
 
-        QPen pen2( m_color[i], 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+        QPen pen2( Theme::screenTrace( m_color[i] ), 2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
         p.setPen( pen2 );
 
         QVector<double>*   voltData = &m_channel[i]->m_buffer;
@@ -357,8 +362,9 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
             if( --pos < 0 ) pos += bufferSize;
     }   }
     // Draw Rects to crop data plots
-    p.fillRect( 0,                   0, m_marginX-1, height(), QColor( 10, 15, 50 ) );
-    p.fillRect( m_sizeX+m_marginX+1, 0, m_marginX-1, height(), QColor( 10, 15, 50 ) );
+    QColor margin = Theme::lightScreens() ? QColor( 232, 233, 238 ) : QColor( 10, 15, 50 );
+    p.fillRect( 0,                   0, m_marginX-1, height(), margin );
+    p.fillRect( m_sizeX+m_marginX+1, 0, m_marginX-1, height(), margin );
 
     double trigLevel;            // Fixed trigger level: dashed line in the trigger channel's colour
     if( m_component && m_component->trigLevelOn( &trigLevel ) )
@@ -367,14 +373,14 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
         if( ch < m_channels && !m_hideCh[ch] )
         {
             double y = m_posY[ch]-trigLevel*m_scaleY[ch];
-            QPen penT( m_color[ch], 1, Qt::DashLine, Qt::FlatCap, Qt::MiterJoin );
+            QPen penT( Theme::screenTrace( m_color[ch] ), 1, Qt::DashLine, Qt::FlatCap, Qt::MiterJoin );
             p.setPen( penT );
             if( y >= m_ceroY && y <= m_endY ) p.drawLine( QPointF( m_ceroX, y ), QPointF( m_endX, y ) );
 
             double yc = qBound( m_ceroY, y, m_endY );   // Arrow at the right edge, clamped when off screen
             QPolygonF arrow;
             arrow << QPointF( m_endX, yc ) << QPointF( m_endX+6, yc-4 ) << QPointF( m_endX+6, yc+4 );
-            p.setBrush( m_color[ch] );
+            p.setBrush( Theme::screenTrace( m_color[ch] ) );
             p.setPen( Qt::NoPen );
             p.drawPolygon( arrow );
             p.setBrush( Qt::NoBrush );
@@ -395,7 +401,7 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
         for( int i=0; i<m_channels; ++i ) // Draw Channel labels
         {
             double ceroY = m_ceroY+m_sizeY/16+i*m_sizeY/8;
-            pen.setColor( m_color[i] );
+            pen.setColor( Theme::screenTrace( m_color[i] ) );
             p.setPen( pen );
             p.drawText( 3, ceroY-13, 60, 12, Qt::AlignLeft, "Ch"+QString::number(i+1) );
             p.drawText( 3, ceroY+2 , 60, 12, Qt::AlignLeft, m_channel[i]->getChName() );
@@ -405,7 +411,7 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
         {
             if( m_hideCh[i] || m_ncCh[i] ) continue;
 
-            QPen pen1( m_color[i], 0.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+            QPen pen1( Theme::screenTrace( m_color[i] ), 0.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
             p.setPen( pen1 );
             double vMaxPos = m_posY[i] -(m_vMaxVal[i]-m_vMin[i])*m_scaleY[i];
             double vMinPos = m_posY[i] -(m_vMinVal[i]-m_vMin[i])*m_scaleY[i];
@@ -414,7 +420,7 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
 
             int xPos = 2+(i&1)*(m_sizeX+m_marginX);
 
-            QPen pen3( m_color[i], 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+            QPen pen3( Theme::screenTrace( m_color[i] ), 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
             p.setPen( pen3 );
 
             // Draw Max & Min Values
@@ -441,7 +447,7 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
         p.drawLine( cursorX, 0, cursorX, height() );       //Horizontal Cursor V line
         p.drawLine( m_ceroX, cursorY, m_endX, cursorY );   //Horizontal Cursor H line
 
-        pen1.setColor( Qt::white );
+        pen1.setColor( Theme::lightScreens() ? QColor( 25, 25, 25 ) : QColor( Qt::white ) );
         p.setPen( pen1 );
         double time = ((double)cursorX-t0)/m_scaleX; //
         QString unit;
