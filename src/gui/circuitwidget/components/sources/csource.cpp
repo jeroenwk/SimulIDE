@@ -12,6 +12,7 @@
 #include "propdialog.h"
 #include "pin.h"
 
+#include <cmath>
 #include "doubleprop.h"
 #include "boolprop.h"
 
@@ -120,6 +121,15 @@ void Csource::stamp()
 void Csource::voltChanged()
 {
     double volt = m_pin[0]->getVoltage() - m_pin[1]->getVoltage();
+
+    // Ignore control changes at rounding level: when the output drives a node that a control
+    // pin also sees (even through a ground's tiny impedance), restamping on every last-bit
+    // change made them retrigger each other forever, with time no longer advancing. 1 nV on
+    // a voltage control; on a current control `volt` is I x 1 nΩ, so 1e-18 V = 1 nA
+    double tol = m_currControl ? 1e-18 : 1e-9;
+    if( qFabs( volt-m_lastIn ) < tol ) return;
+    m_lastIn = volt;
+
     setVoltage( volt );
 }
 
@@ -170,7 +180,10 @@ void Csource::updateStep()
             m_pin[3]->stampCurrent(-m_volt/out_imp );
         }
     }
-    else voltChanged();
+    else{
+        m_lastIn = std::nan("");   // A property change restamps whatever the control does
+        voltChanged();
+    }
 
    bool connected = m_pin[0]->isConnected() && m_pin[1]->isConnected();
    m_pin[0]->changeCallBack( this, connected && m_controlPins );
