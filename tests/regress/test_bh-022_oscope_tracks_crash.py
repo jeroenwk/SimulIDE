@@ -7,7 +7,7 @@ and 4, so button(tr) returns nullptr for anything else (0, 3, 5, a garbled
 Right result: an invalid Tracks value is ignored or clamped, the program keeps
 running and Tracks reads back 1, 2 or 4.
 """
-import os, sys
+import os, re, sys, tempfile
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from harness import run_test
 
@@ -22,8 +22,11 @@ def test(sim):
             if "lost connection" in str(e) or "no JSON reply" in str(e):
                 sim.check("SimulIDE survives Tracks=%d" % v, 0, 1, tol=0)
                 return
-        p = {x["name"]: x["value"] for x in sim.cli("comp", "get", "O")["properties"]}
-        sim.check("Tracks after Tracks=%d is 1, 2 or 4" % v, int(p["Tracks"]) in (1, 2, 4), True)
+        # Tracks is a hidden property: read it from the saved file
+        path = os.path.join(tempfile.mkdtemp(), "osc.sim1")
+        sim.cli("circuit", "save", path)
+        t = int(re.search(r'Tracks="(\d+)"', open(path).read()).group(1))
+        sim.check("Tracks after Tracks=%d is 1, 2 or 4" % v, t in (1, 2, 4), True)
 
 
 run_test(test)

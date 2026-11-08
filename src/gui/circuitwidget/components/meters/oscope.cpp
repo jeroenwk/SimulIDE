@@ -5,6 +5,8 @@
 
 #include <QGraphicsProxyWidget>
 
+#include <QDebug>
+
 #include "oscope.h"
 #include "connector.h"
 #include "circuitwidget.h"
@@ -328,6 +330,13 @@ void Oscope::hideChannel( int ch, bool hide )
 int Oscope::tracks() { return m_display->tracks(); }
 void Oscope::setTracks( int tracks )
 {
+    // BH-022: the track selector only has the ids 1, 2 and 4; anything else
+    // (hand-edited file, CLI) made trackGroup->button() return nullptr and crash.
+    if( tracks != 1 && tracks != 2 && tracks != 4 )
+    {
+        qDebug() << "[BH-022] Oscope::setTracks: invalid Tracks" << tracks << "ignored (valid: 1, 2, 4)";
+        return;
+    }
     m_display->setTracks( tracks );
     m_oscWidget->setTracks( tracks );
 }
