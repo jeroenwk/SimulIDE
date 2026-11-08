@@ -40,6 +40,7 @@ class VarResBase : public Dialed, public eResistor
         virtual void updateProxy() override;
 
         double m_value;
+        bool   m_setFromCode = false; // dial being moved by updtValue(), not by the user
         double m_minVal;
         double m_maxVal;
         double m_step;

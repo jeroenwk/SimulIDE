@@ -8,6 +8,7 @@
 #include <QGraphicsProxyWidget>
 
 #include "varresbase.h"
+#include <QDebug>
 #include "propdialog.h"
 #include "simulator.h"
 #include "circuit.h"
@@ -76,6 +77,11 @@ void VarResBase::setLinkedValue( double v, int i )
 
 void VarResBase::dialChanged( int val )
 {
+    if( m_setFromCode ){ // BH-001: keep the exact value set from code, the dial only has 1000 steps
+        qDebug() << "[VarResBase] dialChanged ignored (value set from code):" << m_value;
+        m_needUpdate = true;
+        return;
+    }
     m_value = m_minVal+val*( m_maxVal-m_minVal)/1000;
     if( m_step > 0 ) m_value = round( m_value/m_step )*m_step;
 
@@ -89,7 +95,10 @@ void VarResBase::updtValue()
     else if( m_value < m_minVal ) m_value = m_minVal;
 
     double dialV = (m_value-m_minVal)*1000/(m_maxVal-m_minVal);
+    m_setFromCode = true;
     m_dialW.setValue( dialV );
+    m_setFromCode = false;
+    m_needUpdate = true;
 
     if( m_propDialog ) m_propDialog->updtValues();
 }
