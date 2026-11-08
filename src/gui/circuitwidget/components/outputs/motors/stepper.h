@@ -42,8 +42,8 @@ class Stepper : public LinkerComponent, public eElement
     protected:
         int m_steps;
         double m_res;
-        int m_ang;
-        int m_stpang;
+        double m_ang;
+        double m_stpang;
         int m_Ppos;
 
         bool m_bipolar;
