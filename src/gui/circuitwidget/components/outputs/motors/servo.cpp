@@ -5,6 +5,7 @@
 
 #include <QPainter>
 #include <QtMath>
+#include <QDebug>
 
 #include "servo.h"
 #include "theme.h"
@@ -126,7 +127,12 @@ void Servo::voltChanged()
     else if( m_clkState == Clock_Falling )
     {
         if( m_pulseStart == 0 ) return;
-        
+        if( m_maxPulse <= m_minPulse )
+        {
+            qDebug() << "Servo::voltChanged" << m_id << "ignored pulse: MaxPulse" << m_maxPulse << "<= MinPulse" << m_minPulse;
+            m_pulseStart = 0;
+            return;
+        }
         double steps = time_us - m_pulseStart;
         m_targetPos = (steps-m_minPulse)*180/(m_maxPulse-m_minPulse); // Map 1mS-2mS to 0-180ª
 
@@ -136,15 +142,18 @@ void Servo::voltChanged()
         m_pulseStart = 0;
 }   }
 
+// The setters take any value: the loader sets MinPulse before MaxPulse, so refusing a value
+// that crosses the other limit lost MinPulse >= the default MaxPulse on reload (BH-017).
+// voltChanged() ignores pulses while Max <= Min.
 void Servo::setMinPulse( double w )
 {
-    if( w >= m_maxPulse ) return;
+    qDebug() << "Servo::setMinPulse" << m_id << w << "us (MaxPulse" << m_maxPulse << ")";
     m_minPulse = w;
 }
 
 void Servo::setMaxPulse( double w )
 {
-    if( w <= m_minPulse ) return;
+    qDebug() << "Servo::setMaxPulse" << m_id << w << "us (MinPulse" << m_minPulse << ")";
     m_maxPulse = w;
 }
 
