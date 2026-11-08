@@ -6,6 +6,7 @@
 #include <QAbstractSlider>
 #include <QPainter>
 #include <QMenu>
+#include <QDebug>
 #include <QGraphicsProxyWidget>
 
 #include "dial.h"
@@ -47,6 +48,8 @@ Dial::Dial( QString type, QString id )
     m_minVal = 0;
     m_maxVal = 1000;
     m_steps  = 1000;
+    m_dialW.setMaximum( m_steps-1 ); // Dial positions 0..steps-1, as setSteps() does
+    qDebug() << "[Dial] ctor: steps" << m_steps << "dial max" << m_dialW.dial()->maximum();
 
     setValLabelPos( 15,-20, 0 );
     setLabelPos(-16,-40, 0);
