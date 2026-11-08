@@ -125,6 +125,8 @@ QString SevenSegment::colorStr()
 void SevenSegment::setColorStr( QString color )
 {
     for( LedSmd* segment : m_segment ) segment->setColorStr( color );
+    if( m_segment.size() && m_segment[0] ) m_threshold = m_segment[0]->threshold(); // The colour sets the threshold
+    qDebug() << "SevenSegment::setColorStr [bh-016]" << m_id << color << "threshold" << m_threshold;
     if( m_showVal && (m_showProperty == "Color") )
         setValLabelText( color );
 }
