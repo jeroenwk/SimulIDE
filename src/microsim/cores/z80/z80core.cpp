@@ -121,7 +121,7 @@ Z80Core::Z80Core( eMcu* mcu )
         new BoolProp<Z80Core>("CMOS", QObject::tr("CMOS"), ""
                              , this, &Z80Core::cmos, &Z80Core::setCmos ),
 
-        new BoolProp<Z80Core>("Single cycle I/O", QObject::tr("Single cycle I/O"), ""
+        new BoolProp<Z80Core>("Single_cycle_IO", QObject::tr("Single cycle I/O"), ""
                              , this, &Z80Core::ioWait   , &Z80Core::setIoWait ),
 
         new BoolProp<Z80Core>("Int_Vector", QObject::tr("Interrupt Vector 0xFF"), ""
