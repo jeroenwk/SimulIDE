@@ -94,11 +94,13 @@ void LedBar::createLeds( int c )
         m_led[i]->setAcceptedMouseButtons(0);
         
         if( initialized ){
+            double thr = threshold();                 // setColorStr resets the threshold to the colour's default
+            m_led[i]->setColorStr( colorStr() );
             m_led[i]->setGrounded( grounded() );
             m_led[i]->setRes( res() );
             m_led[i]->setMaxCurrent( maxCurrent() ); 
-            m_led[i]->setThreshold( threshold() );
-            m_led[i]->setColorStr( colorStr() );
+            m_led[i]->setThreshold( thr );
+            qDebug() << "LedBar::createLeds [bh-015]" << m_id << "led" << i << "threshold" << thr;
 }   }   }
 
 void LedBar::deleteLeds( int d )
