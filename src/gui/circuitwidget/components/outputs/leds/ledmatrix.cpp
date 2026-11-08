@@ -91,10 +91,15 @@ void LedMatrix::setupMatrix( int rows, int cols )
 {
     if( Simulator::self()->isRunning() )  CircuitWidget::self()->powerCircOff();
 
+    double thr = m_threshold;
+    QString color = colorStr();     // The LEDs are recreated: keep the colour and the Forward Voltage
     deleteMatrix();
     m_rows = rows;
     m_cols = cols;
     createMatrix();
+    setColorStr( color );           // Sets every LED's threshold to the colour's default...
+    setThreshold( thr );            // ...so put the part's Forward Voltage back
+    qDebug() << "LedMatrix::setupMatrix [bh-016]" << m_id << rows << "x" << cols << color << "threshold" << m_threshold;
 
     Circuit::self()->update();
 }
@@ -174,6 +179,8 @@ void LedMatrix::setColorStr( QString color )
         for( int col=0; col<m_cols; ++col )
             m_led[row][col]->setColorStr( color );
 
+    if( m_rows > 0 && m_cols > 0 ) m_threshold = m_led[0][0]->threshold(); // The colour sets the threshold
+    qDebug() << "LedMatrix::setColorStr [bh-016]" << m_id << color << "threshold" << m_threshold;
     if( m_showVal && (m_showProperty == "Color") )
         setValLabelText( color );
 }
