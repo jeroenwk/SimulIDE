@@ -55,7 +55,7 @@ Stepper::Stepper( QString type, QString id )
     m_ang  = 0;
     m_Ppos = 4;
     m_steps = 32;
-    m_stpang = 360*8/m_steps;
+    m_stpang = 360.0*8/m_steps;
 
     m_pin.emplace_back( &m_pinA1 );
     m_pin.emplace_back( &m_pinA2 );
@@ -184,7 +184,8 @@ void Stepper::setSteps( int steps ) //" 4, 8,16,32"
     m_steps *= 4;
     m_steps += remainder;
     if( m_steps < 4 ) m_steps = 4;
-    m_stpang = 360*8/m_steps;
+    m_stpang = 360.0*8/m_steps;
+    qDebug() << "Stepper::setSteps [bh-014]" << idLabel() << "steps" << m_steps << "angle units per half step" << m_stpang;
     m_ang  = 0;
     m_Ppos = 4;
     update();
@@ -228,12 +229,12 @@ void Stepper::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 
     p->setPen ( QColor(255, 255, 255) );
     QRectF rectangle( -42.0,-42.0, 84.0, 84.0 );
-    for ( int i = 0; i< 360*16; i += m_stpang*2 )
-        p->drawPie( rectangle, i+m_stpang*5/6, m_stpang/3 );
+    for ( double i = 0; i< 360*16; i += m_stpang*2 )
+        p->drawPie( rectangle, qRound( i+m_stpang*5/6 ), qRound( m_stpang/3 ) );
 
     p->setPen ( QColor(0, 0, 0) );
     p->setBrush( QColor(50, 70, 100) );
-    p->drawPie(-33,-33, 66, 66, m_ang-m_stpang*3/4, m_stpang*3/2 );
+    p->drawPie(-33,-33, 66, 66, qRound( m_ang-m_stpang*3/4 ), qRound( m_stpang*3/2 ) );
 
     //p->setBrush( QColor(50, 70, 100) );
     p->drawEllipse(-25,-25, 50, 50);
