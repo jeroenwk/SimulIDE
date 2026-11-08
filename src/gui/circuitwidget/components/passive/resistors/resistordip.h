@@ -9,6 +9,8 @@
 #include "component.h"
 #include "e-element.h"
 
+#include <QDebug>
+
 class LibraryItem;
 class eResistor;
 class Pin;
@@ -37,7 +39,7 @@ class ResistorDip : public Component, public eElement
         void setPullUp( bool p );
 
         double puVolt() { return m_puVolt; }
-        void setPuVolt( double pv ) { m_puVolt = pv; update(); }
+        void setPuVolt( double pv ) { qDebug() << "[ResistorDip] setPuVolt" << pv; m_puVolt = pv; m_changed = true; update(); }
 
         void createResistors( int c );
         void deleteResistors( int d );
