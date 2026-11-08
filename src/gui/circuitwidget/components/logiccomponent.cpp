@@ -4,6 +4,8 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "logiccomponent.h"
+#include <algorithm>
+#include <QDebug>
 #include "circuitwidget.h"
 #include "simulator.h"
 #include "connector.h"
@@ -38,8 +40,14 @@ void LogicComponent::stamp()
 std::vector<Pin*> LogicComponent::getPins()
 {
     std::vector<Pin*> pins = IoComponent::getPins();
-    if( m_oePin  ) pins.emplace_back( m_oePin );
-    if( m_clkPin ) pins.emplace_back( m_clkPin );
+    // BH-008: m_oePin/m_clkPin may already be in m_inPin/m_otherPin (FlipFlops, counters): list each pin once
+    for( Pin* extra : { (Pin*)m_oePin, (Pin*)m_clkPin } )
+    {
+        if( !extra ) continue;
+        if( std::find( pins.begin(), pins.end(), extra ) != pins.end() )
+        { qDebug() << "[LogicComponent::getPins] BH-008 pin already listed, skipped:" << extra->pinId(); continue; }
+        pins.emplace_back( extra );
+    }
     return pins;
 }
 
