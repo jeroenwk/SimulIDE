@@ -58,7 +58,7 @@ class ResistorDip : public Component, public eElement
         bool m_pullUp;
         double m_puVolt;
 
-        std::vector<Pin*> m_pin;
+        // pins live in Component::m_pin (BH-005: a second m_pin here hid them from getPins())
         std::vector<eResistor*> m_resistor;
 
         static eNode m_puEnode;

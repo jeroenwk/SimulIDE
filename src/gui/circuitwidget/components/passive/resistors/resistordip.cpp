@@ -3,6 +3,7 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <QDebug>
 #include "resistordip.h"
 #include "theme.h"
 #include "circuitwidget.h"
@@ -104,6 +105,7 @@ void ResistorDip::createResistors( int c )
     m_size = m_size+c;
     m_resistor.resize( m_size );
     m_pin.resize( m_size*2 );
+    qDebug() << "[ResistorDip] createResistors" << m_id << "size" << m_size << "pins" << (int)m_pin.size();
 
     for( int i=start; i<m_size; i++ )
     {
