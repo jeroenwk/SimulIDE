@@ -157,6 +157,12 @@ void WaveGen::stamp()
 void WaveGen::runEvent()
 {
     m_time = fmod( (Simulator::self()->circTime()-m_lastTime) - m_stepsPC*m_phaseShift/360, m_fstepsPC );
+    // fmod keeps the sign of its dividend: during the first phase delay the time is negative
+    if( m_time < 0 )                          // wrap into [0, period)
+    {
+        m_time += m_fstepsPC;
+        qDebug() << "WaveGen::runEvent [BH-009] negative time wrapped to" << m_time << "of" << m_fstepsPC;
+    }
     
     switch( m_waveType ) {
         case Sine:     genSine(); break;
