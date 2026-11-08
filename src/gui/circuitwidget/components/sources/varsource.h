@@ -38,6 +38,7 @@ class VarSource : public Component, public eElement
 
     protected:
         void updateButton();
+        void setDial();
         void updtValue( double v );
 
         virtual void setflip() override;
@@ -45,6 +46,7 @@ class VarSource : public Component, public eElement
         double m_maxValue;
         double m_minValue;
         double m_outValue;
+        bool   m_setFromCode = false;
 
         QString m_unit;
         
