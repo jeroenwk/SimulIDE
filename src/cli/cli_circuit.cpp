@@ -9,6 +9,8 @@
 #include <QTimer>
 
 #include <QDomDocument>
+#include <QRegularExpression>
+#include <QDebug>
 #include <QFile>
 
 #include "cliapi.h"
@@ -106,7 +108,13 @@ void CliApi::registerCircuit()
             QString err;
             int line = 0;
             if( !f.open( QIODevice::ReadOnly ) ) throw CliError("cannot read "+file );
-            if( !doc.setContent( &f, &err, &line ) )
+            // Older files write < = > as "&#x3C" "&#x3D" "&#x3E" without the ";" (StrBaseProp reads them);
+            // the circuit loader accepts them, so repair them here before the strict XML check.
+            QString text = QString::fromUtf8( f.readAll() );
+            int fixed = text.count( QRegularExpression("&#x3[CDEcde](?!;)") );
+            if( fixed ) text.replace( QRegularExpression("(&#x3[CDEcde])(?!;)"), "\\1;" );
+            qDebug() << "[cli circuit open] repaired" << fixed << "unterminated character references in" << file;
+            if( !doc.setContent( text, &err, &line ) )
                 throw CliError( QString("not a valid circuit file: %1 (line %2: %3)").arg( file ).arg( line ).arg( err ) );
         }
         allowDiscard( c );
