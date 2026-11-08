@@ -7,6 +7,7 @@
 #include <QPainter>
 #include <QGraphicsProxyWidget>
 
+#include <QDebug>
 #include "potentiometer.h"
 #include "dialwidget.h"
 #include "propdialog.h"
@@ -102,7 +103,7 @@ void Potentiometer::updateStep()
     if( !m_needUpdate ) return;
     m_needUpdate = false;
 
-    double res1 = double( m_resist*m_dialW.value()/1000 );
+    double res1 = m_res1; // BH-002: exact value, the dial only has 1000 steps
     double res2 = m_resist-res1;
 
     if( res1 < 1e-6 ){
@@ -120,14 +121,24 @@ void Potentiometer::updateStep()
     else setValLabelText( getPropStr( showProp() ) );
 }
 
-double Potentiometer::getVal() { return m_resist*m_dialW.value()/1000; }
+double Potentiometer::getVal() { return m_res1; }
+
+void Potentiometer::dialChanged( int val ) // Dial moved
+{
+    if( !m_setFromCode ) m_res1 = m_resist*val/1000; // by the user: new value
+    qDebug() << "[Potentiometer] dialChanged" << val << "fromCode" << m_setFromCode << "value" << m_res1;
+    Dialed::dialChanged( val );
+}
 
 void Potentiometer::setVal( double val )
 {
     if( val > m_resist ) val = m_resist;
     else if( val < 1e-12 ) val = 1e-12;
+    m_setFromCode = true;  // BH-002: the dial's signal must not overwrite val with a quantized one
     m_dialW.setValue( val*1000/m_resist );
+    m_setFromCode = false;
     m_res1 = val;
+    qDebug() << "[Potentiometer] setVal" << val;
     m_needUpdate = true;
     if( !Simulator::self()->isRunning() ) updateStep();
 }

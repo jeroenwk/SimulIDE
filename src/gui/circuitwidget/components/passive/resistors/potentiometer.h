@@ -23,6 +23,7 @@ class Potentiometer : public Dialed, public eElement
 
         virtual void initialize() override;
         virtual void updateStep() override;
+        virtual void dialChanged( int val ) override;
 
         double getVal();
         void setVal( double val );
@@ -41,6 +42,7 @@ class Potentiometer : public Dialed, public eElement
         double m_resist;
         double m_voltOut;
         double m_res1;
+        bool   m_setFromCode = false; // dial being moved by setVal(), not by the user
 
         Pin m_pinA;
         Pin m_pinM;
