@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QPainter>
+#include <QDebug>
 #include <QGraphicsProxyWidget>
 #include <QToolButton>
 
@@ -206,29 +207,33 @@ void TouchPad::setHeight( int h )
     updateSize();
 }
 
+// No cross-check with the other limit: the loader sets Min before Max, so refusing a Min above
+// the default Max lost it on reload (BH-018). The mapping is linear, any order is safe.
 void TouchPad::setRxMin( double min )
 {
-    if( min > m_RxMax ) return;
     if( min < 1e-3 ) min = 1e-3;
+    qDebug() << "TouchPad::setRxMin" << m_id << min << "(Max" << m_RxMax << ")";
     m_RxMin = min;
 }
 
 void TouchPad::setRxMax( double max )
 {
-    if( max < m_RxMin ) return;
+    qDebug() << "TouchPad::setRxMax" << m_id << max << "(Min" << m_RxMin << ")";
     m_RxMax = max;
 }
 
+// No cross-check with the other limit: the loader sets Min before Max, so refusing a Min above
+// the default Max lost it on reload (BH-018). The mapping is linear, any order is safe.
 void TouchPad::setRyMin( double min )
 {
-    if( min > m_RyMax ) return;
     if( min < 1e-3 ) min = 1e-3;
+    qDebug() << "TouchPad::setRyMin" << m_id << min << "(Max" << m_RyMax << ")";
     m_RyMin = min;
 }
 
 void TouchPad::setRyMax( double max )
 {
-    if( max < m_RyMin ) return;
+    qDebug() << "TouchPad::setRyMax" << m_id << max << "(Min" << m_RyMin << ")";
     m_RyMax = max;
 }
 
