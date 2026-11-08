@@ -420,7 +420,16 @@ void CliApi::registerEdit()
         if( c.has("rot") ) comp->setPropStr("rotation", c.opt("rot") );
         circ->endUndoStep();
 
-        return CliRefs::placedJson( comp );
+        QJsonObject placed = CliRefs::placedJson( comp );
+        // A WaveGen or Clock with Always On off gives no output until its button is pressed: easy
+        // to miss when the circuit is built from the CLI (bug hunt IMP-016)
+        if( comp->getPropStr("Always_On") == "false" )
+        {
+            placed["note"] = comp->getUid()+" has no output until switched on: set Always_On=true, "
+                             "or switch it on (ui set "+comp->getUid()+" on)";
+            qDebug() << "[cli:comp add]" << comp->getUid() << "added with Always_On off: note sent";
+        }
+        return placed;
     });
 
     add("comp set", "comp set <comp> prop=value [prop=value ...]", "Change component properties (undoable).",
