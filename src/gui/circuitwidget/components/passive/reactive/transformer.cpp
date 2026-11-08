@@ -357,14 +357,16 @@ int Transformer::getLeght( winding_t* w )
         if( s > 0 ) w->topology.append(":");
         QStringList coils = sectStr.remove(" ").split(",");
         coils.removeAll("");
+        coils.removeAll("0");  // BH-021: create()/modify() skip "0" coils, so must the topology
         nCoils += coils.size();
-        for( int c=0; c<nCoils; ++c )
+        for( int c=0; c<coils.size(); ++c )
         {
             if( c > 0 ) w->topology.append(",");
             w->topology.append("c");
         }
     }
     w->nCoils = nCoils;
+    qDebug() << "Transformer::getLeght: definition" << w->definition << "topology" << w->topology << "coils" << nCoils;
     if( !nSections ) return 0;
     return nCoils*3+nSections-1;
 }
@@ -382,7 +384,7 @@ void Transformer::modify( winding_t* w )
     sectsStr.removeAll("");
 
     int nSections = sectsStr.size();
-    if( nSections == 0 ) return; // No coils
+    if( nSections == 0 || nCoils == 0 ) return; // No coils
 
     int coilSize = (m_lenght-nSections+1)/nCoils;
     int y = ((m_lenght-(nCoils*coilSize+nSections-1)))*4; // Position of first Pin
