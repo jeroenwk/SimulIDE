@@ -6,6 +6,7 @@
 #include <QPainter>
 #include <QtMath>
 
+#include <QDebug>
 #include "transformer.h"
 #include "itemlibrary.h"
 #include "circuitwidget.h"
@@ -191,6 +192,10 @@ void Transformer::setupInducts( winding_t* w )  // Setup Inductances
 
 void Transformer::setBaseInd( double i )
 {
+    if( i < 1e-9 ){ // Zero or negative inductance gave NaN / 1e192 V node voltages (BH-028)
+        qDebug() << "[Transformer] setBaseInd: Base Inductance" << i << "is not positive, using 1e-9 H";
+        i = 1e-9;
+    }
     if( m_baseInd == i ) return;
     if( Simulator::self()->isRunning() ) CircuitWidget::self()->powerCircOff();
     m_baseInd = i;
