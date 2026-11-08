@@ -335,7 +335,7 @@ void Function::setNumOutputs( int outs )
                 delete button;
 
                 m_proxys.removeLast();
-                m_funcList.removeLast();
+                if( m_funcList.size() > outs ) m_funcList.removeLast(); // BH-019: list may already be shorter/longer than the pins
     }   }   }
     else{
         m_outPin.resize( outs );
@@ -367,10 +367,14 @@ void Function::setNumOutputs( int outs )
                 proxy->setPos( QPoint( 0, -halfH+i*16+1 ) );
 
                 m_proxys.append( proxy );
-                m_funcList.append( "" );
+                // BH-019: setFunctions (circuit load) may already have filled this entry
+                if( m_funcList.size() <= (int)i ) m_funcList.append( "" );
 
                 QObject::connect( button, &CustomButton::released, [=](){ onbuttonclicked( i ); } );
     }   }   }
+
+    while( m_funcList.size() > outs ) m_funcList.removeLast();
+    qDebug() << "[Function] setNumOutputs" << m_id << "outs" << outs << "funcList entries" << m_funcList.size();
 
     Circuit::self()->update();
 }
