@@ -4,7 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QtMath>   // qFabs(x,y)
-//#include <QDebug>
+#include <QDebug>
 
 #include "e-mosfet.h"
 #include "simulator.h"
@@ -113,13 +113,17 @@ void eMosfet::setThreshold( double th )
 {
     if( th < 0.01 ) return;
     m_threshold = th; 
-    m_kRDSon = m_RDSon*(10-m_threshold);
-    m_Gth = m_threshold-m_threshold/4;
+    updateValues();
     m_changed = true;
 }
 
 void eMosfet::updateValues()
 {
-    m_kRDSon = m_RDSon*(10-m_threshold);
+    // The channel constant was RDSon*(10-Threshold): zero or negative for Threshold >= 10, which
+    // inverted the channel current and put the drain far above the supply (BH-025). At least 1.
+    double span = 10-m_threshold;
+    if( span < 1 ) span = 1;
+    m_kRDSon = m_RDSon*span;
+    qDebug() << "[eMosfet] updateValues Threshold" << m_threshold << "kRDSon" << m_kRDSon;
     m_Gth    = m_depletion ? -m_threshold-m_threshold/4 : m_threshold-m_threshold/4;
 }
