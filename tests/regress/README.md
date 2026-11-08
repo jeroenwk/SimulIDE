@@ -18,3 +18,25 @@ Exit codes: 0 pass, 1 a check failed (or the test raised), 2 harness error (no b
 - `def test(sim):` builds or opens a circuit, runs it and calls `sim.check(...)`; end the file with `run_test(test)` (see `test_000_harness_divider.py`).
 - Circuits the test needs go next to it as `test_<id>_*.sim1`, or are built through the CLI in the test.
 - Expected values are physics (Ohm's law, time constants, datasheet values), not whatever the simulator printed. SimulIDE favours fast models over accuracy: a tolerance that only fails on a real bug, and a note in the docstring when the model is simplified on purpose.
+
+## Safety nets
+
+- **Timeout:** every CLI call gets `$REGRESS_TIMEOUT` seconds (default 120, wall time). A call that runs out raises `SimHang`, so a solver hang fails the test instead of blocking forever; pass `timeout=` to `sim.cli` for a longer run.
+- **`sim.finite(name, comp)`:** fails when a pin voltage of `comp` is missing, NaN, infinite or beyond 1e6 V (BH-025..031 were found by eye before this).
+- **Private copy:** `SIMULIDE_COPY=1` runs a temporary copy of the app (removed afterwards), so building the next fix in `build_XX` does not break a long run.
+- **Data sync:** before the server starts, files in `resources/data` that differ from the built app's `data/` folder are copied into it (`make` copies them only at link time, so an XML-only fix was invisible to tests).
+
+## Sweeps (`sweeps/`)
+
+Whole-library checks that find a class of bugs in one run; each finding is a `FIND` line, and a crash or hang restarts the server and goes on. They take minutes to an hour; narrow them with `--parts REGEX`, `--start-at NAME`, `--limit N`.
+
+| Command | Finds | Found |
+|---|---|---|
+| `sweeps/sweep.py roundtrip [--factor 0.1] [--order rev]` | properties that do not survive save + reopen when set far from their defaults | BH-001..003, BH-017..019 |
+| `sweeps/sweep.py strings` | malformed text in string properties (separators, XML characters, unicode, long) | BH-012, BH-020 |
+| `sweeps/sweep.py garble` | crashes when a saved attribute holds junk | BH-022..024 |
+| `sweeps/sweep.py extremes` | NaN / huge voltages, hangs, crashes with numeric properties at 0 and −1 | BH-025..031 |
+| `sweeps/sweep.py examples` | examples that fail to load, crash, hang or log solver faults in 20 ms | |
+| `sweeps/shadowed_members.py` | data members redeclared in a derived class, hiding the base one (static, instant) | BH-005 |
+
+A finding is a candidate, not a bug: check it against the code's intent before writing a test.
