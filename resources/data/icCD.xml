@@ -39,7 +39,6 @@
     <item name="CD4511"  info="BCD to 7 Segment Latch Decoder Driver" ></item>
     <item name="CD4512"  info="8-input multiplexer with tristate output" ></item>
     <item name="CD4516"  info="Presettable Up/Down Counter" ></item>
-    <item name="CD4521"  info="24-stage frequency divider and oscillator" ></item>
     <item name="CD4522"  info="Programmable 4-bit BCD DOWN Counter" ></item>
     <item name="CD4526"  info="Programmable 4-bit Binary DOWN Counter" ></item>
     <item name="CD4532"  info="8-input priority encoder" ></item>
