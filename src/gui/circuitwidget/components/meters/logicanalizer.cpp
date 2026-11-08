@@ -5,6 +5,8 @@
 
 #include <QGraphicsProxyWidget>
 
+#include <QDebug>
+
 #include "logicanalizer.h"
 #include "itemlibrary.h"
 #include "connector.h"
@@ -271,6 +273,12 @@ void LAnalizer::setVoltDiv( double )
 
 void LAnalizer::setTrigger( int ch )
 {
+    // BH-024: a negative trigger indexed m_channel[] out of range in updateStep(); 0..7 channel, 8 condition, 9 none.
+    if( ch < 0 )
+    {
+        qDebug() << "[BH-024] LAnalizer::setTrigger: invalid trigger" << ch << "ignored (valid: 0..9)";
+        return;
+    }
     m_trigger = ch;
     m_laWidget->setTrigger( ch );
 
