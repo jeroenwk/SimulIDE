@@ -5,6 +5,7 @@
 // Based on Falstad Circuit Simulator BJT model: https://falstad.com
 
 #include <QtMath>
+#include <QDebug>
 #include <limits>
 
 #include "e-bjt.h"
@@ -163,6 +164,11 @@ double eBJT::limitStep( double vnew, double vold )
 
 void eBJT::setGain( double gain )
 {
+    // Gain <= 0 made m_fgain 0 or infinite and every node voltage NaN (BH-026)
+    if( gain < 0.01 ){
+        qDebug() << "[eBJT] setGain: Gain" << gain << "is not positive, using 0.01";
+        gain = 0.01;
+    }
     m_gain = gain;
     m_fgain = m_gain/(m_gain+1);
     m_changed = true;
