@@ -5,6 +5,7 @@
 
 #include <QtMath>
 
+#include <QDebug>
 #include "iopin.h"
 #include "simulator.h"
 #include "circuit.h"
@@ -261,6 +262,10 @@ void IoPin::setInputImp( double imp )
 
 void IoPin::setOutputImp( double imp )
 {
+    if( imp < 1e-3 ){ // 1/0 admittance made every pin voltage NaN (BH-031)
+        qDebug() << "[IoPin] setOutputImp: impedance" << imp << "is not positive, using 1e-3";
+        imp = 1e-3;
+    }
     m_outputImp = imp;
     if( m_pinMode == output )
     {
