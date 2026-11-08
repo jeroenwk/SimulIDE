@@ -226,6 +226,11 @@ void Oscope::setFilter( double filter )
 
 void Oscope::setTrigger( int ch )
 {
+    if( ch < 0 || ch > 4 )  // BH-023: same null button() crash as setAutoSC
+    {
+        qDebug() << "[BH-023] Oscope::setTrigger: invalid trigger channel" << ch << "ignored (valid: 0..4)";
+        return;
+    }
     m_trigger = ch;
     m_oscWidget->setTrigger( ch );
     m_trigState = -1;
@@ -295,6 +300,12 @@ void Oscope::setTunnels( QString tunnels )
 
 void Oscope::setAutoSC( int ch )
 {
+    // BH-023: the auto-scale selector only has the ids 0..4; anything else made autoGroup->button() null and crash.
+    if( ch < 0 || ch > 4 )
+    {
+        qDebug() << "[BH-023] Oscope::setAutoSC: invalid AutoSC" << ch << "ignored (valid: 0..4)";
+        return;
+    }
     m_auto = ch;
     m_oscWidget->setAuto( ch );
 }
