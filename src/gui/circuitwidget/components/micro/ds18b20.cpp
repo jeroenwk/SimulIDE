@@ -486,7 +486,13 @@ void Ds18b20::setROM( QString ROMstr )
     bool ok;
     QStringList lstROM = ROMstr.split(" ");
     lstROM.removeAll("");
+    if( lstROM.size() < 8 )  // BH-020: .at() out of range crashed
+    {
+        qDebug() << "Ds18b20::setROM: ignored, needs 8 hex bytes, got" << lstROM.size();
+        return;
+    }
     for( int i=0; i<8; ++i ) m_ROM[i] = lstROM.at( i ).toInt( &ok, 16 );
+    qDebug() << "Ds18b20::setROM: ROM set to" << arrayToHex( m_ROM, 8 );
     //qDebug() << idLabel() <<"Ds18b20::setROM"<<arrayToHex( m_ROM, 8 );
 }
 
