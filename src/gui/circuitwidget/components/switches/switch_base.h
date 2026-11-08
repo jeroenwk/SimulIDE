@@ -30,6 +30,7 @@ class SwitchBase : public MechContact
         
         CustomButton* button() { return m_button; }
 
+        virtual void setNClose( bool nc ) override;
         virtual void onbuttonclicked();
         virtual void keyEvent( QString key, bool pressed ){;}
 

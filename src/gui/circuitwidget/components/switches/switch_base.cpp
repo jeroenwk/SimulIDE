@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QPainter>
+#include <QDebug>
 #include <QGraphicsProxyWidget>
 
 #include "switch_base.h"
@@ -87,6 +88,16 @@ void SwitchBase::onbuttonclicked()
 
     if( m_nClose ) m_closed = !m_closed;
     m_changed = true;
+    update();
+}
+
+void SwitchBase::setNClose( bool nc )
+{
+    m_nClose = nc;
+    // Contact state follows the button (toggled/pressed) as well as the normal position
+    bool closed = m_button->isChecked() != nc;
+    qDebug() << "[SwitchBase::setNClose]" << m_id << "nc" << nc << "button" << m_button->isChecked() << "-> closed" << closed;
+    setSwitch( closed );
     update();
 }
 
