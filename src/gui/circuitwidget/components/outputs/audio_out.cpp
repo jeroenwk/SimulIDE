@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QCoreApplication>
+#include <QDebug>
 #include <QPainter>
 #include <QtMath>
 
@@ -199,6 +200,10 @@ void AudioOut::runEvent()
 
 void AudioOut::setImpedance( double i )
 {
+    if( i < 1e-3 ){ // 1/0 admittance made the pin voltages NaN (BH-030)
+        qDebug() << "[AudioOut] setImpedance: impedance" << i << "is not positive, using 1e-3";
+        i = 1e-3;
+    }
     m_impedance = i;
     m_changed = true;
     if( !Simulator::self()->isRunning() ) updateStep();
