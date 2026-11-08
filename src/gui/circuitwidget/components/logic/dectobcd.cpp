@@ -7,6 +7,7 @@
 #include "itemlibrary.h"
 #include "circuit.h"
 #include "iopin.h"
+#include <QDebug>
 
 #include "boolprop.h"
 
@@ -45,7 +46,8 @@ DecToBcd::DecToBcd( QString type, QString id )
             ;
     init( pinList );
 
-    setNumInps( 10,"D", 1 );
+    qDebug() << "[DecToBcd] creating" << m_bits-1 << "inputs D1..D" << m_bits-1;
+    setNumInps( m_bits-1,"D", 1 ); // D0 is implicit (code 0)
 
     createOePin( "IU03OE ", id+"-in15"); // Output Enable
 
@@ -85,6 +87,7 @@ void DecToBcd::set16bits( bool set )
 {
     m_bits =  set ? 16 : 10;
     m_16Bits = set;
-    setNumInps( m_16Bits ? 16 : 10, "D", 1 );
+    qDebug() << "[DecToBcd] set16bits" << set << "inputs" << m_bits-1;
+    setNumInps( m_bits-1, "D", 1 );
     m_oePin->setY( m_area.y()-8 );
 }
