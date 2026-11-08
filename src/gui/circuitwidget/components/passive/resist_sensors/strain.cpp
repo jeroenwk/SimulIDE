@@ -17,6 +17,7 @@
 #include "itemlibrary.h"
 
 #include "doubleprop.h"
+#include <QDebug>
 #include "propdialog.h"
 
 #define tr(str) simulideTr("Strain",str)
@@ -73,8 +74,10 @@ void Strain::initialize()
   m_last_resist = 1/m_admit;
   m_new_resist = m_last_resist;
 
-  //setResist ( m_resist);
-  updateStep ();
+  // Like the other variable resistors: let updateStep() run after the circuit is built.
+  // Calling it here stamped the admittance during initialisation and hung the solver (BH-027)
+  qDebug() << "[Strain] initialize: deferring the resistance update to updateStep()";
+  VarResBase::initialize();
 }
 
 void Strain::updateStep()
