@@ -5,6 +5,7 @@
 
 #include <QGraphicsProxyWidget>
 #include <QDial>
+#include <QDebug>
 #include <QPainter>
 
 #include "varsource.h"
@@ -78,9 +79,19 @@ void VarSource::onbuttonclicked()
 
 void VarSource::dialChanged( int val )
 {
-    m_outValue = m_minValue+(m_maxValue-m_minValue)*double(val)/1000.0;
+    qDebug() << "[VarSource] dialChanged" << val << "fromCode" << m_setFromCode << "out" << m_outValue;
+    if( !m_setFromCode ) // BH-011: only the user moving the dial sets a (quantized) value
+        m_outValue = m_minValue+(m_maxValue-m_minValue)*double(val)/1000.0;
     updateButton();
     m_changed = true;
+}
+
+void VarSource::setDial() // BH-011: knob position of m_outValue, without changing m_outValue
+{
+    m_setFromCode = true;
+    m_voltw.setValue( (m_outValue-m_minValue)*1000/(m_maxValue-m_minValue) );
+    m_setFromCode = false;
+    qDebug() << "[VarSource] setDial out" << m_outValue << "min" << m_minValue << "max" << m_maxValue;
 }
 
 void VarSource::setVal( double val )
@@ -88,8 +99,8 @@ void VarSource::setVal( double val )
     if     ( val > m_maxValue ) m_maxValue = val;
     else if( val < m_minValue ) m_minValue = val;
 
-    m_voltw.setValue( val*1000/(m_maxValue-m_minValue) );
     m_outValue = val;
+    setDial();
     m_changed = true;
     updateButton();
     if( !Simulator::self()->isRunning() ) updateStep();
@@ -100,7 +111,7 @@ void VarSource::setMaxValue( double v )
     if( v < m_minValue ) v = m_minValue+1e-3;
     m_maxValue = v;
     if( m_outValue > v ) m_outValue = v;
-    m_voltw.setValue( m_outValue*1000/(m_maxValue-m_minValue) );
+    setDial();
     m_changed = true;
 }
 
@@ -109,7 +120,7 @@ void VarSource::setMinValue( double v )
     if( v > m_maxValue ) v = m_maxValue-1e-3;
     m_minValue = v;
     if( m_outValue < v ) m_outValue = v;
-    m_voltw.setValue( m_outValue*1000/(m_maxValue-m_minValue) );
+    setDial();
     m_changed = true;
 }
 
