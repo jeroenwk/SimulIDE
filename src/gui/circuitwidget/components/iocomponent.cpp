@@ -3,6 +3,7 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <QDebug>
 #include "iocomponent.h"
 #include "circuitwidget.h"
 #include "simulator.h"
@@ -187,6 +188,10 @@ void IoComponent::setOutLowV( double volt )
 
 void IoComponent::setInputImp( double imp )
 {
+    if( imp < 1e-3 ){ // 1/0 admittance made every pin voltage NaN (BH-029)
+        qDebug() << "[IoComponent] setInputImp: impedance" << imp << "is not positive, using 1e-3";
+        imp = 1e-3;
+    }
     if( m_inImp == imp ) return;
     m_inImp = imp;
     Simulator::self()->pauseSim();
