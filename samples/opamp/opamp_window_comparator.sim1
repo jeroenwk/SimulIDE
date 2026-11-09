@@ -1,0 +1,112 @@
+<circuit version="1.1.0-SR2" rev="261109" stepSize="1000000" stepsPS="20000" NLsteps="100000" reaStep="1000000" animate="0" >
+<description>
+Window comparator: the LED lights when the input is outside the 1.67 V to 3.33 V window.
+
+How it works:
+- The divider (3 x 10k from 5 V) sets the window: high threshold 3.33 V, low threshold 1.67 V.
+- U1 compares VIN with the high threshold, U2 compares the low threshold with VIN. Both are open loop (no feedback), on a single 0 to 5 V supply.
+- The diodes OR the two outputs into the LED.
+
+Input: 100 Hz triangle, 0 to 5 V (tunnel VIN). Scope: VIN, HI (U1), LO (U2). Speed 2 %.
+
+What to try: change the middle resistor to make the window wider or narrower; change the input's amplitude so that it stays inside the window (the LED stays off).
+
+Results [SIMULATED]: each output is high a third of the time (mean 1.65 V; theory 1.667 V).
+
+Why it is here: a test circuit for the op-amp model (BH-032), for comparators without feedback. While developing the fix, these outputs went to -2300 V on average, because a waiting op amp was never called again.
+</description>
+
+
+<item itemtype="WaveGen" CircId="WaveGen-1" mainComp="false" Show_id="false" Show_Val="false" Pos="-240,200" rotation="0" hflip="1" vflip="1" label="Vin" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" Out="true" Running="true" Wave_Type="Triangle" Freq="100 Hz" Phase="0 _º" Steps="100 _Steps" Duty="50 _%" Always_On="true" Bipolar="false" Floating="false" Semi_Ampli="2.5 V" Mid_Volt="2.5 V" />
+
+<item itemtype="Tunnel" CircId="Tunnel-2" mainComp="false" Show_id="false" Show_Val="false" Pos="-200,200" rotation="180" hflip="1" vflip="1" label="T0" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="VIN" IsBus="false" />
+
+<item itemtype="Fixed Voltage" CircId="Fixed Voltage-3" mainComp="false" Show_id="false" Show_Val="false" Pos="-88,-64" rotation="0" hflip="1" vflip="1" label="V1" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" Voltage="5 V" Out="true" />
+
+<item itemtype="Resistor" CircId="Resistor-4" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-72,-32" rotation="90" hflip="1" vflip="1" label="Rt" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="10 kΩ" />
+
+<item itemtype="Resistor" CircId="Resistor-5" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-72,40" rotation="90" hflip="1" vflip="1" label="Rm" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="10 kΩ" />
+
+<item itemtype="Resistor" CircId="Resistor-6" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-72,120" rotation="90" hflip="1" vflip="1" label="Rb" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="10 kΩ" />
+
+<item itemtype="Ground" CircId="Ground-7" mainComp="false" Show_id="false" Show_Val="false" Pos="-72,176" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="opAmp" CircId="opAmp-8" mainComp="false" Show_id="false" Show_Val="false" Pos="40,0" rotation="0" hflip="1" vflip="1" label="U1" idLabPos="-16,-32" labelrot="0" valLabPos="-16,20" valLabRot="0" Gain="100000" Out_Imped="1e-09 Ω" Show_State="true" Power_Pins="false" Switch_Pins="false" Volt_Pos="5 V" Volt_Neg="0 V" />
+
+<item itemtype="opAmp" CircId="opAmp-9" mainComp="false" Show_id="false" Show_Val="false" Pos="40,96" rotation="0" hflip="1" vflip="1" label="U2" idLabPos="-16,-32" labelrot="0" valLabPos="-16,20" valLabRot="0" Gain="100000" Out_Imped="1e-09 Ω" Show_State="true" Power_Pins="false" Switch_Pins="false" Volt_Pos="5 V" Volt_Neg="0 V" />
+
+<item itemtype="Tunnel" CircId="Tunnel-10" mainComp="false" Show_id="false" Show_Val="false" Pos="-8,-8" rotation="0" hflip="1" vflip="1" label="T1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="VIN" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-11" mainComp="false" Show_id="false" Show_Val="false" Pos="-8,104" rotation="0" hflip="1" vflip="1" label="T2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="VIN" IsBus="false" />
+
+<item itemtype="Diode" CircId="Diode-12" mainComp="false" Show_id="false" Show_Val="false" Pos="112,0" rotation="0" hflip="1" vflip="1" label="D1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Model="Diode Default" Show_State="false" Threshold="0.634767 V" MaxCurrent="1 A" Resistance="0.05 Ω" BrkDownV="0 V" SatCurrent="171.435 nA" EmCoef="2" />
+
+<item itemtype="Diode" CircId="Diode-13" mainComp="false" Show_id="false" Show_Val="false" Pos="112,96" rotation="0" hflip="1" vflip="1" label="D2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Model="Diode Default" Show_State="false" Threshold="0.634767 V" MaxCurrent="1 A" Resistance="0.05 Ω" BrkDownV="0 V" SatCurrent="171.435 nA" EmCoef="2" />
+
+<item itemtype="Resistor" CircId="Resistor-14" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="200,48" rotation="0" hflip="1" vflip="1" label="RL" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="330 Ω" />
+
+<item itemtype="Led" CircId="Led-15" mainComp="false" Show_id="false" Show_Val="false" Pos="248,80" rotation="90" hflip="1" vflip="1" label="LED" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Color="Yellow" Grounded="false" Show_State="false" Threshold="2.4 V" MaxCurrent="30 mA" Resistance="0.6 Ω" />
+
+<item itemtype="Ground" CircId="Ground-16" mainComp="false" Show_id="false" Show_Val="false" Pos="248,128" rotation="0" hflip="1" vflip="1" label="G2" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Tunnel" CircId="Tunnel-17" mainComp="false" Show_id="false" Show_Val="false" Pos="80,-32" rotation="180" hflip="1" vflip="1" label="T3" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="HI" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-18" mainComp="false" Show_id="false" Show_Val="false" Pos="80,136" rotation="180" hflip="1" vflip="1" label="T4" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="LO" IsBus="false" />
+
+<item itemtype="Oscope" CircId="Oscope-24" mainComp="false" Show_id="false" Show_Val="false" Pos="480,40" rotation="0" hflip="1" vflip="1" label="SC" idLabPos="-90,-100" labelrot="0" valLabPos="-16,20" valLabRot="0" Basic_X="135 _px" Basic_Y="135 _px" BufferSize="600000" connectGnd="true" InputImped="10 MΩ" TimDiv="5000000000" TimPos="0,0,0,0," VolDiv="2,2,2,2," Tunnels="VIN,HI,LO,," Trigger="4" Filter="0.1 V" AutoSC="4" Tracks="1" HideCh="false,false,false,false," VolPos="0,0,0,0," TrigAuto="true" TrigLevel="0 V" />
+
+<item itemtype="Node" CircId="Node-19" mainComp="false" Pos="-72,8" />
+
+<item itemtype="Node" CircId="Node-20" mainComp="false" Pos="-72,88" />
+
+<item itemtype="Node" CircId="Node-21" mainComp="false" Pos="160,48" />
+
+<item itemtype="Node" CircId="Node-22" mainComp="false" Pos="80,0" />
+
+<item itemtype="Node" CircId="Node-23" mainComp="false" Pos="80,96" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="WaveGen-1-outnod" endpinid="Tunnel-2-pin" pointList="-224,200,-200,200" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="Fixed Voltage-3-outnod" endpinid="Resistor-4-lPin" pointList="-72,-64,-72,-48" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Resistor-6-rPin" endpinid="Ground-7-Gnd" pointList="-72,136,-72,160" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Tunnel-10-pin" endpinid="opAmp-8-inputNinv" pointList="-8,-8,16,-8" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="Node-19-1" endpinid="opAmp-8-inputInv" pointList="-72,8,16,8" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Resistor-4-rPin" endpinid="Node-19-0" pointList="-72,-16,-72,8" />
+
+<item itemtype="Connector" uid="Connector-9" startpinid="Node-19-2" endpinid="Resistor-5-lPin" pointList="-72,8,-72,24" />
+
+<item itemtype="Connector" uid="Connector-10" startpinid="Node-20-1" endpinid="opAmp-9-inputNinv" pointList="-72,88,16,88" />
+
+<item itemtype="Connector" uid="Connector-11" startpinid="Resistor-5-rPin" endpinid="Node-20-0" pointList="-72,56,-72,88" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="Node-20-2" endpinid="Resistor-6-lPin" pointList="-72,88,-72,104" />
+
+<item itemtype="Connector" uid="Connector-13" startpinid="Tunnel-11-pin" endpinid="opAmp-9-inputInv" pointList="-8,104,16,104" />
+
+<item itemtype="Connector" uid="Connector-17" startpinid="Diode-13-rPin" endpinid="Node-21-1" pointList="128,96,160,96,160,48" />
+
+<item itemtype="Connector" uid="Connector-18" startpinid="Diode-12-rPin" endpinid="Node-21-0" pointList="128,0,160,0,160,48" />
+
+<item itemtype="Connector" uid="Connector-19" startpinid="Node-21-2" endpinid="Resistor-14-lPin" pointList="160,48,184,48" />
+
+<item itemtype="Connector" uid="Connector-20" startpinid="Resistor-14-rPin" endpinid="Led-15-lPin" pointList="216,48,248,48,248,64" />
+
+<item itemtype="Connector" uid="Connector-21" startpinid="Led-15-rPin" endpinid="Ground-16-Gnd" pointList="248,96,248,112" />
+
+<item itemtype="Connector" uid="Connector-22" startpinid="Node-22-1" endpinid="Tunnel-17-pin" pointList="80,0,80,-32" />
+
+<item itemtype="Connector" uid="Connector-23" startpinid="opAmp-8-output" endpinid="Node-22-0" pointList="64,0,80,0" />
+
+<item itemtype="Connector" uid="Connector-24" startpinid="Node-22-2" endpinid="Diode-12-lPin" pointList="80,0,96,0" />
+
+<item itemtype="Connector" uid="Connector-25" startpinid="Node-23-1" endpinid="Tunnel-18-pin" pointList="80,96,80,136" />
+
+<item itemtype="Connector" uid="Connector-26" startpinid="opAmp-9-output" endpinid="Node-23-0" pointList="64,96,80,96" />
+
+<item itemtype="Connector" uid="Connector-27" startpinid="Node-23-2" endpinid="Diode-13-lPin" pointList="80,96,96,96" />
+
+</circuit>

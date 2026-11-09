@@ -53,19 +53,34 @@ class OpAmp : public Component, public eElement
 
     protected:
         void updtProperties();
+        void stampMode();            // Matrix terms of m_mode (BH-032)
+
+        enum { LIN=0, SAT_P, SAT_N };
+        enum { aOP=0, aON, aPO, aNO, aNum };  // Internal pins, see stamp()
+
+        eElement m_aux;
+        int    m_mode;               // LIN: out = gain*(V+ - V-) stamped in the matrix; SAT_P/N: out = rail
+        int    m_flips;              // Unstable LIN -> rail flips in this time step
+        uint64_t m_flipTime;
+        bool   m_checkStable;        // First LIN solve after a rail: is the loop stable?
+        double m_satVd, m_satOut;    // vd and output at the rail before it
+        double m_stampI, m_stampVpos, m_stampVneg;
+        double m_constIn;            // Input voltages not on a matrix node (ground or open), as gain*(V+ - V-)
+        bool   m_dirty;
+        int    m_linIter;            // Iterations since the last change to LIN
+        double m_lastVd;
+        double m_nudge;              // Tiny output offset while waiting: makes the solver call back
+        bool   m_diag[2];            // aOP/aON on the diagonal (output wired to that input)
 
         bool m_powerPins;
         bool m_switchPins;
 
         double m_accuracy;
         double m_gain;
-        double m_k;
         double m_voltPos;
         double m_voltNeg;
         double m_voltPosDef;
         double m_voltNegDef;
-        double m_lastOut;
-        double m_lastIn;
         double m_outImp;
 
         int m_region;                // Part state: -1 none, 0 linear, 1 SAT+, 2 SAT- (stepSettled)

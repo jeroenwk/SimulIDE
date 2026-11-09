@@ -1,0 +1,97 @@
+<circuit version="1.1.0-SR2" rev="261109" stepSize="1000000" stepsPS="20000" NLsteps="100000" reaStep="1000000" animate="0" >
+<description>
+Function generator: a Schmitt trigger (U1) and an integrator (U2) in a loop make a square wave and a triangle wave.
+
+How it works:
+- U1 is a non-inverting Schmitt trigger. R2 (20k) is positive feedback from its output, R1 (10k) brings the triangle (tunnel TRI).
+- U1's output is +/-12 V (its rails). It flips when the triangle reaches -/+ Vsat*R1/R2 = -/+6 V.
+- U2 integrates the square: the triangle ramps at Vsat/(R3*C1) = 12 V/ms.
+- f = R2/(4*R1*R3*C1) = 20k/(4*10k*10k*100nF) = 500 Hz.
+
+Scope: SQ (square), TRI (triangle). Frequency meter on the square. Speed 2 %.
+
+What to try:
+- Change C1 to 47 nF: the frequency doubles (1.06 kHz).
+- Change R2 to 40k: the triangle shrinks to +/-3 V and the frequency doubles.
+
+Results [SIMULATED]: square +/-12.0 V, triangle +/-5.99 V, 501 Hz (theory: +/-6 V, 500 Hz); no convergence faults.
+
+Why it is here: a test circuit for the op-amp model (BH-032). It mixes positive feedback (U1) and a coupled integrator loop. With the old op-amp iteration it never started: both outputs stayed at 0 V.
+</description>
+
+
+<item itemtype="opAmp" CircId="opAmp-1" mainComp="false" Show_id="false" Show_Val="false" Pos="-80,40" rotation="0" hflip="1" vflip="1" label="U1" idLabPos="-16,-32" labelrot="0" valLabPos="-16,20" valLabRot="0" Gain="100000" Out_Imped="1e-09 Ω" Show_State="true" Power_Pins="false" Switch_Pins="false" Volt_Pos="12 V" Volt_Neg="-12 V" />
+
+<item itemtype="Ground" CircId="Ground-2" mainComp="false" Show_id="false" Show_Val="false" Pos="-120,88" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Tunnel" CircId="Tunnel-3" mainComp="false" Show_id="false" Show_Val="false" Pos="-160,32" rotation="0" hflip="1" vflip="1" label="T1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="TRI" IsBus="false" />
+
+<item itemtype="Resistor" CircId="Resistor-4" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-144,32" rotation="0" hflip="1" vflip="1" label="R1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="10 kΩ" />
+
+<item itemtype="Resistor" CircId="Resistor-5" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-80,0" rotation="0" hflip="1" vflip="1" label="R2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="20 kΩ" />
+
+<item itemtype="Resistor" CircId="Resistor-6" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="56,40" rotation="0" hflip="1" vflip="1" label="R3" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="10 kΩ" />
+
+<item itemtype="opAmp" CircId="opAmp-7" mainComp="false" Show_id="false" Show_Val="false" Pos="120,48" rotation="0" hflip="1" vflip="-1" label="U2" idLabPos="-16,-32" labelrot="0" valLabPos="-16,20" valLabRot="0" Gain="100000" Out_Imped="1e-09 Ω" Show_State="true" Power_Pins="false" Switch_Pins="false" Volt_Pos="12 V" Volt_Neg="-12 V" />
+
+<item itemtype="Ground" CircId="Ground-8" mainComp="false" Show_id="false" Show_Val="false" Pos="80,80" rotation="0" hflip="1" vflip="1" label="G2" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Capacitor" CircId="Capacitor-9" mainComp="false" ShowProp="Capacitance" Show_id="false" Show_Val="true" Pos="120,8" rotation="0" hflip="1" vflip="1" label="C1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Capacitance="100 nF" Resistance="1 µΩ" InitVolt="0 V" MaxVolt="0 V" ChargeScale="0 V" LogCharge="false" ReaStep="0 ns" />
+
+<item itemtype="Tunnel" CircId="Tunnel-10" mainComp="false" Show_id="false" Show_Val="false" Pos="200,48" rotation="180" hflip="1" vflip="1" label="T2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="TRI" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-11" mainComp="false" Show_id="false" Show_Val="false" Pos="-8,80" rotation="180" hflip="1" vflip="1" label="T3" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="SQ" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-12" mainComp="false" Show_id="false" Show_Val="false" Pos="240,120" rotation="0" hflip="1" vflip="1" label="T4" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="SQ" IsBus="false" />
+
+<item itemtype="FreqMeter" CircId="FreqMeter-13" mainComp="false" Show_id="false" Show_Val="false" Pos="296,120" rotation="0" hflip="1" vflip="1" label="FM" idLabPos="-32,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Filter="0.1 V" />
+
+<item itemtype="Oscope" CircId="Oscope-19" mainComp="false" Show_id="false" Show_Val="false" Pos="480,40" rotation="0" hflip="1" vflip="1" label="SC" idLabPos="-90,-100" labelrot="0" valLabPos="-16,20" valLabRot="0" Basic_X="135 _px" Basic_Y="135 _px" BufferSize="600000" connectGnd="true" InputImped="10 MΩ" TimDiv="1000000000" TimPos="0,0,0,0," VolDiv="5,5,5,5," Tunnels="SQ,TRI,,," Trigger="4" Filter="0.1 V" AutoSC="4" Tracks="1" HideCh="false,false,false,false," VolPos="0,0,0,0," TrigAuto="true" TrigLevel="0 V" />
+
+<item itemtype="Node" CircId="Node-14" mainComp="false" Pos="-120,32" />
+
+<item itemtype="Node" CircId="Node-15" mainComp="false" Pos="-40,40" />
+
+<item itemtype="Node" CircId="Node-16" mainComp="false" Pos="80,40" />
+
+<item itemtype="Node" CircId="Node-17" mainComp="false" Pos="160,48" />
+
+<item itemtype="Node" CircId="Node-18" mainComp="false" Pos="-8,40" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="Tunnel-3-pin" endpinid="Resistor-4-lPin" pointList="-160,32" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="opAmp-1-inputInv" endpinid="Ground-2-Gnd" pointList="-104,48,-120,48,-120,72" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Resistor-5-lPin" endpinid="Node-14-1" pointList="-96,0,-120,0,-120,32" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Resistor-4-rPin" endpinid="Node-14-0" pointList="-128,32,-120,32" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="Node-14-2" endpinid="opAmp-1-inputNinv" pointList="-120,32,-104,32" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Resistor-5-rPin" endpinid="Node-15-1" pointList="-64,0,-40,0,-40,40" />
+
+<item itemtype="Connector" uid="Connector-9" startpinid="opAmp-1-output" endpinid="Node-15-0" pointList="-56,40,-40,40" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="opAmp-7-inputNinv" endpinid="Ground-8-Gnd" pointList="96,56,80,56,80,64" />
+
+<item itemtype="Connector" uid="Connector-14" startpinid="Capacitor-9-lPin" endpinid="Node-16-1" pointList="104,8,80,8,80,40" />
+
+<item itemtype="Connector" uid="Connector-15" startpinid="Resistor-6-rPin" endpinid="Node-16-0" pointList="72,40,80,40" />
+
+<item itemtype="Connector" uid="Connector-16" startpinid="Node-16-2" endpinid="opAmp-7-inputInv" pointList="80,40,96,40" />
+
+<item itemtype="Connector" uid="Connector-17" startpinid="Capacitor-9-rPin" endpinid="Node-17-1" pointList="136,8,160,8,160,48" />
+
+<item itemtype="Connector" uid="Connector-18" startpinid="opAmp-7-output" endpinid="Node-17-0" pointList="144,48,160,48" />
+
+<item itemtype="Connector" uid="Connector-19" startpinid="Node-17-2" endpinid="Tunnel-10-pin" pointList="160,48,200,48" />
+
+<item itemtype="Connector" uid="Connector-20" startpinid="Node-18-1" endpinid="Tunnel-11-pin" pointList="-8,40,-8,80" />
+
+<item itemtype="Connector" uid="Connector-21" startpinid="Node-15-2" endpinid="Node-18-0" pointList="-40,40,-8,40" />
+
+<item itemtype="Connector" uid="Connector-22" startpinid="Node-18-2" endpinid="Resistor-6-lPin" pointList="-8,40,40,40" />
+
+<item itemtype="Connector" uid="Connector-23" startpinid="Tunnel-12-pin" endpinid="FreqMeter-13-lPin" pointList="240,120,256,120" />
+
+</circuit>
