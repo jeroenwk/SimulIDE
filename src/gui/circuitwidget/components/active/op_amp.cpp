@@ -6,6 +6,8 @@
 #include <QPainter>
 
 #include <QtMath>
+#include <QDebug>
+#include <limits>
 
 #include "op_amp.h"
 #include "itemlibrary.h"
@@ -36,7 +38,9 @@ LibraryItem* OpAmp::libraryItem()
 OpAmp::OpAmp( QString type, QString id )
      : Component( type, id )
      , eElement( id )
+     , m_aux( id+"-aux" )
 {
+    m_aux.setNumEpins( aNum );
     m_area = QRect( -18, -8*2, 36, 8*2*2 );
     setLabelPos(-16,-32, 0);
 
@@ -102,28 +106,74 @@ OpAmp::OpAmp( QString type, QString id )
 }
 OpAmp::~OpAmp(){}
 
+// BH-032: the op amp used to guess its output from its own last input and output (a secant
+// iteration per op amp). Two high-gain stages coupled through resistors or diodes (AoE 4.63
+// absolute value) never converged that way: each one's move upset the other. Now the linear
+// region is stamped in the matrix, so the solver sees every feedback loop in one solve:
+//   output node: G*(Vout - gain*(V+ - V-)) = current from the rest of the circuit, G = 1/Out_Imped
+// (a voltage-controlled current source from the inputs into the output node, plus the output's own
+// G to ground, which the IoPin stamps). At a rail the output is a source at the rail voltage.
+// The region is chosen by iterating: LIN while gain*vd stays between the rails, SAT_P/SAT_N while
+// gain*vd is beyond the rail it sits on. With positive feedback (comparators with hysteresis,
+// astables) the LIN solution is the unstable middle point: the first LIN solve after a rail
+// measures the loop (d vd / d out between the rail and the LIN point); gain*slope > 1 means
+// unstable, and the output runs to the other rail instead.
+static eNode s_gnd("");   // Node 0, for terms between the output and itself
+
+#define OPAMP_LOG qDebug() << "[opamp]" << m_elmId
+static const bool s_trace = qEnvironmentVariableIsSet("SIMULIDE_OPAMP_TRACE"); // Every iteration
+
 void OpAmp::initialize()
 {
     m_accuracy = 5e-6;
-
-    added = false;
-    m_step = 0;
-    m_lastOut = 0;
-    m_lastIn  = 0;
-    m_k = 1e-6/m_gain;
+    m_mode = SAT_P;            // A rail first: a positive-feedback circuit starts at a rail, as a real one
+    m_flips = 0;
+    m_flipTime = 0;
+    m_checkStable = false;
+    m_satVd = m_satOut = 0;
+    m_stampI = m_stampVpos = m_stampVneg = 0;
+    m_constIn = 0;
+    m_dirty = true;
+    m_voltPos = m_voltPosDef;
+    m_voltNeg = m_voltNegDef;
     m_region = -1;
+    m_output->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
     clearStates();
 }
 
 void OpAmp::stamp()
 {
-    if( m_inputP->isConnected() ) m_inputP->getEnode()->addToNoLinList(this);
-    if( m_inputN->isConnected() ) m_inputN->getEnode()->addToNoLinList(this);
-    if( m_output->isConnected() )
-    {
-        m_output->getEnode()->addToNoLinList(this);
-        m_output->createCurrent();
+    for( int i=0; i<aNum; ++i ) m_aux.getEpin( i )->setEnode( NULL );
+    m_diag[0] = m_diag[1] = false;
+
+    eNode* oN = m_output->getEnode();
+    eNode* pN = m_inputP->getEnode();
+    eNode* nN = m_inputN->getEnode();
+    if( pN ) pN->addToNoLinList( this );
+    if( nN ) nN->addToNoLinList( this );
+    if( m_powerPins ){
+        if( m_pin[3]->getEnode() ) m_pin[3]->getEnode()->addToNoLinList( this );
+        if( m_pin[4]->getEnode() ) m_pin[4]->getEnode()->addToNoLinList( this );
     }
+    if( !oN ) return;
+    oN->addToNoLinList( this );
+    m_output->createCurrent();
+
+    auto term = [&]( int aOut, int aIn, eNode* in ){   // gain term of one input
+        if( !in || in->getNodeNumber() == 0 ) return;  // Ground or open: a constant (m_constIn)
+        ePin* p = m_aux.getEpin( aOut );
+        p->setEnode( oN );
+        if( in == oN ){ p->setEnodeComp( &s_gnd ); m_diag[aOut] = true; } // Output wired to the input: diagonal
+        else{
+            p->addSingAdm( in->getNodeNumber(), 0 );
+            ePin* q = m_aux.getEpin( aIn );            // Zero entry back: same solver group
+            q->setEnode( in );
+            q->addSingAdm( oN->getNodeNumber(), 0 );
+        }
+    };
+    term( aOP, aPO, pN );
+    term( aON, aNO, nN );
+    m_dirty = true;
 }
 
 void OpAmp::updateStep()
@@ -132,17 +182,38 @@ void OpAmp::updateStep()
     m_changed = false;
 
     m_output->setImpedance( m_outImp );
+    m_dirty = true;
     voltChanged();
 }
 
-// Part state (docs/PART_STATES.md), from the output the gain asks for, gain x (V+ - V-), against the
-// rails (supply pins, or V+ / V- when they are not used):
-//   LINEAR  the output follows (green): the feedback holds it
-//   SAT+    it would go above the positive rail: clipped there (amber). Open loop (a comparator): high
-//   SAT-    the same at the negative rail
-// 10 mV hysteresis on each rail so the state does not flicker at the edge.
+void OpAmp::stampMode()
+{
+    double G  = 1/m_outImp;
+    double gG = ( m_mode == LIN ) ? m_gain*G : 0;
+    for( int i : { aOP, aON } )
+    {
+        ePin* p = m_aux.getEpin( i );
+        if( !p->getEnode() ) continue;
+        double s = ( i == aOP ) ? gG : -gG;               // +gain*G*V+, -gain*G*V-
+        if( m_diag[i] ) p->stampAdmitance(-s );   // Same node: -s on the diagonal
+        else                    p->stampSingAdm( s );
+    }
+    double I = ( m_mode == LIN  ) ? G*m_constIn
+             : ( m_mode == SAT_P) ? G*m_voltPos : G*m_voltNeg;
+    m_output->stampCurrent( I );
+    m_stampI = I;
+    m_stampVpos = m_voltPos;
+    m_stampVneg = m_voltNeg;
+    m_dirty = false;
+}
+
 void OpAmp::stepSettled()
 {
+    if( m_output->getEnode() ){   // Into the part: G*(Vout - source), the source is in the aux pins too
+        double src = ( m_mode == LIN ) ? m_gain*( m_inputP->getVoltage()-m_inputN->getVoltage() )
+                   : ( m_mode == SAT_P ) ? m_voltPos : m_voltNeg;
+        m_output->setTrueCurrent( ( m_output->getVoltage()-src )/m_outImp );
+    }
     double ideal = ( m_inputP->getVoltage()-m_inputN->getVoltage() )*m_gain;
     double h = 0.01;
     int r = m_region;
@@ -162,50 +233,86 @@ void OpAmp::stepSettled()
 
 void OpAmp::voltChanged() // Called when any pin node change volt
 {
-    Simulator::self()->addToSettled( this );   // State from this step's final values
-    if( m_powerPins )
-    {
+    Simulator* sim = Simulator::self();
+    sim->addToSettled( this );   // State from this step's final values
+    if( !m_output->getEnode() ) return;
+
+    if( m_powerPins ){
         m_voltPos = m_pin[3]->getVoltage();
         m_voltNeg = m_pin[4]->getVoltage();
-    } else {
+    }else{
         m_voltPos = m_voltPosDef;
         m_voltNeg = m_voltNegDef;
     }
-    double vd = m_inputP->getVoltage()-m_inputN->getVoltage();
-
-    double out = vd * m_gain;
-    if     ( out > m_voltPos ) out = m_voltPos;
-    else if( out < m_voltNeg ) out = m_voltNeg;
-
-    if( (m_step==0)
-     && (qFabs(m_lastIn-vd) < m_accuracy )
-     && (qFabs(out-m_lastOut) < m_accuracy) )
-    { m_step = 0; return; }         // Converged
-
-    Simulator::self()->notCorverged();
-
-    if( m_step==0 )                  // First step after a convergence
-    {
-        double dOut = -1e-6;         // Do a tiny step to se what happens
-        if( vd>0 ) dOut = 1e-6;
-
-        out = m_lastOut + dOut;
-        m_step = 1;
-    } else {
-        if( m_lastIn != vd ) // We problably are in a close loop configuration
-        {
-            double dIn  = qFabs(m_lastIn-vd); // Input diff with last step
-            out = (m_lastOut*dIn + vd*1e-6)/(dIn + m_k); // Guess next converging output:
-        }
-        m_step = 0;
+    if( m_dirty ){            // Start or property change: solve with the current mode's stamp first,
+        stampMode();          // so the next call judges real voltages (the rail check needs them)
+        sim->notCorverged();
+        return;
     }
-    if     ( out >= m_voltPos ) out = m_voltPos;
-    else if( out <= m_voltNeg ) out = m_voltNeg;
+    if( m_powerPins ){
+        m_voltPos = m_pin[3]->getVoltage();
+        m_voltNeg = m_pin[4]->getVoltage();
+    }else{
+        m_voltPos = m_voltPosDef;
+        m_voltNeg = m_voltNegDef;
+    }
+    double vp = m_inputP->getVoltage();
+    double vn = m_inputN->getVoltage();
+    double vd = vp-vn;
+    double ideal = vd*m_gain;
+    double out = m_output->getVoltage();
 
-    m_lastIn  = vd;
-    m_lastOut = out;
+    // Inputs on ground or open are constants in the LIN current
+    double cst = 0;
+    eNode* pN = m_inputP->getEnode();
+    eNode* nN = m_inputN->getEnode();
+    if( !pN || pN->getNodeNumber() == 0 ) cst += vp;
+    if( !nN || nN->getNodeNumber() == 0 ) cst -= vn;
+    cst *= m_gain;
+    if( qFabs( cst-m_constIn ) > 1e-9*( 1+qFabs( cst ) ) ){ m_constIn = cst; if( m_mode == LIN ) m_dirty = true; }
 
-    m_output->stampCurrent( out/m_outImp );
+    if( sim->circTime() != m_flipTime ){ m_flipTime = sim->circTime(); m_flips = 0; }
+
+    double eps = 1e-6*( 1+qFabs( m_voltPos )+qFabs( m_voltNeg ) );
+    int mode = m_mode;
+    if( mode == LIN )
+    {
+        if( m_checkStable )                    // First LIN solve after a rail
+        {
+            m_checkStable = false;
+            double dOut = out-m_satOut;
+            if( qFabs( dOut ) > 1e-12 && m_gain*( vd-m_satVd )/dOut > 1 && m_flips < 4 )
+            {                                  // Positive feedback: the LIN point is unstable
+                m_flips++;
+                mode = ( m_satOut >= m_voltPos-eps ) ? SAT_N : SAT_P;
+                if( s_trace ) OPAMP_LOG << "unstable loop (gain x slope" << m_gain*( vd-m_satVd )/dOut << "), to" << ( mode == SAT_P ? "SAT+" : "SAT-" );
+            }
+        }
+        if( mode == LIN ){
+            if     ( ideal > m_voltPos+eps ) mode = SAT_P;
+            else if( ideal < m_voltNeg-eps ) mode = SAT_N;
+        }
+    }
+    else if( mode == SAT_P ){                  // Leaving a rail: always through a LIN solve, which
+        if( ideal < m_voltPos-eps ) mode = LIN;  // finds the feedback (or its instability)
+    }
+    else{
+        if( ideal > m_voltNeg+eps ) mode = LIN;
+    }
+    if( mode == LIN && m_mode != LIN ){         // Leaving a rail: check the loop at the next solve
+        m_checkStable = true;
+        m_satVd  = vd;
+        m_satOut = out;
+    }
+    if( mode != m_mode ){ m_mode = mode; m_dirty = true; }
+    else if( mode == SAT_P && qFabs( m_voltPos-m_stampVpos ) > m_accuracy ) m_dirty = true;
+    else if( mode == SAT_N && qFabs( m_voltNeg-m_stampVneg ) > m_accuracy ) m_dirty = true;
+
+    if( s_trace ) OPAMP_LOG << "t" << sim->circTime() << "vp" << vp << "vn" << vn << "out" << out
+                            << "ideal" << ideal << "mode" << m_mode << "dirty" << m_dirty << "check" << m_checkStable;
+    if( !m_dirty && !m_checkStable ) return;   // Converged
+    sim->notCorverged();
+    if( m_dirty ) stampMode();
 }
 
 void OpAmp::setOutImp( double imp )
