@@ -194,9 +194,11 @@ void Dht22::calcData()
         humiI = humi >> 8;
         humiD = humi & 0xFF;
     }else{                          // Using ASAIR DHT11 specifications
-        tempI = m_temp;
-        tempD = (m_temp-tempI)*10;
-        if( m_temp < 0 ) tempD |= 1<<8;
+        double absT = qFabs( m_temp );                // negative double to unsigned is undefined
+        tempI = absT;
+        tempD = (absT-tempI)*10+0.001;                // ASAIR DHT11: sign is bit 7 of the decimal byte
+        if( m_temp < 0 ) tempD |= 0x80;
+        qDebug() << "Dht22::calcData DHT11 temp" << m_temp << "int" << tempI << "dec" << tempD;
         humiI = m_humi;
         humiD = 0; //(m_humi-humiI)*10;
     }
