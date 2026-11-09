@@ -191,17 +191,13 @@ void DS1621::readByte() // read from I2C
             {
                 m_ThReg[ m_writeByte ] = m_rxReg;
                 m_Th = m_ThReg[1];
-                double thH = m_ThReg[0] ? 0.5 : 0.0;
-                if( m_Th < 0 ) thH = -thH;
-                m_Th += thH;
+                if( m_ThReg[0] ) m_Th += 0.5; // two's complement: the half bit adds
             }
             else if( m_command == 0xA2 ) // Write TL
             {
                 m_TlReg[ m_writeByte ] = m_rxReg;
                 m_Tl = m_TlReg[1];
-                double tlH = m_TlReg[0] ? 0.5 : 0.0;
-                if( m_Tl < 0 ) tlH = -tlH;
-                m_Tl += tlH;
+                if( m_TlReg[0] ) m_Tl += 0.5;
             }
             else if( m_command == 0xAC ) // Write Config
             {
@@ -235,18 +231,19 @@ void DS1621::doConvert()
 {
     m_changed = false;
 
-    float temp_abs = fabs( m_temp ); // make comptutations with absolute value
-    m_tempReg[1] = temp_abs;
-    float temp_frac = temp_abs - m_tempReg[1];
-    if( temp_frac >= 0.75) m_tempReg[1] += 1;
+    float temp_abs = fabs( m_temp );
+    int absInt = (int)temp_abs;
+    if( temp_abs - absInt >= 0.75 ) absInt += 1;
 
-    m_tempReg[0] = 0;
-    if( (temp_frac >= 0.25) && (temp_frac < 0.75)) m_tempReg[0] = 0x80;
+    // 9 bit two's complement in half degrees: MSB = floor(T), LSB bit 7 = +0.5 (BH-038)
+    int raw = (int)lround( m_temp*2 );
+    m_tempReg[1] = raw >> 1;
+    m_tempReg[0] = (raw & 1) ? 0x80 : 0;
+    qDebug() << "DS1621::doConvert" << m_temp << "raw half-degrees" << raw
+             << "MSB" << (int)m_tempReg[1] << "LSB" << (int)(uint8_t)m_tempReg[0];
 
     m_tempSlope = 16;          // compute high resolution
-    m_tempCount = m_tempSlope * (0.75 + m_tempReg[1] - temp_abs);
-
-    if( m_temp < 0.0) m_tempReg[1] = -m_tempReg[1]; // take sign into account
+    m_tempCount = m_tempSlope * (0.75 + absInt - temp_abs);
 
     if( m_temp > m_Th ){
         m_config |= 1<<6;  // Set THF bit
