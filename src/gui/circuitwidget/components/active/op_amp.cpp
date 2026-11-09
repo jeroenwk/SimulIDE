@@ -134,6 +134,9 @@ void OpAmp::initialize()
     m_stampI = m_stampVpos = m_stampVneg = 0;
     m_constIn = 0;
     m_dirty = true;
+    m_linIter = 0;
+    m_lastVd = 0;
+    m_nudge = 0;
     m_voltPos = m_voltPosDef;
     m_voltNeg = m_voltNegDef;
     m_region = -1;
@@ -198,7 +201,7 @@ void OpAmp::stampMode()
         if( m_diag[i] ) p->stampAdmitance(-s );   // Same node: -s on the diagonal
         else                    p->stampSingAdm( s );
     }
-    double I = ( m_mode == LIN  ) ? G*m_constIn
+    double I = ( m_mode == LIN  ) ? G*( m_constIn+m_nudge )
              : ( m_mode == SAT_P) ? G*m_voltPos : G*m_voltNeg;
     m_output->stampCurrent( I );
     m_stampI = I;
@@ -288,10 +291,16 @@ void OpAmp::voltChanged() // Called when any pin node change volt
                 if( s_trace ) OPAMP_LOG << "unstable loop (gain x slope" << m_gain*( vd-m_satVd )/dOut << "), to" << ( mode == SAT_P ? "SAT+" : "SAT-" );
             }
         }
-        if( mode == LIN ){
+        // Beyond a rail: go there, but not while the input still moves. Another op amp in the loop
+        // may have changed region in the same iteration (composite amplifier: U1 goes LIN while U2
+        // is still at its rail, so U1's loop is open for one solve); without this wait the two
+        // swap regions in step forever.
+        bool settled = m_linIter >= 2 && qFabs( vd-m_lastVd ) <= 1e-3*qFabs( vd )+1e-9;
+        if( mode == LIN && ( settled || m_linIter >= 8 ) ){
             if     ( ideal > m_voltPos+eps ) mode = SAT_P;
             else if( ideal < m_voltNeg-eps ) mode = SAT_N;
         }
+        m_linIter++;
     }
     else if( mode == SAT_P ){                  // Leaving a rail: always through a LIN solve, which
         if( ideal < m_voltPos-eps ) mode = LIN;  // finds the feedback (or its instability)
@@ -299,7 +308,10 @@ void OpAmp::voltChanged() // Called when any pin node change volt
     else{
         if( ideal > m_voltNeg+eps ) mode = LIN;
     }
+    m_lastVd = vd;
+    bool waiting = ( mode == LIN ) && ( ideal > m_voltPos+eps || ideal < m_voltNeg-eps );
     if( mode == LIN && m_mode != LIN ){         // Leaving a rail: check the loop at the next solve
+        m_linIter = 0;
         m_checkStable = true;
         m_satVd  = vd;
         m_satOut = out;
@@ -310,7 +322,13 @@ void OpAmp::voltChanged() // Called when any pin node change volt
 
     if( s_trace ) OPAMP_LOG << "t" << sim->circTime() << "vp" << vp << "vn" << vn << "out" << out
                             << "ideal" << ideal << "mode" << m_mode << "dirty" << m_dirty << "check" << m_checkStable;
-    if( !m_dirty && !m_checkStable ) return;   // Converged
+    // A waiting op amp is only called again when one of its nodes changes. With nothing else
+    // moving (an open-loop comparator), that never happens: a tiny output offset that flips sign
+    // on every wait (1e-9 of the output) changes the output node, so the solver calls back.
+    if( waiting ){ m_nudge = ( m_nudge > 0 ? -1e-9 : 1e-9 )*( 1+qFabs( ideal ) ); m_dirty = true; }
+    else if( m_nudge != 0 ){ m_nudge = 0; if( m_mode == LIN ) m_dirty = true; }
+
+    if( !m_dirty && !m_checkStable && !waiting ) return;   // Converged
     sim->notCorverged();
     if( m_dirty ) stampMode();
 }

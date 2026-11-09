@@ -67,6 +67,9 @@ class OpAmp : public Component, public eElement
         double m_stampI, m_stampVpos, m_stampVneg;
         double m_constIn;            // Input voltages not on a matrix node (ground or open), as gain*(V+ - V-)
         bool   m_dirty;
+        int    m_linIter;            // Iterations since the last change to LIN
+        double m_lastVd;
+        double m_nudge;              // Tiny output offset while waiting: makes the solver call back
         bool   m_diag[2];            // aOP/aON on the diagonal (output wired to that input)
 
         bool m_powerPins;

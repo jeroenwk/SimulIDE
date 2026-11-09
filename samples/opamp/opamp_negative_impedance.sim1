@@ -1,0 +1,104 @@
+<circuit version="1.1.0-SR2" rev="261109" stepSize="1000000" stepsPS="20000" NLsteps="100000" reaStep="1000000" animate="0" >
+<description>
+Negative impedance converter (NIC): an op amp makes the input port (U1's + input, tunnel PORT) look like a resistor of -1 kOhm.
+
+How it works:
+- U1 has gain 2 (R1 = R2 = 10k), so its output is 2 * Vport.
+- Z (1k) from the output back to the port drives a current (2*Vport - Vport)/Z = Vport/Z *into* the port: the port behaves like -Z.
+- The source V1 (1 V) drives the port through Rs = Ra (500 Ohm), or Ra + Rb (2k) with S1 open.
+
+S1 closed (Rs = 500 Ohm):
+- Vport = 1 V * (-1k)/(500 - 1k) = 2 V, Vout = 4 V.
+- The current in Ra is (1 V - 2 V)/500 = -2 mA: it flows back into the 1 V source. That is a negative resistance at work.
+
+S1 open (Rs = 2k): the positive feedback (Rs/(Rs+Z) = 2/3) is stronger than the negative feedback (R2/(R1+R2) = 1/2). The circuit is unstable and latches at a rail (+/-12 V).
+
+Scope: PORT, OUT. Speed 2 %.
+
+What to try: open S1 and watch it latch; close it again. With these values the circuit is stable while Rs &lt; Z (1k): try Rb values around that limit.
+
+Results [SIMULATED]: S1 closed: Vport 2.000 V, Vout 4.000 V, I(Ra) -2.000 mA. S1 open: latched at 12 V.
+
+Why it is here: a test circuit for the op-amp model (BH-032). It has positive and negative feedback at the same time; the model must find the stable solution, and must latch when there is none.
+</description>
+
+
+<item itemtype="Fixed Voltage" CircId="Fixed Voltage-1" mainComp="false" Show_id="false" Show_Val="false" Pos="-200,32" rotation="0" hflip="1" vflip="1" label="V1" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" Voltage="1 V" Out="true" />
+
+<item itemtype="Resistor" CircId="Resistor-2" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-144,32" rotation="0" hflip="1" vflip="1" label="Ra" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="500 Ω" />
+
+<item itemtype="Resistor" CircId="Resistor-3" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-80,32" rotation="0" hflip="1" vflip="1" label="Rb" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="1.5 kΩ" />
+
+<item itemtype="Switch" CircId="Switch-4" mainComp="false" Show_id="false" Show_Val="false" Pos="-80,0" rotation="0" hflip="1" vflip="1" label="S1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Norm_Close="false" DT="false" Poles="1" Toggled="true" />
+
+<item itemtype="opAmp" CircId="opAmp-5" mainComp="false" Show_id="false" Show_Val="false" Pos="40,40" rotation="0" hflip="1" vflip="1" label="U1" idLabPos="-16,-32" labelrot="0" valLabPos="-16,20" valLabRot="0" Gain="100000" Out_Imped="1e-09 Ω" Show_State="true" Power_Pins="false" Switch_Pins="false" Volt_Pos="12 V" Volt_Neg="-12 V" />
+
+<item itemtype="Resistor" CircId="Resistor-6" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="40,0" rotation="0" hflip="1" vflip="1" label="Z" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="1 kΩ" />
+
+<item itemtype="Resistor" CircId="Resistor-7" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="0,96" rotation="90" hflip="1" vflip="1" label="R2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="10 kΩ" />
+
+<item itemtype="Ground" CircId="Ground-8" mainComp="false" Show_id="false" Show_Val="false" Pos="0,144" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" />
+
+<item itemtype="Resistor" CircId="Resistor-9" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="40,80" rotation="0" hflip="1" vflip="1" label="R1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="10 kΩ" />
+
+<item itemtype="Tunnel" CircId="Tunnel-10" mainComp="false" Show_id="false" Show_Val="false" Pos="120,40" rotation="180" hflip="1" vflip="1" label="T1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="OUT" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-11" mainComp="false" Show_id="false" Show_Val="false" Pos="-24,72" rotation="180" hflip="1" vflip="1" label="T2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="PORT" IsBus="false" />
+
+<item itemtype="Oscope" CircId="Oscope-19" mainComp="false" Show_id="false" Show_Val="false" Pos="400,40" rotation="0" hflip="1" vflip="1" label="SC" idLabPos="-90,-100" labelrot="0" valLabPos="-16,20" valLabRot="0" Basic_X="135 _px" Basic_Y="135 _px" BufferSize="600000" connectGnd="true" InputImped="10 MΩ" TimDiv="1000000000" TimPos="0,0,0,0," VolDiv="2,2,2,2," Tunnels="PORT,OUT,,," Trigger="4" Filter="0.1 V" AutoSC="4" Tracks="1" HideCh="false,false,false,false," VolPos="0,0,0,0," TrigAuto="true" TrigLevel="0 V" />
+
+<item itemtype="Node" CircId="Node-12" mainComp="false" Pos="-112,32" />
+
+<item itemtype="Node" CircId="Node-13" mainComp="false" Pos="-48,32" />
+
+<item itemtype="Node" CircId="Node-14" mainComp="false" Pos="0,32" />
+
+<item itemtype="Node" CircId="Node-15" mainComp="false" Pos="80,40" />
+
+<item itemtype="Node" CircId="Node-16" mainComp="false" Pos="0,64" />
+
+<item itemtype="Node" CircId="Node-17" mainComp="false" Pos="96,40" />
+
+<item itemtype="Node" CircId="Node-18" mainComp="false" Pos="-24,32" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="Fixed Voltage-1-outnod" endpinid="Resistor-2-lPin" pointList="-184,32,-160,32" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="Switch-4-pinP0" endpinid="Node-12-1" pointList="-96,0,-112,0,-112,32" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Resistor-2-rPin" endpinid="Node-12-0" pointList="-128,32,-112,32" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Node-12-2" endpinid="Resistor-3-lPin" pointList="-112,32,-96,32" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="Switch-4-switch0pinN" endpinid="Node-13-1" pointList="-64,0,-48,0,-48,32" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Resistor-3-rPin" endpinid="Node-13-0" pointList="-64,32,-48,32" />
+
+<item itemtype="Connector" uid="Connector-10" startpinid="Resistor-6-lPin" endpinid="Node-14-1" pointList="24,0,0,0,0,32" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="Node-14-2" endpinid="opAmp-5-inputNinv" pointList="0,32,16,32" />
+
+<item itemtype="Connector" uid="Connector-14" startpinid="Resistor-6-rPin" endpinid="Node-15-1" pointList="56,0,80,0,80,40" />
+
+<item itemtype="Connector" uid="Connector-15" startpinid="opAmp-5-output" endpinid="Node-15-0" pointList="64,40,80,40" />
+
+<item itemtype="Connector" uid="Connector-18" startpinid="Resistor-7-rPin" endpinid="Ground-8-Gnd" pointList="0,112,0,128" />
+
+<item itemtype="Connector" uid="Connector-19" startpinid="Resistor-9-lPin" endpinid="Node-16-1" pointList="24,80,0,80,0,64" />
+
+<item itemtype="Connector" uid="Connector-20" startpinid="opAmp-5-inputInv" endpinid="Node-16-0" pointList="16,48,0,48,0,64" />
+
+<item itemtype="Connector" uid="Connector-21" startpinid="Node-16-2" endpinid="Resistor-7-lPin" pointList="0,64,0,80" />
+
+<item itemtype="Connector" uid="Connector-22" startpinid="Resistor-9-rPin" endpinid="Node-17-1" pointList="56,80,96,80,96,40" />
+
+<item itemtype="Connector" uid="Connector-23" startpinid="Node-15-2" endpinid="Node-17-0" pointList="80,40,96,40" />
+
+<item itemtype="Connector" uid="Connector-24" startpinid="Node-17-2" endpinid="Tunnel-10-pin" pointList="96,40,120,40" />
+
+<item itemtype="Connector" uid="Connector-25" startpinid="Node-18-1" endpinid="Tunnel-11-pin" pointList="-24,32,-24,72" />
+
+<item itemtype="Connector" uid="Connector-26" startpinid="Node-13-2" endpinid="Node-18-0" pointList="-48,32,-24,32" />
+
+<item itemtype="Connector" uid="Connector-27" startpinid="Node-18-2" endpinid="Node-14-0" pointList="-24,32,0,32" />
+
+</circuit>
