@@ -274,7 +274,9 @@ void Ssd1306::proccessCommand()
         case 0xA6: m_dispInv  = false; break; // Inverse Display OFF
         case 0xA7: m_dispInv  = true;  break; // Inverse Display ON
         case 0xA8: m_readBytes = 1;    break; // Multiplex Ratio
-        case 0xAE: reset();            break; // Display OFF
+        case 0xAE: m_dispOn = false;   // Display OFF (sleep mode: RAM and settings are kept)
+                   qDebug() << "[SSD1306] Display OFF (sleep): settings kept, remap" << m_remap << "scanInv" << m_scanInv << "addrMode" << m_addrMode;
+                   break;
         case 0xAF: m_dispOn = true;    break; // Display ON
         case 0xC0: m_scanInv = false;  break; // COM Output Scan Inverted OFF
         case 0xC8: m_scanInv = true;   break; // COM Output Scan Inverted ON
