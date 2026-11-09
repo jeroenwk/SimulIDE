@@ -13,6 +13,7 @@ def build():
     sim.cli("comp","add","Resistor","--label","R","--at","-100,0","Resistance=1k")
     sim.cli("comp","add","Capacitor","--label","C","--at","0,0","Capacitance=1u")
     sim.cli("comp","add","Oscope","--label","S","--at","100,0")
+    sim.cli("comp","add","I2CMaster","--label","M","--at","-200,200")
     sim.cli("wire","add","V.outnod","R.lPin"); sim.cli("wire","add","R.rPin","C.lPin"); sim.cli("wire","add","C.rPin","G.Gnd")
 build()
 bad = ["", "-1", "0", "1e400", "abc", "nan", "99999999999", "-5ms", "0.5", "1e-30s", "R", "R.nope", "Z9", "R.lPin R.lPin"]
@@ -25,6 +26,7 @@ cmds = [
  ["comp","get","{}"],["comp","set","R","{}"],["comp","set","R","Resistance={}"],["comp","set","C","Capacitance={}"],["comp","link","{}","{}"],
  ["wire","add","{}","{}"],["wire","remove","{}"],["wire","current","{}"],["ui","dial","{}","{}"],["ui","set","{}","on"],["ui","click","{}"],["ui","press","{}"],
  ["settings","set","{}","{}"],["capture","circuit","--out","{}"],["select","{}"],["view","{}"],["undo","{}"],["redo","{}"],["circuit","description","--file","{}"],
+ ["i2c","{}","0x50"],["i2c","M","{}"],["i2c","M","0x50","--write","{}"],["i2c","M","0x50","--read","{}"],["i2c","M","0x50","--timeout","{}"],
  ["circuit","open","{}"],["mcu","info","{}"],["mcu","mem","{}"],["serial","send","{}","{}"],["export","{}"],["circuit","fonts","{}"],
 ]
 def alive():

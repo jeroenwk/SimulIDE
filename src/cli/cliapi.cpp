@@ -153,6 +153,7 @@ CliApi::CliApi()
     registerMeasure();
     registerSim();
     registerAverage();
+    registerI2c();
     registerScript();
     registerMcu();
     registerEditor();

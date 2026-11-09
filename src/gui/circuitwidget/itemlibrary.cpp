@@ -54,6 +54,7 @@
 #include "ili9341.h"
 #include "image.h"
 #include "i2cram.h"
+#include "i2cmaster.h"
 #include "i2ctoparallel.h"
 #include "inductor.h"
 #include "keypad.h"
@@ -274,6 +275,7 @@ void ItemLibrary::loadItems()
     addItem( DecToBcd::libraryItem() );
     addItem( BcdTo7S::libraryItem() );
     addItem( I2CToParallel::libraryItem() );
+    addItem( I2CMaster::libraryItem() );
     addItem( new LibraryItem( QObject::tr("Other Logic"), "Logic", "2to3.png","Other Logic", NULL ) );
     addItem( ADC::libraryItem() );
     addItem( DAC::libraryItem() );

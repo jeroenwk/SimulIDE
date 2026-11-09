@@ -122,7 +122,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 
 | Command | |
 |---|---|
-| `wire add <pinA\|@x,y> <pinB\|@x,y> [--via x,y,...]` | Connect two pins, or a pin and a point on a wire (a new junction there). The route goes through the `--via` points and is always horizontal/vertical |
+| `wire add <pinA\|@x,y> <pinB\|@x,y> [--via x,y,...]` | Connect two pins, or a pin and a point on a wire (a new junction there). A pin that already has a wire gets a junction on its net. The route goes through the `--via` points and is always horizontal/vertical |
 | `wire list` | Wires and the pins they join |
 | `wire remove <wire> ...` | Remove wires. Prints the removed uids and any merged wires |
 | `wire current [wire ...]` | Current through wires (A), signed from the `from` pin to the `to` pin. Works paused. `flag` marks shared (`approximate`) or non-conserving (`inconsistent`) results |
@@ -131,7 +131,10 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 
 Connecting to a pin that already has a wire inserts a junction node on that
 wire, as clicking on a wire does in the GUI. The junction goes in the middle of
-the wire segment next to that pin, on the 8 px grid. To put it somewhere
+the wire segment next to that pin, on the 8 px grid. When that wire has no
+straight segment of 16 px or more (a short stub to a junction), the junction
+goes on the nearest such segment of the same net instead, with a note saying
+where. To put it somewhere
 else, name a point on the wire instead of the pin: `wire add U1.Trg @160,64`
 joins the wire that passes through 160,64. The point can be anywhere along a
 wire, corners included. It can't be where two wires cross (that's ambiguous)
@@ -505,6 +508,32 @@ Timing:
 - `--wait` and `--until` wait in real time while the simulation runs, for
   example with `sim resume`. For deterministic scripts, use `sim run --for`
   followed by a plain `serial read`.
+
+### I2C
+
+| Command | |
+|---|---|
+| `i2c <master> <addr> [--write b,b,...] [--read N] [--timeout T]` | One transfer through an **I2C Master** part (`comp add I2CMaster`, in Logic/Converters) wired to the bus: START, address+W, the `--write` bytes, repeated START, address+R, `--read N` bytes (ACK on each, NACK on the last), STOP |
+
+The I2C Master is a test part: it plays the firmware of an MCU's TWI peripheral, so slave parts
+(DS1621, DS1307, I2C RAM, I2C to Parallel, SSD1306, ...) can be checked from a script. Its two
+open-collector pins, SDA and SCL, have internal 100 kΩ pull-ups (`Pullups`, on by default);
+`Frequency` sets the clock (100 kHz).
+
+- The address is 7-bit, without the R/W bit: `0x48` for a DS1621 with A0–A2 low.
+- Bytes take `42`, `0x2A` or `0b101010`.
+- It starts or resumes the simulation and leaves it running; `--timeout` is simulated time
+  (default 100 ms).
+- The reply gives `read` (bytes), `write_ack` (one per written byte), `addr_ack_w` /
+  `addr_ack_r`, `ok`, an `error` when a byte was not acknowledged (the master then sends STOP),
+  and `log`, the bus in order: `S A0x90+ W0xAA+ Sr A0x91+ R0x19+ R0x00- P` (`+` ACK, `-` NACK).
+
+```sh
+simulide cli comp add I2CMaster --label M
+simulide cli i2c M 0x48 --write 0xEE                 # DS1621: Start Convert
+simulide cli sim run --for 1s                        # 750 ms conversion
+simulide cli i2c M 0x48 --write 0xAA --read 2        # Read Temperature: [25, 0] = 25.0 °C
+```
 
 ### Code editor, compiler and debugger
 

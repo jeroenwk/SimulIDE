@@ -102,6 +102,7 @@ class CliApi
         void registerMeasure();   // cli_measure.cpp
         void registerSim();       // cli_sim.cpp
         void registerAverage();   // cli_average.cpp
+        void registerI2c();       // cli_i2c.cpp
         void registerScript();    // cli_script.cpp
         void registerMcu();       // cli_mcu.cpp
         void registerEditor();    // cli_editor.cpp
