@@ -38,5 +38,6 @@ Whole-library checks that find a class of bugs in one run; each finding is a `FI
 | `sweeps/sweep.py extremes` | NaN / huge voltages, hangs, crashes with numeric properties at 0 and −1 | BH-025..031 |
 | `sweeps/sweep.py examples` | examples that fail to load, crash, hang or log solver faults in 20 ms | |
 | `sweeps/shadowed_members.py` | data members redeclared in a derived class, hiding the base one (static, instant) | BH-005 |
+| `sweeps/cli_fuzz.py` | CLI crashes or hangs with odd argument values (empty, 0, -1, 1e400, abc, unknown refs) over every command form (~4 min) | none yet (clean 2026-11-09) |
 
 A finding is a candidate, not a bug: check it against the code's intent before writing a test.
