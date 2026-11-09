@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QPainter>
+#include <QDebug>
 
 #include "sr04.h"
 #include "iopin.h"
@@ -72,6 +73,7 @@ void SR04::initialize()
 {
     m_lastStep = Simulator::self()->circTime();
     m_lastTrig = false;
+    m_busy = false;
     m_echouS = 0;
 }
 
@@ -87,8 +89,13 @@ void SR04::voltChanged()              // Called when Trigger Pin changes
     {
         uint64_t time = Simulator::self()->circTime()-m_lastStep; // in picosecondss
 
-        if( time >= 10*1e6 )     // >=10 uS Trigger pulse
+        if( m_busy )
         {
+            qDebug() << "SR04::voltChanged: trigger ignored, measurement running" << idLabel();
+        }
+        else if( time >= 10*1e6 )     // >=10 uS Trigger pulse
+        {
+            m_busy = true;
             m_echouS = (m_inpin->getVoltage()*2000/0.344+0.5);
             if     ( m_echouS < 116 )   m_echouS = 116;   // Min range 2 cm = 116 us pulse
             else if( m_echouS > 38000 ) m_echouS = 38000; // Timeout 38 ms
@@ -107,7 +114,12 @@ void SR04::runEvent()
         Simulator::self()->addEvent( m_echouS*1e6, this ); // Event to finish echo
         m_echouS = 0;
     }
-    else m_echo->scheduleState( false, 0 );
+    else
+    {
+        m_echo->scheduleState( false, 0 );
+        m_busy = false;
+        qDebug() << "SR04::runEvent: echo ended" << idLabel();
+    }
 }
 
 void SR04::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )
