@@ -101,7 +101,21 @@ void eBJT::voltChanged()
     if( m_changed ) m_changed = false;
     else if( qFabs(voltBC-m_voltBC) < .01
           && qFabs(voltBE-m_voltBE) < .01 )
-        { m_step = 0; return; }
+    {
+        // Converged within 10 mV: the stamps stay, but the reported terminal currents
+        // must come from the converged voltages, not from the last iteration (BH-034:
+        // up to 47 % off, KCL violated in a current mirror).
+        // (no qDebug here: this is the per-step hot path)
+        double pc = pnp/m_vt;
+        double eBE = qExp( voltBE*pc );
+        double eBC = qExp( voltBC*pc );
+        double ie2 = pnp*m_satCur*(-(eBE-1)/m_fgain + (eBC-1) );
+        double ic2 = pnp*m_satCur*( (eBE-1) - (eBC-1)/m_rgain );
+        BASE->setTrueCurrent( -(ie2+ic2) );
+        COLL->setTrueCurrent( ic2 );
+        EMIT->setTrueCurrent( ie2 );
+        m_step = 0; return;
+    }
     Simulator::self()->notCorverged();
 
     m_step += .1;
