@@ -67,6 +67,8 @@ Dht22::Dht22( QString type, QString id )
     m_button->setMaximumSize( 6, 23);
     m_button->setGeometry( 0, 0, 6, 23);
     m_button->setCheckable( true );
+    m_button->setChecked( m_set );   // checked = temperature (m_set), as the up icon shows
+    qDebug() << "Dht22::Dht22 toggle checked" << m_set;
     m_button->setIconSize( QSize( 6, 23) );
     m_button->setIcon(QIcon(":/up.png"));
 
