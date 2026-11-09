@@ -3,6 +3,8 @@
  *   Editing commands: library, components, wires, undo/redo               *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <climits>
+
 #include <QTreeWidgetItem>
 #include <QRegularExpression>
 #include <QSet>
@@ -167,7 +169,38 @@ QString normalizeValue( ComProperty* prop, QString val )
     return num+" "+prefix+base;
 }
 
-// Wire segment next to a pin, to attach a junction to
+// A straight wire segment long enough to split with a junction on the 8 px grid
+bool splittable( ConnectorLine* line )
+{
+    int len = qAbs( line->dx() ) + qAbs( line->dy() );
+    if( len < 16 ) return false;                         // Too short to split cleanly
+    return line->dx() == 0 || line->dy() == 0;           // Only straight segments
+}
+
+// Every wire of the net a pin's wire belongs to, following junction nodes (no simulation needed)
+QList<Connector*> netWires( Connector* first )
+{
+    QList<Connector*> wires{ first };
+    for( int i=0; i<wires.size(); ++i )
+    {
+        for( Pin* end : { wires[i]->startPin(), wires[i]->endPin() } )
+        {
+            if( !end || !end->component() || end->component()->itemType() != "Node" ) continue;
+            Node* node = static_cast<Node*>( end->component() );
+            for( int p=0; p<3; ++p )
+            {
+                Pin* np = node->getPin( p );
+                Connector* c = np ? np->connector() : nullptr;
+                if( c && !wires.contains( c ) ) wires.append( c );
+            }
+        }
+    }
+    return wires;
+}
+
+// Wire segment next to a pin, to attach a junction to. First the pin's own wire, from the pin
+// outwards; if all its segments are too short (bug hunt IMP-022), the splittable segment of the
+// same net whose middle is nearest to the pin.
 ConnectorLine* lineAt( Pin* pin, QPoint& point )
 {
     Connector* con = pin->connector();
@@ -178,14 +211,35 @@ ConnectorLine* lineAt( Pin* pin, QPoint& point )
 
     for( ConnectorLine* line : order )
     {
-        int len = qAbs( line->dx() ) + qAbs( line->dy() );
-        if( len < 16 ) continue;                      // Too short to split cleanly
-        if( line->dx() != 0 && line->dy() != 0 ) continue;   // Only straight segments
+        if( !splittable( line ) ) continue;
         point = toCompGrid( QPointF( ( line->p1()+line->p2() )/2 ) ).toPoint(); // On the 8 px grid
         return line;
     }
-    throw CliError("no wire segment long enough near "+CliRefs::pinRef( pin )+" to add a junction: "
-                   "move the components apart or connect to another pin of the same net");
+    QPoint at = CliRefs::pinPos( pin );
+    QList<Connector*> net = netWires( con );
+    ConnectorLine* best = nullptr;
+    int bestDist = INT_MAX;
+    for( Connector* w : net )
+    {
+        if( w == con ) continue;
+        for( ConnectorLine* line : *w->lineList() )
+        {
+            if( !splittable( line ) ) continue;
+            QPoint mid = toCompGrid( QPointF( ( line->p1()+line->p2() )/2 ) ).toPoint();
+            int d = ( mid-at ).manhattanLength();
+            if( d < bestDist ){ bestDist = d; best = line; point = mid; }
+        }
+    }
+    qDebug() << "[CLI] wire add: junction near" << CliRefs::pinRef( pin ) << "net of" << net.size()
+             << "wire(s), nearest splittable segment" << ( best ? QString("%1,%2").arg( point.x() ).arg( point.y() ) : QString("none") );
+    if( best )
+    {
+        CliApi::self()->addMessage( QString("the wire at %1 is too short for a junction: joined %2 at @%3,%4 instead (same net)")
+                                    .arg( CliRefs::pinRef( pin ) ).arg( best->connector()->getUid() ).arg( point.x() ).arg( point.y() ) );
+        return best;
+    }
+    throw CliError("no wire segment of the net at "+CliRefs::pinRef( pin )+" is long enough (16 px, straight) for a junction: "
+                   "name a point on a wire (@x,y, see wire list), connect to another pin of the net, or move the components apart");
 }
 
 // Wire segment passing through an explicit point ("@x,y"), to attach a junction to
@@ -571,7 +625,8 @@ void CliApi::registerEdit()
 
     add("wire add", "wire add <pinA|@x,y> <pinB|@x,y> [--via x,y,...]",
         "Connect two pins. A pin that already has a wire gets a junction node on that wire, in the middle of the "
-        "segment next to the pin. To choose the junction yourself, give a point on a wire instead of a pin: "
+        "segment next to the pin (or, if that wire is only a short stub, on the nearest long enough segment of the "
+        "same net). To choose the junction yourself, give a point on a wire instead of a pin: "
         "wire add U1.Trg @160,64 joins the wire passing through 160,64 there (corners work too, crossings don't).",
         []( CliCtx& c ) -> QJsonValue
     {
