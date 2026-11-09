@@ -31,6 +31,7 @@ class SR04 : public Component, public eElement
     private:
         uint64_t m_lastStep;
         bool     m_lastTrig;
+        bool     m_busy;      // measuring: triggers are ignored until the echo ended
 
         int m_echouS;
         
