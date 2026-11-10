@@ -14,7 +14,7 @@
 
 <item itemtype="Fixed Voltage" CircId="Fixed Voltage-23" mainComp="false" Show_id="false" Show_Val="false" Pos="400,84" rotation="0" hflip="1" vflip="1" label="Fixed Voltage-23" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" Voltage="5 V" Out="true" />
 
-<item itemtype="MCU" CircId="Z80-24" mainComp="false" Show_id="true" Show_Val="false" Pos="484,-4" rotation="0" hflip="1" vflip="1" label="Z80" idLabPos="23.5885,209.456" labelrot="0" valLabPos="-16,20" valLabRot="0" Logic_Symbol="true" Producer="Zilog" CMOS="false" Single cycle I/O="false" Int_Vector="false" cpuRegs="AF" />
+<item itemtype="MCU" CircId="Z80-24" mainComp="false" Show_id="true" Show_Val="false" Pos="484,-4" rotation="0" hflip="1" vflip="1" label="Z80" idLabPos="23.5885,209.456" labelrot="0" valLabPos="-16,20" valLabRot="0" Logic_Symbol="true" Producer="Zilog" CMOS="false" Single_cycle_IO="false" Int_Vector="false" cpuRegs="AF" />
 
 <item itemtype="Bus" CircId="Bus-25" mainComp="false" Show_id="false" Show_Val="false" Pos="572,196" rotation="0" hflip="1" vflip="1" label="Bus-25" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Num_Bits="8 _bits" Start_Bit="0" />
 
