@@ -125,8 +125,11 @@ namespace Cli
     double   parseNum( QString v, QString what );
 
     // Set target speed (picoseconds simulated per real second), keeping steps
-    // per second and step size consistent as the settings dialog does
-    void setSimSpeed( uint64_t psPerSec, uint64_t stepSize=0 );
+    // per second and step size consistent as the settings dialog does (under 1e9
+    // steps per second). keepStep: the step was asked for explicitly, so the speed
+    // gives way instead of the step. Returns a note when either had to change
+    // ("" otherwise): BH-050, the step used to change without a word.
+    QString setSimSpeed( uint64_t psPerSec, uint64_t stepSize=0, bool keepStep=false );
 
     // Call fn every ms milliseconds (GUI thread) until it returns true
     void pollUntil( std::function<bool()> fn, int ms=5 );

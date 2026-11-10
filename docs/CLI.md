@@ -573,6 +573,11 @@ The groups follow the Settings dialog:
 | simulation | `speed`, `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps` |
 
 - Simulation settings are saved with the circuit.
+- `stepSize` keeps the step you give. The simulator runs at most 1e9 steps per
+  second, so when the current speed would need more, the speed is lowered and
+  the reply row gets a `note`, e.g. "speed lowered from 100 % to 10 % so a 1 ns
+  step stays under 1e9 steps per second". `speed` (and `sim speed`) keeps the
+  speed and changes the step instead, also with a `note`.
 - `language` and `userPath` are saved to the user settings immediately.
 - Font changes take effect after a restart.
 
