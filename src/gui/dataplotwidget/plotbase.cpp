@@ -3,6 +3,8 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <QDebug>
+
 #include "theme.h"
 #include "plotbase.h"
 #include "plotdisplay.h"
@@ -296,4 +298,16 @@ void PlotBase::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w
     p->setPen(pen);
 
     Component::paintSelected( p );
+}
+
+bool PlotBase::screenDue()
+{
+    Simulator* sim = Simulator::self();
+    uint64_t now = sim->circTime();
+    if( !sim->isPaused() ){ m_shownTime = now; return true; }
+    if( now == m_shownTime ) return false;
+    qDebug() << "[plot]" << getUid() << "paused at" << now*1e-12 << "s: screen catches up from"
+             << m_shownTime*1e-12 << "s";
+    m_shownTime = now;
+    return true;
 }

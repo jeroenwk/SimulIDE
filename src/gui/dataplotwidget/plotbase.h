@@ -94,6 +94,12 @@ class PlotBase : public Component, public ScriptModule
         virtual void updateLabelColors() override;   // Screen colours follow the theme
 
     protected:
+        // True when the screen should take new data this frame: always while running, and
+        // once more after a pause if the time moved since the last frame (BH-051: a short
+        // `sim run --for` ended paused before any frame and left the screen empty).
+        bool screenDue();
+        uint64_t m_shownTime = 0;
+
         virtual void slotProperties() override;
         void updtProperties();
 

@@ -379,7 +379,10 @@ Auto sweep. Example: `scope set SCOPE --trigger 0 --triglevel 300` on a
 rectified mains bus.
 
 `sim run` waits for one display frame after pausing, so `read` returns values
-that match the end of the run.
+that match the end of the run. Oscilloscope and logic analyzer screens catch
+up once when the simulation pauses, so a `capture` or `export` after a short
+`sim run --for` (less than one 50 ms frame of wall time) shows the data up to
+the pause.
 
 ### Interacting
 

@@ -131,7 +131,7 @@ void Oscope::updateStep()
     uint64_t timeFrame = m_timeDiv*10;
     uint64_t simTime;
 
-    if( !Simulator::self()->isPaused() )
+    if( screenDue() )   // Running, or paused with new data (BH-051)
     {
         bool fixedLevel = m_trigger < 4 && !m_trigAuto;
         if( !fixedLevel && m_trigger < 4 ) period = m_channel[m_trigger]->m_period; // We want a trigger
