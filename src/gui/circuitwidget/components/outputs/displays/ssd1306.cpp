@@ -341,16 +341,10 @@ void Ssd1306::configScroll( uint8_t command )
     case 1:                                       break;
     case 2: m_scrollStartY = m_rxReg & m_rowMask; break; // Define start page address
     case 3:{                                             // Scroll step time in terms of frame frequency
-        switch( m_rxReg & m_rowMask ){
-        case 0: m_scrollStep = 5;
-        case 1: m_scrollStep = 64;
-        case 2: m_scrollStep = 128;
-        case 3: m_scrollStep = 256;
-        case 4: m_scrollStep = 3;
-        case 5: m_scrollStep = 4;
-        case 6: m_scrollStep = 25;
-        case 7: m_scrollStep = 2;
-        }
+        // Frames between scroll steps (datasheet): 5, 64, 128, 256, 3, 4, 25, 2
+        static const uint16_t steps[8] = { 5, 64, 128, 256, 3, 4, 25, 2 };
+        m_scrollStep = steps[m_rxReg & 7];
+        qDebug() << "Ssd1306::configScroll: step code" << (m_rxReg & 7) << "-> every" << m_scrollStep << "frames";
     }break;
     case 4: m_scrollEndY    = m_rxReg & m_rowMask; break; // Define end page address
     case 5: m_vScrollOffset = m_rxReg & m_lineMask; break; // Vertical scrolling offset
