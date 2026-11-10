@@ -49,6 +49,8 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
         virtual void setIdLabel( QString id );
 
         Label* valLabel() { return m_valLabel; }
+        Label* idLabelItem() { return m_idLabel; }
+        QRectF area() const { return m_area; }
 
         bool showId() { return m_showId; }
         void setShowId( bool show );

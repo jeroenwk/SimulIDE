@@ -108,6 +108,10 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `comp link <comp> [target ...] [--clear]` | Links of a linker part (scripted core, MCU): the parts it drives, in order (index 0, 1, ... of `component.setLinkedValue` in a script). Targets are appended, `--clear` removes all first, no target lists them. Like the GUI's Link mode, not undoable |
 
 - `comp add` is atomic: if a property is invalid, nothing is added.
+- `comp add`, `comp list` and `comp get` give each part's drawn outline as
+  `body` [x, y, w, h] in scene coordinates (pins stick out of it) and, under
+  `labels`, every visible label (`kind` name or value, `text`, `rect`). Layout
+  checks use them (`electronics/.claude/skills/create-circuit/layout_check.py`).
 - Hidden properties (shown by `comp get --all`) can be changed with `comp set`
   too. For scope settings, `scope set` is easier.
 - Adding or removing parts stops a running simulation, as it does in the GUI.

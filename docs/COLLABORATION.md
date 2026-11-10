@@ -93,6 +93,11 @@ Point at things instead of describing them:
 
 ## 3. Layout conventions
 
+For a new circuit or a re-layout, follow the `create-circuit` skill
+(`electronics/.claude/skills/create-circuit/SKILL.md`): netlist, placement plan,
+coordinates from its pin atlas, then its layout checker and a visual review,
+iterated until clean. The notes below are the short version.
+
 - **Coordinates:** the grid is 8 px. Place parts on multiples of 8, and keep the
   signal flowing left to right with ground at the bottom.
 - **Pin positions:**

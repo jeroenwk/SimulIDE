@@ -12,6 +12,7 @@
 #include "connector.h"
 #include "node.h"
 #include "pin.h"
+#include "label.h"
 #include "comproperty.h"
 #include "simulator.h"
 #include "currentflow.h"
@@ -160,6 +161,33 @@ QString propValue( Component* comp, QString name )
     return comp->getPropStr( name );
 }
 
+// Where the part is drawn, for layout checks: "body" = its drawing area in scene
+// coordinates [x, y, w, h] (pins stick out of it), "labels" = each visible label
+// (name, value) with its text and scene rectangle.
+static QJsonArray rectJson( QRectF r )
+{
+    r = r.normalized();
+    return QJsonArray{ qRound( r.x() ), qRound( r.y() ), qRound( r.width() ), qRound( r.height() ) };
+}
+
+static void addGeometry( QJsonObject& o, Component* c )
+{
+    o["body"] = rectJson( c->mapRectToScene( c->area() ) );
+    QJsonArray labels;
+    Label* items[2] = { c->idLabelItem(), c->valLabel() };
+    const char* kinds[2] = { "name", "value" };
+    for( int i=0; i<2; ++i )
+    {
+        Label* l = items[i];
+        if( !l || !l->isVisible() || l->toPlainText().isEmpty() ) continue;
+        labels.append( QJsonObject{
+            {"kind", kinds[i] },
+            {"text", l->toPlainText() },
+            {"rect", rectJson( l->sceneBoundingRect() ) } } );
+    }
+    if( !labels.isEmpty() ) o["labels"] = labels;
+}
+
 QJsonObject compJson( Component* c, bool detail, bool all )
 {
     QJsonObject o{
@@ -168,6 +196,7 @@ QJsonObject compJson( Component* c, bool detail, bool all )
         {"label", c->idLabel() },
         {"pos",   QJsonArray{ c->x(), c->y() } } };
     if( c->rotation() != 0 ) o["rotation"] = c->rotation();
+    addGeometry( o, c );
 
     if( !detail ){
         o["pins"] = (int)c->getPins().size();
