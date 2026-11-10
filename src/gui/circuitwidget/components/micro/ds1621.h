@@ -24,7 +24,7 @@ class DS1621 : public IoComponent, public TwiModule
         void setTempInc( double inc ) { m_tempInc = trim( inc ); }
 
         double temp() { return m_temp; }
-        void setTemp( double temp ) { m_temp = temp; }
+        void setTemp( double temp ) { m_temp = temp; m_changed = true; } // convert again (BH-041)
 
         virtual void stamp() override;
         virtual void runEvent() override;
