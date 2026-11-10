@@ -6,6 +6,7 @@
 #ifndef DCMOTOR_H
 #define DCMOTOR_H
 
+#include <QDebug>
 #include "linkercomponent.h"
 #include "e-resistor.h"
 
@@ -30,7 +31,12 @@ class DcMotor : public LinkerComponent, public eResistor
         void setRpm( int rpm );
 
         double volt() { return m_voltNom; }
-        void setVolt( double v ) { m_voltNom = v; }
+        void setVolt( double v )
+        {
+            if( fabs(v) < 1e-3 ) v = 1e-3; // BH-046: 0 nominal voltage gave inf/NaN shaft angle
+            qDebug() << "[DcMotor] setVolt" << m_id << "nominal voltage" << v;
+            m_voltNom = v;
+        }
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
 
