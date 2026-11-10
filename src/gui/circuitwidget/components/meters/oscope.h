@@ -75,13 +75,13 @@ class Oscope : public PlotBase
         DataWidget* dataW() { return m_dataWidget; }
 
     private:
-        uint64_t fixedLevelEnd( uint64_t now, uint64_t timeFrame );
+        bool levelEnd( uint64_t now, uint64_t timeFrame, uint64_t* end );
 
         double m_filter;
 
         bool   m_trigAuto;
         double m_trigLevel;
-        int    m_trigState;   // Display state with a fixed level, for the debug log: -1 unset, 0 free running, 1 triggered
+        int    m_trigState;   // Display state from the level edges (fixed or auto), for the debug log: -1 unset, 0 free running, 1 triggered
 
         int m_auto;
 
