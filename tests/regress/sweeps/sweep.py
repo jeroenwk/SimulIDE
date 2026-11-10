@@ -283,6 +283,10 @@ def sweep_examples(srv, args):
 
         def run(sim):
             sim.cli("circuit", "open", f, "--discard")
+            # An example saved at a very slow speed (e.g. stepsPS=100 = 0.0001 % of
+            # real time) would need minutes of wall time for 20 ms and look like a
+            # hang: run every example at 100 % (IMP-029).
+            sim.cli("settings", "set", "speed=100")
             sim.cli("sim", "run", "--for", "20ms")
             state["log"] = sim.cli("log", "--kind", "solver")
         if guarded(srv, "examples", rel, "-", "-", run):
