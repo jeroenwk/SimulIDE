@@ -31,7 +31,8 @@ class OscopeChannel : public DataChannel
     private:
         void updateValues();
         void findEdges( double data, uint64_t simTime );
-        void findTrigEdge( double data, uint64_t simTime );
+        void findTrigEdge( double data, uint64_t simTime, double level, double hyst, uint64_t minGap );
+        void updateEnvelope( double data, uint64_t simTime );
 
         static const int TRIG_EDGES = 64;
         uint64_t m_trigEdges[TRIG_EDGES]; // Ring of crossings of the fixed level, at least 1/16 screen apart
@@ -40,6 +41,13 @@ class OscopeChannel : public DataChannel
         bool     m_trigReset;
         double   m_trigPrevData;          // Previous settled step, to place the crossing between steps
         uint64_t m_trigPrevTime;
+
+        // Auto trigger level (BH-052): peak-hold envelope over 10 to 20 screens, in two
+        // buckets of 10 screens; the level is its middle, so bursts trigger on their big cycles
+        double   m_envMax[2];
+        double   m_envMin[2];
+        uint64_t m_envStart;              // Start of the current bucket (m_envMax[0])
+        bool     m_envAuto;               // Auto level was usable at the last step (for the log)
 
         double m_stepData;       // Latest value in the current time step (settled at its end)
         int    m_noWave;         // Frames without a wave

@@ -131,13 +131,15 @@ void Oscope::updateStep()
     uint64_t timeFrame = m_timeDiv*10;
     uint64_t simTime;
 
-    if( !Simulator::self()->isPaused() )
+    if( screenDue() )   // Running, or paused with new data (BH-051)
     {
         bool fixedLevel = m_trigger < 4 && !m_trigAuto;
         if( !fixedLevel && m_trigger < 4 ) period = m_channel[m_trigger]->m_period; // We want a trigger
 
+        uint64_t now = Simulator::self()->circTime();
         if( fixedLevel ) // Trigger at a fixed level: the crossings the channel found
-            simTime = fixedLevelEnd( Simulator::self()->circTime(), timeFrame );
+            levelEnd( now, timeFrame, &simTime );
+        else if( m_trigger < 4 && levelEnd( now, timeFrame, &simTime ) ) {} // Auto level edges (BH-052)
         else if( period > 10 ) // We have a Trigger
         {
             uint64_t risEdge = m_channel[m_trigger]->m_risEdge;
@@ -242,11 +244,13 @@ void Oscope::setTrigger( int ch )
         else          m_channel[i]->m_trigger = false;
 }   }
 
-uint64_t Oscope::fixedLevelEnd( uint64_t now, uint64_t timeFrame )
+bool Oscope::levelEnd( uint64_t now, uint64_t timeFrame, uint64_t* end )
 {
     // Like a real scope in Auto sweep: the trigger point (a crossing of the level) goes in the
     // middle of the screen, so the latest edge with half a screen of data after it is shown.
-    // No such edge in the last 10 screens (the buffer holds about 12): free running.
+    // No such edge in the last 10 screens (the buffer holds about 12): free running (*end = now,
+    // returns false). With the level on Auto the crossings are of the channel's auto level
+    // (OscopeChannel::findEdges), and the caller falls back to the measured period.
     OscopeChannel* ch = (OscopeChannel*)m_channel[m_trigger];
     uint64_t half = timeFrame/2;
     uint64_t edge = 0;
@@ -255,11 +259,14 @@ uint64_t Oscope::fixedLevelEnd( uint64_t now, uint64_t timeFrame )
     int state = found ? 1 : 0;
     if( state != m_trigState ){
         m_trigState = state;
-        qDebug() << "[ScopeTrig]" << getUid() << ( found ? "triggered" : "free running (no edge at the level)" )
-                 << "ch" << m_trigger << "level" << m_trigLevel << "V t" << now*1e-12 << "s";
+        qDebug() << "[ScopeTrig]" << getUid() << ( found ? "triggered"
+                   : m_trigAuto ? "no edge at the auto level: measured period, or free running"
+                                : "free running (no edge at the level)" )
+                 << "ch" << m_trigger << "level" << ( m_trigAuto ? QString("auto") : QString::number( m_trigLevel )+" V" )
+                 << "t" << now*1e-12 << "s";
     }
-    if( !found ) return now;
-    return edge+half;
+    *end = found ? edge+half : now;
+    return found;
 }
 
 void Oscope::setTrigAuto( bool a )

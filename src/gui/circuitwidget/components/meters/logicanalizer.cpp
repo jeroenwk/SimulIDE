@@ -125,7 +125,7 @@ LAnalizer::~LAnalizer()
 
 void LAnalizer::updateStep()
 {
-    if( !Simulator::self()->isPaused() )
+    if( screenDue() )   // Running, or paused with new data (BH-051)
     {
         uint64_t simTime = Simulator::self()->circTime(); // free running
         if( m_trigger < 9 )
