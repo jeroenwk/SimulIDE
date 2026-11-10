@@ -370,7 +370,12 @@ checked before anything changes. For example,
 sine. The defaults (1 ms, 1 V/div) clip most signals.
 
 `--triglevel` sets the oscilloscope's trigger level (Expand panel: Trig
-level). `auto`, the default, triggers in the middle of the last cycle. A
+level). `auto`, the default, triggers on a rising crossing of the middle of
+the signal's range over the last 10 to 20 screens (hysteresis 15 % of that
+range, holdoff one screen), with the crossing in the middle of the screen. A
+burst, such as an LC ringing after each edge of a square wave, so shows its
+first big cycles, not the flat gap between bursts. With no such crossing the
+screen follows the measured period, or runs free. A
 value in volts triggers on a rising edge through that level, with the Filter
 setting as hysteresis: the crossing goes in the middle of the screen, drawn
 as a dashed line with an arrow in the trigger channel's colour. With no
