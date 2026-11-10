@@ -31,8 +31,8 @@ class DS1307 : public Component, public TwiModule
         virtual void readByte() override;
         virtual void I2Cstop() override;
 
-        char decToBcd(char val);
-        char bcdToDec(char val);
+        uint8_t decToBcd( uint8_t val );
+        uint8_t bcdToDec( uint8_t val );
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
 

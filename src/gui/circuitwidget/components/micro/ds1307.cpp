@@ -130,7 +130,7 @@ void DS1307::writeByte()               // Read from RAM
             case 3: m_txReg = decToBcd( m_clock.m_date.dayOfWeek() ); break;
             case 4: m_txReg = decToBcd( m_clock.m_date.day() ); break;
             case 5: m_txReg = decToBcd( m_clock.m_date.month() ); break;
-            case 6: m_txReg = decToBcd( m_clock.m_date.year() - 2000 ); break;
+            case 6: m_txReg = decToBcd( (m_clock.m_date.year() - 2000) % 100 ); break;
         }
     }
     else m_txReg = m_data[m_addrPtr];
@@ -191,9 +191,10 @@ void DS1307::updtCtrl()
     m_clock.setDisOut( m_data[7] & (1<<7) );
 }
 
-char DS1307::decToBcd(char val) {
+// uint8_t, not char: char is signed here and a year register of 0x80-0x99 became negative (BH-040)
+uint8_t DS1307::decToBcd( uint8_t val ) {
     return( (val/10*16) + (val%10) ); }
-char DS1307::bcdToDec(char val) {
+uint8_t DS1307::bcdToDec( uint8_t val ) {
     return( (val/16*10) + (val%16) ); }
 
 void DS1307::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )
