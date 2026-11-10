@@ -107,5 +107,11 @@ class Transformer : public Component, public eElement
         QList<CoilGauge*> m_coilGauges;
 
         std::vector<std::vector<double>> m_inva;
+
+        // BH-055: coil voltages read at the previous update (what the accumulated
+        // current source must be built from) and the first-update flag (the cache
+        // starts from the first post-stamp reads).
+        std::vector<double> m_prevVolt;
+        bool m_firstEvent = true;
 };
 #endif

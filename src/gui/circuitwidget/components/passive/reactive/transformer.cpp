@@ -123,6 +123,8 @@ void Transformer::stamp()
     }
     double b[n];
     m_inva.resize( n, std::vector<double>( n, 0 ) );
+    m_prevVolt.assign( n, 0 );            // BH-055: filled at the first update
+    m_firstEvent = true;
 
     for( k=0; k<n; k++)
     {
@@ -164,12 +166,29 @@ void Transformer::runEvent()
 {
     int n = m_coils.size();
 
+    // BH-055: the accumulated current source of each coil must be built from the coil
+    // voltages read at the *previous* update: the shunt admit inva[i][i] (= dt/L, as
+    // the plain inductor's) already carries the current voltage during the interval, so
+    // accumulating the freshly read voltages as well counts them twice whenever other
+    // elements solved in between (a source, a switching diode...). That double count
+    // showed up as a phantom series resistance of about w^2*L*reactStep (a 25 mH
+    // winding: 95 ohm at 10 kHz with the default 1 us step) and damped/detuned
+    // transformer circuits - the same bug the plain inductor had (BH-053). In a quiet
+    // circuit (only transformer events) the read at each event is the voltage solved
+    // after the previous one, so the old code was exact backward Euler there.
+    if( m_firstEvent )   // Cache starts at the first post-stamp boundary: exact in a
+    {                    // quiet circuit; in a busy one the first term errs by the
+        m_firstEvent = false;   // drift over one reactive step (one-off, bounded).
+        for( int i=0; i<n; i++ ) m_prevVolt.at( i ) = m_coils.at(i)->getVolt();
+    }
+
     for( int i=0; i<n; i++ )
     {
         double current = 0;
-        for( int j=0; j<n; ++j ) current += m_coils.at(j)->getVolt()*m_inva[i][j];
+        for( int j=0; j<n; ++j ) current += m_prevVolt.at( j )*m_inva[i][j];
         m_coils.at(i)->stampCurrent( current );
     }
+    for( int i=0; i<n; i++ ) m_prevVolt.at( i ) = m_coils.at(i)->getVolt();
     Simulator::self()->addEvent( m_reacStep, this );
 }
 
