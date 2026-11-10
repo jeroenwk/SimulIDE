@@ -6,6 +6,7 @@
 #include "twimodule.h"
 #include "iopin.h"
 #include "simulator.h"
+#include <QDebug>
 
 TwiModule::TwiModule( QString name )
          : eClockedDevice( name )
@@ -348,6 +349,10 @@ void TwiModule::slaveWrite()
 
 void TwiModule::setFreqKHz( double f )
 {
+    if( !( f > 0 ) ){ // 1/0 or negative clock period hung the simulation (BH-048)
+        qDebug() << "[TwiModule] setFreqKHz: frequency" << f << "kHz is not positive, value ignored";
+        return;
+    }
     m_freq = f*1e3;
     double stepsPerS = 1e12;
     m_clockPeriod = stepsPerS/m_freq/2;
