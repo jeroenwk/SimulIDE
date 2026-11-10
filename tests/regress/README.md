@@ -41,3 +41,18 @@ Whole-library checks that find a class of bugs in one run; each finding is a `FI
 | `sweeps/cli_fuzz.py` | CLI crashes or hangs with odd argument values (empty, 0, -1, 1e400, abc, unknown refs) over every command form (~4 min) | none yet (clean 2026-11-09) |
 
 A finding is a candidate, not a bug: check it against the code's intent before writing a test.
+
+## Reactive integration accuracy (BH-053 / BH-055)
+
+`test_bh-053_reactive_accuracy.py` and `test_bh-055_transformer_accuracy.py` cover
+the two proposed "phantom series resistance" fixes. The reported bandpass loss
+agrees with backward Euler's numerical damping: it is not evidence of a
+double-counted voltage. Their references are the discrete impedances and the
+continuous circuit, not readings copied from the simulator. They check step
+convergence, the RL high-pass cases, monotonic DC response, restarting an idle
+inductor, and free-LC energy decay. The rejected delayed-read implementation
+fails these tests despite passing its original, lossless resonance assertion.
+
+The safe accuracy adjustment is a smaller reactive step, chosen before starting
+the simulation, without changing the companion integration rule or the global
+default. See [CLI: reactive accuracy](../../docs/CLI.md#reactive-accuracy-inductors-capacitors-and-transformers).

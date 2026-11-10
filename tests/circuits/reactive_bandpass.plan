@@ -1,0 +1,11 @@
+# Series RLC bandpass. Signal flows left to right, then through R1 to ground.
+comp add WaveGen --label GEN --at 0,0 Wave_Type=Sine Freq=2055Hz Semi_Ampli=1V Mid_Volt=0V Steps=1000 Always_On=true
+comp add Capacitor --label C1 --at 96,0 Capacitance=120nF
+comp add Inductor --label L1 --at 192,0 Inductance=50mH
+comp add Resistor --label R1 --at 272,48 --rot 90 Resistance=54
+comp add Ground --label G --at 272,112
+wire add GEN.outnod C1.lPin
+wire add C1.rPin L1.lPin
+wire add L1.rPin R1.lPin --via 272,0
+wire add R1.rPin G.Gnd
+settings set reactStep=10ns
