@@ -128,6 +128,11 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     logRow->addWidget( logLabel );
     logRow->addWidget( m_logPartsBox );
     logRow->addWidget( m_logCapsBox );
+    m_verboseLog = MainWindow::self()->settings()->value("Circuit/logVerbose", false ).toBool();
+    m_verboseBox = new QCheckBox( tr("Verbose"), m_msgWidget );
+    m_verboseBox->setToolTip( tr("Also write debug logs (lines starting with a [tag]). Off: only information, warnings and errors. Debug logs always go to the terminal (stderr)") );
+    m_verboseBox->setChecked( m_verboseLog );
+    logRow->addWidget( m_verboseBox );
     logRow->addStretch();
     msgLayout->addLayout( logRow );
     msgLayout->addWidget( &m_outPane );
@@ -135,6 +140,7 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     syncEventLog();
     connect( m_logPartsBox, &QCheckBox::toggled, []( bool on ){ EventLog::self()->setLogParts( on ); } );
     connect( m_logCapsBox,  &QCheckBox::toggled, []( bool on ){ EventLog::self()->setLogCaps( on ); } );
+    connect( m_verboseBox,  &QCheckBox::toggled, [this]( bool on ){ setVerboseLog( on ); } );
     m_scriptPane = new ScriptPane( this );
     m_bottomTabs->addTab( m_scriptPane, tr("Scripts") );
     connect( m_scriptPane, &ScriptPane::started, [this](){ m_bottomTabs->setCurrentWidget( m_scriptPane ); } );
@@ -785,6 +791,18 @@ void CircuitWidget::showRealSpeed( double realPsPerSec )
 }
 
 #include "moc_circuitwidget.cpp"
+
+bool CircuitWidget::m_verboseLog = false;
+
+void CircuitWidget::setVerboseLog( bool v )
+{
+    if( v == m_verboseLog ) return;
+    m_verboseLog = v;
+    MainWindow::self()->settings()->setValue("Circuit/logVerbose", v );
+    MainWindow::self()->settings()->sync();   // Shared by every instance; a headless one may be killed
+    if( m_verboseBox && m_verboseBox->isChecked() != v ) m_verboseBox->setChecked( v );
+    fprintf( stderr, "[log] Messages verbose %s\n", v ? "on: debug logs shown" : "off: info, warnings and errors only" );
+}
 
 void CircuitWidget::syncEventLog()
 {

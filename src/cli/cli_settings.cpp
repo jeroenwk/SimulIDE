@@ -10,6 +10,7 @@
 #include "uitheme.h"
 #include "cliapi.h"
 #include "mainwindow.h"
+#include "circuitwidget.h"
 #include "circuit.h"
 #include "circuitview.h"
 #include "simulator.h"
@@ -140,6 +141,9 @@ QList<Setting>& settings()
     list.append({"logCaps", "circuit", "Messages: write charge events of capacitors whose LogCharge property is on (see also: log).",
         [](){ return QJsonValue( EventLog::self()->logCaps() ); },
         []( QString v ){ EventLog::self()->setLogCaps( parseBool( v ) ); }});
+    list.append({"logVerbose", "circuit", "Messages: also show debug logs (qDebug lines starting with a [tag]); off shows only information, warnings and errors. Debug logs always go to stderr.",
+        [](){ return QJsonValue( CircuitWidget::verboseLog() ); },
+        []( QString v ){ CircuitWidget::self()->setVerboseLog( parseBool( v ) ); }});
     list.append({"capLabel", "circuit", "Live label beside each capacitor, inductor and transformer coil while the display is on: off, volt (the value: V or A), percent or both.",
         [](){ return QJsonValue( ChargeView::labelModes().at( ChargeView::self()->labelMode() ) ); },
         []( QString v ){

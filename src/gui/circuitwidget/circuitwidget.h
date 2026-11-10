@@ -58,6 +58,11 @@ class CircuitWidget : public QWidget
 
         void simDebugMessage( QString msg ) { m_outPane.appendLine( msg.remove("\"") ); }
 
+        // Messages: also show debug logs ("[tag] ..." qDebug lines); saved in the user settings
+        static bool verboseLog() { return m_verboseLog; }
+        OutPanelText* outPane() { return &m_outPane; }
+        void setVerboseLog( bool v );
+
         QSplitter* splitter() { return m_mainSplitter; }
         void showDescription();       // Refresh the Description tab
         void printDescription();      // Description in white in Messages (on load, before "Circuit Loaded")
@@ -97,6 +102,8 @@ class CircuitWidget : public QWidget
         QWidget*   m_msgWidget;
         QCheckBox* m_logPartsBox = nullptr;
         QCheckBox* m_logCapsBox = nullptr;
+        QCheckBox* m_verboseBox = nullptr;
+ static bool m_verboseLog;
         
         QToolBar m_circToolBar;
 

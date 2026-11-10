@@ -356,6 +356,7 @@ Removing wires around a junction works as in the GUI:
 |---|---|
 | `probe <pin> ...` | Voltage and current (into the component) at pins |
 | `read <comp> ...` | Readouts: meters (value and unit), probes, frequency meters, LEDs (brightness, current), resistors and varistors (voltage, current, power), BJTs (terminal currents `i_base`, `i_collector`, `i_emitter` and the region `state`: OFF, ACTIVE or SAT), MOSFETs (`vgs`, `vds`, `i_drain` and the region `state`: OFF, ACTIVE or OHMIC), JFETs (the same plus `i_gate`; see `docs/JFET.md`), lamps (also resistance; with the filament model on, temperature in K and radiated W), capacitors (voltage, charge level, reference, flags), subcircuits with scripted cores (`state`: the text each script shows with `component.showValue`; with several cores `block: text | block: text`, e.g. `supply: ON | fb: OK | pwm: RUN`; and `status`: each block's state set with `component.setStatus`, with its level), plus pin voltages |
+| `messages [--last N] [--grep TEXT]` | Text of the Messages pane, one line per entry (`lines`, `count`). Debug logs are only in it with `logVerbose` on |
 | `log [--since T] [--kind part\|cap] [--comp C] [--last N]` | Event log of the run, as in Messages: part state changes and charge events of capacitors with Log charge on (time, approx, comp, kind, level, text, shown) |
 | `status <comp> [--last N]` | States a part reports with `component.setStatus`: now, and every change since the start with its simulated time (block, text, level `off`/`on`/`wait`/`fault`), oldest first. Restart times and blink rates come straight from it |
 | `scope data <comp> [--ch N] [--last TIME] [--max N]` | Oscilloscope or logic analyzer samples as `[time_s, value]`, oldest first |
@@ -581,6 +582,10 @@ The groups follow the Settings dialog:
 | simulation | `speed`, `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps` |
 
 - Simulation settings are saved with the circuit.
+- `logVerbose` (Messages pane: Log: Verbose) also shows debug logs, the lines
+  that start with a `[tag]`. Off (the default), Messages shows only information
+  (upstream's messages, `qInfo`), warnings and errors; debug logs always go to
+  stderr. Saved in the user settings.
 - `stepSize` keeps the step you give. The simulator runs at most 1e9 steps per
   second, so when the current speed would need more, the speed is lowered and
   the reply row gets a `note`, e.g. "speed lowered from 100 % to 10 % so a 1 ns

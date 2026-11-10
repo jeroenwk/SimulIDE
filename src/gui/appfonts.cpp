@@ -50,7 +50,7 @@ void AppFonts::registerFonts()
     {
         QString path = ":/fonts/"+f+".ttf";
         int id = QFontDatabase::addApplicationFont( path );
-        if( id < 0 ) qDebug() << "[Fonts] FAILED to load" << path;
+        if( id < 0 ) qWarning() << "[Fonts] FAILED to load" << path;
         else         qDebug() << "[Fonts] loaded" << path << "families:" << QFontDatabase::applicationFontFamilies( id );
     }
     QFontDatabase db;

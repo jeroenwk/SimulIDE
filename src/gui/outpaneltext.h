@@ -47,6 +47,8 @@ class OutPanelText : public QPlainTextEdit, public Updatable
 
         bool isDark() const { return m_dark; }
 
+        QString allText() const { return toPlainText()+m_textBuffer; } // Shown + still buffered (CLI messages)
+
     protected:
         virtual void mouseReleaseEvent( QMouseEvent* event ) override;
 

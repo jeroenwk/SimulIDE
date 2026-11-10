@@ -230,6 +230,29 @@ void CliApi::registerView()
         return saveImage( img, outFile( c, "window-"+part ) );
     });
 
+    add("messages", "messages [--last N] [--grep TEXT]",
+        "Text of the Messages pane, one line per entry (with Log: Verbose off, debug logs are not in it; "
+        "settings set logVerbose=true shows them). --last keeps the last N lines, --grep the lines that contain TEXT.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QStringList lines = CircuitWidget::self()->outPane()->allText().split('\n');
+        while( !lines.isEmpty() && lines.last().isEmpty() ) lines.removeLast();
+        if( c.has("grep") ){
+            QString g = c.opt("grep");
+            QStringList kept;
+            for( const QString& l : lines ) if( l.contains( g ) ) kept.append( l );
+            lines = kept;
+        }
+        if( c.has("last") ){
+            bool ok = false;
+            int n = c.opt("last").toInt( &ok );
+            if( !ok || n < 0 ) throw CliError("--last takes a line count");
+            if( lines.size() > n ) lines = lines.mid( lines.size()-n );
+        }
+        qDebug() << "[cli:messages]" << lines.size() << "line(s)";
+        return QJsonObject{ {"lines", QJsonArray::fromStringList( lines )}, {"count", lines.size()} };
+    });
+
     add("view", "view fit|selected|reset|zoom <factor>|center <comp|x,y>|show <comp ...>|raise|settings [app|circuit|simulation|close]|props <comp> [--tab N|NAME] [--close]|export",
         "Control what the circuit view shows: fit all, fit selection, 100%, zoom by a factor, center on a component "
         "or point, show (select + fit) components, bring the window to the front, open the Settings dialog, or open "

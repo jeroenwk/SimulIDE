@@ -16,24 +16,43 @@
 #include "cliserver.h"
 #include "cliclient.h"
 
+// Log levels in Messages (everything always goes to stderr):
+// - debug:   qDebug() starting with a "[tag]" prefix (developer logs): only with Log: Verbose on;
+// - info:    any other qDebug() (upstream's messages for the user) and qInfo();
+// - warning: qWarning() with a "[tag]" (SimulIDE's own), shown as "Warning: ...";
+// - error:   qCritical() with a "[tag]", shown as "Error: ...".
+// Untagged warnings and errors come from Qt itself (e.g. the offscreen plugin's
+// "propagateSizeHints"): stderr only, as before.
+static bool hasTag( const QString& msg )
+{
+    static const QRegularExpression tag("^\\[[^\\]\\n]{1,48}\\]");
+    return tag.match( msg ).hasMatch();
+}
+
 void myMessageOutput( QtMsgType type, const QMessageLogContext &context, const QString &msg )
 {
     QByteArray localMsg = msg.toLocal8Bit();
     const char* file     = context.file ? context.file : "";
     const char* function = context.function ? context.function : "";
+    bool ours = hasTag( msg ) && !( context.category && QByteArray( context.category ).startsWith("qt.") );
+    CircuitWidget* cw = CircuitWidget::self();
     switch (type) {
     case QtDebugMsg:
-        if( CircuitWidget::self() ) CircuitWidget::self()->simDebugMessage( msg );
+        if( cw && ( CircuitWidget::verboseLog() || !hasTag( msg ) ) ) cw->simDebugMessage( msg );
         CliServer::logMessage( msg );
         fprintf( stderr, "%s \n", localMsg.constData() );
         break;
     case QtInfoMsg:
+        if( cw ) cw->simDebugMessage( msg );
         fprintf(stderr, "Info: %s (%s:%u, %s)\n", localMsg.constData(), file, context.line, function);
         break;
     case QtWarningMsg:
+        if( cw && ours ) cw->simDebugMessage("Warning: "+msg );
         fprintf(stderr, "Warning: %s (%s:%u, %s)\n", localMsg.constData(), file, context.line, function);
         break;
     case QtCriticalMsg:
+        if( cw && ours ) cw->simDebugMessage("Error: "+msg );
+        CliServer::logMessage("Error: "+msg );
         fprintf(stderr, "Critical: %s (%s:%u, %s)\n", localMsg.constData(), file, context.line, function);
         break;
     case QtFatalMsg:

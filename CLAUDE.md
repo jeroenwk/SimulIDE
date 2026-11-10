@@ -103,6 +103,12 @@ When the user wants to build or try circuits together, follow **`docs/COLLABORAT
 - Built-in parts (BJT, MOSFET, SCR, triac, diac, op amp, voltage regulator, diode, zener, LED, 555, relay, analog mux) report their operating state through a `StateLog` (`statelog.{h,cpp}`, the same event type and sequence as the scripted cores). The part calls `enableStates()` and lists `showStateProp()` (Show State) in its constructor. It asks for `Simulator::addToSettled(this)` in `voltChanged()` and calls `reportState()` in `stepSettled()`, which the simulator calls once the time step has converged, so the times are exact. A part that changes state in `runEvent()` (555, analog mux) reports there directly. Plan, rules (colours, hysteresis, model tolerances) and the remaining parts: `docs/PART_STATES.md`.
 - CLI: `read` (`status`, or `state` for built-in parts) and `status <comp>` (history), in `cli_measure.cpp`.
 
+### Log levels in Messages (`src/main.cpp` message handler)
+- Debug logs are `qDebug()` lines that start with a `[tag]` prefix (`[labels]`, `[ScopeTrig]`, ...). They always go to stderr, and to Messages only with Log: Verbose on (setting `logVerbose`, in the user settings).
+- Other `qDebug()` lines (upstream's messages for the user) and `qInfo()` are information and always shown.
+- `qWarning()` / `qCritical()` with a `[tag]` show as "Warning: ..." / "Error: ...". Untagged ones come from Qt itself and stay on stderr.
+- So: tag every debug log, and use `qWarning`/`qCritical` (tagged) for what the user must see. `cli messages` reads the pane.
+
 ### Event log (`src/gui/circuitwidget/eventlog.cpp`)
 - `EventLog` (an Updatable) runs once per frame:
   - It reads new part-state events (`ScriptCpu::statusHistory`, by sequence number) and joins changes within 1 µs into one line.
