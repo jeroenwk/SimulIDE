@@ -5,6 +5,11 @@
 
 #include <math.h>
 
+#include <QDebug>
+#include <QTimer>
+#include <QFontMetrics>
+#include <QGraphicsProxyWidget>
+
 #include "component.h"
 #include "theme.h"
 #include "label.h"
@@ -16,6 +21,7 @@
 #include "utils.h"
 #include "propdialog.h"
 #include "linker.h"
+#include "pin.h"
 
 #include "doubleprop.h"
 #include "boolprop.h"
@@ -66,6 +72,10 @@ Component::Component( QString type, QString id )
     m_circHflip = 1;
     m_circVflip = 1;
 
+    m_labelAuto    = true;      // New parts: name and value on one line (specs/label-layout.md)
+    m_labelsQueued = false;
+    m_idDefRot = m_valDefRot = 0;
+
     QFont font;
     font.setFamily( MainWindow::self()->defaultFontName() );
     font.setPixelSize( 10 );
@@ -77,6 +87,7 @@ Component::Component( QString type, QString id )
     m_idLabel = new Label();
     m_idLabel->setComponent( this );
     m_idLabel->setDefaultTextColor( Theme::idLabel() );
+    font.setPixelSize( 8 );     // Same size as the value: one line (specs/label-layout.md)
     m_idLabel->setFont( font );
     setLabelPos(-16,-24, 0 );
     setShowId( false );
@@ -114,6 +125,8 @@ new PointProp<Component>("idLabPos" ,"","", this, &Component::getIdPos,  &Compon
 new IntProp  <Component>("labelrot" ,"","", this, &Component::getIdRot,  &Component::setIdRot ),
 new PointProp<Component>("valLabPos","","", this, &Component::getValPos, &Component::setValPos ),
 new IntProp  <Component>("valLabRot","","", this, &Component::getValRot, &Component::setValRot ),
+// After the positions: a file without it (older) leaves the part on its saved positions
+new BoolProp <Component>("labelAuto","","", this, &Component::labelAuto, &Component::setLabelAuto ),
     }, groupHidden | groupNoCopy } );
 
     addPropGroup( { "Board", {                   // Board properties
@@ -526,24 +539,27 @@ void Component::rotateAngle( double a )
 }
 
 QString Component::idLabel() { return m_idLabel->toPlainText(); }
-void Component::setIdLabel( QString id ) { m_idLabel->setPlainText( id ); m_idLabel->updtLabelPos(); }
+void Component::setIdLabel( QString id ) { m_idLabel->setPlainText( id ); m_idLabel->updtLabelPos(); layoutLabels(); }
 
 QPointF Component::getIdPos() { return m_idLabel->getLabelPos(); }
-void Component::setIdPos( QPointF p ) { m_idLabel->setLabelPos( p ); }
+void Component::setIdPos( QPointF p ) { setLabelAuto( false ); m_idLabel->setLabelPos( p ); } // Saved or set: manual
 
 int Component::getIdRot() { return m_idLabel->getAngle(); }
-void Component::setIdRot( int r ) { m_idLabel->setAngle(r); }
+void Component::setIdRot( int r ) { setLabelAuto( false ); m_idLabel->setAngle(r); }
 
-void Component::setLabelPos( float x, float y, int rot )
+void Component::setLabelPos( float x, float y, int rot ) // The part's default
 {
+    m_idDefPos = QPointF( x, y );
+    m_idDefRot = rot;
     m_idLabel->m_labelx = x;
     m_idLabel->m_labely = y;
     m_idLabel->m_labelrot = rot;
     m_idLabel->updtLabelPos();
+    layoutLabels();
 }
 void Component::updtLabelPos() { m_idLabel->updtLabelPos(); }
 
-void Component::setShowId( bool show ) { m_idLabel->setVisible( show ); m_showId = show; }
+void Component::setShowId( bool show ) { m_idLabel->setVisible( show ); m_showId = show; layoutLabels(); }
 QString Component::statusLevelStr( int level )
 {
     switch( level ){
@@ -555,25 +571,114 @@ QString Component::statusLevelStr( int level )
     return "";
 }
 
-void Component::setShowVal( bool show ) { m_valLabel->setVisible( show ); m_showVal = show; }
+void Component::setShowVal( bool show ) { m_valLabel->setVisible( show ); m_showVal = show; layoutLabels(); }
 
 QPointF Component::getValPos() { return m_valLabel->getLabelPos(); }
-void Component::setValPos( QPointF p ) { m_valLabel->setLabelPos( p ); }
+void Component::setValPos( QPointF p ) { setLabelAuto( false ); m_valLabel->setLabelPos( p ); } // Saved or set: manual
 
 int Component::getValRot() { return m_valLabel->getAngle(); }
-void Component::setValRot( int r ) { m_valLabel->setAngle(r); }
+void Component::setValRot( int r ) { setLabelAuto( false ); m_valLabel->setAngle(r); }
 
-void Component::setValLabelPos( float x, float y, int rot )
+void Component::setValLabelPos( float x, float y, int rot ) // The part's default
 {
+    m_valDefPos = QPointF( x, y );
+    m_valDefRot = rot;
     m_valLabel->m_labelx = x;
     m_valLabel->m_labely = y;
     m_valLabel->m_labelrot = rot;
     m_valLabel->updtLabelPos();
+    layoutLabels();
 }
 
 void Component::updtValLabelPos() { m_valLabel->updtLabelPos(); }
 
-void Component::setValLabelText( QString t ) { m_valLabel->setPlainText( t ); m_valLabel->updtLabelPos(); }
+void Component::setValLabelText( QString t ) { m_valLabel->setPlainText( t ); m_valLabel->updtLabelPos(); layoutLabels(); }
+
+//--- Name and value on one line (specs/label-layout.md) --------------------
+
+void Component::setLabelAuto( bool a )
+{
+    if( a == m_labelAuto ) return;
+    m_labelAuto = a;
+    qDebug() << "[labels]" << getUid() << ( a ? "automatic placement" : "manual placement" );
+    if( a ) layoutLabels();
+}
+
+void Component::labelMovedByHand() { setLabelAuto( false ); }
+
+void Component::layoutLabels()
+{
+    if( !m_labelAuto || m_labelsQueued || !m_idLabel || !m_valLabel ) return;
+    m_labelsQueued = true;
+    // Deferred: the part may still be setting its size, pins and properties. The label is the
+    // context object, so the call is dropped if the part (and its labels) are deleted first.
+    QTimer::singleShot( 0, m_idLabel, [this](){ m_labelsQueued = false; doLayoutLabels(); } );
+}
+
+void Component::doLayoutLabels()
+{
+    if( !m_labelAuto ) return;
+    if( m_idDefRot || m_valDefRot ) return;          // Rotated defaults (probe, rail, ...): keep them
+
+    QList<Label*> shown;
+    if( m_showId  && !m_idLabel->toPlainText().isEmpty()  ) shown.append( m_idLabel );
+    if( m_showVal && !m_valLabel->toPlainText().isEmpty() ) shown.append( m_valLabel );
+    if( shown.isEmpty() ) return;
+
+    // Outline: the part's bounding rectangle plus its pins and widgets (dials), in part coordinates
+    QRectF out = boundingRect();
+    for( QGraphicsItem* it : childItems() )
+    {
+        if( !it->isVisible() ) continue;
+        Pin* pin = dynamic_cast<Pin*>( it );
+        if( pin || dynamic_cast<QGraphicsProxyWidget*>( it ) )
+            out |= it->mapRectToParent( it->boundingRect() );
+    }
+    // Side: where the part keeps its value label by default, or its name when the value is hidden
+    Label*  ref    = m_showVal ? m_valLabel : m_idLabel;
+    QPointF refPos = m_showVal ? m_valDefPos : m_idDefPos;
+    QFontMetrics fm( ref->font() );
+    QPointF c = refPos + QPointF( fm.horizontalAdvance( ref->toPlainText() )/2.0, fm.height()/2.0 );
+
+    enum { ABOVE, BELOW, LEFT, RIGHT } side;
+    if     ( c.y() < out.top() )    side = ABOVE;
+    else if( c.y() > out.bottom() ) side = BELOW;
+    else if( c.x() > out.right() )  side = RIGHT;
+    else if( c.x() < out.left() )   side = LEFT;
+    else side = ( c.y() < out.center().y() ) ? ABOVE : BELOW;
+
+    const double gap = 2;
+    double space  = qMax( 5.0, 1.5*QFontMetrics( m_valLabel->font() ).horizontalAdvance(' ') );
+    double height = 0, total = 0;
+    QList<double> widths;
+    for( Label* l : shown ){
+        QFontMetrics lfm( l->font() );
+        widths.append( lfm.horizontalAdvance( l->toPlainText() ) );
+        total += widths.last();
+        height = qMax( height, (double)lfm.height() );
+    }
+    total += space*( shown.size()-1 );
+
+    double x, y;
+    switch( side ){
+        case ABOVE: x = out.center().x()-total/2; y = out.top()-gap-height;     break;
+        case BELOW: x = out.center().x()-total/2; y = out.bottom()+gap;         break;
+        case RIGHT: x = out.right()+gap;          y = out.center().y()-height/2; break;
+        default:    x = out.left()-gap-total;     y = out.center().y()-height/2; break;
+    }
+    static const char* sideName[] = { "above", "below", "left", "right" };
+    qDebug() << "[labels]" << getUid() << sideName[side] << "line at" << x << y << "width" << total
+             << "outline" << out << ( shown.size() == 2 ? "name + value" : ( shown[0] == m_idLabel ? "name" : "value" ) );
+
+    for( int i=0; i<shown.size(); ++i ){            // Same top, same font: same baseline
+        Label* l = shown[i];
+        l->m_labelx = x;
+        l->m_labely = y;
+        l->m_labelrot = 0;
+        l->updtLabelPos();
+        x += widths[i]+space;
+    }
+}
 QString Component::getValLabelText() { return m_valLabel->toPlainText(); }
 
 QString Component::showProp()
