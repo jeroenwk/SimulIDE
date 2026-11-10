@@ -174,13 +174,13 @@ void DynamicMemory::voltChanged()        // Some Pin Changed State, Manage it
         m_cas = CAS;
         if ( CAS && RAS )     // falling edge at /CAS
         {
-            m_address = m_rowAddress * pow( 2, m_rowAddrBits );
+            m_address = m_rowAddress * pow( 2, m_colAddrBits );   // BH-043: the column field is Column_Bits wide
             for( int i=0; i<m_colAddrBits; ++i )                // Get Address
             {
                 bool state = m_inPin[i]->getInpState();
                 if( state ) m_address += pow( 2, i );
             }
-            //qDebug() << "Address" << m_address;
+            qDebug() << "DynamicMemory" << idLabel() << "[BH-043] row" << m_rowAddress << "col" << ( m_address - m_rowAddress*(int)pow( 2, m_colAddrBits ) ) << "-> cell" << m_address << "of" << (int)m_ram.size();
 
             if ( WE ) {                                        // Write
                 int value = 0;
