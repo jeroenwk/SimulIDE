@@ -55,7 +55,9 @@ class CapacitorBase : public Reactive, public GaugeOwner
 
     protected:
         virtual double updtRes()  override { return m_tStep/m_capacitance; }
-        virtual double updtCurr() override { return m_volt*m_admit; }
+        // BH-053: the capacitor's source is the boundary voltage itself: the fresh sample
+        virtual double updtCurr( double volt, double prevVolt ) override
+        { Q_UNUSED(prevVolt); return volt*m_admit; }
 
         // Pen for the plate on pin side 0 or 1: coloured by node potential while shown
         void setPlatePen( QPainter* p, int side );

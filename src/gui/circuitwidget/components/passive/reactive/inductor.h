@@ -53,7 +53,9 @@ class Inductor : public Reactive, public GaugeOwner
 
     protected:
         virtual double updtRes()  override { return m_inductance/m_tStep; }
-        virtual double updtCurr() override { return m_curSource - m_volt*m_admit; }
+        // BH-053: accumulate the voltage from the *previous* update (see e-reactive.cpp)
+        virtual double updtCurr( double volt, double prevVolt ) override
+        { Q_UNUSED(volt); return m_curSource - prevVolt*m_admit; }
 
         double m_inductance;
         double m_shownCurr = 0;       // Current at the last frame (coil colour)

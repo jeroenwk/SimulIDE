@@ -30,7 +30,13 @@ class eReactive : public eResistor
         virtual void voltSample(){;}   // m_volt has a new value (simulation thread)
 
         virtual double updtRes(){ return 0.0;}
-        virtual double updtCurr(){ return 0.0;}
+        // volt: the pin voltage just read; prevVolt: the one at the *previous* update.
+        // The inductor's current source accumulates the integral of the voltage, so it
+        // must add the sample from the previous boundary, not the one just read: the
+        // shunt admit m_admit already carries the current voltage during this interval
+        // (BH-053). The capacitor's source is the boundary voltage itself: it takes volt.
+        virtual double updtCurr( double volt, double prevVolt )
+        { Q_UNUSED(volt); Q_UNUSED(prevVolt); return 0.0;}
 
         double m_value; // Capacitance or Inductance
 
@@ -39,6 +45,11 @@ class eReactive : public eResistor
 
         double m_InitVolt;
         double m_volt;
+        // BH-053: pin voltage to be accumulated at the next update: the one read at the
+        // previous update, or the first solved voltage after stamping (m_awaitSolve).
+        double m_prevVolt;
+        // BH-053: armed at stamp: the next solved voltage is the initial condition.
+        bool m_awaitSolve;
 
         double m_tStep;
 
