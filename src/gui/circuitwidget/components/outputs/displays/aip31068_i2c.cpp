@@ -99,9 +99,14 @@ void Aip31068_i2c::readByte()
     }
     else if( m_phase == 1 )
     {
-        m_phase++;
         int data = TwiModule::byteReceived();
         int rs = m_controlByte & 0x40;
+        int co = m_controlByte & 0x80;
+
+        // Co=1: one byte, then a new control byte. Co=0: every following byte is of this type.
+        m_phase = co ? 0 : 1;
+        qDebug() << "[AIP31068] readByte:" << m_id << "control" << m_controlByte
+                 << (rs ? "data" : "command") << data << "next phase" << m_phase;
 
         if( rs ) writeData(data);
         else     proccessCommand(data);
