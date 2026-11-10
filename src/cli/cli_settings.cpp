@@ -21,6 +21,9 @@
 
 namespace
 {
+// A setter's remark for the reply (e.g. the speed lowered to keep a step): BH-050
+QString s_note;
+
 struct Setting
 {
     QString name;
@@ -201,7 +204,7 @@ QList<Setting>& settings()
         []( QString v ){
             double pct = Cli::parseNum( v, "speed");
             if( pct <= 0 ) throw CliError("speed must be > 0");
-            Cli::setSimSpeed( (uint64_t)( pct*1e10 ) );
+            s_note = Cli::setSimSpeed( (uint64_t)( pct*1e10 ) );
             Circuit::self()->setChanged();
         }});
     list.append({"stepSize", "simulation", "Simulation step size (e.g. 1us).",
@@ -209,7 +212,7 @@ QList<Setting>& settings()
         []( QString v ){
             uint64_t step = Cli::parseTime( v );
             if( step == 0 ) throw CliError("stepSize must be > 0");
-            Cli::setSimSpeed( Simulator::self()->psPerSec(), step );
+            s_note = Cli::setSimSpeed( Simulator::self()->psPerSec(), step, true );
             Circuit::self()->setChanged();
         }});
     list.append({"stepsPerSec", "simulation", "Simulation steps per real second (follows from speed and stepSize).",
@@ -290,8 +293,11 @@ void CliApi::registerSettings()
         for( auto& ch : changes )
         {
             Setting& s = findSetting( ch.first );
+            s_note.clear();
             s.set( ch.second );
-            rows.append( settingJson( s ) );
+            QJsonObject row = settingJson( s );
+            if( !s_note.isEmpty() ) row["note"] = s_note;
+            rows.append( row );
         }
         return rows;
     });

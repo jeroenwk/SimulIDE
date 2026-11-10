@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QCoreApplication>
+#include <QDebug>
 #include <QRegularExpression>
 #include <QTimer>
 #include <QDir>
@@ -103,21 +104,43 @@ double parseNum( QString v, QString what )
     return d;
 }
 
-void setSimSpeed( uint64_t psPerSec, uint64_t stepSize )
+QString setSimSpeed( uint64_t psPerSec, uint64_t stepSize, bool keepStep )
 {
     Simulator* sim = Simulator::self();
     if( psPerSec < 1 ) psPerSec = 1;
     if( stepSize == 0 ) stepSize = sim->stepSize();
     if( stepSize < 1 ) stepSize = 1;
 
+    auto pct = []( uint64_t ps ){ return QString::number( 100.0*(double)ps/1e12, 'g', 6 )+" %"; };
+    QString note;
+    const uint64_t asked = stepSize;
+    const uint64_t askedPs = psPerSec;
+
+    if( keepStep && psPerSec/stepSize >= 1000000000 ) // Keep the step: lower the speed to 1e8 steps/s
+    {
+        psPerSec = stepSize*100000000;
+        note = "speed lowered from "+pct( askedPs )+" to "+pct( psPerSec )+" so a "+timeStr( stepSize )
+              +" step stays under 1e9 steps per second";
+    }
     uint64_t stepsPS = psPerSec/stepSize;
     while( stepsPS >= 1000000000 ) { stepsPS /= 1000; stepSize *= 1000; }
     while( stepsPS == 0 && stepSize >= 1000 ) { stepSize /= 1000; stepsPS = psPerSec/stepSize; }
     if( stepsPS == 0 ) stepsPS = 1;
 
+    if( stepSize != asked )
+        note = "step size changed from "+timeStr( asked )+" to "+timeStr( stepSize )+": "+pct( psPerSec )
+              +( stepSize > asked ? " at a "+timeStr( asked )+" step would need 1e9 or more steps per second"
+                                  : " is less than one "+timeStr( asked )+" step per second" )
+              +" (settings set stepSize keeps the step and lowers the speed instead)";
+
+    qDebug() << "[cli:speed] asked" << pct( askedPs ) << timeStr( asked ) << ( keepStep ? "(keep step)" : "" )
+             << "-> set" << pct( psPerSec ) << timeStr( stepSize ) << stepsPS << "steps/s"
+             << ( note.isEmpty() ? "" : "note: "+note );
+
     sim->setStepSize( stepSize );
     sim->setStepsPerSec( stepsPS );
     sim->setPsPerSec( psPerSec );
+    return note;
 }
 
 static int s_runGeneration = 0;
