@@ -4,6 +4,8 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QtMath>
+#include <QDebug>
+#include <QTimer>
 #include <QMouseEvent>
 #include <QBrush>
 #include <QPen>
@@ -16,6 +18,33 @@
 #include "circuitview.h"
 #include "simulator.h"
 #include "utils.h"
+
+#define PLOT_LOG qDebug() << "[plot-clip]"
+
+namespace
+{
+// Liang-Barsky: clip segment a-b to r. False when nothing of it is inside.
+// The trace is clipped by hand because Qt's SVG generator writes no clipping:
+// segments past the screen edges ended up in exported SVGs (BH-049).
+bool clipSegment( QPointF& a, QPointF& b, const QRectF& r )
+{
+    double t0 = 0, t1 = 1;
+    double dx = b.x()-a.x(), dy = b.y()-a.y();
+    const double p[4] = { -dx, dx, -dy, dy };
+    const double q[4] = { a.x()-r.left(), r.right()-a.x(), a.y()-r.top(), r.bottom()-a.y() };
+    for( int i=0; i<4; ++i )
+    {
+        if( p[i] == 0 ){ if( q[i] < 0 ) return false; continue; } // Parallel and outside
+        double t = q[i]/p[i];
+        if( p[i] < 0 ){ if( t > t1 ) return false; if( t > t0 ) t0 = t; }
+        else          { if( t < t0 ) return false; if( t < t1 ) t1 = t; }
+    }
+    QPointF a0 = a;
+    if( t1 < 1 ) b = QPointF( a0.x()+t1*dx, a0.y()+t1*dy );
+    if( t0 > 0 ) a = QPointF( a0.x()+t0*dx, a0.y()+t0*dy );
+    return true;
+}
+}
 
 PlotDisplay::PlotDisplay( QWidget* parent )
            : QWidget( parent )
@@ -212,6 +241,18 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
     if( (cursorX > m_ceroX) && (cursorX < m_endX ) // Draw Cursor?
      && (cursorY > 0) && (cursorY < height()) ) drawCursor = true;
 
+    // Every trace segment is clipped to the screen (the plot area between the
+    // margins, the full widget height) before it is drawn: see clipSegment().
+    const QRectF screen( m_ceroX, 0, m_endX-m_ceroX, height() );
+    int clipped = 0, dropped = 0;
+    auto line = [&]( QPointF a, QPointF b )
+    {
+        QPointF a0 = a, b0 = b;
+        if( !clipSegment( a, b, screen ) ){ ++dropped; return; }
+        if( a != a0 || b != b0 ) ++clipped;
+        p.drawLine( a, b );
+    };
+
     for( int i=0; i<m_channels; ++i )  // PRINT DATA
     {
         if( m_hideCh[i] || m_ncCh[i] ) continue;
@@ -274,21 +315,21 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
                     double zero = y2+(y1-y2)/2;
                     if( p1Volt == 0 ) y2 = y1 = zero;
 
-                    p.drawLine( QPointF( x22, y2 ), QPointF( x11, y2 ) );
-                    p.drawLine( QPointF( x22, y1 ), QPointF( x11, y1 ) );
+                    line( QPointF( x22, y2 ), QPointF( x11, y2 ) );
+                    line( QPointF( x22, y1 ), QPointF( x11, y1 ) );
 
                     int s,e;
                     if( time > timeStart ){
                         s = x1;
-                        p.drawLine( QPointF( x11, y2 ), QPointF( x1, zero ) );
-                        p.drawLine( QPointF( x11, y1 ), QPointF( x1, zero ) );
+                        line( QPointF( x11, y2 ), QPointF( x1, zero ) );
+                        line( QPointF( x11, y1 ), QPointF( x1, zero ) );
                     }
                     else s = m_ceroX;
 
                     if( lastX < m_endX ){
                         e = lastX;
-                        p.drawLine( QPointF( x22, y2 ), QPointF( lastX, zero ) );
-                        p.drawLine( QPointF( x22, y1 ), QPointF( lastX, zero ) );
+                        line( QPointF( x22, y2 ), QPointF( lastX, zero ) );
+                        line( QPointF( x22, y1 ), QPointF( lastX, zero ) );
                     }
                     else e = m_endX;
 
@@ -323,23 +364,23 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
                             if( maxX > minX )
                             {
                                 P1 = QPointF( maxX, maxY );
-                                p.drawLine( P1, P2 );
+                                line( P1, P2 );
                                 P2 = P1;
                                 if( minX > 0 )
                                 {
                                     P1 = QPointF( minX, minY );
-                                    p.drawLine( P1, P2 );
+                                    line( P1, P2 );
                                     P2 = P1;
                             }   }
                             else if ( minX > maxX )
                             {
                                 P1 = QPointF( minX, minY );
-                                p.drawLine( P1, P2 );
+                                line( P1, P2 );
                                 P2 = P1;
                                 if( maxX > 0 )
                                 {
                                     P1 = QPointF( maxX, maxY );
-                                    p.drawLine( P1, P2 );
+                                    line( P1, P2 );
                                     P2 = P1;
                             }   }
                             subSample = false;
@@ -348,8 +389,8 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
                         P2 = QPointF( x2, y2 );
                         P1 = QPointF( x1, y1 );
                         Pm = QPointF( x2, y1 );
-                        p.drawLine( P1, Pm );
-                        p.drawLine( Pm, P2 );
+                        line( P1, Pm );
+                        line( Pm, P2 );
                         lastX = x1;
                     }
                 }
@@ -361,6 +402,19 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
 
             if( --pos < 0 ) pos += bufferSize;
     }   }
+    static int lastClipped = -1, lastDropped = -1;   // Debug log only when the counts change
+    if( clipped != lastClipped || dropped != lastDropped )
+    {
+        // Logged after the paint: qDebug goes to the Messages panel, which repaints,
+        // and a nested paint while this painter is active crashes Qt.
+        QRectF r = screen; int c = clipped, d = dropped, lc = lastClipped, ld = lastDropped;
+        QTimer::singleShot( 0, [r, c, d, lc, ld](){
+            PLOT_LOG << "screen" << r << ": clipped" << c << "segment(s), dropped" << d
+                     << "outside (was" << lc << "/" << ld << ")";
+        });
+        lastClipped = clipped;
+        lastDropped = dropped;
+    }
     // Draw Rects to crop data plots
     QColor margin = Theme::lightScreens() ? QColor( 232, 233, 238 ) : QColor( 10, 15, 50 );
     p.fillRect( 0,                   0, m_marginX-1, height(), margin );
