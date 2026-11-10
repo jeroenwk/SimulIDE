@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QPainter>
+#include <QDebug>
 
 #include "ds1307.h"
 #include "itemlibrary.h"
@@ -116,8 +117,15 @@ void DS1307::writeByte()               // Read from RAM
             case 2: {
                 int hour = m_clock.m_time.hour();
                 uint8_t ampm = m_data[2] & (1<<6); // 12/24 hour
-                if( ampm && hour > 12 ) hour -= 12; // 12 hour PM
-                m_txReg = ampm | decToBcd( hour );
+                if( ampm )                         // 12 hour: bit 5 = PM, hours 1-12 (BH-039)
+                {
+                    uint8_t pm = hour >= 12 ? (1<<5) : 0;
+                    hour %= 12;
+                    if( hour == 0 ) hour = 12;
+                    m_txReg = ampm | pm | decToBcd( hour );
+                }
+                else m_txReg = decToBcd( hour );
+                qDebug() << "DS1307::writeByte hours register" << QString::number( m_txReg, 16 );
             }break;
             case 3: m_txReg = decToBcd( m_clock.m_date.dayOfWeek() ); break;
             case 4: m_txReg = decToBcd( m_clock.m_date.day() ); break;
@@ -150,8 +158,8 @@ void DS1307::updtTime()
             int hour;
             if( m_rxReg >= 0x40 ) // 12 hour
             {
-                hour = bcdToDec( m_rxReg & 0b00011111 );
-                if( m_rxReg & (1<<5) ) hour += 12;       // PM
+                hour = bcdToDec( m_rxReg & 0b00011111 ) % 12; // 12 AM = 0, 12 PM = 12
+                if( m_rxReg & (1<<5) ) hour += 12;            // PM
             }
             else hour = bcdToDec( m_rxReg & 0b00111111 ); // 24 hout
             m_clock.m_time.setHMS( hour, m_clock.m_time.minute(), m_clock.m_time.second() );
