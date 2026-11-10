@@ -11,6 +11,8 @@ through the CLI). Turn on Show Capacitor Charge and Inductor Current
 | `cap_own_scale.sim1` | Two caps on one node, C2 with `ChargeScale=20` | Same voltage, C2 at half C1's percentage |
 | `rl_step.sim1` | 10 V, 100 Ω, 1 H (τ = 10 ms), circuit `currentScale` 0.1 A | L1 63 % at τ ([inductor-current.md](../../specs/inductor-current.md)) |
 | `lc_tank.sim1` | 1000 µF from 10 V into 10 H: 1.6 Hz, 0.1 A peak | Gauges trade places every quarter period; their squares add up to 1 |
+| `reactive_bandpass.sim1` | 50 mH / 120 nF / 54 Ω series bandpass, 2055 Hz; 10 ns reactive step | Resistor/input RMS gain ≈0.99845; at 100 ns ≈0.98479, at 1 µs ≈0.86629 (expected backward-Euler damping, not physical winding resistance) |
+| `transformer_bandpass.sim1` | Same bandpass, one transformer primary (`Primary=1`, `Secondary=0`); 10 ns reactive step | Gain ≈0.99841, including the winding's 2 mΩ; also checks the transformer's separate companion path |
 | `transformer_1to2_load.sim1` | 10 V 50 Hz into a 1:2 transformer, 1 kΩ load | Secondary 19.8 mA at the sine peak; primary 2× that plus ~30 mA magnetising |
 | `transformer_layouts.sim1` | Six secondary coils, and a rotated transformer | Gauge placement: labels never overlap; above/below when rotated |
 | `relay_and_rl_decay.sim1` | Relay coil, and 10 mH / 10 Ω decaying from 0.5 A | Relay coil shows nothing; L1 at 37 % (e⁻¹) after 1 ms |

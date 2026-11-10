@@ -598,6 +598,41 @@ The groups follow the Settings dialog:
 - `language` and `userPath` are saved to the user settings immediately.
 - Font changes take effect after a restart.
 
+### Reactive accuracy (inductors, capacitors and transformers)
+
+These components use backward-Euler companion models. The method is stable and
+introduces numerical damping; small phase or per-step errors can noticeably lower
+the gain of a high-Q resonant circuit. This damping is not a physical winding
+resistance. Lower **`reactStep`**, not just `stepSize`, to improve accuracy.
+
+Stop the simulation before changing the circuit-wide reactive step so that all
+companions are stamped with the new interval on the next start:
+
+```sh
+simulide cli sim stop
+simulide cli settings set reactStep=10ns
+simulide cli sim run --for 40ms
+```
+
+Inductors and capacitors also have a per-part `ReaStep` override (0 means use the
+circuit setting). Reset any overrides to 0 if you want a circuit-wide change to
+apply to every part. Transformers use the circuit-wide setting. Smaller steps
+cost more simulation work, so use them where accuracy requires it and verify
+convergence by reducing the step again.
+
+For example, a series 50 mH / 120 nF / 54 ohm bandpass driven at 2055 Hz has an
+ideal resistor/input gain of 0.999993. Backward Euler predicts approximately
+0.86629 at 1 us, 0.98479 at 100 ns, and 0.99845 at 10 ns. Near resonance the
+pair's numerical series resistance is approximately `reactStep / C`; for a
+target fractional gain error `epsilon`, start with
+`reactStep <= epsilon * R * C / (1 - epsilon)` and check convergence. A transformer
+winding also has the small physical resistance specified by its model.
+
+Use **one** `sim average` call for input and output, over an integer number of
+periods. Separate RMS windows that contain fractional cycles can bias the gain
+ratio. Runnable examples: `tests/circuits/reactive_bandpass.sim1` and
+`tests/circuits/transformer_bandpass.sim1` (both saved with a 10 ns reactive step).
+
 ## Examples
 
 **Build, run and measure:**
