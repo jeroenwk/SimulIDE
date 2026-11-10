@@ -542,7 +542,12 @@ QString Component::idLabel() { return m_idLabel->toPlainText(); }
 void Component::setIdLabel( QString id ) { m_idLabel->setPlainText( id ); m_idLabel->updtLabelPos(); layoutLabels(); }
 
 QPointF Component::getIdPos() { return m_idLabel->getLabelPos(); }
-void Component::setIdPos( QPointF p ) { setLabelAuto( false ); m_idLabel->setLabelPos( p ); } // Saved or set: manual
+void Component::setIdPos( QPointF p ) // Saved or set: manual
+{
+    setLabelAuto( false );
+    m_idLabel->setLabelPos( p );
+    m_idLabel->updtLabelPos();   // Move it now (a CLI `comp set idLabPos=` moved it only on reload)
+}
 
 int Component::getIdRot() { return m_idLabel->getAngle(); }
 void Component::setIdRot( int r ) { setLabelAuto( false ); m_idLabel->setAngle(r); }
@@ -574,7 +579,12 @@ QString Component::statusLevelStr( int level )
 void Component::setShowVal( bool show ) { m_valLabel->setVisible( show ); m_showVal = show; layoutLabels(); }
 
 QPointF Component::getValPos() { return m_valLabel->getLabelPos(); }
-void Component::setValPos( QPointF p ) { setLabelAuto( false ); m_valLabel->setLabelPos( p ); } // Saved or set: manual
+void Component::setValPos( QPointF p ) // Saved or set: manual
+{
+    setLabelAuto( false );
+    m_valLabel->setLabelPos( p );
+    m_valLabel->updtLabelPos();
+}
 
 int Component::getValRot() { return m_valLabel->getAngle(); }
 void Component::setValRot( int r ) { setLabelAuto( false ); m_valLabel->setAngle(r); }

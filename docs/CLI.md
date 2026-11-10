@@ -100,7 +100,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `comp add <name> [--at x,y] [--label L] [--rot DEG] [prop=value ...]` | Add a part. Prints its uid and where each pin is (`pos` x,y and the `side` it points to) |
 | `comp list [--type TYPE]` | Components in the circuit |
 | `comp get <comp> [--all]` | Properties (with units, or the allowed options for choice properties) and pins (with position, connections, and voltages while running). `--all` adds hidden properties, marked `hidden` |
-| `comp set <comp> prop=value ...` | Change properties. `label=` renames. Undoable |
+| `comp set <comp> prop=value ...` | Change properties. `label=` renames. `idLabPos=dx,dy` / `valLabPos=dx,dy` move the name / value label (offset of its top-left corner from the part's position; switches the part's labels to manual placement). Undoable |
 | `comp move <comp> <x,y>` | Move (snapped to the grid) |
 | `comp rotate <comp> [cw\|ccw\|180]` | Rotate |
 | `comp flip <comp> <h\|v>` | Flip |
