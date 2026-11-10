@@ -156,9 +156,12 @@ void PlotBase::setConnectGnd( bool c )
 
 void PlotBase::setInputImped( double i )
 {
+    if( !( i > 0 ) ){ // 1/0 admittance made every pin voltage NaN (BH-047)
+        qDebug() << "[PlotBase] setInputImped: impedance" << i << "is not positive, value ignored";
+        return;
+    }
     double admit = 1/i;
     if( m_inputAdmit == admit ) return;
-    if( admit  < 0 ) return;
     m_inputAdmit = admit;
     m_changed = true;
     if( !Simulator::self()->isRunning() ) updateStep();
