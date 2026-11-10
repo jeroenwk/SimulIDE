@@ -1,6 +1,6 @@
 <circuit version="" rev="1769" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="1" >
 
-<item itemtype="MCU" CircId="Z80-32" mainComp="false" Show_id="true" Show_Val="false" Pos="-372,-116" rotation="0" hflip="1" vflip="1" label="Z80-32" idLabPos="10,171" labelrot="0" valLabPos="-16,20" valLabRot="0" Logic_Symbol="false" Producer="Zilog" CMOS="false" Single cycle I/O="false" Int_Vector="false" />
+<item itemtype="MCU" CircId="Z80-32" mainComp="false" Show_id="true" Show_Val="false" Pos="-372,-116" rotation="0" hflip="1" vflip="1" label="Z80-32" idLabPos="10,171" labelrot="0" valLabPos="-16,20" valLabRot="0" Logic_Symbol="false" Producer="Zilog" CMOS="false" Single_cycle_IO="false" Int_Vector="false" />
 
 <item itemtype="MCU" CircId="ULA ZX48k-1" mainComp="false" Show_id="true" Show_Val="false" Pos="-124,-116" rotation="0" hflip="1" vflip="1" label="ULA ZX48k-1" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Logic_Symbol="false" Type="ULA 6C001E7" />
 
