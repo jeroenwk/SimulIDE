@@ -15,6 +15,8 @@ Label::Label()
      : QGraphicsTextItem()
 {
     m_labelrot = 0;
+    m_labelx = m_labely = 0;
+    m_parentComp = nullptr;
     setCursor( Qt::OpenHandCursor );
 
     connect( document(), &QTextDocument::contentsChange,
@@ -50,6 +52,7 @@ void Label::mouseMoveEvent( QGraphicsSceneMouseEvent* event )
 
     m_labelx = p.x();
     m_labely = p.y();
+    if( m_parentComp ) m_parentComp->labelMovedByHand();   // specs/label-layout.md
 }
 
 void Label::mouseReleaseEvent( QGraphicsSceneMouseEvent* event )
@@ -139,9 +142,9 @@ QPointF Label::adjustPos( float x, float y, int width, int height )
     return QPointF( x, y );
 }
 
-void Label::rotateCW()  { rotateAngle( 90 ); }
-void Label::rotateCCW() { rotateAngle(-90 ); }
-void Label::rotate180() { rotateAngle( 180); }
+void Label::rotateCW()  { if( m_parentComp ) m_parentComp->labelMovedByHand(); rotateAngle( 90 ); }
+void Label::rotateCCW() { if( m_parentComp ) m_parentComp->labelMovedByHand(); rotateAngle(-90 ); }
+void Label::rotate180() { if( m_parentComp ) m_parentComp->labelMovedByHand(); rotateAngle( 180); }
 
 void Label::rotateAngle( double a )
 {

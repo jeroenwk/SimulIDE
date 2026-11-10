@@ -77,6 +77,12 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
         void setValLabelText( QString t );
         QString getValLabelText();
 
+        // Name and value on one line beside the part (specs/label-layout.md)
+        bool labelAuto() { return m_labelAuto; }
+        void setLabelAuto( bool a );
+        void labelMovedByHand();   // A label was dragged or rotated: manual placement
+        void layoutLabels();       // Queue the automatic layout (runs from the event loop)
+
         // Part state shown on the canvas by StatusView (GUI thread). Level: -1 none, else statusLevel_t
         enum statusLevel_t { stOff=0, stOn, stWait, stFault };   // Ordered by severity
         void setStatus( QString text, int level ) { m_statusText = text; m_statusLevel = level; }
@@ -252,6 +258,14 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
 
         Label* m_idLabel;
         Label* m_valLabel;
+
+        void doLayoutLabels();
+        bool    m_labelAuto;        // Labels placed automatically (saved as labelAuto)
+        bool    m_labelsQueued;     // A layout is queued
+        QPointF m_idDefPos;         // Part's default label positions (setLabelPos, setValLabelPos)
+        QPointF m_valDefPos;
+        int     m_idDefRot;
+        int     m_valDefRot;
 
         QList<Connector*> m_conMoveList;
         QList<Component*> m_compMoveList;
