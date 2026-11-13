@@ -97,7 +97,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 |---|---|
 | `lib list [--search TEXT] [--category CAT]` | Everything that can be added: built-in parts, MCUs, ICs, boards |
 | `lib select <name>` / `lib select --none` | Select a category or component in the component list (expands and scrolls to it), or clear it; `capture window library` grabs the list |
-| `comp add <name> [--at x,y] [--label L] [--rot DEG] [prop=value ...]` | Add a part. Prints its uid and where each pin is (`pos` x,y and the `side` it points to) |
+| `comp add <name> [--at x,y] [--label L] [--rot DEG] [prop=value ...]` | Add a part. Prints its uid and where each pin is (`pos` x,y, the `side` it points to, and `hidden: true` for a pin the part does not draw in its current mode, e.g. a WaveGen's `gndnod` unless Bipolar) |
 | `comp list [--type TYPE]` | Components in the circuit |
 | `comp get <comp> [--all]` | Properties (with units, or the allowed options for choice properties) and pins (with position, connections, and voltages while running). `--all` adds hidden properties, marked `hidden` |
 | `comp set <comp> prop=value ...` | Change properties. `label=` renames. `idLabPos=dx,dy` / `valLabPos=dx,dy` move the name / value label (offset of its top-left corner from the part's position; switches the part's labels to manual placement). Undoable |
