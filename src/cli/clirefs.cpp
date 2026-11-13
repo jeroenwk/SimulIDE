@@ -126,7 +126,9 @@ QJsonObject pinJson( Pin* p, int index )
     QPoint pos = pinPos( p );
     o["pos"]  = QJsonArray{ pos.x(), pos.y() };
     o["side"] = pinSide( p );
-    if( !p->isVisible() ) o["hidden"] = true;   // Not drawn (e.g. a WaveGen's gndnod unless Bipolar)
+    // Not drawn (e.g. a WaveGen's gndnod unless Bipolar): the pin's own state, not its parent's
+    // (a scope or meter body may report invisible in a headless instance)
+    if( !p->isVisibleTo( p->parentItem() ) ) o["hidden"] = true;
 
     Connector* con = p->connector();
     if( con ){
@@ -257,7 +259,7 @@ QJsonObject placedJson( Component* c )
         QPoint pos = pinPos( p );
         po["pos"]  = QJsonArray{ pos.x(), pos.y() };
         po["side"] = pinSide( p );
-        if( !p->isVisible() ) po["hidden"] = true;
+        if( !p->isVisibleTo( p->parentItem() ) ) po["hidden"] = true;
         pins.append( po );
     }
     o["pins"] = pins;
