@@ -98,11 +98,15 @@ void eBJT::voltChanged()
     double voltBC = voltB-voltC;
     double voltBE = voltB-voltE;
 
+    // Converged when the junctions moved less than 1 mV since the stamp: the node voltages
+    // were solved with the model linearized at the stamp point, which is off by about
+    // (dV/Vt)^2/2 in current: 0.07 % at 1 mV, but 7.5 % at the 10 mV used before, so
+    // the circuit settled on wrong currents and the exact readouts broke KCL (BH-057)
     if( m_changed ) m_changed = false;
-    else if( qFabs(voltBC-m_voltBC) < .01
-          && qFabs(voltBE-m_voltBE) < .01 )
+    else if( qFabs(voltBC-m_voltBC) < .001
+          && qFabs(voltBE-m_voltBE) < .001 )
     {
-        // Converged within 10 mV: the stamps stay, but the reported terminal currents
+        // Converged within 1 mV: the stamps stay, but the reported terminal currents
         // must come from the converged voltages, not from the last iteration (BH-034:
         // up to 47 % off, KCL violated in a current mirror).
         // (no qDebug here: this is the per-step hot path)
