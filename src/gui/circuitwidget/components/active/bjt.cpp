@@ -57,6 +57,21 @@ BJT::BJT( QString type, QString id )
                          , this, &BJT::threshold, &BJT::setThreshold ),
         showStateProp()
     },0} );
+
+    addPropGroup( { tr("Capacitance"), {
+        new DoubProp<BJT>("Cje", tr("B-E Capacitance at 0 V"), "pF"
+                          , this, &BJT::cje, &BJT::setCje ),
+        new DoubProp<BJT>("Vje", tr("B-E Junction Potential"), "V"
+                          , this, &BJT::vje, &BJT::setVje ),
+        new DoubProp<BJT>("Mje", tr("B-E Grading Coefficient"), ""
+                          , this, &BJT::mje, &BJT::setMje ),
+        new DoubProp<BJT>("Cjc", tr("B-C Capacitance at 0 V"), "pF"
+                          , this, &BJT::cjc, &BJT::setCjc ),
+        new DoubProp<BJT>("Vjc", tr("B-C Junction Potential"), "V"
+                          , this, &BJT::vjc, &BJT::setVjc ),
+        new DoubProp<BJT>("Mjc", tr("B-C Grading Coefficient"), ""
+                          , this, &BJT::mjc, &BJT::setMjc )
+    },0} );
     enableStates( true );
 }
 BJT::~BJT(){}

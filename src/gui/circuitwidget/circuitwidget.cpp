@@ -396,6 +396,19 @@ void CircuitWidget::createToolBars()
     m_circToolBar.addWidget( spacer );
     m_circToolBar.addWidget( m_msgLabel );
 
+    m_noiseLabel = new QLabel( this );      // Transient noise on: always in sight (docs/NOISE_SPEC.md)
+    QFont nf = m_noiseLabel->font();
+    nf.setPixelSize( 12*MainWindow::self()->fontScale() );
+    nf.setBold( true );
+    m_noiseLabel->setFont( nf );
+    m_noiseLabel->setStyleSheet("QLabel { background-color: #e67800; color: white; padding: 1px 6px; }");
+    m_noiseLabel->setToolTip( tr("Transient noise is on: thermal and shot noise of the parts are added (Settings: Simulation, or CLI settings noise*)") );
+    m_noiseLabel->setVisible( false );
+    m_circToolBar.addWidget( spacer = new QWidget() );
+    spacer->setFixedWidth( 8 );
+    m_noiseAct = m_circToolBar.addWidget( m_noiseLabel );
+    m_noiseAct->setVisible( false );
+
     spacer = new QWidget( this );
     spacer->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Preferred );
     spacer->setVisible( true );
@@ -711,6 +724,19 @@ void CircuitWidget::setError( QString error )
 {
     setMsg( error, 2 );
     m_infoWidget->setRate( -1 );
+}
+
+void CircuitWidget::updateNoise()
+{
+    if( !m_noiseLabel ) return;
+    QString t = Simulator::self() ? Simulator::self()->noiseBadge( true ) : "";
+    if( m_noiseLabel->text() != t ){
+        m_noiseLabel->setText( t );
+        m_noiseLabel->setToolTip( Simulator::self()->noiseBadge()
+            +"\n"+tr("Thermal and shot noise of the parts are added (Settings: Simulation: Noise, or CLI settings noise*)") );
+    }
+    bool show = !t.isEmpty();
+    if( m_noiseAct->isVisible() != show ){ m_noiseAct->setVisible( show ); m_noiseLabel->setVisible( show ); }
 }
 
 void CircuitWidget::setMsg( QString msg, int type )

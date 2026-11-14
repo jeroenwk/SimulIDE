@@ -13,6 +13,7 @@
 #include "simulator.h"
 #include "mainwindow.h"
 #include "utils.h"
+#include "noise.h"
 
 #define DRAIN  m_ePin[0]
 #define SOURCE m_ePin[1]
@@ -30,7 +31,15 @@ QStringList eJfet::m_names;
 eJfet::eJfet( QString id )
      : eElement( id )
      , m_aux( id+"-aux" )
+     , m_cgs( id+"-Cgs" )
+     , m_cgd( id+"-Cgd" )
 {
+    m_cgs.setPins( [this](){ return m_pChannel ? std::make_pair( SOURCE, GATE ) : std::make_pair( GATE, SOURCE ); } );
+    m_cgd.setPins( [this](){ return m_pChannel ? std::make_pair( DRAIN, GATE )  : std::make_pair( GATE, DRAIN ); } );
+    m_cgs.setVj( 0.6 ); m_cgd.setVj( 0.6 );
+    m_cgs.setMj( 0.5 ); m_cgd.setMj( 0.5 );
+    m_cgs.setNoiseDefault( 3e-12 );
+    m_cgd.setNoiseDefault( 3e-12 );
     m_ePin.resize( 3 );
     m_aux.setNumEpins( pNum );
 
@@ -304,4 +313,20 @@ void eJfet::getModels() // Static: resources/data/jfets.model
         node = node.nextSibling();
     }
     m_names.append( "Custom" );
+}
+
+void eJfet::noiseSources( QList<NoiseSrc>& list )   // Channel thermal noise 4kT·(2/3)·gm
+{
+    if( !DRAIN || !SOURCE ) return;
+    NoiseSrc s;
+    s.a = DRAIN; s.b = SOURCE;
+    s.kind = NoiseSrc::Channel;
+    s.psd = [this]()
+    {
+        double id, gm, gds;
+        if( m_vds >= 0 ) channel( m_vgs, m_vds, &id, &gm, &gds );
+        else             channel( m_vgd,-m_vds, &id, &gm, &gds );
+        return Noise::fourKT*2.0/3.0*qFabs( gm );
+    };
+    list.append( s );
 }

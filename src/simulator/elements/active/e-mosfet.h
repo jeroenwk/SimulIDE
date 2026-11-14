@@ -7,6 +7,7 @@
 #define EMOSFET_H
 
 #include "e-resistor.h"
+#include "e-junctioncap.h"
 
 class eMosfet : public eResistor
 {
@@ -17,6 +18,13 @@ class eMosfet : public eResistor
         virtual void initialize() override;
         virtual void stamp() override;
         virtual void voltChanged() override;
+        virtual void noiseSources( QList<NoiseSrc>& list ) override;
+
+        // Gate capacitances G-S and G-D, constant (0 = none; typical 20 / 5 pF while noise is on)
+        double cgs() { return m_cgs.cj0(); }
+        void setCgs( double c ) { m_cgs.setCj0( c ); }
+        double cgd() { return m_cgd.cj0(); }
+        void setCgd( double c ) { m_cgd.setCj0( c ); }
 
         bool pChannel() { return m_Pchannel; }
         virtual void setPchannel( bool p ) { m_Pchannel = p; m_changed = true; }
@@ -42,6 +50,9 @@ class eMosfet : public eResistor
         double m_Gth;
 
         bool m_Pchannel;
+
+        eJunctionCap m_cgs;
+        eJunctionCap m_cgd;
         bool m_depletion;
 };
 

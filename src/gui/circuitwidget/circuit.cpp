@@ -9,6 +9,7 @@
 #include <QMimeData>
 #include <QSettings>
 #include <QtMath>
+#include <QUrl>
 
 #include "circuit.h"
 #include "appfonts.h"
@@ -213,6 +214,22 @@ void Circuit::loadStrDoc( QString &doc )
                 else if( name == "chargeScale" ) m_chargeScale = val.toDouble();
                 else if( name == "currentScale" ) m_currentScale = val.toDouble();
                 else if( name == "rev"     ) rev = val.toInt();
+                else if( name.startsWith("noise") )                 // Transient noise (docs/NOISE_SPEC.md)
+                {
+                    NoiseSettings& n = m_simulator->noise();
+                    if     ( name == "noise"      ) n.on    = val.toInt() != 0;
+                    else if( name == "noiseBW"    ){ double d = val.toDouble(); if( d > 0 ) n.bw = d; }
+                    else if( name == "noiseScale" ){ double d = val.toDouble(); if( d >= 0 ) n.scale = d; }
+                    else if( name == "noiseSeed"  ) n.seed  = val.toULongLong();
+                    else if( name == "noiseStart" ) n.start = val.toULongLong();
+                    else if( name == "noiseStop"  ) n.stop  = val.toULongLong();
+                    else if( name == "noiseOff"   ){
+                        n.off.clear();
+                        for( QString e : QUrl::fromPercentEncoding( val.toString().toUtf8() ).split(",", QString::SkipEmptyParts ) )
+                            n.off.append( e.trimmed() );
+                    }
+                    if( CircuitWidget::self() ) CircuitWidget::self()->updateNoise();
+                }
             }
         }
         else if( line.contains("<mainCompProps") )
@@ -495,6 +512,18 @@ QString Circuit::circuitHeader()
     header += "animate=\""+QString::number( m_animate )+"\" ";
     if( m_chargeScale > 0 ) header += "chargeScale=\""+QString::number( m_chargeScale )+"\" ";
     if( m_currentScale > 0 ) header += "currentScale=\""+QString::number( m_currentScale )+"\" ";
+    const NoiseSettings& n = m_simulator->noise();   // Only when used: files without noise stay as they were
+    if( !n.isDefault() )
+    {
+        header += "noise=\""+QString::number( n.on ? 1 : 0 )+"\" ";
+        header += "noiseBW=\""+QString::number( n.bw, 'g', 15 )+"\" ";
+        header += "noiseScale=\""+QString::number( n.scale, 'g', 15 )+"\" ";
+        header += "noiseSeed=\""+QString::number( n.seed )+"\" ";
+        header += "noiseStart=\""+QString::number( n.start )+"\" ";
+        header += "noiseStop=\""+QString::number( n.stop )+"\" ";
+        if( !n.off.isEmpty() )
+            header += "noiseOff=\""+QString::fromUtf8( QUrl::toPercentEncoding( n.off.join(","), ",:-_.@" ) )+"\" ";
+    }
     header += ">\n";
     return header;
 }

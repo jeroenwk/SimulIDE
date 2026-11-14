@@ -38,6 +38,7 @@ class CircuitWidget : public QWidget
 
         void setError( QString error );
         void setMsg(QString msg , int type);
+        void updateNoise();     // Toolbar NOISE label: shown while transient noise is on
 
         void syncTimebase( uint64_t psPerSec );   // Show the simulation speed in the toolbar
         // Running slower than the set speed: the speed box shows the real speed in orange (realPsPerSec 0: off)
@@ -108,6 +109,8 @@ class CircuitWidget : public QWidget
         QToolBar m_circToolBar;
 
         QLabel* m_msgLabel;
+        QLabel* m_noiseLabel = nullptr;
+        QAction* m_noiseAct = nullptr;
         InfoWidget* m_infoWidget;
         DescriptionWidget* m_descWidget;
         ScriptPane* m_scriptPane;

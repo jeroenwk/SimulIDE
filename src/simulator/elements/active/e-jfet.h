@@ -9,6 +9,7 @@
 #include <QHash>
 
 #include "e-element.h"
+#include "e-junctioncap.h"
 
 // Junction FET, the SPICE level-1 (Shichman-Hodges) model, N or P channel:
 //   cut-off   VGS < Vto            ID = 0
@@ -36,6 +37,17 @@ class eJfet : public eElement
         virtual void initialize() override;
         virtual void stamp() override;
         virtual void voltChanged() override;
+        virtual void noiseSources( QList<NoiseSrc>& list ) override;
+
+        // Gate junction capacitances G-S and G-D with Pb and M (0 = none; typical 3 pF while noise is on)
+        double cgs() { return m_cgs.cj0(); }
+        void setCgs( double c ) { m_cgs.setCj0( c ); }
+        double cgd() { return m_cgd.cj0(); }
+        void setCgd( double c ) { m_cgd.setCj0( c ); }
+        double pb() { return m_cgs.vj(); }
+        void setPb( double v ) { m_cgs.setVj( v ); m_cgd.setVj( v ); }
+        double mjg() { return m_cgs.mj(); }
+        void setMjg( double m ) { m_cgs.setMj( m ); m_cgd.setMj( m ); }
 
         bool pChannel() { return m_pChannel; }
         virtual void setPchannel( bool p ) { m_pChannel = p; m_changed = true; }
@@ -68,6 +80,9 @@ class eJfet : public eElement
         void updateVcrit();
 
         bool   m_pChannel;
+
+        eJunctionCap m_cgs;
+        eJunctionCap m_cgd;
         double m_beta;
         double m_vto;
         double m_lambda;

@@ -7,6 +7,7 @@
 #define ELED_H
 
 #include "e-resistor.h"
+#include "e-junctioncap.h"
 
 class eLed : public eResistor
 {
@@ -17,6 +18,7 @@ class eLed : public eResistor
         virtual void stamp() override;
         virtual void initialize() override;
         virtual void voltChanged() override;
+        virtual void noiseSources( QList<NoiseSrc>& list ) override;
 
         double threshold() { return m_threshold; }
         void  setThreshold( double threshold ) { m_threshold = threshold; m_changed = true; }
@@ -27,6 +29,14 @@ class eLed : public eResistor
         virtual void   setRes( double resist ) override ;
         virtual double res() override { return m_imped; }
 
+        // Junction capacitance C(V) = Cj0/(1-V/Vj)^M (0 = none; typical 20 pF while noise is on)
+        double cj0() { return m_cj.cj0(); }
+        void setCj0( double v ) { m_cj.setCj0( v ); }
+        double vj() { return m_cj.vj(); }
+        void setVj( double v ) { m_cj.setVj( v ); }
+        double mj() { return m_cj.mj(); }
+        void setMj( double v ) { m_cj.setMj( v ); }
+
         double brightness() { return m_brightness; }
         double overCurrent() { return m_avgCurrent/m_maxCurrent; }
 
@@ -36,6 +46,8 @@ class eLed : public eResistor
         virtual void updateVI() override;
 
         bool m_converged;
+
+        eJunctionCap m_cj;
 
         uint64_t m_prevStep;
         uint32_t m_intensity;

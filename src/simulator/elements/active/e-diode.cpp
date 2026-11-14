@@ -14,6 +14,7 @@
 #include "simulator.h"
 #include "mainwindow.h"
 #include "utils.h"
+#include "noise.h"
 
 QHash<QString, diodeData_t> eDiode::m_diodes;
 QHash<QString, diodeData_t> eDiode::m_zeners;
@@ -21,7 +22,10 @@ QHash<QString, diodeData_t> eDiode::m_leds;
 
 eDiode::eDiode( QString id )
       : eResistor( id )
+      , m_cj( id+"-Cj" )
 {
+    m_cj.setPins( [this](){ return std::make_pair( m_ePin[0], m_ePin[1] ); } );
+    m_cj.setNoiseDefault( 4e-12 );
     m_vt = 0.025865;
     m_vzCoef = 1/m_vt;
     m_maxCur = 1;
@@ -92,6 +96,22 @@ void eDiode::voltChanged()
     double stCurr = m_current - m_admit*voltPN;
     m_ePin[0]->stampCurrent(-stCurr );
     m_ePin[1]->stampCurrent( stCurr );
+}
+
+void eDiode::noiseSources( QList<NoiseSrc>& list )   // Shot noise of the junction current
+{
+    if( !m_ePin[0] || !m_ePin[1] ) return;
+    NoiseSrc s;
+    s.a = m_ePin[0]; s.b = m_ePin[1];
+    s.kind = NoiseSrc::Shot;
+    s.psd = [this]()   // At the solved voltage: m_current is at the last linearization point (up to 10 mV off)
+    {
+        double v = m_ePin[0]->getVoltage() - m_ePin[1]->getVoltage();
+        double i = m_satCur*( qExp( qMin( v*m_vdCoef, 80.0 ) )-1 );
+        if( m_bkDown != 0 && v < 0 ) i -= m_satCur*qExp( qMin( (-v-m_zOfset)*m_vzCoef, 80.0 ) );
+        return Noise::twoQ*qFabs( i );
+    };
+    list.append( s );
 }
 
 inline double eDiode::limitStep( double vnew, double vold, double scale, double vc )

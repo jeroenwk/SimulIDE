@@ -52,6 +52,23 @@ int parseInt( QString v, QString what, int min, int max )
     return (int)d;
 }
 
+// "10MHz", "10M", "1e7", "2.5 kHz" -> number (SI prefixes p n u µ m k M G T)
+double parseSi( QString v, QString what, QString unit )
+{
+    bool ok = false;
+    double d = Simulator::parseSi( v, unit, &ok );
+    if( !ok ) throw CliError("invalid number for "+what+": "+v );
+    return d;
+}
+
+// Noise settings apply at the next start (docs/NOISE_SPEC.md)
+void noiseChanged()
+{
+    Circuit::self()->setChanged();
+    CircuitWidget::self()->updateNoise();
+    if( Simulator::self()->isRunning() ) s_note = "noise settings apply at the next sim start";
+}
+
 QList<Setting>& settings()
 {
     static QList<Setting> list;
@@ -241,6 +258,47 @@ QList<Setting>& settings()
         []( QString v ){
             Simulator::self()->setSlopeSteps( parseInt( v, "slopeSteps", 0, 1000000 ) );
             Circuit::self()->setChanged();
+        }});
+
+    // Transient noise (docs/NOISE_SPEC.md) ------------------------------------
+    list.append({"noise", "simulation", "Transient noise of the parts (thermal, shot, channel) on or off.",
+        [](){ return QJsonValue( Simulator::self()->noise().on ); },
+        []( QString v ){ Simulator::self()->noise().on = parseBool( v ); noiseChanged(); }});
+    list.append({"noiseBW", "simulation", "Noise bandwidth fmax (e.g. 10MHz): sources redrawn every 1/(2·fmax).",
+        [](){ return QJsonValue( Simulator::siStr( Simulator::self()->noise().bw, "Hz" ).remove(' ') ); },
+        []( QString v ){
+            double f = parseSi( v, "noiseBW", "Hz" );
+            if( !(f > 0) || f > 5e11 ) throw CliError("noiseBW must be > 0 and <= 500 GHz");
+            Simulator::self()->noise().bw = f; noiseChanged();
+        }});
+    list.append({"noiseScale", "simulation", "Multiplies every noise current (1 = physical).",
+        [](){ return QJsonValue( Simulator::self()->noise().scale ); },
+        []( QString v ){
+            double k = Cli::parseNum( v, "noiseScale" );
+            if( k < 0 || k > 1e12 ) throw CliError("noiseScale must be 0..1e12");
+            Simulator::self()->noise().scale = k; noiseChanged();
+        }});
+    list.append({"noiseSeed", "simulation", "Noise seed: 0 = random at every start (the seed used is in sim status).",
+        [](){ return QJsonValue( QString::number( Simulator::self()->noise().seed ) ); },
+        []( QString v ){
+            bool ok = false;
+            qulonglong s = v.trimmed().toULongLong( &ok );
+            if( !ok ) throw CliError("noiseSeed must be an integer >= 0: "+v );
+            Simulator::self()->noise().seed = s; noiseChanged();
+        }});
+    list.append({"noiseStart", "simulation", "Noise on from this simulated time (e.g. 0, 100us).",
+        [](){ return QJsonValue( Cli::timeStr( Simulator::self()->noise().start ) ); },
+        []( QString v ){ Simulator::self()->noise().start = Cli::parseTime( v ); noiseChanged(); }});
+    list.append({"noiseStop", "simulation", "Noise off from this simulated time (0 = until the end; 1ms = start-up only).",
+        [](){ return QJsonValue( Cli::timeStr( Simulator::self()->noise().stop ) ); },
+        []( QString v ){ Simulator::self()->noise().stop = Cli::parseTime( v ); noiseChanged(); }});
+    list.append({"noiseOff", "simulation", "Parts without noise: labels and type:NAME, comma-separated (none = empty).",
+        [](){ return QJsonValue( Simulator::self()->noise().off.join(",") ); },
+        []( QString v ){
+            QStringList l;
+            if( v.trimmed().compare("none", Qt::CaseInsensitive ) != 0 )
+                for( QString e : v.split(",", QString::SkipEmptyParts ) ) if( !e.trimmed().isEmpty() ) l.append( e.trimmed() );
+            Simulator::self()->noise().off = l; noiseChanged();
         }});
     return list;
 }

@@ -19,6 +19,7 @@ VarResBase::VarResBase( QString type, QString id )
           : Dialed( type, id )
           , eResistor( id )
 {
+    setThermalNoise( true );   // Transient noise: LDR, thermistors, strain gauge, variable resistor
     m_graphical = true;
 
     m_pin.resize(2);

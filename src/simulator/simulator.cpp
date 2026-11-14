@@ -18,6 +18,11 @@
 #include "circmatrix.h"
 #include "e-element.h"
 #include "socket.h"
+#include "noise.h"
+#include "e-reactive.h"
+#include "e-coil.h"
+#include "e-junctioncap.h"
+#include <random>
 
 Simulator* Simulator::m_pSelf = NULL;
 
@@ -56,6 +61,7 @@ Simulator::Simulator( QObject* parent )
 Simulator::~Simulator()
 {
     m_CircuitFuture.waitForFinished();
+    stopNoise();
     delete m_matrix;
     if( m_pSelf == this ) m_pSelf = NULL; // Elements destroyed later must not use a dangling pointer
 }
@@ -105,6 +111,7 @@ void Simulator::timerEvent( QTimerEvent* e )  //update at m_timerTick_ms rate (5
         m_state = state;
     }
     if( m_debug && m_state == SIM_PAUSED ) CircuitWidget::self()->debugPaused();
+    if( m_noiseEl ) CircuitWidget::self()->updateNoise();   // Armed / on / ended
 
     for( Updatable* el : m_updateList ) el->updateStep();
     EditorWindow::self()->outPane()->updateStep(); // OutPanel in Editor can be created before this simulator.
@@ -325,6 +332,7 @@ void Simulator::createNodes()
 
 void Simulator::startSim( bool paused )
 {
+    stopNoise();          // A restart without a stop
     resetSim();
     setPsPerSec( m_psPerSec );
     m_debug = paused;
@@ -335,6 +343,7 @@ void Simulator::startSim( bool paused )
     for( Socket* sock : m_socketList ) sock->updatePins( true );
 
     createNodes();
+    startNoise();         // Last in the element list: it stamps after every part
 
     /// qDebug() <<"  Initializing "<< m_elementList.size() << "\teElements";
     for( eElement* el : m_elementList )    // Initialize all Elements
@@ -354,6 +363,30 @@ void Simulator::startSim( bool paused )
         //qDebug() << "initializing  "<< enode->itemId();
     }
     for( eElement* el : m_elementList ) el->stamp();
+    if( m_noiseEl )       // Messages: what makes noise, and a reactStep that can't follow it
+    {
+        qInfo().noquote() << "Noise on:" << m_noiseEl->sources() << "sources ("
+            +QString::number( m_noiseEl->count( NoiseSrc::Thermal ) )+" thermal, "
+            +QString::number( m_noiseEl->count( NoiseSrc::Shot ) )+" shot, "
+            +QString::number( m_noiseEl->count( NoiseSrc::Channel ) )+" channel), "+noiseSummary();
+        int caps = 0, typical = 0;
+        for( eElement* el : m_elementList )
+            if( eJunctionCap* j = dynamic_cast<eJunctionCap*>( el ) )
+                if( j->cjUsed() > 0 ){ caps++; if( j->cj0() <= 0 ) typical++; }
+        if( caps ) qInfo().noquote() << "Noise: junction capacitance on"<< caps << "junctions ("
+                                     +QString::number( typical )+" with typical values, the part's Cj = 0); "
+                                     +"capacitors and inductors use the noise step "+siStr( m_noise.holdPs()*1e-12, "s")+" in the window";
+        for( QString e : m_noiseEl->unmatched() )
+            qWarning().noquote() << "[noise] noiseOff: no part or type matches"<< e;
+        uint64_t hold = m_noise.holdPs();
+        bool coils = false;      // Transformers keep reactStep (capacitors and inductors follow the noise step)
+        for( eElement* el : m_elementList )
+            if( dynamic_cast<eCoil*>( el ) ){ coils = true; break; }
+        if( coils && m_reactStep > hold )
+            qWarning().noquote() << "[noise] noise bandwidth"<< siStr( m_noise.bw, "Hz")
+                << "needs reactStep <="<< siStr( hold*1e-12, "s")<< "(now"<< siStr( m_reactStep*1e-12, "s")
+                +"): transformers integrate at reactStep, their noise response will be off";
+    }
 
     m_matrix->createMatrix( m_eNodeList );
 
@@ -393,6 +426,7 @@ void Simulator::stopSim()
     }
     m_state = SIM_STOPPED;
     if( !m_CircuitFuture.isFinished() ) m_CircuitFuture.waitForFinished();
+    stopNoise();
 
     qDebug() << "\n    Simulation Stopped ";
     qDebug() << "\n-------------------------------------------------\n ";
@@ -405,6 +439,77 @@ void Simulator::stopSim()
     m_changedNode = NULL;
     m_settled = nullptr;
     m_settledGen++;
+}
+
+void Simulator::startNoise()
+{
+    if( !m_noise.on ) return;
+    m_noiseSeed = m_noise.seed;
+    while( m_noiseSeed == 0 ) m_noiseSeed = ( (uint64_t)std::random_device{}() << 32 ) ^ std::random_device{}();
+    m_noiseSeed &= 0xFFFFFFFFFFFFULL;   // 48 bits: short enough to type back
+    if( m_noiseSeed == 0 ) m_noiseSeed = 1;
+    m_noiseEl = new eNoise( m_noise, m_noiseSeed );   // Adds itself to the element list
+    if( CircuitWidget::self() ) CircuitWidget::self()->updateNoise();
+}
+
+void Simulator::stopNoise()
+{
+    if( !m_noiseEl ) return;
+    eNoise* n = m_noiseEl;
+    m_noiseEl = nullptr;
+    delete n;                           // Removes itself from the element and event lists
+    if( CircuitWidget::self() ) CircuitWidget::self()->updateNoise();
+}
+
+QString Simulator::siStr( double v, QString unit )
+{
+    static const char* pre[] = { "p","n","µ","m","","k","M","G","T" };
+    if( v == 0 ) return "0 "+unit;
+    int e = (int)std::floor( std::log10( std::fabs( v ) )/3 );
+    if( e < -4 ) e = -4;
+    if( e >  4 ) e =  4;
+    return QString::number( v/std::pow( 1000, e ), 'g', 4 )+" "+pre[e+4]+unit;
+}
+
+double Simulator::parseSi( QString v, QString unit, bool* ok )
+{
+    QString t = v.trimmed();
+    if( !unit.isEmpty() && t.endsWith( unit, Qt::CaseInsensitive ) ) t.chop( unit.size() );
+    t = t.trimmed();
+    double mult = 1;
+    static const QString pre = "pnuµmkMGT";
+    static const double  val[] = { 1e-12, 1e-9, 1e-6, 1e-6, 1e-3, 1e3, 1e6, 1e9, 1e12 };
+    if( !t.isEmpty() ){
+        int i = pre.indexOf( t.right(1) );
+        if( i >= 0 ){ mult = val[i]; t.chop(1); }
+    }
+    double d = t.trimmed().toDouble( ok );
+    return d*mult;
+}
+
+QString Simulator::noiseSummary()
+{
+    QString seed;
+    if( m_noise.seed ) seed = "seed "+QString::number( m_noise.seed );
+    else if( m_noiseEl && m_noiseSeed ) seed = "seed "+QString::number( m_noiseSeed )+" (random)";
+    else seed = "random seed";
+    QString win = siStr( m_noise.start*1e-12, "s" )+"–"+( m_noise.stop ? siStr( m_noise.stop*1e-12, "s" ) : QString("end") );
+    return "×"+QString::number( m_noise.scale, 'g', 4 )+" · "+siStr( m_noise.bw, "Hz" )+" · "+seed+" · "+win;
+}
+
+QString Simulator::noiseBadge( bool brief )
+{
+    if( !m_noise.on ) return "";
+    QString st = "armed";
+    if( m_noiseEl ){
+        eNoise::State s = m_noiseEl->state();
+        st = ( s == eNoise::Active ) ? "on" : ( s == eNoise::Ended ) ? "ended" : "armed";
+    }
+    if( brief ){   // Toolbar: state, scale and window; the seed is in the tooltip
+        QString win = siStr( m_noise.start*1e-12, "s" )+"–"+( m_noise.stop ? siStr( m_noise.stop*1e-12, "s" ) : QString("end") );
+        return "NOISE "+st+" · ×"+QString::number( m_noise.scale, 'g', 4 )+" · "+win;
+    }
+    return "NOISE "+st+" · "+noiseSummary();
 }
 
 void Simulator::pauseSim() // Only pause simulation, don't update UI

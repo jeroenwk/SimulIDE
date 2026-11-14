@@ -7,6 +7,7 @@
 #define EBJT_H
 
 #include "e-element.h"
+#include "e-junctioncap.h"
 
 class eBJT : public eElement
 {
@@ -18,9 +19,24 @@ class eBJT : public eElement
         virtual void initialize() override;
         virtual void stamp() override;
         virtual void voltChanged() override;
+        virtual void noiseSources( QList<NoiseSrc>& list ) override;
 
         double gain() { return m_gain; }
         void setGain( double gain );
+
+        // Junction capacitances B-E and B-C (0 = none; typical 4.5 / 3.6 pF while noise is on)
+        double cje() { return m_cje.cj0(); }
+        void setCje( double v ) { m_cje.setCj0( v ); }
+        double vje() { return m_cje.vj(); }
+        void setVje( double v ) { m_cje.setVj( v ); }
+        double mje() { return m_cje.mj(); }
+        void setMje( double v ) { m_cje.setMj( v ); }
+        double cjc() { return m_cjc.cj0(); }
+        void setCjc( double v ) { m_cjc.setCj0( v ); }
+        double vjc() { return m_cjc.vj(); }
+        void setVjc( double v ) { m_cjc.setVj( v ); }
+        double mjc() { return m_cjc.mj(); }
+        void setMjc( double v ) { m_cjc.setMj( v ); }
 
         virtual bool pnp()              { return m_PNP; }
         virtual void setPnp( bool pnp ) { m_PNP = pnp; m_changed = true; }
@@ -41,6 +57,9 @@ class eBJT : public eElement
         double m_rgain;
         double m_fgain;
         bool m_PNP;
+
+        eJunctionCap m_cje;
+        eJunctionCap m_cjc;
 
         eElement m_BEjunction;
         eElement m_BCjunction;

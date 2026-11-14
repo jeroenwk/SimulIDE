@@ -56,6 +56,7 @@ class CapacitorBase : public Reactive, public GaugeOwner
     protected:
         virtual double updtRes()  override { return m_tStep/m_capacitance; }
         virtual double updtCurr() override { return m_volt*m_admit; }
+        virtual void rescaleSource( double r ) override { m_curSource *= r; }   // Source V·C/h
 
         // Pen for the plate on pin side 0 or 1: coloured by node potential while shown
         void setPlatePen( QPainter* p, int side );
