@@ -7,6 +7,8 @@
 
 #include <QDebug>
 
+#include <QTabBar>
+
 #include "propdialog.h"
 #include "appfonts.h"
 #include "component.h"
@@ -185,6 +187,11 @@ void PropDialog::adjustWidgets()
 {
     int h = 0;
     int w = m_minW;
+    // Wide enough for every tab title: a part with many groups (e.g. a diode with
+    // Capacitance) would otherwise get scroll arrows and a cut-off title
+    int tabsW = 0;
+    if( !tabList->isHidden() ) tabsW = qMin( tabList->tabBar()->sizeHint().width()+40*m_scale, 700*m_scale );
+    if( tabsW > w ) w = tabsW;
     if( helpText->isVisible() ) w += helpText->width()+6;
 
     QWidget* widget = tabList->currentWidget();
@@ -208,6 +215,7 @@ void PropDialog::adjustWidgets()
 
     this->setFixedHeight( h );
     this->setMaximumWidth( w+100*m_scale );
+    this->setMinimumWidth( tabsW+( helpText->isVisible() ? helpText->width()+6 : 0 ) );
     this->adjustSize();
     this->setMaximumHeight( h+70*m_scale );
 }
