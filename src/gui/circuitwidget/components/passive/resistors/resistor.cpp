@@ -29,7 +29,11 @@ LibraryItem* Resistor::libraryItem()
 Resistor::Resistor( QString type, QString id )
         : Comp2Pin( type, id )
         , eResistor( id )
+        , m_cp( id+"-Cp" )
 {
+    m_cp.setPins( [this](){ return std::make_pair( (ePin*)m_pin[0], (ePin*)m_pin[1] ); } );
+    m_cp.setMj( 0 );
+
     m_ePin[0] = m_pin[0];
     m_ePin[1] = m_pin[1];
     setThermalNoise( true );   // Transient noise: a physical resistor
@@ -39,7 +43,9 @@ Resistor::Resistor( QString type, QString id )
 
     addPropGroup( { tr("Main"), {
         new DoubProp<Resistor>("Resistance", tr("Resistance"), "Ω"
-                              , this, &Resistor::getRes, &Resistor::setResSafe )
+                              , this, &Resistor::getRes, &Resistor::setResSafe ),
+        new DoubProp<Resistor>("Cp", tr("Parallel Capacitance (0 = none)"), "pF"
+                              , this, &Resistor::cp, &Resistor::setCp )
     }, 0 } );
 
     setShowProp("Resistance");

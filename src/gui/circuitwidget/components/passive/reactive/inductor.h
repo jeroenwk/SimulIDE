@@ -8,6 +8,7 @@
 
 #include "reactive.h"
 #include "chargegauge.h"
+#include "e-junctioncap.h"
 
 class LibraryItem;
 
@@ -26,6 +27,11 @@ class Inductor : public Reactive, public GaugeOwner
         virtual void updateStep() override;
 
         Pin* getPin( int n ) { return m_pin[n]; }
+
+        // Parallel (winding) capacitance across the two pins, 0 = none (costs nothing then).
+        // Its current flows through its own pins: indCurr() does not include it
+        double cp() { return m_cp.cj0(); }
+        void setCp( double c ) { m_cp.setCj0( c ); }
 
         // Current display (specs/inductor-current.md)
         double indCurr() { return seriesCurrent(); }   // From pin 0 to pin 1 (A)
@@ -63,6 +69,8 @@ class Inductor : public Reactive, public GaugeOwner
         double m_maxCurrent;
 
         ChargeGauge* m_gauge;
+
+        eJunctionCap m_cp;   // Constant (M = 0), never a noise default
 };
 
 #endif
