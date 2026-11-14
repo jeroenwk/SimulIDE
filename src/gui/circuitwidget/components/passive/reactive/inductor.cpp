@@ -30,7 +30,11 @@ LibraryItem* Inductor::libraryItem()
 
 Inductor::Inductor( QString type, QString id )
         : Reactive( type, id )
+        , m_cp( id+"-Cp" )
 {
+    m_cp.setPins( [this](){ return std::make_pair( (ePin*)m_pin[0], (ePin*)m_pin[1] ); } );
+    m_cp.setMj( 0 );
+
     m_area = QRectF(-10,-6, 20, 12 );
 
     m_pin[0]->setLength( 4 );
@@ -44,6 +48,9 @@ Inductor::Inductor( QString type, QString id )
 
         new DoubProp<Inductor>("Resistance", tr("Resistance"), "µΩ"
                               , this, &Inductor::resist , &Inductor::setResist ),
+
+        new DoubProp<Inductor>("Cp", tr("Parallel Capacitance (0 = none)"), "pF"
+                              , this, &Inductor::cp, &Inductor::setCp ),
 
         new DoubProp<Inductor>("InitVolt", tr("Initial Current"), "A"
                               , this, &Inductor::initCurr, &Inductor::setInitCurr ),

@@ -103,6 +103,15 @@ Diodes, Zeners, LEDs, BJTs, MOSFETs and JFETs have capacitance properties (group
 - Its current flows through its own pins: a meter in series sees it, the part's own
   current readout (and part state) does not.
 
+The **inductor** and the **resistor** have the same kind of capacitance as a property:
+`Cp`, a constant capacitance across their two pins (a coil's winding capacitance, e.g.
+the led_driver's T1: 17.9 pF from its self-resonance; a resistor's 0.05–0.5 pF, which
+only matters for high values at high frequency). 0 (the default) means none, with or
+without noise, and costs nothing: the inner capacitor then has no pins and no events.
+Its current is not in the part's own current readout (the inductor's gauge, a
+resistor's V/R), as above. Capacitors already have their series resistance (ESR) as
+`Resistance`.
+
 ## Things to know
 
 - **Bandwidth and step.** Each source is a Gaussian value held for
@@ -163,6 +172,8 @@ button to compare. Measured: 20.6 µV against 20.4 µV for kT/C.
 | `test_noise_settings` | off by default, files unchanged, save/reopen, status, Messages |
 | `test_noise_bistable` | a symmetric bistable ends in a seed-dependent state, with 10 nF base capacitors and with none (junction capacitance); without noise the resistive one stays balanced |
 | `test_noise_reply_tag` | `probe`, `read`, `scope data`: no tag without noise, a tag inside the window, `scope data` of noise-free samples untagged after it, a next run without noise untagged |
+| `test_inductor_cp` | `Cp` 17.9 pF across 374 µH gives the same voltages as a separate capacitor (within 1 nV), rings at 1/(2π√LC); 0 = no ring; save and reopen |
+| `test_resistor_cp` | `Cp` 10 pF on a 1 MΩ / 1 MΩ, 100 pF divider: the step to 5·10/110 V, then τ = 55 µs within 1 %; same as a separate capacitor; 0 = none; save and reopen |
 | `test_junction_cap` | the led_driver D3A C(V) (14.67 pF, 0.363 V, 0.319): charging through 1 MΩ within 0.4 % of the integrated curve; 0 = none; save and reopen |
 
 The bistable of `test_noise_bistable` is built by the test itself (CLI), so it can be

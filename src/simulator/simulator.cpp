@@ -373,7 +373,7 @@ void Simulator::startSim( bool paused )
         for( eElement* el : m_elementList )
             if( eJunctionCap* j = dynamic_cast<eJunctionCap*>( el ) )
                 if( j->cjUsed() > 0 ){ caps++; if( j->cj0() <= 0 ) typical++; }
-        if( caps ) qInfo().noquote() << "Noise: junction capacitance on"<< caps << "junctions ("
+        if( caps ) qInfo().noquote() << "Noise: junction or winding capacitance on"<< caps << "places ("
                                      +QString::number( typical )+" with typical values, the part's Cj = 0); "
                                      +"capacitors and inductors use the noise step "+siStr( m_noise.holdPs()*1e-12, "s")+" in the window";
         for( QString e : m_noiseEl->unmatched() )
