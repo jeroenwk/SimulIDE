@@ -407,10 +407,19 @@ the parts themselves would use the PSD shape hook of §5.2.
   its balance point **with noise too**: backward Euler is stable for growth rates
   above about 2/`reactStep`, so it damps the unstable point. Noise only helps when the
   loop's growth is slow enough for the step. This matters for `lim-osc` (#86–88).
-- **Left:** the oscilloscope NOISE tag (step 6);
-  the noise tag on `scope data`, `probe` and `meter` replies (step 7: only `sim
-  status`, `sim run` and `sim average` have it); the sweeps over the new attributes;
-  the speed measurements of step 8.
+- **Done later the same day (branch `feature/noise-tags`):** the oscilloscope NOISE
+  tag (step 6: drawn while the screen shows samples from the noise window; the
+  Simulator keeps the last run's active interval, so it stays on a stopped screen);
+  the tag on `scope data` (span of the samples returned), `probe` and `read` (the
+  CLI's meter readout; tagged once noise has been active in the run, since an instant
+  value after the window still follows from the noise drawn) — `test_noise_reply_tag`;
+  the `header` sweep (junk in each noise attribute, then open and run; and a save /
+  reopen of every setting): it found `noiseScale="inf"` in a file making every
+  voltage NaN, now rejected on load like the CLI does; the speed numbers of step 8 in
+  NOISE.md; a toolbar noise button (restarts a running simulation) and the demo
+  `tests/circuits/noise_scope_demo.sim1`.
+- **Left:** the noise source part (phase 3) and the create-circuit integration
+  (phase 2).
 
 ## 15. Junction capacitance and the fine step (2026-11-14)
 

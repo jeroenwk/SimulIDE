@@ -100,12 +100,12 @@ QJsonValue Cli::noiseJson()
 
 bool Cli::noiseDuring( uint64_t t0, uint64_t t1 )
 {
-    Simulator* sim = Simulator::self();
-    eNoise* e = sim->noiseEngine();
-    if( !e || !e->firstActive() ) return false;
-    uint64_t from = e->firstActive();
-    uint64_t to = ( e->state() == eNoise::Ended ) ? sim->noise().stop : sim->circTime();
-    return from <= t1 && to >= t0;
+    return Simulator::self()->noiseActiveDuring( t0, t1 );
+}
+
+bool Cli::noiseSoFar()
+{
+    return Simulator::self()->noiseWasActive();
 }
 
 void CliApi::registerSim()

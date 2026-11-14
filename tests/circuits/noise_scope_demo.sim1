@@ -1,0 +1,105 @@
+<circuit version="1.1.0-SR2" rev="261114" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" noise="1" noiseBW="1000000" noiseScale="1" noiseSeed="0" noiseStart="0" noiseStop="0" noiseOff="R2" >
+<description>
+# Transient noise on a scope
+
+Shows SimulIDE's transient noise (docs/NOISE.md): the thermal noise of a 1 MΩ
+resistor on a 10 pF node, amplified 1000 times so it is plain on the scope.
+
+- **SIG**: 1 kHz sine, 50 µV peak, into two identical paths.
+- **R1 1 MΩ, C1 10 pF → U1** (op amp open loop, gain 1000, ±5 V): yellow trace.
+  The node's noise is √(kT/C) = 20.4 µV rms, so the 50 mV output sine carries
+  about 20 mV rms of noise (band limited by R1·C1, 16 kHz).
+- **R2 1 MΩ, C2 10 pF → U2**: blue trace, the same path with R2 in `noiseOff`:
+  a clean reference sine.
+- The op amps are behavioural and make no noise themselves.
+
+Saved with noise on (whole run, bandwidth 1 MHz, scale ×1, random seed,
+noiseOff R2). The noise button in the toolbar switches it off and on (a running
+simulation restarts): the yellow trace becomes as clean as the blue one.
+
+Simulated [SIMULATED, noise ×1, 1 MHz, 20 ms]: U1 output 40.8 mV rms, U2 35.2 mV
+rms (the sine alone, 50 mV/√2): the noise part is √(40.8² − 35.2²) = 20.6 mV,
+i.e. 20.6 µV at the node against 20.4 µV for kT/C (1 %).
+
+Try: `noiseScale` 0.1 or 10; a larger C1 (100 pF: √10 less noise); `noiseBW`
+does not change it (the RC sets the bandwidth). Noise costs speed: every node
+is solved every 0.5 µs at 1 MHz.
+
+## create-circuit skill
+
+- Version: 1.4.1 (commit b897f9d)
+- Circuit: noise_scope_demo.sim1
+
+### Limitations found while building it
+
+None reported.
+</description>
+
+
+<item itemtype="opAmp" CircId="opAmp-1" mainComp="false" Show_id="true" Show_Val="false" Pos="80,-112" rotation="0" hflip="1" vflip="1" label="U1" idLabPos="-4.5,-30" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Gain="1000" Out_Imped="1e-09 Ω" Show_State="true" Power_Pins="false" Switch_Pins="false" Volt_Pos="5 V" Volt_Neg="-5 V" />
+
+<item itemtype="opAmp" CircId="opAmp-2" mainComp="false" Show_id="true" Show_Val="false" Pos="80,16" rotation="0" hflip="1" vflip="1" label="U2" idLabPos="-5.5,-30" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Gain="1000" Out_Imped="1e-09 Ω" Show_State="true" Power_Pins="false" Switch_Pins="false" Volt_Pos="5 V" Volt_Neg="-5 V" />
+
+<item itemtype="Resistor" CircId="Resistor-3" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="-48,-112" rotation="0" hflip="1" vflip="1" label="R1" idLabPos="-16,8.5" labelrot="0" valLabPos="-3,8.5" valLabRot="0" labelAuto="true" Resistance="1 MΩ" />
+
+<item itemtype="Capacitor" CircId="Capacitor-4" mainComp="false" ShowProp="Capacitance" Show_id="true" Show_Val="true" Pos="32,-48" rotation="90" hflip="1" vflip="1" label="C1" idLabPos="-17,12" labelrot="0" valLabPos="-3,12" valLabRot="0" labelAuto="true" Capacitance="10 pF" Resistance="1 µΩ" InitVolt="0 V" MaxVolt="0 V" ChargeScale="0 V" LogCharge="false" ReaStep="0 ns" />
+
+<item itemtype="WaveGen" CircId="WaveGen-5" mainComp="false" Show_id="true" Show_Val="false" Pos="-112,0" rotation="0" hflip="1" vflip="1" label="SIG" idLabPos="-5,-22" labelrot="0" valLabPos="-16,8" valLabRot="0" labelAuto="true" Out="true" Running="true" Wave_Type="Sine" Freq="1 kHz" Phase="0 _º" Steps="1000 _Steps" Duty="50 _%" Always_On="true" Bipolar="false" Floating="false" Semi_Ampli="50 µV" Mid_Volt="0 V" />
+
+<item itemtype="Resistor" CircId="Resistor-6" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="-48,16" rotation="0" hflip="1" vflip="1" label="R2" idLabPos="-17,8.5" labelrot="0" valLabPos="-2,8.5" valLabRot="0" labelAuto="true" Resistance="1 MΩ" />
+
+<item itemtype="Capacitor" CircId="Capacitor-7" mainComp="false" ShowProp="Capacitance" Show_id="true" Show_Val="true" Pos="32,80" rotation="90" hflip="1" vflip="1" label="C2" idLabPos="-18,12" labelrot="0" valLabPos="-2,12" valLabRot="0" labelAuto="true" Capacitance="10 pF" Resistance="1 µΩ" InitVolt="0 V" MaxVolt="0 V" ChargeScale="0 V" LogCharge="false" ReaStep="0 ns" />
+
+<item itemtype="Ground" CircId="Ground-8" mainComp="false" Show_id="false" Show_Val="false" Pos="32,128" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Oscope" CircId="Oscope-15" mainComp="false" Show_id="false" Show_Val="false" Pos="256,-48" rotation="0" hflip="1" vflip="1" label="SC" idLabPos="-90,-100" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Basic_X="135 _px" Basic_Y="135 _px" BufferSize="600000" connectGnd="true" InputImped="10 MΩ" TimDiv="200000000" TimPos="0,0,0,0," VolDiv="0.05,0.05,1,1," Tunnels=",,,," Trigger="1" Filter="0.1 V" AutoSC="4" Tracks="1" HideCh="false,false,false,false," VolPos="0.1,-0.1,0,0," TrigAuto="true" TrigLevel="0 V" />
+
+<item itemtype="Node" CircId="Node-9" mainComp="false" Pos="-80,0" />
+
+<item itemtype="Node" CircId="Node-10" mainComp="false" Pos="32,-112" />
+
+<item itemtype="Node" CircId="Node-11" mainComp="false" Pos="32,16" />
+
+<item itemtype="Node" CircId="Node-12" mainComp="false" Pos="32,104" />
+
+<item itemtype="Node" CircId="Node-13" mainComp="false" Pos="48,40" />
+
+<item itemtype="Node" CircId="Node-14" mainComp="false" Pos="48,-16" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="WaveGen-5-outnod" endpinid="Node-9-1" pointList="-96,0,-80,0" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Resistor-6-lPin" endpinid="Node-9-0" pointList="-64,16,-80,16,-80,0" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="Node-9-2" endpinid="Resistor-3-lPin" pointList="-80,0,-80,-112,-64,-112" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Resistor-3-rPin" endpinid="Node-10-1" pointList="-32,-112,32,-112" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="Capacitor-4-lPin" endpinid="Node-10-0" pointList="32,-64,32,-112" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Node-10-2" endpinid="opAmp-1-inputNinv" pointList="32,-112,32,-120,56,-120" />
+
+<item itemtype="Connector" uid="Connector-10" startpinid="Resistor-6-rPin" endpinid="Node-11-1" pointList="-32,16,32,16" />
+
+<item itemtype="Connector" uid="Connector-11" startpinid="Capacitor-7-lPin" endpinid="Node-11-0" pointList="32,64,32,16" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="Node-11-2" endpinid="opAmp-2-inputNinv" pointList="32,16,32,8,56,8" />
+
+<item itemtype="Connector" uid="Connector-15" startpinid="Capacitor-7-rPin" endpinid="Node-12-0" pointList="32,96,32,104" />
+
+<item itemtype="Connector" uid="Connector-16" startpinid="Node-12-2" endpinid="Ground-8-Gnd" pointList="32,104,32,112" />
+
+<item itemtype="Connector" uid="Connector-18" startpinid="opAmp-2-inputInv" endpinid="Node-13-0" pointList="56,24,48,24,48,40" />
+
+<item itemtype="Connector" uid="Connector-19" startpinid="Node-13-2" endpinid="Node-12-1" pointList="48,40,48,104,32,104" />
+
+<item itemtype="Connector" uid="Connector-20" startpinid="opAmp-1-inputInv" endpinid="Node-14-1" pointList="56,-104,48,-104,48,-16" />
+
+<item itemtype="Connector" uid="Connector-21" startpinid="Capacitor-4-rPin" endpinid="Node-14-0" pointList="32,-32,32,-16,48,-16" />
+
+<item itemtype="Connector" uid="Connector-22" startpinid="Node-14-2" endpinid="Node-13-1" pointList="48,-16,64,-16,64,40,48,40" />
+
+<item itemtype="Connector" uid="Connector-23" startpinid="opAmp-1-output" endpinid="Oscope-15-Pin0" pointList="104,-112,160,-112,160,-96,168,-96" />
+
+<item itemtype="Connector" uid="Connector-24" startpinid="opAmp-2-output" endpinid="Oscope-15-Pin1" pointList="104,16,160,16,160,-64,168,-64" />
+
+</circuit>

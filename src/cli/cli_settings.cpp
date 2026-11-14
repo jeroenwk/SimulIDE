@@ -275,7 +275,7 @@ QList<Setting>& settings()
         [](){ return QJsonValue( Simulator::self()->noise().scale ); },
         []( QString v ){
             double k = Cli::parseNum( v, "noiseScale" );
-            if( k < 0 || k > 1e12 ) throw CliError("noiseScale must be 0..1e12");
+            if( !(k >= 0 && k <= 1e12) ) throw CliError("noiseScale must be 0..1e12");
             Simulator::self()->noise().scale = k; noiseChanged();
         }});
     list.append({"noiseSeed", "simulation", "Noise seed: 0 = random at every start (the seed used is in sim status).",

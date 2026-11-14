@@ -3,6 +3,7 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <QSignalBlocker>
 #include <QSplitter>
 #include <QTabWidget>
 #include <QToolButton>
@@ -80,6 +81,7 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
              , m_circView( this )
              , m_outPane( this )
              , m_circToolBar( this )
+             , m_simToolBar( this )
              , m_fileMenu( this )
              , m_infoMenu( this )
 {
@@ -93,7 +95,14 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     m_verticalLayout.setContentsMargins(0, 0, 0, 0);
     m_verticalLayout.setSpacing(0);
 
-    m_verticalLayout.addWidget( &m_circToolBar );
+    m_toolRow = new QWidget( this );        // The toolbar in one row, or two when the window is narrow
+    m_toolGrid = new QGridLayout( m_toolRow );
+    m_toolGrid->setContentsMargins( 0, 0, 0, 0 );
+    m_toolGrid->setSpacing( 0 );
+    m_toolRow->installEventFilter( this );
+    m_circToolBar.installEventFilter( this );   // A label that grows (NOISE, messages) can need the second row
+    m_simToolBar.installEventFilter( this );
+    m_verticalLayout.addWidget( m_toolRow );
 
     m_mainSplitter = new QSplitter( this );
     m_mainSplitter->setObjectName("CircuitSplitter");
@@ -289,6 +298,11 @@ void CircuitWidget::createActions()
     connect( instrumentsAct, &QAction::toggled,
              []( bool on ){ InstrumentView::self()->setShown( on ); } );
 
+    noiseOnAct = new QAction( QIcon(":/noise.svg"),tr("Transient Noise"), this);
+    noiseOnAct->setStatusTip(tr("Add the thermal and shot noise of the parts (Settings: Simulation: Noise for bandwidth, scale, seed and window). While running, the simulation restarts"));
+    noiseOnAct->setCheckable( true );
+    connect( noiseOnAct, &QAction::toggled, this, &CircuitWidget::toggleNoise );
+
     exportAct = new QAction( QIcon(":/saveimage.svg"),tr("Export as Image (PNG, SVG)..."), this);
     exportAct->setStatusTip(tr("Export the circuit as a PNG or SVG image, with a choice of theme, instruments and grid"));
     connect( exportAct, &QAction::triggered, this, [this](){ ExportDialog::run( this ); } );
@@ -320,6 +334,8 @@ void CircuitWidget::createToolBars()
 
     double fs = MainWindow::self()->fontScale()*20;
     m_circToolBar.setIconSize( QSize( fs, fs ) );
+    m_simToolBar.setObjectName( "m_simToolBar" );
+    m_simToolBar.setIconSize( QSize( fs, fs ) );
 
     m_circToolBar.addAction( settAppAct );
     QWidget* spacer = new QWidget();
@@ -360,6 +376,12 @@ void CircuitWidget::createToolBars()
     spacer->setFixedWidth( 20 );
     m_circToolBar.addWidget( spacer );
     m_circToolBar.addSeparator();//..........................
+    // View toggles in the first row: the second keeps speed, run and status (room on a narrow window)
+    m_circToolBar.addAction( currentFlowAct );
+    m_circToolBar.addAction( capChargeAct );
+    m_circToolBar.addAction( partStatusAct );
+    m_circToolBar.addAction( instrumentsAct );
+    m_circToolBar.addAction( noiseOnAct );
 
     // Timebase: simulated time per real second (like a speed dial), before play
     m_timebase = new SpeedBox( this );
@@ -380,39 +402,47 @@ void CircuitWidget::createToolBars()
         Cli::setSimSpeed( ps );                        // Adjusts the step size if needed
         Circuit::self()->setChanged();                 // Speed is saved in the circuit
     });
-    m_circToolBar.addWidget( m_timebase );
+    m_simToolBar.addWidget( m_timebase );
     syncTimebase( Simulator::self() ? Simulator::self()->psPerSec() : (uint64_t)1e12 );
 
-    m_circToolBar.addAction( powerCircAct );
-    m_circToolBar.addAction( pauseSimAct );
-    m_circToolBar.addAction( currentFlowAct );
-    m_circToolBar.addAction( capChargeAct );
-    m_circToolBar.addAction( partStatusAct );
-    m_circToolBar.addAction( instrumentsAct );
-    m_circToolBar.addSeparator();//..........................
+    m_simToolBar.addAction( powerCircAct );
+    m_simToolBar.addAction( pauseSimAct );
+    m_simToolBar.addSeparator();//..........................
 
     spacer = new QWidget();
     spacer->setFixedWidth( 15 );
-    m_circToolBar.addWidget( spacer );
-    m_circToolBar.addWidget( m_msgLabel );
+    m_simToolBar.addWidget( spacer );
+    m_simToolBar.addWidget( m_msgLabel );
 
-    m_noiseLabel = new QLabel( this );      // Transient noise on: always in sight (docs/NOISE_SPEC.md)
-    QFont nf = m_noiseLabel->font();
-    nf.setPixelSize( 12*MainWindow::self()->fontScale() );
-    nf.setBold( true );
-    m_noiseLabel->setFont( nf );
-    m_noiseLabel->setStyleSheet("QLabel { background-color: #e67800; color: white; padding: 1px 6px; }");
-    m_noiseLabel->setToolTip( tr("Transient noise is on: thermal and shot noise of the parts are added (Settings: Simulation, or CLI settings noise*)") );
-    m_noiseLabel->setVisible( false );
-    m_circToolBar.addWidget( spacer = new QWidget() );
+    // Transient noise on: always in sight (docs/NOISE_SPEC.md). The white noise icon stands
+    // for the word; the box is as high as the status label beside it
+    double ns = MainWindow::self()->fontScale();
+    int boxH = 20*ns;
+    m_noiseBox = new QWidget( this );
+    m_noiseBox->setObjectName("noiseBadge");
+    m_noiseBox->setAttribute( Qt::WA_StyledBackground, true );
+    m_noiseBox->setStyleSheet("#noiseBadge { background-color: #e67800; }");
+    m_noiseBox->setFixedHeight( boxH );
+    QHBoxLayout* nl = new QHBoxLayout( m_noiseBox );
+    nl->setContentsMargins( 4*ns, 0, 6*ns, 0 );
+    nl->setSpacing( 3*ns );
+    QLabel* noiseIcon = new QLabel( m_noiseBox );
+    noiseIcon->setPixmap( QIcon(":/noise_white.svg").pixmap( QSize( boxH-2, boxH-2 ) ) );
+    m_noiseLabel = new QLabel( m_noiseBox );
+    m_noiseLabel->setFont( m_msgLabel->font() );   // The same text as "Running" / "Paused"
+    m_noiseLabel->setStyleSheet("QLabel { color: white; }");
+    nl->addWidget( noiseIcon );
+    nl->addWidget( m_noiseLabel );
+    m_noiseBox->setToolTip( tr("Transient noise is on: thermal and shot noise of the parts are added (Settings: Simulation, or CLI settings noise*)") );
+    m_simToolBar.addWidget( spacer = new QWidget() );
     spacer->setFixedWidth( 8 );
-    m_noiseAct = m_circToolBar.addWidget( m_noiseLabel );
+    m_noiseAct = m_simToolBar.addWidget( m_noiseBox );
     m_noiseAct->setVisible( false );
 
     spacer = new QWidget( this );
     spacer->setSizePolicy( QSizePolicy::Expanding, QSizePolicy::Preferred );
     spacer->setVisible( true );
-    m_circToolBar.addWidget( spacer );
+    m_simToolBar.addWidget( spacer );
 
     m_infoMenu.addAction( infoAct );
     m_infoMenu.addAction( aboutAct );
@@ -422,7 +452,7 @@ void CircuitWidget::createToolBars()
     QFont tf = timeLabel->font();
     tf.setPixelSize( 12*MainWindow::self()->fontScale() );
     timeLabel->setFont( tf );
-    m_circToolBar.addWidget( timeLabel );
+    m_simToolBar.addWidget( timeLabel );
     m_infoWidget->setToolbarTime( timeLabel );
 
     QToolButton* infoPanelButton = new QToolButton( this );   // Shows / hides the speed and load pane
@@ -441,16 +471,48 @@ void CircuitWidget::createToolBars()
         MainWindow::self()->settings()->setValue("showInfoPanel", on );
         syncPanelButton( on );
     });
-    m_circToolBar.addWidget( infoPanelButton );
+    m_simToolBar.addWidget( infoPanelButton );
 
     QToolButton* infoButton = new QToolButton( this );
     infoButton->setToolTip( tr("Info") );
     infoButton->setMenu( &m_infoMenu );
     infoButton->setIcon( QIcon(":/help.svg") );
     infoButton->setPopupMode( QToolButton::InstantPopup );
-    m_circToolBar.addWidget( infoButton );
+    m_simToolBar.addWidget( infoButton );
     
-    m_circToolBar.addSeparator();//..........................
+    m_simToolBar.addSeparator();//..........................
+    layoutToolBars();
+}
+
+void CircuitWidget::layoutToolBars()
+{
+    if( !m_toolGrid ) return;
+    // QToolBar's size hint is the width with every item shown
+    int need = m_circToolBar.sizeHint().width()+m_simToolBar.sizeHint().width();
+    int rows = ( m_toolRow->width() > 0 && m_toolRow->width() < need ) ? 2 : 1;
+    if( rows == m_toolRows ) return;
+    m_toolRows = rows;
+    m_toolGrid->removeWidget( &m_circToolBar );
+    m_toolGrid->removeWidget( &m_simToolBar );
+    m_toolGrid->setColumnStretch( 0, 0 );
+    m_toolGrid->setColumnStretch( 1, 0 );
+    if( rows == 1 ){
+        m_toolGrid->addWidget( &m_circToolBar, 0, 0 );
+        m_toolGrid->addWidget( &m_simToolBar,  0, 1 );
+        m_toolGrid->setColumnStretch( 1, 1 );       // The second bar's spacer takes the rest
+    }else{
+        m_toolGrid->addWidget( &m_circToolBar, 0, 0, 1, 2 );
+        m_toolGrid->addWidget( &m_simToolBar,  1, 0, 1, 2 );
+        m_toolGrid->setColumnStretch( 0, 1 );
+    }
+}
+
+bool CircuitWidget::eventFilter( QObject* obj, QEvent* ev )
+{
+    if( obj == m_toolRow && ev->type() == QEvent::Resize ) layoutToolBars();
+    else if( ( obj == &m_circToolBar || obj == &m_simToolBar ) && ev->type() == QEvent::LayoutRequest )
+        QTimer::singleShot( 0, this, [this](){ layoutToolBars(); } );   // After the bar's own layout
+    return QWidget::eventFilter( obj, ev );
 }
 
 bool CircuitWidget::newCircuit()
@@ -479,7 +541,7 @@ bool CircuitWidget::newCircuit()
     MainWindow::self()->setFile( tr("New Circuit"));
     showDescription();
     MainWindow::self()->settings()->setValue( "lastCircDir", m_lastCircDir );
-    
+    updateNoise();   // A new circuit has noise off
     return true;
 }
 
@@ -536,6 +598,7 @@ void CircuitWidget::loadCirc( QString path )
 
         m_infoWidget->clearLastRun();
         showDescription();
+        updateNoise();   // The noise button follows the file
 }   }
 
 void CircuitWidget::printDescription()
@@ -726,17 +789,33 @@ void CircuitWidget::setError( QString error )
     m_infoWidget->setRate( -1 );
 }
 
+void CircuitWidget::toggleNoise( bool on )
+{
+    Simulator* sim = Simulator::self();
+    if( !sim || sim->noise().on == on ) return;
+    sim->noise().on = on;
+    Circuit::self()->setChanged();   // Saved with the circuit
+    if( sim->isRunning() || sim->isPaused() ){ powerCircOff(); powerCircOn(); } // Noise starts with the simulation
+    updateNoise();
+}
+
 void CircuitWidget::updateNoise()
 {
+    if( noiseOnAct && Simulator::self() && noiseOnAct->isChecked() != Simulator::self()->noise().on )
+    {
+        QSignalBlocker b( noiseOnAct );
+        noiseOnAct->setChecked( Simulator::self()->noise().on );
+    }
     if( !m_noiseLabel ) return;
     QString t = Simulator::self() ? Simulator::self()->noiseBadge( true ) : "";
+    if( t.startsWith("NOISE ") ) t = t.mid( 6 );   // The icon says it
     if( m_noiseLabel->text() != t ){
         m_noiseLabel->setText( t );
-        m_noiseLabel->setToolTip( Simulator::self()->noiseBadge()
+        m_noiseBox->setToolTip( Simulator::self()->noiseBadge()
             +"\n"+tr("Thermal and shot noise of the parts are added (Settings: Simulation: Noise, or CLI settings noise*)") );
     }
     bool show = !t.isEmpty();
-    if( m_noiseAct->isVisible() != show ){ m_noiseAct->setVisible( show ); m_noiseLabel->setVisible( show ); }
+    if( m_noiseAct->isVisible() != show ) m_noiseAct->setVisible( show );
 }
 
 void CircuitWidget::setMsg( QString msg, int type )

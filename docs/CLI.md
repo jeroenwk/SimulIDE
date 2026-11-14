@@ -601,8 +601,12 @@ The groups follow the Settings dialog:
 - `noise*`: transient noise of the parts, off by default ([NOISE.md](NOISE.md)). They
   apply at the next start (a change while running gets a `note`). `sim status` always
   has a `noise` field: `"off"`, or the settings, the `state` (armed / on / ended /
-  stopped), `active` and the `seed` in use; `sim average` adds the same object when
-  noise was active during its span.
+  stopped), `active` and the `seed` in use; `sim average` and `scope data` add the
+  same object when noise was active during their span (for `scope data`: from its
+  oldest sample returned to now). `probe` and `read` add it to each entry once noise
+  has been active in the run, also after the window: an instant value then still
+  follows from the noise drawn (a bistable's state). A run without noise has no
+  `noise` field anywhere.
 
 ### Reactive accuracy (inductors, capacitors and transformers)
 
