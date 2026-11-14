@@ -13,8 +13,10 @@ Use it to:
 
 ## Switching it on
 
-In the GUI: **Settings → Simulation → Noise** (tick the group; *When*: start-up only,
-whole run or custom). From the CLI:
+In the GUI: the **noise button** in the toolbar (an orange jagged trace, next to the
+instruments button) switches it on and off; a running simulation restarts, since the
+noise starts with the simulation. **Settings → Simulation → Noise** has the details
+(tick the group; *When*: start-up only, whole run or custom). From the CLI:
 
 ```sh
 simulide cli settings set noise=on noiseStop=1ms   # start-up only: noise for the first 1 ms
@@ -36,14 +38,23 @@ Settings take effect at the next start. The circuit's temperature is 27 °C.
 
 ## Seeing that it is on
 
-- **Toolbar:** an orange label, e.g. `NOISE on · ×1 · 10 MHz · seed 48213 (random) · 0 s–1 ms`.
-  It reads *armed* before the window, *on* during it and *ended* after it.
+- **Toolbar:** an orange badge beside *Running* / *Paused*, with the noise icon in white
+  and e.g. `on · ×1 · 0 s–1 ms` (state, scale, window; the tooltip has the bandwidth and
+  the seed). It reads *armed* before the window, *on* during it and *ended* after it.
+  The noise button among the view toggles shows it pressed. A narrow window puts the
+  toolbar on two rows: file, edit, zoom and the view toggles on the first; speed, run,
+  status, the badge, the time and Info on the second.
 - **Messages:** at every start, `Noise on: 14 sources (9 thermal, 5 shot, 0 channel), ...`,
   and warnings for a `noiseOff` entry that matches nothing, or a `reactStep` that
   can't follow the noise.
+- **Oscilloscope:** an orange `NOISE` tag in the corner of the screen while it shows
+  samples taken with noise active (so screenshots carry it). It goes once the
+  screen holds only samples from after the window.
 - **CLI:** `sim status` (and so `sim run`) has `"noise": "off"`, or the settings,
-  the state and the **seed in use**; `sim average` replies carry the same `noise`
-  object when noise was active during the span. `noise sources` lists every source.
+  the state and the **seed in use**; `sim average` and `scope data` replies carry
+  the same `noise` object when noise was active during their span; `probe` and
+  `read` carry it once noise has been active in the run. `noise sources` lists
+  every source.
 - **File:** the `<circuit>` line gets `noise="1" noiseBW=... ` (only when noise was
   ever set; other files are unchanged).
 
@@ -104,7 +115,14 @@ Diodes, Zeners, LEDs, BJTs, MOSFETs and JFETs have capacitance properties (group
   noise every node changes 2·f<sub>max</sub> times per simulated second (2·10⁷ at
   10 MHz). Use the window (`noiseStop`) for start-up noise: after it the run is
   as fast and as exact as without noise. Every current is exactly 0 again, so the
-  circuit ends at the values of a run without noise.
+  circuit ends at the values of a run without noise. Measured (Apple M-series,
+  headless, speed unthrottled, 500 ms runs), wall seconds per simulated second:
+
+  | Circuit | off | 1 ms window, 10 MHz | whole run, 1 MHz | whole run, 10 MHz |
+  |---|---|---|---|---|
+  | Duncan 73.7 bistable (21 parts, 1 kHz trigger) | 0.56 | 0.85 | 1.46 | 10.8 |
+  | `tests/circuits/noise_scope_demo.sim1` (9 parts) | 0.35 | 0.47 | 0.57 | 3.0 |
+
 - **Positive feedback needs dynamics and a step that can follow it.** A loop with
   no capacitance has no dynamics: each step's solve lands on the balance point
   again. And backward Euler is stable even at an *unstable* point when the growth
@@ -124,6 +142,14 @@ Diodes, Zeners, LEDs, BJTs, MOSFETs and JFETs have capacitance properties (group
 - Results with noise are [SIMULATED] with noise: give the settings (seed, scale,
   window) with them.
 
+## Demo
+
+`tests/circuits/noise_scope_demo.sim1`: a 50 µV, 1 kHz sine into 1 MΩ ∥ 10 pF,
+amplified ×1000 by an (noise-free) op amp: the yellow trace is the sine with the
+node's √(kT/C) = 20 µV rms noise (20 mV at the output); the blue trace is the same
+path with its resistor in `noiseOff`, a clean reference. Toggle the toolbar noise
+button to compare. Measured: 20.6 µV against 20.4 µV for kT/C.
+
 ## Checks
 
 `tests/regress/test_noise_*.py`:
@@ -136,7 +162,10 @@ Diodes, Zeners, LEDs, BJTs, MOSFETs and JFETs have capacitance properties (group
 | `test_noise_seed_window` | same seed = same run, reported random seed repeats it, the window ends exactly |
 | `test_noise_settings` | off by default, files unchanged, save/reopen, status, Messages |
 | `test_noise_bistable` | a symmetric bistable ends in a seed-dependent state, with 10 nF base capacitors and with none (junction capacitance); without noise the resistive one stays balanced |
+| `test_noise_reply_tag` | `probe`, `read`, `scope data`: no tag without noise, a tag inside the window, `scope data` of noise-free samples untagged after it, a next run without noise untagged |
 | `test_junction_cap` | the led_driver D3A C(V) (14.67 pF, 0.363 V, 0.319): charging through 1 MΩ within 0.4 % of the integrated curve; 0 = none; save and reopen |
 
 The bistable of `test_noise_bistable` is built by the test itself (CLI), so it can be
-rebuilt in the GUI the same way.
+rebuilt in the GUI the same way. `python3 tests/regress/sweeps/sweep.py header` puts
+junk in every noise attribute of a saved header and opens and runs it (crash, hang,
+NaN), and checks that each setting survives a save and reopen.

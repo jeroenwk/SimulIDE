@@ -123,6 +123,9 @@ class Simulator : public QObject
         void setNoise( const NoiseSettings& s ) { m_noise = s; }
         eNoise* noiseEngine() { return m_noiseEl; }   // Null when noise is off or stopped
         uint64_t noiseSeedUsed() { return m_noiseSeed; } // 0 before the first start with noise
+        // Was noise active at some time in [t0, t1] (ps) of this run (or of the last one, after a stop)?
+        bool noiseActiveDuring( uint64_t t0, uint64_t t1 );
+        bool noiseWasActive() { return noiseActiveDuring( 0, UINT64_MAX ); }
         QString noiseBadge( bool brief=false );        // Toolbar text, empty when noise is off
         QString noiseSummary();                        // "×1 · 10 MHz · seed 7 · 0–1 ms"
  static QString siStr( double v, QString unit );       // 1e7,"Hz" -> "10 MHz"
@@ -219,6 +222,8 @@ class Simulator : public QObject
 
         NoiseSettings m_noise;
         eNoise*  m_noiseEl = nullptr;
+        uint64_t m_noiseFrom = 0;   // Active interval of the last run with noise (ps), kept after a stop
+        uint64_t m_noiseTo   = 0;
         uint64_t m_noiseSeed = 0;
         void startNoise();
         void stopNoise();

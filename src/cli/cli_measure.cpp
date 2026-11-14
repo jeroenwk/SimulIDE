@@ -390,6 +390,7 @@ void CliApi::registerMeasure()
                 o["current"] = num( pin->getCurrent() );   // Into the component (A)
             }
             else                     o["voltage"] = QJsonValue();   // Not connected to any node
+            if( Cli::noiseSoFar() ) o["noise"] = Cli::noiseJson();  // The value depends on the noise drawn
             list.append( o );
         }
         return list;
@@ -400,9 +401,15 @@ void CliApi::registerMeasure()
     {
         if( c.pos.isEmpty() ) throw CliError("missing component");
         requireSim();
-        if( c.pos.size() == 1 ) return readComp( CliRefs::comp( c.pos.at(0) ) );
+        auto tagged = []( QJsonValue v ) -> QJsonValue {   // The value depends on the noise drawn
+            if( !Cli::noiseSoFar() || !v.isObject() ) return v;
+            QJsonObject o = v.toObject();
+            o["noise"] = Cli::noiseJson();
+            return o;
+        };
+        if( c.pos.size() == 1 ) return tagged( readComp( CliRefs::comp( c.pos.at(0) ) ) );
         QJsonArray list;
-        for( QString ref : c.pos ) list.append( readComp( CliRefs::comp( ref ) ) );
+        for( QString ref : c.pos ) list.append( tagged( readComp( CliRefs::comp( ref ) ) ) );
         return list;
     });
 
@@ -558,6 +565,7 @@ void CliApi::registerMeasure()
             from = ( now > span ) ? now-span : 0;
         }
         QJsonArray channels;
+        uint64_t first = 0;                              // Oldest sample returned
         for( int ch=0; ch<plot->numChannels(); ++ch )
         {
             if( onlyCh >= 0 && ch != onlyCh ) continue;
@@ -577,6 +585,7 @@ void CliApi::registerMeasure()
             }
             int step = ( maxPts > 0 && order.size() > maxPts ) ? ( order.size()+maxPts-1 )/maxPts : 1;
             QJsonArray samples;
+            if( !order.isEmpty() && ( !first || times[order[0]] < first ) ) first = times[order[0]];
             for( int k=0; k<order.size(); k+=step )
                 samples.append( QJsonArray{ (double)times[order[k]]/1e12, vals[order[k]] } );
 
@@ -585,7 +594,10 @@ void CliApi::registerMeasure()
                 {"connected", dc->connected() },
                 {"samples",   samples } } );
         }
-        return QJsonObject{ {"uid", comp->getUid() }, {"time", (double)now/1e12 }, {"channels", channels } };
+        QJsonObject r{ {"uid", comp->getUid() }, {"time", (double)now/1e12 }, {"channels", channels } };
+        if( first && Cli::noiseDuring( first, now ? now : Simulator::self()->circTime() ) )
+            r["noise"] = Cli::noiseJson();              // Samples taken with noise active
+        return r;
     });
 
     //--- Interact ------------------------------------------------------------

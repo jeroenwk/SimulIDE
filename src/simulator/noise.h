@@ -81,6 +81,7 @@ class eNoise : public eElement
 
         uint64_t firstActive() { return m_firstActive; }   // ps, 0 = never
         uint64_t lastActive()  { return m_lastActive; }    // ps of the last update
+        uint64_t activeUntil();    // ps: the window's stop once ended, else the end of the last hold
 
     private:
         void collect();

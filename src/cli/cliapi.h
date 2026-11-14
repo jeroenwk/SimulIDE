@@ -128,6 +128,8 @@ namespace Cli
     QJsonValue noiseJson();
     // Was noise active at some time in [t0, t1] (ps)? Measurement replies then carry noiseJson()
     bool noiseDuring( uint64_t t0, uint64_t t1 );
+    // Was noise active at any time of this run so far? Instant readings (probe, read) then carry noiseJson()
+    bool noiseSoFar();
 
     // Set target speed (picoseconds simulated per real second), keeping steps
     // per second and step size consistent as the settings dialog does (under 1e9

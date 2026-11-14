@@ -19,6 +19,9 @@ Sweeps
              run 2 ms: NaN or huge voltages, hangs, crashes. Found BH-025..031.
   examples   open and run every circuit in resources/examples for 20 ms: load errors, crashes,
              hangs, solver faults.
+  header     the transient-noise attributes of the <circuit> header (noise, noiseBW, ...): each set
+             through `settings`, saved and reopened (DIFF), and each replaced by junk in the file,
+             then opened and run 1 ms on a resistor-diode-capacitor circuit (CRASH, HANG, NAN).
 
 Usage (from the SimulIDE folder; the build in build_XX, or $SIMULIDE):
   python3 tests/regress/sweeps/sweep.py roundtrip [--factor 0.1] [--order rev]
@@ -296,8 +299,70 @@ def sweep_examples(srv, args):
                 find("examples", rel, "-", "-", "SOLVER", ev[:3])
 
 
+NOISE_ATTRS = {"noise": "1", "noiseBW": "1MHz", "noiseScale": "3", "noiseSeed": "42",
+               "noiseStart": "10us", "noiseStop": "500us", "noiseOff": "R1"}
+HEADER_JUNK = GARBLE + ["0", "1e30", "-1e30", "nan", "inf", "1e-30", "18446744073709551616", "type:", ",,,"]
+
+
+def noisy_circuit(sim):
+    c = sim.cli
+    c("circuit", "new", "--discard")
+    c("comp", "add", "Battery", "--label", "B1", "--at", "-80,0", "Voltage=5")
+    c("comp", "add", "Ground", "--label", "G", "--at", "-80,120")
+    c("comp", "add", "Resistor", "--label", "R1", "--at", "0,-40", "Resistance=1000")
+    c("comp", "add", "Diode", "--label", "D1", "--at", "80,40", "--rot", "90")
+    c("comp", "add", "Capacitor", "--label", "C1", "--at", "160,40", "--rot", "90", "Capacitance=1nF")
+    for a, b in (("B1.rPin", "G.Gnd"), ("B1.lPin", "R1.lPin"), ("R1.rPin", "D1.lPin"),
+                 ("D1.lPin", "C1.lPin"), ("D1.rPin", "G.Gnd"), ("C1.rPin", "G.Gnd")):
+        c("wire", "add", a, b)
+
+
+def sweep_header(srv, args):
+    base = os.path.join(TMP, "h0.sim1")
+    bad = os.path.join(TMP, "h1.sim1")
+    attrs = [a for a in NOISE_ATTRS if not args.parts or re.search(args.parts, a)]
+
+    # Round trip: every attribute away from its default, save, reopen, read back
+    state = {}
+
+    def rt(sim):
+        noisy_circuit(sim)
+        sim.cli("settings", "set", *["%s=%s" % (a, v) for a, v in NOISE_ATTRS.items()])
+        get = lambda: {a: sim.cli("settings", "get", a) for a in NOISE_ATTRS}
+        state["a"] = get()
+        sim.cli("circuit", "save", base)
+        sim.cli("circuit", "open", base, "--discard")
+        state["b"] = get()
+    if guarded(srv, "header", "circuit", "-", "roundtrip", rt):
+        for a in attrs:
+            if state["a"][a] != state["b"][a]:
+                find("header", "circuit", a, state["a"][a], "DIFF", "reloads as %r" % state["b"][a])
+
+    # Garble: junk in each attribute of the saved header, then open and run
+    txt = open(base).read()
+    head = re.search(r"<circuit [^>]*>", txt).group(0)
+    for a in attrs:
+        log("attribute %s" % a)
+        for v in HEADER_JUNK:
+            new = re.sub(r'\b%s="[^"]*"' % a, '%s="%s"' % (a, v), head, count=1)
+            with open(bad, "w") as f:
+                f.write(txt.replace(head, new))
+            out = {}
+
+            def run(sim):
+                sim.cli("circuit", "open", bad, "--discard")
+                sim.cli("sim", "run", "--for", "1ms", timeout=120)
+                out["v"] = sim.cli("probe", "D1.lPin")[0]["voltage"]
+                sim.cli("sim", "stop")
+            if guarded(srv, "header", "circuit", a, v, run):
+                x = out.get("v")
+                if x is None or not isinstance(x, (int, float)) or math.isnan(x) or abs(x) > 1e3:
+                    find("header", "circuit", a, v, "NAN", "D1 at %r" % x)
+
+
 SWEEPS = {"roundtrip": sweep_roundtrip, "strings": sweep_strings, "garble": sweep_garble,
-          "extremes": sweep_extremes, "examples": sweep_examples}
+          "extremes": sweep_extremes, "examples": sweep_examples,
+          "header": sweep_header}
 
 
 def main():

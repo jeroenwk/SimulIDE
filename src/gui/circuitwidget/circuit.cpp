@@ -218,8 +218,8 @@ void Circuit::loadStrDoc( QString &doc )
                 {
                     NoiseSettings& n = m_simulator->noise();
                     if     ( name == "noise"      ) n.on    = val.toInt() != 0;
-                    else if( name == "noiseBW"    ){ double d = val.toDouble(); if( d > 0 ) n.bw = d; }
-                    else if( name == "noiseScale" ){ double d = val.toDouble(); if( d >= 0 ) n.scale = d; }
+                    else if( name == "noiseBW"    ){ double d = val.toDouble(); if( d > 0 && d <= 5e11 ) n.bw = d; }   // Same limits as the CLI (inf, nan: kept at default)
+                    else if( name == "noiseScale" ){ double d = val.toDouble(); if( d >= 0 && d <= 1e12 ) n.scale = d; }
                     else if( name == "noiseSeed"  ) n.seed  = val.toULongLong();
                     else if( name == "noiseStart" ) n.start = val.toULongLong();
                     else if( name == "noiseStop"  ) n.stop  = val.toULongLong();

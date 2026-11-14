@@ -420,6 +420,34 @@ void PlotDisplay::paintEvent( QPaintEvent* /* event */ )
     p.fillRect( 0,                   0, m_marginX-1, height(), margin );
     p.fillRect( m_sizeX+m_marginX+1, 0, m_marginX-1, height(), margin );
 
+    // Transient noise: a NOISE tag while the screen shows samples taken with noise active
+    // (docs/NOISE_SPEC.md §3.5 item 6), so screenshots carry it too
+    bool noisy = false;
+    for( int i=0; i<m_channels && !noisy; ++i )
+    {
+        if( m_hideCh[i] || m_ncCh[i] ) continue;
+        double t0 = m_timeStart-m_hPos[i];
+        double t1 = m_timeEnd-m_hPos[i];
+        if( t1 <= 0 ) continue;
+        noisy = Simulator::self()->noiseActiveDuring( t0 > 0 ? (uint64_t)t0 : 0, (uint64_t)t1 );
+    }
+    if( noisy )
+    {
+        QFont f = p.font();
+        f.setPixelSize( 11 );
+        f.setBold( true );
+        p.setFont( f );
+        QFontMetrics fm( f );
+        int tw = fm.horizontalAdvance("NOISE")+8, th = fm.height()+2;
+        QRect tag( m_endX-tw-4, 4, tw, th );
+        p.setPen( Qt::NoPen );
+        p.setBrush( QColor( 230, 120, 0 ) );
+        p.drawRoundedRect( tag, 3, 3 );
+        p.setPen( Qt::white );
+        p.drawText( tag, Qt::AlignCenter, "NOISE" );
+        p.setBrush( Qt::NoBrush );
+    }
+
     double trigLevel;            // Fixed trigger level: dashed line in the trigger channel's colour
     if( m_component && m_component->trigLevelOn( &trigLevel ) )
     {

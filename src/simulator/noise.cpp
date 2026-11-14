@@ -235,6 +235,15 @@ void eNoise::fineSteps( bool on )
     for( eReactive* r : m_reactive ) r->setFineStep( on ? m_hold : 0 );
 }
 
+uint64_t eNoise::activeUntil()
+{
+    if( !m_firstActive ) return 0;
+    if( m_state == Ended ) return m_set.stop;
+    uint64_t t = m_lastActive+m_hold;
+    if( m_set.stop && t > m_set.stop ) t = m_set.stop;
+    return t;
+}
+
 int eNoise::count( NoiseSrc::Kind k )
 {
     int n = 0;

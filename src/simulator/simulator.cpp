@@ -443,6 +443,7 @@ void Simulator::stopSim()
 
 void Simulator::startNoise()
 {
+    m_noiseFrom = m_noiseTo = 0;
     if( !m_noise.on ) return;
     m_noiseSeed = m_noise.seed;
     while( m_noiseSeed == 0 ) m_noiseSeed = ( (uint64_t)std::random_device{}() << 32 ) ^ std::random_device{}();
@@ -456,9 +457,18 @@ void Simulator::stopNoise()
 {
     if( !m_noiseEl ) return;
     eNoise* n = m_noiseEl;
+    m_noiseFrom = n->firstActive();
+    m_noiseTo   = n->activeUntil();
     m_noiseEl = nullptr;
     delete n;                           // Removes itself from the element and event lists
     if( CircuitWidget::self() ) CircuitWidget::self()->updateNoise();
+}
+
+bool Simulator::noiseActiveDuring( uint64_t t0, uint64_t t1 )
+{
+    uint64_t from = m_noiseFrom, to = m_noiseTo;
+    if( m_noiseEl ){ from = m_noiseEl->firstActive(); to = m_noiseEl->activeUntil(); }
+    return from && from <= t1 && to >= t0;
 }
 
 QString Simulator::siStr( double v, QString unit )

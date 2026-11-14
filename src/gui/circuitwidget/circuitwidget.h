@@ -10,6 +10,7 @@
 #include <QToolBar>
 #include <QComboBox>
 #include <QVBoxLayout>
+#include <QGridLayout>
 
 #include "circuitview.h"
 #include "outpaneltext.h"
@@ -38,6 +39,7 @@ class CircuitWidget : public QWidget
 
         void setError( QString error );
         void setMsg(QString msg , int type);
+        void toggleNoise( bool on );   // Toolbar noise button: restarts a running simulation
         void updateNoise();     // Toolbar NOISE label: shown while transient noise is on
 
         void syncTimebase( uint64_t psPerSec );   // Show the simulation speed in the toolbar
@@ -106,10 +108,17 @@ class CircuitWidget : public QWidget
         QCheckBox* m_verboseBox = nullptr;
  static bool m_verboseLog;
         
-        QToolBar m_circToolBar;
+        QToolBar m_circToolBar;      // File, edit, zoom
+        QToolBar m_simToolBar;       // Speed, run, views, messages, time, info: beside the first, or below it
+        QWidget*     m_toolRow  = nullptr;
+        QGridLayout* m_toolGrid = nullptr;
+        int  m_toolRows = 0;
+        void layoutToolBars();       // One row when both fit, else two
+        bool eventFilter( QObject* obj, QEvent* ev ) override;
 
         QLabel* m_msgLabel;
-        QLabel* m_noiseLabel = nullptr;
+        QLabel* m_noiseLabel = nullptr;   // Text of the NOISE badge (state, scale, window)
+        QWidget* m_noiseBox = nullptr;    // The badge: white noise icon + m_noiseLabel on orange, as high as the status label
         QAction* m_noiseAct = nullptr;
         InfoWidget* m_infoWidget;
         DescriptionWidget* m_descWidget;
@@ -135,6 +144,7 @@ class CircuitWidget : public QWidget
         QAction* capChargeAct;
         QAction* partStatusAct;
         QAction* instrumentsAct;
+        QAction* noiseOnAct = nullptr;
         QAction* exportAct;
         class SpeedBox* m_timebase = nullptr;   // Simulated time per real second
         QAction* settAppAct;
