@@ -124,6 +124,11 @@ namespace Cli
     QString  timeStr( uint64_t ps );
     double   parseNum( QString v, QString what );
 
+    // Transient noise (docs/NOISE_SPEC.md): "off", or the settings, the seed in use and the state
+    QJsonValue noiseJson();
+    // Was noise active at some time in [t0, t1] (ps)? Measurement replies then carry noiseJson()
+    bool noiseDuring( uint64_t t0, uint64_t t1 );
+
     // Set target speed (picoseconds simulated per real second), keeping steps
     // per second and step size consistent as the settings dialog does (under 1e9
     // steps per second). keepStep: the step was asked for explicitly, so the speed

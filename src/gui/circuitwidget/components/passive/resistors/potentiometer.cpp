@@ -59,6 +59,8 @@ Potentiometer::Potentiometer( QString type, QString id )
     m_pin[0]->setLength( 5 );
     m_pin[2]->setLength( 5 );
 
+    m_resA.setThermalNoise( true );   // Transient noise: both halves are physical resistors
+    m_resB.setThermalNoise( true );
     m_resA.setEpin( 0, &m_pinA );
     m_resA.setEpin( 1, &m_ePinA );
     m_resB.setEpin( 1, &m_pinB );

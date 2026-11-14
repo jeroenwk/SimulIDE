@@ -15,6 +15,12 @@ class eResistor : public eElement
         ~eResistor();
 
         virtual void stamp() override;
+        virtual void noiseSources( QList<NoiseSrc>& list ) override;
+
+        // A physical resistor (thermal noise 4kT/R): set by the resistor-type parts, not by
+        // internal resistances of meters, sources, motors... (docs/NOISE_SPEC.md §5.3)
+        void setThermalNoise( bool n ) { m_thermalNoise = n; }
+        bool thermalNoise() { return m_thermalNoise; }
 
         virtual double res() { return 1/m_admit; }
         virtual void setRes( double resist );
@@ -32,6 +38,7 @@ class eResistor : public eElement
 
         double m_admit;
         double m_current;
+        bool   m_thermalNoise = false;
 };
 
 #endif

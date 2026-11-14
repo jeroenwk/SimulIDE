@@ -6,13 +6,17 @@
 #include <QtMath>
 
 #include "e-led.h"
+#include "noise.h"
 #include "e-pin.h"
 #include "e-node.h"
 #include "simulator.h"
 
 eLed::eLed( QString id ) 
     : eResistor( id )
+    , m_cj( id+"-Cj" )
 {
+    m_cj.setPins( [this](){ return std::make_pair( m_ePin[0], m_ePin[1] ); } );
+    m_cj.setNoiseDefault( 20e-12 );
     m_imped = 0.6;
     m_threshold  = 2.4;
     m_maxCurrent = 0.03;
@@ -129,4 +133,14 @@ void eLed::setRes( double resist )
     voltChanged();
 
     Simulator::self()->resumeSim();
+}
+
+void eLed::noiseSources( QList<NoiseSrc>& list )   // Shot noise of the junction current
+{
+    if( !m_ePin[0] || !m_ePin[1] ) return;
+    NoiseSrc s;
+    s.a = m_ePin[0]; s.b = m_ePin[1];
+    s.kind = NoiseSrc::Shot;
+    s.psd = [this](){ return Noise::twoQ*qFabs( m_current ); };
+    list.append( s );
 }

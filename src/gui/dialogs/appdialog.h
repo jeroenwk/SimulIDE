@@ -88,6 +88,20 @@ class AppDialog : public QDialog, private Ui::AppDialog
         void updtReactStep();
 
         bool m_blocked;
+
+        // Transient noise group on the Simulation page (docs/NOISE.md)
+        void buildNoise();
+        void syncNoise();
+        void applyNoise();
+        class QGroupBox* m_noiseBox = nullptr;
+        class QLineEdit* m_noiseBW = nullptr;
+        class QDoubleSpinBox* m_noiseScale = nullptr;
+        class QLineEdit* m_noiseSeed = nullptr;
+        class QComboBox* m_noiseWindow = nullptr;
+        class QLineEdit* m_noiseStart = nullptr;
+        class QLineEdit* m_noiseStop = nullptr;
+        class QLineEdit* m_noiseOff = nullptr;
+        class QLabel*    m_noiseErr = nullptr;
         bool m_showHelp;
 
         double m_speedP;

@@ -113,6 +113,7 @@ void ResistorDip::createResistors( int c )
         QString reid = m_id;
         reid.append(QString("-resistor"+QString::number(i)));
         m_resistor[i] = new eResistor( reid );
+        m_resistor[i]->setThermalNoise( true );   // Transient noise
         m_resistor[i]->setRes( m_resist );
 
         m_pin[index] = new Pin( 180, QPoint(-16,-32+8+i*8 ), reid+"-ePin"+QString::number(index), 0, this);

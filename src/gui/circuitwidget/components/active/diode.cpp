@@ -90,6 +90,15 @@ Diode::Diode( QString type, QString id, bool zener )
         new DoubProp<Diode>("EmCoef", tr("Emission Coefficient"),""
                            , this, &Diode::emCoef, &Diode::setEmCoef )
     },0} );
+
+    addPropGroup( { tr("Capacitance"), {
+        new DoubProp<Diode>("Cj0", tr("Junction Capacitance at 0 V"), "pF"
+                          , this, &Diode::cj0, &Diode::setCj0 ),
+        new DoubProp<Diode>("Vj", tr("Junction Potential"), "V"
+                          , this, &Diode::vj, &Diode::setVj ),
+        new DoubProp<Diode>("Mj", tr("Grading Coefficient"), ""
+                          , this, &Diode::mj, &Diode::setMj )
+    },0} );
 }
 Diode::~Diode()
 {

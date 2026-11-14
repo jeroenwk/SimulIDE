@@ -9,6 +9,7 @@
 #include <QHash>
 
 #include "e-resistor.h"
+#include "e-junctioncap.h"
 
 struct diodeData_t
 {
@@ -28,6 +29,7 @@ class eDiode : public eResistor
 
         virtual void stamp() override;
         virtual void voltChanged() override;
+        virtual void noiseSources( QList<NoiseSrc>& list ) override;
 
         double threshold() { return m_vCriti; }
         void   setThreshold( double vCrit );
@@ -44,6 +46,14 @@ class eDiode : public eResistor
         double maxCurrent() { return m_maxCur; }
         void   setMaxCurrent( double cur ) { m_maxCur = cur; }
 
+        // Junction capacitance C(V) = Cj0/(1-V/Vj)^M (0 = none; typical 4 pF while noise is on)
+        double cj0() { return m_cj.cj0(); }
+        void setCj0( double v ) { m_cj.setCj0( v ); }
+        double vj() { return m_cj.vj(); }
+        void setVj( double v ) { m_cj.setVj( v ); }
+        double mj() { return m_cj.mj(); }
+        void setMj( double v ) { m_cj.setMj( v ); }
+
         QString model() { return m_model; }
         void setModel( QString model );
         void setModelData( diodeData_t data );
@@ -56,6 +66,8 @@ class eDiode : public eResistor
         void updateValues();
 
         bool m_converged;
+
+        eJunctionCap m_cj;
 
         double m_vt;
         double m_satCur;

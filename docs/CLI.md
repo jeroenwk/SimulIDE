@@ -352,6 +352,7 @@ Removing wires around a junction works as in the GUI:
 | `sim run --for <time>` | Run for an exact span of simulated time, then pause. Replies when done |
 | `sim status` | State, simulated time, target and actual speed |
 | `sim speed [percent]` | Target speed in % of real time |
+| `noise sources` | The transient noise sources of the running circuit: part, type, kind (thermal / shot / channel), nodes, spectral density `psd` (A²/Hz) and the `rms` current per update. See [NOISE.md](NOISE.md) |
 | `sim average --for <time> <pin\|comp> ...` | Run for a span, then pause, and give the time-weighted mean, RMS, min and max over every converged solver step: the voltage at a pin (`R1.lPin`), or for a two-pin part (`R1`, `C1`, `L1`) the voltage across it (pin 0 − pin 1) and the current into pin 0. Exact for switching waveforms; a mean of `scope data` samples is not, since they sit on a fixed time grid |
 
 ### Measuring
@@ -583,7 +584,7 @@ The groups follow the Settings dialog:
 |---|---|
 | app | `language`, `fontScale`, `fontName`, `userPath` |
 | circuit | `drawGrid`, `showScroll`, `animate`, `fps`, `autoBackup` |
-| simulation | `speed`, `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps` |
+| simulation | `speed`, `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps`, `noise`, `noiseBW`, `noiseScale`, `noiseSeed`, `noiseStart`, `noiseStop`, `noiseOff` |
 
 - Simulation settings are saved with the circuit.
 - `logVerbose` (Messages pane: Log: Verbose) also shows debug logs, the lines
@@ -597,6 +598,11 @@ The groups follow the Settings dialog:
   speed and changes the step instead, also with a `note`.
 - `language` and `userPath` are saved to the user settings immediately.
 - Font changes take effect after a restart.
+- `noise*`: transient noise of the parts, off by default ([NOISE.md](NOISE.md)). They
+  apply at the next start (a change while running gets a `note`). `sim status` always
+  has a `noise` field: `"off"`, or the settings, the `state` (armed / on / ended /
+  stopped), `active` and the `seed` in use; `sim average` adds the same object when
+  noise was active during its span.
 
 ### Reactive accuracy (inductors, capacitors and transformers)
 

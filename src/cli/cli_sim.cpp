@@ -7,6 +7,9 @@
 #include "circuitwidget.h"
 #include "simulator.h"
 #include "updatable.h"
+#include "noise.h"
+
+#include <QJsonArray>
 
 namespace
 {
@@ -35,6 +38,7 @@ QJsonObject simStatus()
         {"speed",   100.0*(double)sim->psPerSec()/1e12 } };   // Target speed, % of real time
     if( sim->isRunning() && !sim->isPaused() )
         o["realSpeed"] = qRound( sim->realSpeed() )/100.0;     // Achieved speed, % of real time
+    o["noise"] = Cli::noiseJson();
     return o;
 }
 
@@ -64,8 +68,64 @@ void startOrResume()
 }
 }
 
+QJsonValue Cli::noiseJson()
+{
+    Simulator* sim = Simulator::self();
+    const NoiseSettings& n = sim->noise();
+    if( !n.on ) return "off";
+    eNoise* e = sim->noiseEngine();
+    QString state = "stopped";
+    if( e ){
+        eNoise::State s = e->state();
+        state = ( s == eNoise::Active ) ? "on" : ( s == eNoise::Ended ) ? "ended" : "armed";
+    }
+    QJsonObject o{
+        {"on", true },
+        {"active", state == "on" },
+        {"state", state },
+        {"bw", Simulator::siStr( n.bw, "Hz" ).remove(' ') },
+        {"scale", n.scale },
+        {"seed", QString::number( n.seed ? n.seed : sim->noiseSeedUsed() ) },
+        {"seedGiven", n.seed != 0 },
+        {"start", Cli::timeStr( n.start ) },
+        {"stop", n.stop ? Cli::timeStr( n.stop ) : QString("end") },
+        {"off", QJsonArray::fromStringList( n.off ) },
+        {"summary", sim->noiseBadge() } };
+    if( e ){
+        o["sources"] = e->sources();
+        if( !e->unmatched().isEmpty() ) o["unmatched"] = QJsonArray::fromStringList( e->unmatched() );
+    }
+    return o;
+}
+
+bool Cli::noiseDuring( uint64_t t0, uint64_t t1 )
+{
+    Simulator* sim = Simulator::self();
+    eNoise* e = sim->noiseEngine();
+    if( !e || !e->firstActive() ) return false;
+    uint64_t from = e->firstActive();
+    uint64_t to = ( e->state() == eNoise::Ended ) ? sim->noise().stop : sim->circTime();
+    return from <= t1 && to >= t0;
+}
+
 void CliApi::registerSim()
 {
+    add("noise sources", "noise sources", "The transient noise sources of the running circuit: part, kind, nodes, "
+        "spectral density S (A²/Hz) and rms current of each.",
+        []( CliCtx& ) -> QJsonValue
+    {
+        Simulator* sim = Simulator::self();
+        if( !sim->noise().on ) throw CliError("noise is off (settings set noise=on, then sim start)");
+        eNoise* e = sim->noiseEngine();
+        if( !e ) throw CliError("noise is on but the simulation is not running (sim start)");
+        QJsonArray rows;
+        for( const eNoise::SrcInfo& s : e->info() )
+            rows.append( QJsonObject{ {"part", s.part}, {"type", s.type}, {"kind", s.kind},
+                                      {"nodeA", s.nodeA}, {"nodeB", s.nodeB},
+                                      {"psd", s.psd}, {"rms", s.rms} } );
+        return QJsonObject{ {"noise", Cli::noiseJson()}, {"sources", rows} };
+    });
+
     add("sim status", "sim status", "Simulation state, simulated time and speed.",
         []( CliCtx& ) -> QJsonValue { return simStatus(); });
 

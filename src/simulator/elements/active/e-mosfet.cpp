@@ -7,13 +7,22 @@
 #include <QDebug>
 
 #include "e-mosfet.h"
+#include "noise.h"
 #include "simulator.h"
 #include "e-pin.h"
 #include "e-node.h"
 
 eMosfet::eMosfet( QString id )
        : eResistor( id )
+       , m_cgs( id+"-Cgs" )
+       , m_cgd( id+"-Cgd" )
 {
+    m_cgs.setPins( [this](){ return std::make_pair( m_ePin[2], m_ePin[1] ); } );
+    m_cgd.setPins( [this](){ return std::make_pair( m_ePin[2], m_ePin[0] ); } );
+    m_cgs.setMj( 0 );   // Oxide capacitance: constant
+    m_cgd.setMj( 0 );
+    m_cgs.setNoiseDefault( 20e-12 );
+    m_cgd.setNoiseDefault( 5e-12 );
     m_Pchannel  = false;
     m_depletion = false;
     
@@ -99,6 +108,22 @@ void eMosfet::voltChanged()
     m_lastCurrent = current;
     m_ePin[0]->stampCurrent( current );
     m_ePin[1]->stampCurrent(-current );
+}
+
+void eMosfet::noiseSources( QList<NoiseSrc>& list )   // Channel thermal noise 4kT·(2/3)·gm
+{
+    if( !m_ePin[0] || !m_ePin[1] ) return;
+    NoiseSrc s;
+    s.a = m_ePin[0]; s.b = m_ePin[1];
+    s.kind = NoiseSrc::Channel;
+    s.psd = [this]()
+    {
+        if( m_gateV <= 0 || m_kRDSon <= 0 ) return 0.0;      // Cut off
+        double vds = qFabs( m_ePin[0]->getVoltage()-m_ePin[1]->getVoltage() );
+        double gm = qMin( vds, m_gateV )*( 1+vds/100 )/m_kRDSon; // d(DScurrent)/d(gateV) of the model
+        return Noise::fourKT*2.0/3.0*gm;
+    };
+    list.append( s );
 }
 
 void eMosfet::setRDSon( double rdson )

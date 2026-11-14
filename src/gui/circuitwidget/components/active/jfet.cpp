@@ -74,6 +74,17 @@ Jfet::Jfet( QString type, QString id )
         new DoubProp<Jfet>("EmCoef", tr("Gate Emission Coefficient"),""
                           , this, &Jfet::emCoef, &Jfet::setEmCoef ),
     },0} );
+
+    addPropGroup( { tr("Capacitance"), {
+        new DoubProp<Jfet>("Cgs", tr("Gate-Source Capacitance at 0 V"), "pF"
+                          , this, &Jfet::cgs, &Jfet::setCgs ),
+        new DoubProp<Jfet>("Cgd", tr("Gate-Drain Capacitance at 0 V"), "pF"
+                          , this, &Jfet::cgd, &Jfet::setCgd ),
+        new DoubProp<Jfet>("Pb", tr("Gate Junction Potential"), "V"
+                          , this, &Jfet::pb, &Jfet::setPb ),
+        new DoubProp<Jfet>("Mg", tr("Gate Grading Coefficient"), ""
+                          , this, &Jfet::mjg, &Jfet::setMjg )
+    },0} );
     enableStates( true );
 }
 Jfet::~Jfet(){}

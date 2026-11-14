@@ -20,6 +20,7 @@ eReactive::~eReactive(){}
 
 void eReactive::stamp()
 {
+    m_fineStep = 0;
     eResistor::stamp();
 
     if( m_ePin[0]->isConnected() && m_ePin[1]->isConnected() )
@@ -72,10 +73,37 @@ void eReactive::runEvent()
     else m_running = false;
 }
 
+uint64_t eReactive::baseStep()
+{
+    uint64_t step = m_reacStep ? m_reacStep : Simulator::self()->reactStep(); // Time in ps
+    if( m_fineStep && m_fineStep < step ) step = m_fineStep;
+    return step;
+}
+
+void eReactive::setFineStep( uint64_t ps )
+{
+    if( !m_ePin[0]->isConnected() || !m_ePin[1]->isConnected() ) return;
+    m_fineStep = ps;
+    uint64_t step = baseStep();
+    if( step == m_timeStep ) return;
+
+    double oldAdmit = m_admit;
+    m_timeStep = step;
+    m_tStep = (double)m_timeStep/1e12;
+    eResistor::setRes( updtRes() );
+    if( oldAdmit > 0 ) rescaleSource( m_admit/oldAdmit );
+    m_ePin[0]->stampCurrent( m_curSource );
+    m_ePin[1]->stampCurrent(-m_curSource );
+
+    if( m_running ){                       // Next sample at the new step
+        Simulator::self()->cancelEvents( this );
+        Simulator::self()->addEvent( m_timeStep, this );
+    }
+}
+
 void eReactive::updtReactStep()
 {
-    if( m_reacStep ) m_timeStep = m_reacStep;
-    else             m_timeStep = Simulator::self()->reactStep(); // Time in ps
+    m_timeStep = baseStep();
     m_tStep = (double)m_timeStep/1e12;         // Time in seconds
     eResistor::setRes( updtRes() );
 

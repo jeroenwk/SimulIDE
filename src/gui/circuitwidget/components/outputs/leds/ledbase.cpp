@@ -57,6 +57,15 @@ LedBase::LedBase( QString type, QString id )
         new DoubProp<LedBase>("Resistance", tr("Resistance"), "Ω"
                              , this, &LedBase::res, &LedBase::setRes ),
     }, 0} );
+
+    addPropGroup( { tr("Capacitance"), {
+        new DoubProp<LedBase>("Cj0", tr("Junction Capacitance at 0 V"), "pF"
+                          , this, &LedBase::cj0, &LedBase::setCj0 ),
+        new DoubProp<LedBase>("Vj", tr("Junction Potential"), "V"
+                          , this, &LedBase::vj, &LedBase::setVj ),
+        new DoubProp<LedBase>("Mj", tr("Grading Coefficient"), ""
+                          , this, &LedBase::mj, &LedBase::setMj )
+    },0} );
 }
 LedBase::~LedBase(){}
 

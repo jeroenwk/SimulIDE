@@ -6,6 +6,7 @@
 #include "e-resistor.h"
 #include "simulator.h"
 #include "e-pin.h"
+#include "noise.h"
 
 eResistor::eResistor( QString id )
          : eElement( id )
@@ -21,6 +22,16 @@ void eResistor::stamp()
     m_ePin[0]->setEnodeComp( m_ePin[1]->getEnode() );
     m_ePin[1]->setEnodeComp( m_ePin[0]->getEnode() );
     stampAdmit();
+}
+
+void eResistor::noiseSources( QList<NoiseSrc>& list )
+{
+    if( !m_thermalNoise || !m_ePin[0] || !m_ePin[1] ) return;
+    NoiseSrc s;
+    s.a = m_ePin[0]; s.b = m_ePin[1];
+    s.kind = NoiseSrc::Thermal;
+    s.psd = [this](){ return Noise::fourKT*qMin( m_admit, 1e3 ); };  // At least 1 mΩ
+    list.append( s );
 }
 
 void eResistor::stampAdmit()

@@ -1,6 +1,8 @@
 # Transient noise: specification
 
-Status: **draft, not implemented** (2026-11-14). Fork feature of `jeroenwk/SimulIDE`.
+Status: **implemented on `feature/transient-noise`** (2026-11-14): steps 1–5 and 7, and of step 6 the toolbar
+label, the Messages lines and the Settings dialog group (§14 lists what differs and what is left). Fork feature
+of `jeroenwk/SimulIDE`. User documentation: [NOISE.md](NOISE.md).
 
 The simulator gets a setting that adds the physical noise of the parts to a time
 simulation, the way Cadence Spectre ("transient noise") and SIMetrix ("real time
@@ -381,6 +383,54 @@ the parts themselves would use the PSD shape hook of §5.2.
 - The start-up preset of 1 ms is a guess too. A 1 Hz relaxation oscillator may need
   a longer window, or a scale above 1 to start sooner: nV-level noise needs about
   ln(1 V / 1 nV) ≈ 21 growth time constants to reach full swing.
+
+## 14. Implementation notes (2026-11-14)
+
+- **Done:** settings, header save/load, CLI rows, `sim status` / `sim run` / `sim average`
+  noise field, `noise sources`, eNoise with its own pins, per-source RNG streams,
+  thermal (resistor family), shot (diode, Zener, LED, BJT), channel (MOSFET, JFET),
+  noiseOff by label, uid and `type:`, unmatched entries reported, the window, the
+  toolbar label, the Messages start line and warnings, the Settings dialog group
+  (Simulation page, built in code: bandwidth, scale, seed, a start-up / whole run /
+  custom window, parts off). The reactStep warning is only
+  given when the circuit has capacitors, inductors or transformers.
+- **Changed from the plan:** the diode's shot noise uses the current at the solved
+  voltage, not the model's `m_current` (that is at the last linearisation point, up to
+  10 mV away: 4 % off in the test). The parts are found from the simulator's element
+  list; the owning part from the element id (a part's uid is the element id or its
+  prefix: `Potentiometer-3-resA`), so composite parts need no code.
+- **The start-up case (step 5):** in SimulIDE a symmetric *astable* multivibrator
+  already starts without noise (the solver order breaks the symmetry), so the test
+  uses a symmetric *bistable*: without noise it ends in the state the solver picks,
+  every time; with noise the seed decides (5 × Q1, 3 × Q2 over seeds 1..8). A
+  bistable with no capacitance in its loop (or 100 pF with `reactStep` 50 ns) stays at
+  its balance point **with noise too**: backward Euler is stable for growth rates
+  above about 2/`reactStep`, so it damps the unstable point. Noise only helps when the
+  loop's growth is slow enough for the step. This matters for `lim-osc` (#86–88).
+- **Left:** the oscilloscope NOISE tag (step 6);
+  the noise tag on `scope data`, `probe` and `meter` replies (step 7: only `sim
+  status`, `sim run` and `sim average` have it); the sweeps over the new attributes;
+  the speed measurements of step 8.
+
+## 15. Junction capacitance and the fine step (2026-11-14)
+
+Found with step 5: noise alone cannot start a loop without capacitance (no dynamics)
+or one faster than about 2/reactStep (backward Euler damps it). Added, as decided by
+the user (a part property, with a typical value while noise is on):
+
+- `eJunctionCap` (`src/simulator/elements/passive/e-junctioncap.*`): an `eReactive`
+  on its own pins across a junction, C(V) = Cj0/(1−V/Vj)^M below FC·Vj (FC 0.5),
+  linear above (SPICE). The admittance follows C(V) in 1 % steps. Off (no pins, no
+  stamps) while Cj0 is 0 and noise is off, so other circuits are unchanged.
+- Properties: diode / Zener / LED `Cj0 Vj Mj`; BJT `Cje Vje Mje Cjc Vjc Mjc`;
+  MOSFET `Cgs Cgd` (M = 0); JFET `Cgs Cgd Pb Mg`. Typical values with noise: diode
+  4 pF, LED 20 pF, BJT 4.5 / 3.6 pF, MOSFET 20 / 5 pF, JFET 3 / 3 pF.
+- Fine step: `eReactive::setFineStep()`; eNoise sets it to its hold time when the
+  window starts and back to 0 at its end. The capacitor's companion source (V·C/h)
+  is rescaled with the admittance; the inductor's (a current) is kept.
+- Checked: the led_driver D3A curve within 0.4 % (`test_junction_cap`); the purely
+  resistive bistable stays balanced without noise and flips at random with it
+  (`test_noise_bistable`); kT/C with reactStep left at 1 µs (`test_noise_ktc`).
 
 ## 13. Sources
 

@@ -123,9 +123,11 @@ class Averager : public eElement, public Updatable
                                                 {"min", num( c.minI )}, {"max", num( c.maxI )} };
                 list.append( o );
             }
-            return QJsonObject{ {"from", Cli::timeStr( m_start )}, {"to", Cli::timeStr( m_end )},
-                                {"span_ps", QString::number( m_end - m_start )},
-                                {"steps", (double)m_steps}, {"channels", list} };
+            QJsonObject r{ {"from", Cli::timeStr( m_start )}, {"to", Cli::timeStr( m_end )},
+                           {"span_ps", QString::number( m_end - m_start )},
+                           {"steps", (double)m_steps}, {"channels", list} };
+            if( Cli::noiseDuring( m_start, m_end ) ) r["noise"] = Cli::noiseJson();   // Noisy numbers say so
+            return r;
         }
 
     private:

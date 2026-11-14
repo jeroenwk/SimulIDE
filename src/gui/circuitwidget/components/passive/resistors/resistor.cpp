@@ -32,6 +32,7 @@ Resistor::Resistor( QString type, QString id )
 {
     m_ePin[0] = m_pin[0];
     m_ePin[1] = m_pin[1];
+    setThermalNoise( true );   // Transient noise: a physical resistor
 
     m_pin[0]->setLength( 5 );
     m_pin[1]->setLength( 5 );

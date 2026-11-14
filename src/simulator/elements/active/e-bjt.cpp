@@ -12,6 +12,7 @@
 #include "e-pin.h"
 #include "e-node.h"
 #include "simulator.h"
+#include "noise.h"
 
 #define COLL m_ePin[0]
 #define EMIT m_ePin[1]
@@ -21,7 +22,14 @@ eBJT::eBJT( QString id )
     : eElement( id )
     , m_BEjunction( id+"BEjunct")
     , m_BCjunction( id+"BCjunct")
+    , m_cje( id+"-Cje")
+    , m_cjc( id+"-Cjc")
 {
+    m_cje.setPins( [this](){ return m_PNP ? std::make_pair( EMIT, BASE ) : std::make_pair( BASE, EMIT ); } );
+    m_cjc.setPins( [this](){ return m_PNP ? std::make_pair( COLL, BASE ) : std::make_pair( BASE, COLL ); } );
+    m_cje.setNoiseDefault( 4.5e-12 );
+    m_cjc.setNoiseDefault( 3.6e-12 );
+
     m_ePin.resize(3);
 
     m_PNP = false;
@@ -165,6 +173,21 @@ void eBJT::voltChanged()
     BASE->stampCurrent(-m_baseCurr - (Gec+Gcc)*voltBC - (Gee+Gce)*voltBE );
     COLL->stampCurrent(-ic + Gce*voltBE + Gcc*voltBC );
     EMIT->stampCurrent(-ie + Gee*voltBE + Gec*voltBC );
+}
+
+void eBJT::noiseSources( QList<NoiseSrc>& list )   // Shot noise of the collector and base currents
+{
+    if( !COLL || !EMIT || !BASE ) return;
+    NoiseSrc c;
+    c.a = COLL; c.b = EMIT;
+    c.kind = NoiseSrc::Shot;
+    c.psd = [this](){ double ic = COLL->trueCurrent(); return qIsNaN( ic ) ? 0 : Noise::twoQ*qFabs( ic ); };
+    list.append( c );
+    NoiseSrc b;
+    b.a = BASE; b.b = EMIT;
+    b.kind = NoiseSrc::Shot;
+    b.psd = [this](){ return Noise::twoQ*qFabs( m_baseCurr ); };
+    list.append( b );
 }
 
 double eBJT::limitStep( double vnew, double vold )

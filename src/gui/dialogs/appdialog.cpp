@@ -17,6 +17,10 @@
 #include <QLabel>
 #include <QComboBox>
 #include <QSignalBlocker>
+#include <QGroupBox>
+#include <QFormLayout>
+#include <QLineEdit>
+#include <QDoubleSpinBox>
 #include "theme.h"
 #include "appdialog.h"
 #include "mainwindow.h"
@@ -102,6 +106,7 @@ AppDialog::AppDialog( QWidget* parent )
     nlStepsBox->setValue( Simulator::self()->maxNlSteps() );
     slopeStepsBox->setValue( Simulator::self()->slopeSteps() );
     m_blocked = false;
+    buildNoise();
 
     updtSpeedPer();
 
@@ -285,7 +290,106 @@ void AppDialog::showEvent( QShowEvent* e )
     QSignalBlocker b2( animate );
     animate->setChecked( Circuit::self()->animate() );
     refreshColors();
+    syncNoise();
     QDialog::showEvent( e );
+}
+
+void AppDialog::buildNoise()
+{
+    m_noiseBox = new QGroupBox( tr("Noise (thermal and shot noise of the parts)"), simTab );
+    m_noiseBox->setCheckable( true );
+    m_noiseBox->setToolTip( tr("Adds the physical noise of resistors, diodes and transistors. "
+                               "Shown in the toolbar while on. Applies at the next start.") );
+    QFormLayout* f = new QFormLayout( m_noiseBox );
+    m_noiseBW = new QLineEdit( m_noiseBox );
+    m_noiseBW->setToolTip( tr("Noise bandwidth, e.g. 10MHz: every source draws a new value every 1/(2·bandwidth). "
+                              "Keep the reactive step at or below that.") );
+    f->addRow( tr("Bandwidth"), m_noiseBW );
+    m_noiseScale = new QDoubleSpinBox( m_noiseBox );
+    m_noiseScale->setDecimals( 3 );
+    m_noiseScale->setRange( 0, 1e9 );
+    m_noiseScale->setToolTip( tr("Multiplies every noise current: 1 is the physical level") );
+    f->addRow( tr("Scale"), m_noiseScale );
+    m_noiseSeed = new QLineEdit( m_noiseBox );
+    m_noiseSeed->setToolTip( tr("0: a new random seed at every start (shown in the toolbar). Any other number repeats the same noise.") );
+    f->addRow( tr("Seed"), m_noiseSeed );
+    m_noiseWindow = new QComboBox( m_noiseBox );
+    m_noiseWindow->addItems({ tr("Start-up only (0 to 1 ms)"), tr("Whole run"), tr("Custom") });
+    f->addRow( tr("When"), m_noiseWindow );
+    m_noiseStart = new QLineEdit( m_noiseBox );
+    f->addRow( tr("From"), m_noiseStart );
+    m_noiseStop = new QLineEdit( m_noiseBox );
+    m_noiseStop->setToolTip( tr("0: until the end of the run") );
+    f->addRow( tr("Until"), m_noiseStop );
+    m_noiseOff = new QLineEdit( m_noiseBox );
+    m_noiseOff->setToolTip( tr("Parts without noise: labels (R3, U1-R2) or types (type:Resistor), comma-separated") );
+    f->addRow( tr("Parts off"), m_noiseOff );
+    m_noiseErr = new QLabel( m_noiseBox );
+    m_noiseErr->setStyleSheet("QLabel { color: #c00000; }");
+    f->addRow( "", m_noiseErr );
+    QFrame* line = new QFrame( simTab );   // Same separation as the other sections
+    line->setFrameShape( QFrame::HLine );
+    line->setFrameShadow( QFrame::Sunken );
+    verticalLayout_2->insertSpacing( verticalLayout_2->count()-1, 9 );
+    verticalLayout_2->insertWidget( verticalLayout_2->count()-1, line );
+    verticalLayout_2->insertSpacing( verticalLayout_2->count()-1, 9 );
+    verticalLayout_2->insertWidget( verticalLayout_2->count()-1, m_noiseBox );   // Above the bottom spacer
+
+    connect( m_noiseBox, &QGroupBox::toggled, this, [this](bool){ applyNoise(); } );
+    for( QLineEdit* e : { m_noiseBW, m_noiseSeed, m_noiseStart, m_noiseStop, m_noiseOff } )
+        connect( e, &QLineEdit::editingFinished, this, [this](){ applyNoise(); } );
+    connect( m_noiseScale, &QDoubleSpinBox::editingFinished, this, [this](){ applyNoise(); } );
+    connect( m_noiseWindow, QOverload<int>::of( &QComboBox::activated ), this, [this]( int i )
+    {
+        if( i == 0 ){ m_noiseStart->setText("0 s"); m_noiseStop->setText("1 ms"); }
+        if( i == 1 ){ m_noiseStart->setText("0 s"); m_noiseStop->setText("0 s"); }
+        applyNoise();
+    });
+    syncNoise();
+}
+
+void AppDialog::syncNoise()
+{
+    if( !m_noiseBox ) return;
+    const NoiseSettings& n = Simulator::self()->noise();
+    QSignalBlocker b( m_noiseBox );
+    m_noiseBox->setChecked( n.on );
+    m_noiseBW->setText( Simulator::siStr( n.bw, "Hz" ) );
+    m_noiseScale->setValue( n.scale );
+    m_noiseSeed->setText( QString::number( n.seed ) );
+    m_noiseStart->setText( Simulator::siStr( n.start*1e-12, "s" ) );
+    m_noiseStop->setText( Simulator::siStr( n.stop*1e-12, "s" ) );
+    m_noiseOff->setText( n.off.join(", ") );
+    int w = 2;
+    if( n.start == 0 && n.stop == 1000000000ULL ) w = 0;
+    else if( n.start == 0 && n.stop == 0 ) w = 1;
+    m_noiseWindow->setCurrentIndex( w );
+    m_noiseErr->clear();
+}
+
+void AppDialog::applyNoise()
+{
+    NoiseSettings n = Simulator::self()->noise();
+    QStringList err;
+    bool ok = false;
+    n.on = m_noiseBox->isChecked();
+    double bw = Simulator::parseSi( m_noiseBW->text(), "Hz", &ok );
+    if( ok && bw > 0 ) n.bw = bw; else err << tr("bandwidth");
+    n.scale = m_noiseScale->value();
+    qulonglong seed = m_noiseSeed->text().trimmed().toULongLong( &ok );
+    if( ok ) n.seed = seed; else err << tr("seed");
+    double t = Simulator::parseSi( m_noiseStart->text(), "s", &ok );
+    if( ok && t >= 0 ) n.start = (uint64_t)llround( t*1e12 ); else err << tr("from");
+    t = Simulator::parseSi( m_noiseStop->text(), "s", &ok );
+    if( ok && t >= 0 ) n.stop = (uint64_t)llround( t*1e12 ); else err << tr("until");
+    n.off.clear();
+    for( QString e : m_noiseOff->text().split(",", QString::SkipEmptyParts ) )
+        if( !e.trimmed().isEmpty() ) n.off.append( e.trimmed() );
+    Simulator::self()->setNoise( n );
+    Circuit::self()->setChanged();
+    CircuitWidget::self()->updateNoise();
+    m_noiseErr->setText( err.isEmpty() ? "" : tr("Not a valid value: ")+err.join(", ") );
+    if( err.isEmpty() ) syncNoise();   // Show the values as understood (units, presets)
 }
 
 void AppDialog::updateColorButtons()

@@ -60,6 +60,13 @@ Mosfet::Mosfet( QString type, QString id )
                             , this, &Mosfet::threshold, &Mosfet::setThreshold ),
         showStateProp()
     },0} );
+
+    addPropGroup( { tr("Capacitance"), {
+        new DoubProp<Mosfet>("Cgs", tr("Gate-Source Capacitance"), "pF"
+                          , this, &Mosfet::cgs, &Mosfet::setCgs ),
+        new DoubProp<Mosfet>("Cgd", tr("Gate-Drain Capacitance"), "pF"
+                          , this, &Mosfet::cgd, &Mosfet::setCgd )
+    },0} );
     enableStates( true );
 }
 Mosfet::~Mosfet(){}

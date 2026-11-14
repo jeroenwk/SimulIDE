@@ -8,8 +8,10 @@
 
 #include <vector>
 #include <QString>
+#include <QList>
 
 class ePin;
+struct NoiseSrc;
 
 class eElement
 {
@@ -27,6 +29,10 @@ class eElement
         // asked for it during that step (Simulator::addToSettled, e.g. from voltChanged()). Part
         // states are taken here: the values inside the non-linear iterations are not final
         virtual void stepSettled(){;}
+
+        // Transient noise (docs/NOISE_SPEC.md): append the noise current sources of this element,
+        // each with its spectral density at the operating point of the moment. None by default
+        virtual void noiseSources( QList<NoiseSrc>& ){;}
 
         virtual void setNumEpins( int n );
 

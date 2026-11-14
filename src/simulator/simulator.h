@@ -8,6 +8,7 @@
 
 #include "e-node.h"
 #include "e-element.h"
+#include "noise.h"
 
 enum simState_t{
     SIM_STOPPED=0,
@@ -115,6 +116,18 @@ class Simulator : public QObject
         void addToUpdateList( Updatable* el );
         void remFromUpdateList( Updatable* el );
 
+        const QList<eElement*>& elementList() { return m_elementList; }
+
+        // Transient noise (docs/NOISE_SPEC.md): settings saved with the circuit, used at the next start
+        NoiseSettings& noise() { return m_noise; }
+        void setNoise( const NoiseSettings& s ) { m_noise = s; }
+        eNoise* noiseEngine() { return m_noiseEl; }   // Null when noise is off or stopped
+        uint64_t noiseSeedUsed() { return m_noiseSeed; } // 0 before the first start with noise
+        QString noiseBadge( bool brief=false );        // Toolbar text, empty when noise is off
+        QString noiseSummary();                        // "×1 · 10 MHz · seed 7 · 0–1 ms"
+ static QString siStr( double v, QString unit );       // 1e7,"Hz" -> "10 MHz"
+ static double  parseSi( QString v, QString unit, bool* ok ); // "10MHz","Hz" -> 1e7; "1ms","s" -> 1e-3
+
         void addToSocketList( Socket* el );
         void remFromSocketList( Socket* el );
 
@@ -203,6 +216,12 @@ class Simulator : public QObject
         double   m_simLoad;
 
         QElapsedTimer m_RefTimer;
+
+        NoiseSettings m_noise;
+        eNoise*  m_noiseEl = nullptr;
+        uint64_t m_noiseSeed = 0;
+        void startNoise();
+        void stopNoise();
 };
  #endif
 

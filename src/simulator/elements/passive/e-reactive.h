@@ -24,8 +24,18 @@ class eReactive : public eResistor
         double initCurr() { return -m_InitCurr; }
         void setInitCurr( double c ) { m_InitCurr = -c; }
 
+        // Transient noise window: integrate with this finer step (ps, 0 = the normal one).
+        // Simulation thread
+        void setFineStep( uint64_t ps );
+
     protected:
         void updtReactStep();
+        uint64_t baseStep();
+
+        // The step changed: the admittance went from a to a*r. A source that is V·G
+        // (capacitor) scales with it; one that holds a current (inductor) does not
+        virtual void rescaleSource( double r ){ (void)r; }
+        uint64_t m_fineStep = 0;
 
         virtual void voltSample(){;}   // m_volt has a new value (simulation thread)
 
