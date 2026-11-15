@@ -33,10 +33,12 @@ Voltimeter::~Voltimeter(){}
 
 void Voltimeter::updateStep()
 {
-    double volt = m_ePin[0]->getVoltage()-m_ePin[1]->getVoltage();
+    double volt = measured();
     
     if( volt != m_dispValue )
     {
         m_dispValue = volt;
         Meter::updateStep();
 }   }
+
+double Voltimeter::instant() { return m_ePin[0]->getVoltage()-m_ePin[1]->getVoltage(); }

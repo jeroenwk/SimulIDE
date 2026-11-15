@@ -16,6 +16,10 @@
 #include "utils.h"
 
 #include "boolprop.h"
+#include "doubleprop.h"
+#include "stringprop.h"
+
+#define tr(str) simulideTr("Meter",str)
 
 Meter::Meter( QString type, QString id )
      : Component( type, id )
@@ -48,9 +52,131 @@ Meter::Meter( QString type, QString id )
     m_display.setPos( -22, -22 );
     m_display.setVisible( true );
 
+    m_reading    = rInstant;
+    m_readingStr = "Instant";
+    m_avgTime    = 0.1;
+    m_block      = 100000000000ULL;   // 100 ms
+    m_dispValue  = 0;
+    initialize();
+
+    addPropGroup( { tr("Main"), {
+        new StrProp <Meter>("Reading", tr("Reading"), "Instant,Mean,RMS;"+tr("Instant")+","+tr("Mean")+","+tr("RMS")
+                           , this, &Meter::reading, &Meter::setReading, 0, "enum" ),
+        new DoubProp<Meter>("Avg_Time", tr("Mean/RMS over"), "ms"
+                           , this, &Meter::avgTime, &Meter::setAvgTime ),
+    }, 0 } );
+
     Simulator::self()->addToUpdateList( this );
 }
 Meter::~Meter(){}
+
+void Meter::setReading( QString r )
+{
+    QString l = r.trimmed().toLower();
+    if     ( l == "mean" ) { m_reading = rMean; m_readingStr = "Mean"; }
+    else if( l == "rms"  ) { m_reading = rRms;  m_readingStr = "RMS";  }
+    else                   { m_reading = rInstant; m_readingStr = "Instant"; }
+
+    Simulator* sim = Simulator::self();
+    if( !sim->isRunning() || m_reading == rInstant ) return;   // Started from stamp()
+    sim->pauseSim();                                           // Changed during a run: from now
+    m_blockStart = m_lastT = sim->circTime();
+    m_sum = m_sum2 = 0;
+    m_haveResult = false;
+    m_held = instant();
+    m_ePin[0]->changeCallBack( this );
+    m_ePin[1]->changeCallBack( this );
+    sim->resumeSim();
+}
+
+void Meter::setAvgTime( double t )
+{
+    if( t <= 0 ) return;
+    m_avgTime = t;
+    m_block = (uint64_t)( t*1e12 + 0.5 );
+    if( m_block == 0 ) m_block = 1;
+}
+
+void Meter::initialize()
+{
+    m_crashed = false;
+    m_blockStart = m_lastT = 0;
+    m_held = m_sum = m_sum2 = m_result = 0;
+    m_haveResult = false;
+}
+
+void Meter::stamp()
+{
+    eResistor::stamp();
+    if( m_reading == rInstant ) return;
+    uint64_t now = Simulator::self()->circTime();     // (a run resumed after a pause: from here)
+    m_blockStart = m_lastT = now;
+    m_sum = m_sum2 = 0;
+    m_held = instant();
+    m_ePin[0]->changeCallBack( this );
+    m_ePin[1]->changeCallBack( this );
+}
+
+void Meter::voltChanged() { Simulator::self()->addToSettled( this ); }
+
+void Meter::stepSettled()                  // Once per converged step that changed a pin
+{
+    if( m_reading == rInstant ) return;
+    integrateTo( Simulator::self()->circTime() );
+    m_held = instant();
+}
+
+double Meter::blockValue( double sum, double sum2, double span )
+{
+    if( span <= 0 ) return m_reading == rRms ? qFabs( m_held ) : m_held;
+    return m_reading == rRms ? qSqrt( qMax( 0.0, sum2/span ) ) : sum/span;
+}
+
+void Meter::integrateTo( uint64_t t )
+{
+    if( t < m_lastT ) return;
+    uint64_t end = m_blockStart + m_block;
+    if( t >= end )
+    {
+        double dt = (double)( end - m_lastT );       // Close the block running now
+        m_result = blockValue( m_sum + m_held*dt, m_sum2 + m_held*m_held*dt, (double)m_block );
+        m_haveResult = true;
+        m_sum = m_sum2 = 0;
+        uint64_t whole = ( t - end )/m_block;         // Blocks without a change: the held value
+        if( whole ) m_result = blockValue( 0, 0, 0 );
+        m_blockStart = end + whole*m_block;
+        m_lastT = m_blockStart;
+    }
+    double dt = (double)( t - m_lastT );
+    m_sum  += m_held*dt;
+    m_sum2 += m_held*m_held*dt;
+    m_lastT = t;
+}
+
+double Meter::evalAt( uint64_t t )
+{
+    uint64_t end = m_blockStart + m_block;
+    if( t >= end + m_block ) return blockValue( 0, 0, 0 );     // A whole block of the held value
+    if( t >= end ){                                            // The running block has ended
+        double dt = (double)( end - m_lastT );
+        return blockValue( m_sum + m_held*dt, m_sum2 + m_held*m_held*dt, (double)m_block );
+    }
+    if( m_haveResult ) return m_result;
+    double dt = (double)( t - m_lastT );                       // Before the first block ends: so far
+    return blockValue( m_sum + m_held*dt, m_sum2 + m_held*m_held*dt, (double)( t - m_blockStart ) );
+}
+
+double Meter::measured()
+{
+    if( m_reading == rInstant || ( !Simulator::self()->isRunning() && !Simulator::self()->isPaused() ) )
+        return instant();
+    return evalAt( Simulator::self()->circTime() );
+}
+
+double Meter::value()
+{
+    return m_reading == rInstant ? m_dispValue : measured();
+}
 
 bool Meter::setPropStr( QString prop, QString val )
 {
@@ -80,7 +206,8 @@ void Meter::updateStep()
         m_display.setText( " ----" );
         m_crashed = true;
     }
-    else m_display.setText( sign+QString::number( value,'f', decimals ).left(5)+"\n"+mult+m_unit );
+    else m_display.setText( sign+QString::number( value,'f', decimals ).left(5)+"\n"+mult+m_unit
+                          + ( m_reading == rRms ? " rms" : m_reading == rMean ? " avg" : "" ) );
 
     m_outPin->setOutHighV( m_dispValue );
     m_outPin->setOutState( true );
