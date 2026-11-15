@@ -71,6 +71,8 @@ QJsonObject readComp( Component* comp )
     {
         o["value"] = num( m->value() );
         o["unit"]  = m->unit();
+        o["reading"] = m->reading();          // Instant, or Mean / RMS over Avg_Time
+        if( m->reading() != "Instant" ) o["over"] = Cli::timeStr( (uint64_t)( m->avgTime()*1e12 + 0.5 ) );
     }
     else if( Probe* p = dynamic_cast<Probe*>( comp ) )
     {

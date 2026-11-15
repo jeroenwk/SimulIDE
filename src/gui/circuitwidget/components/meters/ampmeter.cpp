@@ -33,10 +33,12 @@ Amperimeter::~Amperimeter(){}
 
 void Amperimeter::updateStep()
 {
-    double curr = current();
+    double curr = measured();
     
     if( curr != m_dispValue )
     {
         m_dispValue = curr;
         Meter::updateStep();
 }   }
+
+double Amperimeter::instant() { return current(); }

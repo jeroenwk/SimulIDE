@@ -20,6 +20,9 @@ class Voltimeter : public Meter
         static LibraryItem *libraryItem();
 
         virtual void updateStep() override;
+
+    protected:
+        virtual double instant() override;
 };
 
 #endif
