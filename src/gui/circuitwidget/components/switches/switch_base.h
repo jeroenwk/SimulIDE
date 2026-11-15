@@ -17,7 +17,16 @@ class SwitchBase : public MechContact
         SwitchBase( QString type, QString id );
         ~SwitchBase();
 
+        virtual void initialize() override;
         virtual void updateStep() override;
+        virtual void runEvent() override;
+
+        // Contact bounce: each change is a burst of 2*Bounces+1 changes within Bounce_Time
+        // (seconds; 0 = a clean change), ending in the new state
+        double bounceTime() { return m_bounceTime; }
+        void setBounceTime( double t ) { m_bounceTime = ( t > 0 ) ? t : 0; }
+        int  bounces() { return m_bounces; }
+        void setBounces( int n ) { m_bounces = ( n < 1 ) ? 1 : ( n > 100 ) ? 100 : n; }
 
         virtual void setAngle( double angle ) override;
         virtual void rotateAngle( double a ) override;
@@ -36,8 +45,18 @@ class SwitchBase : public MechContact
 
     protected:
         //virtual void setflip() override;
+        virtual void setSwitch( bool closed ) override;
 
         QString m_key;
+
+        double m_bounceTime;
+        int    m_bounces;
+        bool   m_target;     // State the burst ends in
+        int    m_bounceLeft; // Changes still to come in the burst (0 = none running)
+        int    m_bounceN;    // Changes made so far in the burst
+        bool   m_contact;    // State the contacts are in (m_closed: the one asked for)
+        bool   m_started;    // First frame of the run applies the contact cleanly
+        void   nextBounce();
         
         CustomButton* m_button;
         QGraphicsProxyWidget* m_proxy;

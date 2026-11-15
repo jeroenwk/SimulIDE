@@ -12,6 +12,7 @@
 
 #include "stringprop.h"
 #include "boolprop.h"
+#include "doubleprop.h"
 #include "intprop.h"
 
 #define tr(str) simulideTr("Push",str)
@@ -46,6 +47,12 @@ Push::Push( QString type, QString id )
 
         new StrProp <Push>("Key", tr("Key"), ""
                           , this, &Push::key, &Push::setKey ),
+
+        new DoubProp<Push>("Bounce_Time", tr("Bounce Time (0 = none)"), "ms"
+                        , this, &Push::bounceTime, &Push::setBounceTime ),
+
+        new IntProp <Push>("Bounces", tr("Bounces"), ""
+                        , this, &Push::bounces, &Push::setBounces, 0,"uint" ),
     }, 0} );
 }
 Push::~Push(){}

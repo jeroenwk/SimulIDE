@@ -43,6 +43,11 @@ eBJT::eBJT( QString id )
     m_satCur = 1e-13;
     m_vCrit = m_vt*qLn( m_vt/(qSqrt(2)*m_satCur) );
 
+    m_bvceo  = 0;
+    m_voltCE = 0;
+    m_bdCurr = 0;
+    setBvceo( 0 );
+
     m_BEjunction.setNumEpins( 2 );
     m_BE = m_BEjunction.getEpin( 0 );
     m_EB = m_BEjunction.getEpin( 1 );
@@ -61,6 +66,8 @@ void eBJT::initialize()
     m_voltBE = 0;
     m_voltBC = 0;
     m_baseCurr = 0;
+    m_voltCE = 0;
+    m_bdCurr = 0;
     BASE->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
     COLL->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
     EMIT->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
@@ -112,7 +119,8 @@ void eBJT::voltChanged()
     // the circuit settled on wrong currents and the exact readouts broke KCL (BH-057)
     if( m_changed ) m_changed = false;
     else if( qFabs(voltBC-m_voltBC) < .001
-          && qFabs(voltBE-m_voltBE) < .001 )
+          && qFabs(voltBE-m_voltBE) < .001
+          && ( m_bvceo == 0 || qFabs( pnp*(voltC-voltE)-m_voltCE ) < .001 ) )
     {
         // Converged within 1 mV: the stamps stay, but the reported terminal currents
         // must come from the converged voltages, not from the last iteration (BH-034:
@@ -123,9 +131,12 @@ void eBJT::voltChanged()
         double eBC = qExp( voltBC*pc );
         double ie2 = pnp*m_satCur*(-(eBE-1)/m_fgain + (eBC-1) );
         double ic2 = pnp*m_satCur*( (eBE-1) - (eBC-1)/m_rgain );
+        double ib2 = 0;
+        if( m_bvceo > 0 ) ib2 = pnp*breakdown( pnp*(voltC-voltE), nullptr );
+        m_bdCurr = ib2;
         BASE->setTrueCurrent( -(ie2+ic2) );
-        COLL->setTrueCurrent( ic2 );
-        EMIT->setTrueCurrent( ie2 );
+        COLL->setTrueCurrent( ic2+ib2 );
+        EMIT->setTrueCurrent( ie2-ib2 );
         m_step = 0; return;
     }
     Simulator::self()->notCorverged();
@@ -155,24 +166,47 @@ void eBJT::voltChanged()
     Gcc -= gmin;
     Gee -= gmin;
 
+    // Breakdown C-E: a conductance Gbd between C and E plus its Norton current
+    double Gbd = 0, vce0 = 0;
+    m_bdCurr = 0;
+    if( m_bvceo > 0 )
+    {
+        double vce = pnp*(voltC-voltE);
+        double v    = vce - m_bdOfset;
+        double vold = m_voltCE - m_bdOfset;
+        if( v > m_bdCrit && qFabs( v-vold ) > 2*m_vt )   // Same damping as a zener's breakdown
+        {
+            if( vold > 0 ){
+                double arg = 1+(v-vold)/m_vt;
+                v = ( arg > 0 ) ? vold + m_vt*qLn( arg ) : m_bdCrit;
+            }
+            else v = m_vt*qLn( v/m_vt );
+        }
+        vce = v + m_bdOfset;
+        m_voltCE = vce;
+        m_bdCurr = pnp*breakdown( vce, &Gbd );
+        vce0 = pnp*vce;                                    // Back to VC-VE
+    }
+
     // True terminal currents (into the device): the matrix stamps below are a
     // linearization whose terms nearly cancel, so they can't be used to recover
     // the currents (CurrentFlow, ePin::getCurrent)
     BASE->setTrueCurrent( m_baseCurr );
-    COLL->setTrueCurrent( ic );
-    EMIT->setTrueCurrent( ie );
+    COLL->setTrueCurrent( ic+m_bdCurr );
+    EMIT->setTrueCurrent( ie-m_bdCurr );
 
     // Admitance Matrix OK
     m_BC->stampAdmitance(-Gec-Gcc );
     m_CB->stampAdmitance(-Gce-Gcc );
     m_BE->stampAdmitance(-Gee-Gce );
     m_EB->stampAdmitance(-Gee-Gec );
-    m_CE->stampAdmitance( Gce );
-    m_EC->stampAdmitance( Gec );
+    m_CE->stampAdmitance( Gce+Gbd );
+    m_EC->stampAdmitance( Gec+Gbd );
 
+    double bdStamp = -m_bdCurr + Gbd*vce0;
     BASE->stampCurrent(-m_baseCurr - (Gec+Gcc)*voltBC - (Gee+Gce)*voltBE );
-    COLL->stampCurrent(-ic + Gce*voltBE + Gcc*voltBC );
-    EMIT->stampCurrent(-ie + Gee*voltBE + Gec*voltBC );
+    COLL->stampCurrent(-ic + Gce*voltBE + Gcc*voltBC + bdStamp );
+    EMIT->stampCurrent(-ie + Gee*voltBE + Gec*voltBC - bdStamp );
 }
 
 void eBJT::noiseSources( QList<NoiseSrc>& list )   // Shot noise of the collector and base currents
@@ -219,5 +253,24 @@ void eBJT::setThreshold( double vCrit )
 {
     m_vCrit = vCrit;
     m_satCur = m_vt/(qExp( vCrit/m_vt )*qSqrt(2));
+    setBvceo( m_bvceo );   // The breakdown knee depends on m_satCur
+    m_changed = true;
+}
+
+// Breakdown current into the collector (pnp-signed VCE in, NPN sense out) and its
+// conductance: m_satCur*exp((vce-ofset)/vt), 5 mA at vce = BVceo, as SimulIDE's zener.
+double eBJT::breakdown( double vce, double* g )
+{
+    double e = qExp( qMin( (vce-m_bdOfset)/m_vt, 80.0 ) );
+    if( g ) *g = m_satCur*e/m_vt;
+    return m_satCur*e;
+}
+
+void eBJT::setBvceo( double bv )
+{
+    if( bv < 0 ) bv = -bv;
+    m_bvceo   = bv;
+    m_bdOfset = bv - m_vt*qLn( 0.005/m_satCur );
+    m_bdCrit  = m_vt*qLn( m_vt/(qSqrt(2)*m_satCur) );
     m_changed = true;
 }

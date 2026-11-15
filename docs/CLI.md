@@ -213,7 +213,8 @@ while the simulation runs. A scripted core reports with
   time; `read <comp>` includes the current ones as `status`.
 - Built-in parts report their operating state (`docs/PART_STATES.md`): BJTs
   **OFF** (grey, cut-off: VBE < 0.45 V), **ACTIVE** (green, amplifying) and
-  **SAT** (amber, saturated: VCE < 0.2 V); MOSFETs **OFF** / **ACTIVE** /
+  **SAT** (amber, saturated: VCE < 0.2 V), and **BREAKDOWN** (red) past a
+  BVceo that is set; MOSFETs **OFF** / **ACTIVE** /
   **OHMIC**; SCRs, triacs and diacs **OFF** or **ON** (amber, conducting); op
   amps **LINEAR** / **SAT+** / **SAT-** (amber, at a rail); voltage regulators
   **REGULATING** / **DROPOUT** (amber) / **OFF**; diodes **OFF** / **ON** /
@@ -409,6 +410,15 @@ the pause.
 These commands work on any part with on-screen controls, including push
 buttons, switches, DIP switches, keypads, clocks, potentiometers, variable
 sources, rotary encoders and joysticks.
+
+**Contact bounce.** Switch and Push have `Bounce_Time` (0 = a clean change, the
+default) and `Bounces` (5). With a Bounce_Time set, each change of the contact while
+the simulation runs is a burst: the new state, then `Bounces` times back to the old
+one and to the new one again, the gaps shrinking by 0.7 each time, all within
+Bounce_Time (2·Bounces+1 changes), ending in the new state. The burst is the same
+every time (no randomness). E.g. `comp set S1 Bounce_Time=2ms Bounces=4`, then
+`ui click S1`: a debouncer (RC + Schmitt trigger, SR latch) sees what a real contact
+gives it. The contacts at the start of a run are set cleanly.
 
 ### Seeing and pointing (working together)
 

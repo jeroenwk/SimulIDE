@@ -55,6 +55,9 @@ BJT::BJT( QString type, QString id )
 
         new DoubProp<BJT>("Vcrit", tr("Threshold"),"V"
                          , this, &BJT::threshold, &BJT::setThreshold ),
+
+        new DoubProp<BJT>("BVceo", tr("C-E Breakdown Voltage (0 = none)"),"V"
+                         , this, &BJT::bvceo, &BJT::setBvceo ),
         showStateProp()
     },0} );
 
@@ -99,6 +102,7 @@ void BJT::voltChanged()
 //   OFF     cut-off: VBE below 0.45 V, collector current below ~10 uA at the default threshold
 //   ACTIVE  amplifying: IC = gain x IB
 //   SAT     saturated, fully on: VCE below 0.2 V (base-collector junction forward biased)
+//   BREAKDOWN  C-E avalanche past BVceo (fault): above 10 uA, back below 1 uA
 // Each boundary has a hysteresis (0.05 V on, 0.1 V off) so the state does not flicker on it.
 void BJT::stepSettled()
 {
@@ -110,7 +114,11 @@ void BJT::stepSettled()
     double vce = pnp*( vC-vE );
 
     region_t r = m_region;
-    if( r == regNone ) r = ( vbe < 0.475 ) ? regOff : ( vce < 0.25 ) ? regSat : regActive;
+    double ibd = qFabs( m_bdCurr );                  // C-E breakdown (BVceo): 10 uA on, 1 uA off
+    if( ibd > 1e-5 || ( r == regBreak && ibd > 1e-6 ) ) r = regBreak;
+    else if( r == regBreak ) r = regNone;
+    if( r == regBreak ) ;
+    else if( r == regNone ) r = ( vbe < 0.475 ) ? regOff : ( vce < 0.25 ) ? regSat : regActive;
     else if( r == regOff ){ if( vbe > 0.5 ) r = ( vce < 0.2 ) ? regSat : regActive; }
     else if( vbe < 0.45 ) r = regOff;
     else if( r == regActive ){ if( vce < 0.2 ) r = regSat; }
@@ -120,7 +128,8 @@ void BJT::stepSettled()
     m_region = r;
     if     ( r == regOff    ) reportState("OFF",    stOff );
     else if( r == regActive ) reportState("ACTIVE", stOn );
-    else                      reportState("SAT",    stWait );
+    else if( r == regSat    ) reportState("SAT",    stWait );
+    else                      reportState("BREAKDOWN", stFault );
 }
 
 void BJT::setPnp( bool pnp )
