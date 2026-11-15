@@ -136,6 +136,23 @@ QString normalizeValue( ComProperty* prop, QString val )
 {
     if( !prop ) return val;
     QString type = prop->type();
+    if( type == "enum" )            // unit holds "values;captions": match without case
+    {
+        QStringList parts = prop->unit().split(';');
+        QStringList vals  = parts.value( 0 ).split(',', QString::SkipEmptyParts );
+        QStringList capts = parts.value( 1 ).split(',', QString::SkipEmptyParts );
+        if( vals.isEmpty() || vals.contains( val ) ) return val;
+        QString v = val.trimmed();
+        for( int i=0; i<vals.size(); ++i )
+        {
+            if( vals.at( i ).compare( v, Qt::CaseInsensitive ) == 0 ) return vals.at( i );
+            if( i < capts.size() && capts.at( i ).compare( v, Qt::CaseInsensitive ) == 0 ) return vals.at( i );
+        }
+        bool isInt = false;
+        int idx = v.toInt( &isInt );
+        if( isInt && idx >= 0 && idx < vals.size() ) return v;        // an index: setters take "2"
+        throw CliError("invalid value for "+prop->name()+": "+val+" (one of "+vals.join(", ")+")");
+    }
     if( type != "double" && type != "int" ) return val;
 
     static const QString prefixes = "pnuµmkMGT";

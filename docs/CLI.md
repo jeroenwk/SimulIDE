@@ -100,7 +100,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `comp add <name> [--at x,y] [--label L] [--rot DEG] [prop=value ...]` | Add a part. Prints its uid and where each pin is (`pos` x,y, the `side` it points to, and `hidden: true` for a pin the part does not draw in its current mode, e.g. a WaveGen's `gndnod` unless Bipolar) |
 | `comp list [--type TYPE]` | Components in the circuit |
 | `comp get <comp> [--all]` | Properties (with units, or the allowed options for choice properties) and pins (with position, connections, and voltages while running). `--all` adds hidden properties, marked `hidden` |
-| `comp set <comp> prop=value ...` | Change properties. `label=` renames. `idLabPos=dx,dy` / `valLabPos=dx,dy` move the name / value label (offset of its top-left corner from the part's position; switches the part's labels to manual placement). Undoable |
+| `comp set <comp> prop=value ...` | Change properties. `label=` renames. `idLabPos=dx,dy` / `valLabPos=dx,dy` move the name / value label (offset of its top-left corner from the part's position; switches the part's labels to manual placement). A choice property takes one of the options `comp get` lists, matched without case and stored as listed (`Wave_Type=triangle` sets `Triangle`), or its index; anything else is refused with the options (`comp add` too). Undoable |
 | `comp move <comp> <x,y>` | Move (snapped to the grid) |
 | `comp rotate <comp> [cw\|ccw\|180]` | Rotate |
 | `comp flip <comp> <h\|v>` | Flip |
