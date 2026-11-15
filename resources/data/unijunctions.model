@@ -1,0 +1,21 @@
+<!DOCTYPE SimulIDE>
+
+<!-- PUT and UJT models (docs/UNIJUNCTION.md). Each is the two-transistor latch:
+     gainP, gainN = the PNP and NPN current gains, shunt = the NPN base-emitter shunt (Ω),
+     and for a UJT rbb = interbase resistance (Ω), eta = intrinsic standoff ratio.
+     Fitted to the guaranteed datasheet limits (tests/regress/test_unijunction.py). -->
+<itemlib>
+    <itemset type="put">
+        <!-- onsemi 2N6027/D rev 6 (2006): IP <= 2 uA (RG 1M), <= 5 uA (10k); VT 0.2-1.6 V (1M),
+             0.2-0.6 V (10k); IV <= 50 uA (1M), >= 70 uA (10k), >= 1.5 mA (200 ohm); VF <= 1.5 V at 50 mA -->
+        <item name="2N6027" gainP="100" gainN="10" shunt="150000" />
+        <!-- same sheet: IP <= 0.15 uA (1M), <= 1.0 uA (10k); VT 0.2-0.6 V; IV <= 25 uA (1M), >= 25 uA (10k), >= 1.0 mA (200 ohm) -->
+        <item name="2N6028" gainP="100" gainN="10" shunt="3000000" />
+    </itemset>
+    <itemset type="ujt">
+        <!-- Comset 2N2646: RBB 4.7-9.1 k (typ 7 k [INFERRED: middle]); eta 0.56-0.75 (0.65 [INFERRED]);
+             IV >= 4 mA (VBB 20 V); IP <= 5 uA (VBB 25 V); VE(sat) <= 2.5 V at 50 mA.
+             No 2N2647: its IP <= 2 uA with IV >= 8 mA is beyond the latch model (docs/UNIJUNCTION.md). -->
+        <item name="2N2646" gainP="100" gainN="4.2" shunt="1000000" rbb="7000" eta="0.65" />
+    </itemset>
+</itemlib>

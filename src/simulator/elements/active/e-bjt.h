@@ -37,6 +37,8 @@ class eBJT : public eElement
         void setVjc( double v ) { m_cjc.setVj( v ); }
         double mjc() { return m_cjc.mj(); }
         void setMjc( double v ) { m_cjc.setMj( v ); }
+        // Typical values used while noise is on (a part built of several BJTs shares a junction)
+        void setNoiseCaps( double cje, double cjc ) { m_cje.setNoiseDefault( cje ); m_cjc.setNoiseDefault( cjc ); }
 
         virtual bool pnp()              { return m_PNP; }
         virtual void setPnp( bool pnp ) { m_PNP = pnp; m_changed = true; }
@@ -63,6 +65,9 @@ class eBJT : public eElement
         double m_rgain;
         double m_fgain;
         bool m_PNP;
+
+        double m_gmin;      // Convergence aid in the last stamps
+        bool   m_gminDropped;
 
         double m_bvceo;     // 0 = no breakdown
         double m_voltCE;    // Last linearization point of the breakdown (pnp-signed)

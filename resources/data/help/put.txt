@@ -1,0 +1,26 @@
+Programmable unijunction transistor (PUT), e.g. 2N6027.
+
+An anode-gate thyristor: it fires when the anode rises about a diode drop above the gate,
+and stays on until the anode current falls below the valley current. The gate voltage,
+set by an outside divider (R1, R2), "programs" the peak voltage, and the divider's
+resistance (RG = R1 || R2) the peak and valley currents. Used in relaxation oscillators,
+ramp generators and SCR triggers.
+
+Modelled as the two-transistor latch of the datasheet (a PNP and an NPN coupled, with a
+shunt on the NPN base). More in docs/UNIJUNCTION.md.
+
+Property: (default value)
+
+- Model: (2N6027)
+   2N6027, 2N6028 or Custom. Changing a parameter below makes it Custom.
+
+- PNP gain: (100)
+
+- NPN gain: (10)
+   Sets the valley (holding) current.
+
+- NPN base shunt: (150 kΩ)
+   Sets the peak (trigger) current.
+
+- Junction capacitances J1, J2, J3: (0 = none)
+   Anode-gate, centre and gate-cathode junctions; typical values are used while noise is on.
