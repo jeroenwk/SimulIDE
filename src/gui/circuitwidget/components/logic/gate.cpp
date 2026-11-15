@@ -42,13 +42,32 @@ void Gate::stamp()
     LogicComponent::stamp();
     for( uint i=0; i<m_inPin.size(); ++i ) m_inPin[i]->changeCallBack( this );
 
-    m_outPin[0]->setOutState( m_initState );
+    int rs = Simulator::self()->randomStart( this );  // Noise on: a random start, as at power-up
+    bool init = ( rs < 0 ) ? m_initState : rs;
+    m_outPin[0]->setOutState( init );
 
-    m_nextOutVal = m_outValue = m_initState;
+    m_nextOutVal = m_outValue = init;
+
+    m_settling = true;
+    Simulator::self()->addToStartSettle( this );
+}
+
+void Gate::startSettled()   // Start: follow the inputs now, with no delay (gates in turn)
+{
+    m_settling = false;
+    if( m_tristate ) LogicComponent::updateOutEnabled();
+
+    int inputs = 0;
+    for( uint i=0; i<m_inPin.size(); ++i ) if( m_inPin[i]->getInpState() ) inputs++;
+    m_nextOutVal = calcOutput( inputs )? 1:0;
+    if( m_nextOutVal == m_outValue ) return;
+    m_outValue = m_nextOutVal;
+    m_outPin[0]->setOutState( m_outValue );
 }
 
 void Gate::voltChanged()
 {
+    if( m_settling ) return;   // Its turn in the start settle comes
     if( m_tristate ) LogicComponent::updateOutEnabled();
 
     int inputs = 0;

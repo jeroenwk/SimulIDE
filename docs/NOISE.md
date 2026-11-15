@@ -77,6 +77,14 @@ Parts made of these (subcircuits such as ICs) get noise from their inside parts.
 wires, lamps, motors, the audio output, voltage regulators, op-amps and comparators
 (behavioural models), logic and microcontrollers. There is no 1/f (flicker) noise.
 
+**Logic start states:** with noise on, logic gates and flip-flops start in a random
+state drawn from the noise seed (the same seed gives the same states), as at
+power-up: a latch or a counter without a reset comes up differently from run to run.
+A part in `noiseOff` keeps its own start state (a gate's Initial High State). After
+the first solve the gates follow their inputs one by one with no delay, so only
+states the logic allows remain (a latch keeps its random state, a ring of gates
+starts with one gate pending).
+
 ## Junction capacitance
 
 Diodes, Zeners, LEDs, BJTs, MOSFETs and JFETs have capacitance properties (group
@@ -175,6 +183,7 @@ button to compare. Measured: 20.6 µV against 20.4 µV for kT/C.
 | `test_noise_sources` | S of every kind against 4kT/R, 2q·I from the solved currents; noiseOff by label, type, typo |
 | `test_noise_seed_window` | same seed = same run, reported random seed repeats it, the window ends exactly |
 | `test_noise_settings` | off by default, files unchanged, save/reopen, status, Messages |
+| `test_logic_startup` | gates settled at the start (a ring of N inverters at 1/(2N·tpd)); with noise, a NAND latch and a D flip-flop start in both states over the seeds, the same seed repeats, noiseOff keeps the part's start |
 | `test_noise_bistable` | a symmetric bistable ends in a seed-dependent state, with 10 nF base capacitors and with none (junction capacitance); without noise the resistive one stays balanced |
 | `test_noise_reply_tag` | `probe`, `read`, `scope data`: no tag without noise, a tag inside the window, `scope data` of noise-free samples untagged after it, a next run without noise untagged |
 | `test_inductor_cp` | `Cp` 17.9 pF across 374 µH gives the same voltages as a separate capacitor (within 1 nV), rings at 1/(2π√LC); 0 = no ring; save and reopen |
