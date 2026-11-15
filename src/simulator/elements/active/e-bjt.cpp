@@ -43,6 +43,8 @@ eBJT::eBJT( QString id )
     m_satCur = 1e-13;
     m_vCrit = m_vt*qLn( m_vt/(qSqrt(2)*m_satCur) );
 
+    m_gmin   = 0;
+    m_gminDropped = false;
     m_bvceo  = 0;
     m_voltCE = 0;
     m_bdCurr = 0;
@@ -66,6 +68,8 @@ void eBJT::initialize()
     m_voltBE = 0;
     m_voltBC = 0;
     m_baseCurr = 0;
+    m_gmin = 0;
+    m_gminDropped = false;
     m_voltCE = 0;
     m_bdCurr = 0;
     BASE->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
@@ -137,13 +141,19 @@ void eBJT::voltChanged()
         BASE->setTrueCurrent( -(ie2+ic2) );
         COLL->setTrueCurrent( ic2+ib2 );
         EMIT->setTrueCurrent( ie2-ib2 );
-        m_step = 0; return;
+        m_step = 0;
+        // Converged with a large gmin still in the stamps (a long iteration at a switching
+        // edge): restamp once without it, or it stays across the junctions (up to 0.1 S)
+        // until the voltages move again, and a latch can sit in a false state for good
+        if( m_gmin > 1e-9 && !m_gminDropped ){ m_gminDropped = true; m_step = -0.1; }
+        else { m_gminDropped = false; return; }
     }
     Simulator::self()->notCorverged();
 
     m_step += .1;
     double gmin = m_satCur*1e-2*qExp( m_step );
     if( gmin > .1 ) gmin = .1;
+    m_gmin = gmin;
 
     voltBC = pnp*limitStep( pnp*voltBC, pnp*m_voltBC );
     m_voltBC = voltBC;
