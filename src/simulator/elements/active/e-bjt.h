@@ -44,6 +44,12 @@ class eBJT : public eElement
         double threshold() { return m_vCrit; }
         void   setThreshold( double vCrit );
 
+        // Collector-emitter breakdown (BVceo, V; 0 = none): avalanche current from C to E
+        // (E to C for PNP) once VCE passes it, so a coil switched off with no diode is
+        // clamped there instead of jumping to I*L/step
+        double bvceo() { return m_bvceo; }
+        void   setBvceo( double bv );
+
     protected:
         double limitStep( double vnew, double vold );
 
@@ -57,6 +63,14 @@ class eBJT : public eElement
         double m_rgain;
         double m_fgain;
         bool m_PNP;
+
+        double m_bvceo;     // 0 = no breakdown
+        double m_voltCE;    // Last linearization point of the breakdown (pnp-signed)
+        double m_bdOfset;   // VCE where the breakdown current would be m_satCur
+        double m_bdCrit;
+        double m_bdCurr;    // Breakdown current into the collector
+
+        double breakdown( double vce, double* g );
 
         eJunctionCap m_cje;
         eJunctionCap m_cjc;

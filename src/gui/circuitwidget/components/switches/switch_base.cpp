@@ -12,6 +12,7 @@
 #include "circuit.h"
 #include "label.h"
 #include "custombutton.h"
+#include <QtMath>
 
 SwitchBase::SwitchBase( QString type, QString id )
           : MechContact( type, id )
@@ -19,6 +20,13 @@ SwitchBase::SwitchBase( QString type, QString id )
     m_graphical = true;
     m_changed = true;
     m_key = "";
+    m_bounceTime = 0;
+    m_bounces    = 5;
+    m_target     = false;
+    m_bounceLeft = 0;
+    m_bounceN    = 0;
+    m_started    = false;
+    m_contact    = false;
 
     m_area =  QRectF( 0,0,0,0 );
     m_ePin.resize(2);
@@ -38,14 +46,60 @@ SwitchBase::~SwitchBase(){
     QObject::disconnect( m_keyEventConn );
 }
 
+void SwitchBase::setSwitch( bool closed )
+{
+    MechContact::setSwitch( closed );
+    m_contact = closed;
+}
+
+void SwitchBase::initialize()
+{
+    m_bounceLeft = 0;
+    m_started = false;
+}
+
 void SwitchBase::updateStep()
 {
-    if( m_changed )
-    {
-        setSwitch( m_closed );
-        m_changed = false;
-        update();
-}   }
+    if( !m_changed ) return;
+    m_changed = false;
+
+    if( m_bounceLeft ) return;   // A burst is running: it ends in its own target state
+
+    bool want = m_closed;
+    bool bounce = m_started && m_bounceTime > 0 && want != m_contact
+               && Simulator::self()->isRunning();
+    m_started = true;
+
+    setSwitch( want );           // First touch (or the clean change)
+    m_changed = false;
+    if( bounce ){
+        m_target = want;
+        m_bounceN = 0;
+        m_bounceLeft = 2*m_bounces;
+        nextBounce();
+    }
+    update();
+}
+
+// Gaps shrink by 0.7 each change (the contact's swing dies down) and add up to Bounce_Time
+void SwitchBase::nextBounce()
+{
+    double r = 0.7, sum = ( 1-qPow( r, 2*m_bounces ) )/( 1-r );
+    double gap = m_bounceTime*qPow( r, m_bounceN )/sum;      // Seconds
+    uint64_t ps = (uint64_t)( gap*1e12 );
+    if( ps < 1 ) ps = 1;
+    Simulator::self()->addEvent( ps, this );
+}
+
+void SwitchBase::runEvent()
+{
+    if( !m_bounceLeft ) return;
+    m_bounceLeft--;
+    m_bounceN++;
+    bool closed = m_bounceLeft ? ( (m_bounceN & 1) ? !m_target : m_target ) : m_target;
+    setSwitch( closed );
+    if( m_bounceLeft ) nextBounce();
+}
 
 void SwitchBase::setAngle( double angle )
 {

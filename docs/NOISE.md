@@ -108,8 +108,10 @@ The **inductor** and the **resistor** have the same kind of capacitance as a pro
 the led_driver's T1: 17.9 pF from its self-resonance; a resistor's 0.05–0.5 pF, which
 only matters for high values at high frequency). A relay's coil has it too (group
 *Coil*): without it, a coil switched off with no diode gives a spike one reactive step
-wide (its current has nowhere else to go, and the BJT model has no breakdown); with it,
-the coil rings. 0 (the default) means none, with or
+wide (its current has nowhere else to go, and a BJT without `BVceo` has no breakdown);
+with it, the coil rings. A BJT's `BVceo` (C-E breakdown voltage, 0 = none) clamps
+the collector there instead, as a real transistor's avalanche does, until the coil's
+current has drained (state BREAKDOWN). 0 (the default) means none, with or
 without noise, and costs nothing: the inner capacitor then has no pins and no events.
 Its current is not in the part's own current readout (the inductor's gauge, a
 resistor's V/R), as above. Capacitors already have their series resistance (ESR) as

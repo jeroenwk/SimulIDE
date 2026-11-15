@@ -30,7 +30,7 @@ class BJT : public Component, public eBJT
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w ) override;
 
     private:
-        enum region_t { regNone=-1, regOff=0, regActive, regSat };
+        enum region_t { regNone=-1, regOff=0, regActive, regSat, regBreak };
         region_t m_region;
 };
 

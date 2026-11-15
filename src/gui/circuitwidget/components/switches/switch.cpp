@@ -14,6 +14,7 @@
 
 #include "stringprop.h"
 #include "boolprop.h"
+#include "doubleprop.h"
 #include "intprop.h"
 
 #define tr(str) simulideTr("Switch",str)
@@ -53,6 +54,12 @@ Switch::Switch( QString type, QString id )
 
         new StrProp <Switch>("Key", tr("Key"), ""
                             , this, &Switch::key, &Switch::setKey ),
+
+        new DoubProp<Switch>("Bounce_Time", tr("Bounce Time (0 = none)"), "ms"
+                        , this, &Switch::bounceTime, &Switch::setBounceTime ),
+
+        new IntProp <Switch>("Bounces", tr("Bounces"), ""
+                        , this, &Switch::bounces, &Switch::setBounces, 0,"uint" ),
     },0} );
 
     // The switch position (toggled away from its normal position), saved with the circuit
