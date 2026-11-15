@@ -507,6 +507,9 @@ void CliApi::registerEdit()
         []( CliCtx& c ) -> QJsonValue
     {
         Component* comp = CliRefs::comp( c.arg( 0, "component") );
+        if( c.pos.size() > 1 )   // "comp set A x=1 B x=2" set only A, with B's values (create-circuit #181)
+            throw CliError("comp set changes one component; also given: "+c.pos.mid( 1 ).join(" ")
+                          +" (one comp set per component)");
         if( c.sets.isEmpty() ) throw CliError("nothing to set: give prop=value pairs");
 
         QMap<QString, QString> changes;
