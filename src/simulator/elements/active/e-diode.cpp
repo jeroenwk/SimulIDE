@@ -36,6 +36,7 @@ void eDiode::stamp()
 {
     m_converged = true;
     m_step    = 0;      // Iteration damping (gmin) from a previous run
+    m_gminDropped = false;
     m_admit   = m_bAdmit;
     m_voltPN  = 0;
     m_current = 0;
@@ -57,7 +58,14 @@ void eDiode::voltChanged()
     double voltPN = m_ePin[0]->getVoltage() - m_ePin[1]->getVoltage();
 
     if( m_changed ) m_changed = false;
-    else if( qFabs( voltPN - m_voltPN ) < .01 ) { m_step = 0; m_converged = true; return; } // Converged
+    else if( qFabs( voltPN - m_voltPN ) < .01 )                          // Converged
+    {
+        // ...but with a gmin grown over 200+ iterations still in the stamp: restamp once
+        // without it, or it stays across the junction until the voltage moves 10 mV
+        // (as in eBJT, test_bjt_gmin_kept)
+        if( m_step > 2 && !m_gminDropped && m_bAdmit*qExp( m_step ) > 1e-9 ) { m_gminDropped = true; m_step = -0.01; }
+        else { m_gminDropped = false; m_step = 0; m_converged = true; return; }
+    }
     m_converged = false;
     Simulator::self()->notCorverged();
 
