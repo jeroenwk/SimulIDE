@@ -1,4 +1,4 @@
-Configurable OR Gate
+Configurable OR Gate. With Invert Outputs on it is a NOR gate.
 
 Property: (default value)
 

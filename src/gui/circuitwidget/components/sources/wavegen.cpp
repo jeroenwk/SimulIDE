@@ -220,17 +220,13 @@ void WaveGen::genTriangle()
     m_nextStep = m_qSteps+remainerInt();
 }
 
-void WaveGen::genSquare()
-{
-    if( m_vOut == 1 )
-    {
-        m_vOut = 0;
-        m_nextStep = m_fstepsPC-m_halfW;
-    }else{
-        m_vOut = 1;
-        m_nextStep = m_halfW;
-    }
-    m_nextStep += remainerInt();
+void WaveGen::genSquare()  // From the phase-shifted time, as the other waves (create-circuit #193):
+{                          // toggling from edge to edge ignored Phase
+    double left;
+    if( m_time < m_halfW ){ m_vOut = 1; left = m_halfW-m_time; }
+    else                  { m_vOut = 0; left = m_fstepsPC-m_time; }
+    m_nextStep = (uint64_t)ceil( left );
+    if( m_nextStep < 1 ) m_nextStep = 1;
 }
 
 void WaveGen::genRandom()

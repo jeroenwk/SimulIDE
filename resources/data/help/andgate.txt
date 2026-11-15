@@ -1,4 +1,4 @@
-Configurable AND Gate.
+Configurable AND Gate. With Invert Outputs on it is a NAND gate.
 
 Property: (default value)
 

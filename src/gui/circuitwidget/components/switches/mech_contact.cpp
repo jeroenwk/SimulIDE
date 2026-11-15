@@ -64,6 +64,12 @@ void MechContact::setSwitch( bool closed )
             else         m_switches[ switchN ]->setAdmit( 1e3 );
 }   }   }
 
+void MechContact::setHover()
+{
+    m_changed = true;
+    for( eResistor* sw : m_switches ) sw->setAdmit( 0 );
+}
+
 void MechContact::remove()
 {
     for( eResistor* res : m_switches ) delete res;

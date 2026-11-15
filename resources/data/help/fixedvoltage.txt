@@ -1,6 +1,6 @@
 Simple voltage source.
 
-Turn On/Off with the letf button.
+Turn On/Off with the left button: in a logic circuit it is a logic input (a 0/1 switch).
 
 Property: (default value)
 
