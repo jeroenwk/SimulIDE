@@ -26,7 +26,8 @@ class IoComponent : public Component
 
         void initState();
         void runOutputs();
-        void scheduleOutPuts( eElement* el );
+        void scheduleOutPuts( eElement* el, uint64_t extra=0 );
+        void cancelOutPuts( eElement* el );
 
         double inputHighV() { return m_inHighV; }
         virtual void setInputHighV( double volt );

@@ -189,6 +189,7 @@ void IoPin::setPinMode( pinMode_t mode )
 bool IoPin::getInpState()
 {
     double volt = getVoltage();
+    m_inpVolt = volt;
 
     if     ( volt > m_inpHighV ) m_inpState = true;
     else if( volt < m_inpLowV )  m_inpState = false;
