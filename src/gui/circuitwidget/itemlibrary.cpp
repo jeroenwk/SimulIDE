@@ -100,6 +100,7 @@
 #include "socket.h"
 #include "sr04.h"
 #include "scr.h"
+#include "unijunction.h"
 #include "ssd1306.h"
 #include "stepper.h"
 #include "strain.h"
@@ -189,12 +190,14 @@ void ItemLibrary::loadItems()
     addItem( Diode::libraryItem() );
     addItem( Zener::libraryItem() );
     addItem( SCR::libraryItem() );
+    addItem( PUT::libraryItem() );
     addItem( Diac::libraryItem() );
     addItem( Triac::libraryItem() );
     addItem( new LibraryItem( QObject::tr("Transistors"), "Active", "transistors.png","Transistors", NULL ) );
     addItem( Mosfet::libraryItem() );
     addItem( Jfet::libraryItem() );
     addItem( BJT::libraryItem() );
+    addItem( UJT::libraryItem() );
     addItem( new LibraryItem( QObject::tr("Other Active"), "Active", "2to2.png","Other Active", NULL ) );
     addItem( OpAmp::libraryItem() );
     addItem( VoltReg::libraryItem() );

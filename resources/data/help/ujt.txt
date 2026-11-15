@@ -1,0 +1,25 @@
+Unijunction transistor (UJT), e.g. 2N2646.
+
+Between base 2 and base 1 is the interbase resistance RBB. The emitter fires when it rises
+a diode drop above eta x VBB (eta = intrinsic standoff ratio), then conducts to base 1 until
+its current falls below the valley current. The classic relaxation oscillator: R and C on
+the emitter, f = 1 / (R C ln(1 / (1 - eta))).
+
+Modelled as the PUT's two-transistor latch with the RBB divider inside. More in
+docs/UNIJUNCTION.md.
+
+Property: (default value)
+
+- Model: (2N2646)
+   2N2646 or Custom. Changing a parameter makes it Custom.
+
+- Interbase resistance: (7 kΩ)
+
+- Intrinsic standoff ratio: (0.65)
+
+- PNP gain, NPN gain, NPN base shunt: (100, 4.2, 1 MΩ)
+   The latch inside: the NPN gain sets the valley current, the shunt and the NPN gain the
+   peak current.
+
+- Junction capacitances J1, J2, J3: (0 = none)
+   Emitter, centre and base-1 junctions; typical values are used while noise is on.
