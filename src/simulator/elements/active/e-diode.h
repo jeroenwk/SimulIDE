@@ -66,6 +66,7 @@ class eDiode : public eResistor
         void updateValues();
 
         bool m_converged;
+        bool m_gminDropped = false;   // Restamped once without gmin after a long iteration
 
         eJunctionCap m_cj;
 
