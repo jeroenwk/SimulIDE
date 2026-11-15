@@ -6,6 +6,10 @@ It's even possible to use coils exclusively on one side.
 The term "Primary" refers to the left side, while "Secondary" refers to the right side.
 However, any coil can function as the primary coil within the transformer.
 
+Two coils (one on each side, or two on one side) are coupled inductors: the mutual inductance
+is M = k x sqrt(L1 x L2), k the Coupling Coefficient. The first pin of the primary and of the secondary
+coil have the same phase (the dot).
+
 Property: (default value)
 
 - Coupling Coefficient: (0.99)
