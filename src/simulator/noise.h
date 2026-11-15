@@ -14,6 +14,7 @@
 #include <QString>
 #include <QStringList>
 #include <QList>
+#include <QHash>
 
 #include "e-element.h"
 
@@ -76,6 +77,9 @@ class eNoise : public eElement
         int count( NoiseSrc::Kind k );
         QStringList unmatched() { return m_unmatched; }
 
+        // Seeded random start state (0/1) of a logic element, -1 if its part is in noiseOff
+        int startState( const QString& elId );
+
         struct SrcInfo { QString part, type, kind, nodeA, nodeB; double psd, rms; };
         QList<SrcInfo> info();     // GUI thread, for the CLI `noise sources`
 
@@ -104,6 +108,9 @@ class eNoise : public eElement
         uint64_t m_hold;
         double   m_gain;           // scale·√bw
         QStringList m_unmatched;
+        QStringList m_startUsed;   // noiseOff entries matched by startState()
+        QHash<QString, QString> m_startOff;   // Part uid → its noiseOff entry ("" = none), built once
+        bool m_startMapped = false;
 
         std::atomic<int> m_state;
         std::atomic<uint64_t> m_firstActive;

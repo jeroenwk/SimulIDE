@@ -30,6 +30,11 @@ class eElement
         // states are taken here: the values inside the non-linear iterations are not final
         virtual void stepSettled(){;}
 
+        // Called once at the start, after the first solve, if the element asked for it in stamp()
+        // (Simulator::addToStartSettle): logic gates take their output from their inputs one by one,
+        // with no delay, so the circuit starts consistent (a ring of gates with one gate pending)
+        virtual void startSettled(){;}
+
         // Transient noise (docs/NOISE_SPEC.md): append the noise current sources of this element,
         // each with its spectral density at the operating point of the moment. None by default
         virtual void noiseSources( QList<NoiseSrc>& ){;}

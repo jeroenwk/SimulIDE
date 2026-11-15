@@ -158,6 +158,7 @@ void Simulator::timerEvent( QTimerEvent* e )  //update at m_timerTick_ms rate (5
 void Simulator::runCircuit()
 {
     solveCircuit(); // Solve any pending changes
+    if( !m_startSettle.isEmpty() ) startSettle();
     runSettled();
     if( m_state < SIM_RUNNING ) return;
 
@@ -202,6 +203,23 @@ void Simulator::runSettled()   // The step is solved: elements that asked see it
         el->stepSettled();
         el = next;
     }
+}
+
+void Simulator::startSettle()  // First step: logic gates settle one by one, with a solve between
+{
+    QList<eElement*> list = m_startSettle;
+    m_startSettle.clear();
+    for( eElement* el : list )
+    {
+        el->startSettled();
+        solveCircuit();
+        if( m_state < SIM_RUNNING ) return;
+    }
+}
+
+int Simulator::randomStart( eElement* el )
+{
+    return m_noiseEl ? m_noiseEl->startState( el->getId() ) : -1;
 }
 
 void Simulator::solveCircuit()
@@ -290,6 +308,7 @@ void Simulator::resetSim()
     m_nonLinear = NULL;
     m_settled = nullptr;      // Elements may be gone: drop the list, a new generation forgets the flags
     m_settledGen++;
+    m_startSettle.clear();
 }
 
 void Simulator::createNodes()
@@ -436,6 +455,7 @@ void Simulator::stopSim()
     for( Updatable* el : m_updateList ) el->updateStep();
 
     clearEventList();
+    m_startSettle.clear();
     m_changedNode = NULL;
     m_settled = nullptr;
     m_settledGen++;

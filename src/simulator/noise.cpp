@@ -153,7 +153,8 @@ void eNoise::collect()
         }
         if( !skip ) keep.append( s );
     }
-    for( const QString& e : m_set.off ) if( !used.contains( e ) ) m_unmatched.append( e );
+    for( const QString& e : m_set.off )
+        if( !used.contains( e ) && !m_startUsed.contains( e ) ) m_unmatched.append( e );
 
     QHash<QString,int> index;   // Per element and kind, so a stream doesn't depend on the list order
     for( NoiseSrc& s : keep )
@@ -170,6 +171,46 @@ void eNoise::collect()
         src->rng.seed( splitmix64( m_seed ^ fnv1a64( key+"/"+QString::number( n ) ) ) );
         m_src.push_back( src );
     }
+}
+
+int eNoise::startState( const QString& elId )
+{
+    if( !m_set.off.isEmpty() )
+    {
+        if( !m_startMapped )      // Every part once: its noiseOff entry, if any
+        {
+            m_startMapped = true;
+            QHash<QString, Owner> owners;
+            if( Circuit::self() ) mapOwners( Circuit::self()->compList(), "", owners );
+            for( const Owner& o : owners )
+            {
+                QString hit;
+                for( const QString& e : m_set.off )
+                {
+                    bool m = e.startsWith("type:", Qt::CaseInsensitive )
+                           ? e.mid( 5 ).compare( o.type, Qt::CaseInsensitive ) == 0
+                           : e.compare( o.label, Qt::CaseInsensitive ) == 0 || e == o.uid;
+                    if( m ){ hit = e; break; }
+                }
+                m_startOff.insert( o.uid, hit );
+            }
+        }
+        QString id = elId;        // The owning part: the element id or a prefix of it (findOwner)
+        while( !id.isEmpty() )
+        {
+            auto it = m_startOff.find( id );
+            if( it != m_startOff.end() )
+            {
+                if( it.value().isEmpty() ) break;
+                if( !m_startUsed.contains( it.value() ) ) m_startUsed.append( it.value() );
+                return -1;
+            }
+            int cut = id.lastIndexOf('-');
+            if( cut <= 0 ) break;
+            id = id.left( cut );
+        }
+    }
+    return splitmix64( m_seed ^ fnv1a64( elId+"/start" ) ) & 1;
 }
 
 void eNoise::stamp()

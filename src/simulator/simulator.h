@@ -106,6 +106,11 @@ class Simulator : public QObject
             m_settled = el;
         }
 
+        void addToStartSettle( eElement* el ) { m_startSettle.append( el ); }
+        // With noise on: a seeded random start state (0/1) for a logic element, -1 when noise is
+        // off or its part is in noiseOff (the element keeps its own start state)
+        int randomStart( eElement* el );
+
         void addToEnodeList( eNode* nod );
 
         void addToElementList( eElement* el );
@@ -171,6 +176,8 @@ class Simulator : public QObject
         eElement* m_settled = nullptr;
         uint64_t  m_settledGen = 1;
         inline void runSettled();
+        QList<eElement*> m_startSettle;
+        void startSettle();
 
         QList<eElement*> m_elementList;
         QList<Updatable*> m_updateList;

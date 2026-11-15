@@ -1,5 +1,9 @@
 - Initial High State: (no)
    Start simulation with High state output.
+   At the start the gates then follow their inputs one by one, with no delay, so the logic
+   starts consistent: this state stays only where the inputs allow both (a latch).
+   With noise on, the start state is random (from the noise seed), as at power-up,
+   unless the gate is in noiseOff.
 
 - Invert Outputs: (no)
    Invert output pin.

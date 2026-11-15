@@ -20,6 +20,7 @@ class Gate : public LogicComponent
 
         virtual void stamp() override;
         virtual void voltChanged() override;
+        virtual void startSettled() override;
         virtual void runEvent() override { IoComponent::runOutputs(); }
 
         bool initHigh() { return m_initState; }
@@ -31,6 +32,7 @@ class Gate : public LogicComponent
         virtual bool calcOutput( int inputs );
 
         bool m_initState;
+        bool m_settling;     // Waiting for its turn in the start settle: inputs not followed yet
 
         int m_minInputs;
 };

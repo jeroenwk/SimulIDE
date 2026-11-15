@@ -41,7 +41,8 @@ FlipFlopBase::~FlipFlopBase(){}
 
 void FlipFlopBase::stamp()
 {
-    m_Q0 = (std::rand()%2);
+    int rs = Simulator::self()->randomStart( this );   // Noise on: seeded, as the rest of the noise
+    m_Q0 = ( rs < 0 ) ? (std::rand()%2) : rs;
     m_setPin->changeCallBack( this );
     m_resetPin->changeCallBack( this );
 
