@@ -97,7 +97,10 @@ void SwitchBase::runEvent()
     m_bounceLeft--;
     m_bounceN++;
     bool closed = m_bounceLeft ? ( (m_bounceN & 1) ? !m_target : m_target ) : m_target;
-    setSwitch( closed );
+    // A changeover bounces at the throw it made: away, the pole touches nothing, it does not
+    // go back to the other throw (an SPDT debouncer's hold state, create-circuit #190)
+    if( closed != m_target && m_numthrows > 1 ) setHover();
+    else                                        setSwitch( closed );
     if( m_bounceLeft ) nextBounce();
 }
 

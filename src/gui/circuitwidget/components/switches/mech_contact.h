@@ -35,6 +35,7 @@ class MechContact : public Component, public eElement
 
     protected:
         virtual void setSwitch( bool on );
+        void setHover();   // Every throw released: the pole between contacts (a changeover's bounce)
 
         std::vector<eResistor*> m_switches;
 
