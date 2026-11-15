@@ -41,6 +41,9 @@ class IoPin : public Pin, public eElement
         void setPinMode( pinMode_t mode );
         void setPinMode( uint mode ) { setPinMode( (pinMode_t) mode ); }
 
+        // How far the last getInpState() was past the threshold it was judged by (V)
+        double inpOverdrive() { return m_inpState ? m_inpVolt-m_inpHighV : m_inpLowV-m_inpVolt; }
+
         void setInputHighV( double volt ) { m_inpHighV = volt; }
         void setInputLowV( double volt )  { m_inpLowV  = volt; }
         void setInputImp( double imp );
@@ -134,6 +137,7 @@ class IoPin : public Pin, public eElement
         double m_admit;
 
         bool m_inpState;
+        double m_inpVolt = 0;   // Voltage of the last getInpState()
         bool m_outState;
         bool m_stateZ;
         bool m_nextState;

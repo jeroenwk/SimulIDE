@@ -124,17 +124,24 @@ void IoComponent::runOutputs()
     }
 }
 
-void IoComponent::scheduleOutPuts( eElement* el )
+void IoComponent::cancelOutPuts( eElement* el )   // Drop the pending output changes
+{
+    Simulator::self()->cancelEvents( el );
+    while( !m_outQueue.empty()  ) m_outQueue.pop();
+    while( !m_timeQueue.empty() ) m_timeQueue.pop();
+}
+
+void IoComponent::scheduleOutPuts( eElement* el, uint64_t extra )
 {
     if(  m_outQueue.empty() )
     {
         if( m_nextOutVal == m_outValue ) return;
-        Simulator::self()->addEvent( m_propDelay*m_propSize, el );
+        Simulator::self()->addEvent( m_propDelay*m_propSize+extra, el );
     }
     else          // New Event while previous Event not dispatched
     {
         if( m_nextOutVal == m_outQueue.back() ) return;
-        uint64_t nextTime = Simulator::self()->circTime()+m_propDelay*m_propSize;
+        uint64_t nextTime = Simulator::self()->circTime()+m_propDelay*m_propSize+extra;
         m_timeQueue.push( nextTime );
 
         m_eElement = el;

@@ -1,6 +1,7 @@
 Timing:
 - Gate Delay: (10 ns)
-   Time from input change to output change (1 gate).
+   Time from input change to output change (1 gate). Inertial, as a real gate:
+   an input pulse shorter than the delay does not reach the output.
 
 - Rise Time: (3 ns)
    Time from 0 V to output high V.
