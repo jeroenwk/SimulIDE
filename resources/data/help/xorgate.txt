@@ -1,4 +1,4 @@
-Configurable XOR Gate
+Configurable XOR Gate. With Invert Outputs on it is an XNOR gate.
 
 Property: (default value)
 

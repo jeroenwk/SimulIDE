@@ -1,4 +1,4 @@
-Configurable Buffer.
+Configurable Buffer. With Invert Outputs on it is an inverter (NOT gate).
 
 Property: (default value)
 
