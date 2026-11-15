@@ -14,6 +14,10 @@
              0.5-0.65 V with a 34401A diode test), 0.91 V at 1 A (datasheet max 1.1 V).
              Breakdown = VRRM. -->
         <item name="1N4007" satCurr_nA="7.02767" resist="0.0341512" emCoef="1.80803" brkDown="1000" />
+        <!-- 1N4148 / 1N914: small-signal switching diode (trr 4 ns, not modelled). Is, n and Rs
+             from the common SPICE model (Is 2.52 nA, N 1.752, Rs 0.568 ohm): 0.59 V at 1 mA,
+             0.69 V at 10 mA (datasheet max 1.0 V), 0.85 V at 100 mA. Breakdown = VRRM 100 V. -->
+        <item name="1N4148 1N914 signal" satCurr_nA="2.52" resist="0.568" emCoef="1.752" brkDown="100" />
     </itemset>
     <itemset type="zener">
         <item name="Zener Default 3.3V" satCurr_nA="171.4352819281" resist="0" emCoef="2" brkDown="3.3" />

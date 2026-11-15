@@ -52,6 +52,11 @@ class eBJT : public eElement
         double bvceo() { return m_bvceo; }
         void   setBvceo( double bv );
 
+        // Emitter-base reverse breakdown (BVebo, V; 0 = none): current from E to B (B to E
+        // for PNP) once the base is driven BVebo below the emitter, with the same knee
+        double bvebo() { return m_bvebo; }
+        void   setBvebo( double bv );
+
     protected:
         double limitStep( double vnew, double vold );
 
@@ -75,7 +80,14 @@ class eBJT : public eElement
         double m_bdCrit;
         double m_bdCurr;    // Breakdown current into the collector
 
-        double breakdown( double vce, double* g );
+        double m_bvebo;     // 0 = no E-B breakdown
+        double m_voltEB;    // Last linearization point (pnp-signed VEB)
+        double m_ebOfset;   // VEB where the breakdown current would be m_satCur
+        double m_ebCurr;    // E-B breakdown current into the emitter
+
+        double breakdown( double vce, double* g ) { return breakdown( vce, m_bdOfset, g ); }
+        double breakdown( double v, double ofset, double* g );
+        double limitBreak( double v, double vold, double ofset );
 
         eJunctionCap m_cje;
         eJunctionCap m_cjc;

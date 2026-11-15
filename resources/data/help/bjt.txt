@@ -10,3 +10,10 @@ Property: (default value)
     
 - Threshold: (0.670736 V)
    Base-Emitter diode threshold.
+
+- C-E Breakdown Voltage: (0 V = none)
+   BVceo: past it, avalanche current from collector to emitter (state BREAKDOWN).
+
+- E-B Breakdown Voltage: (0 V = none)
+   BVebo: a base driven this far below the emitter (above it for PNP) conducts
+   to the emitter, as a zener (5 mA at BVebo; small-signal parts: about 5-6 V).

@@ -214,7 +214,7 @@ while the simulation runs. A scripted core reports with
 - Built-in parts report their operating state (`docs/PART_STATES.md`): BJTs
   **OFF** (grey, cut-off: VBE < 0.45 V), **ACTIVE** (green, amplifying) and
   **SAT** (amber, saturated: VCE < 0.2 V), and **BREAKDOWN** (red) past a
-  BVceo that is set; MOSFETs **OFF** / **ACTIVE** /
+  BVceo or BVebo that is set; MOSFETs **OFF** / **ACTIVE** /
   **OHMIC**; SCRs, triacs and diacs **OFF** or **ON** (amber, conducting); op
   amps **LINEAR** / **SAT+** / **SAT-** (amber, at a rail); voltage regulators
   **REGULATING** / **DROPOUT** (amber) / **OFF**; diodes **OFF** / **ON** /

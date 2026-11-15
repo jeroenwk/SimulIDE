@@ -49,6 +49,9 @@ eBJT::eBJT( QString id )
     m_voltCE = 0;
     m_bdCurr = 0;
     setBvceo( 0 );
+    m_voltEB = 0;
+    m_ebCurr = 0;
+    setBvebo( 0 );
 
     m_BEjunction.setNumEpins( 2 );
     m_BE = m_BEjunction.getEpin( 0 );
@@ -72,6 +75,8 @@ void eBJT::initialize()
     m_gminDropped = false;
     m_voltCE = 0;
     m_bdCurr = 0;
+    m_voltEB = 0;
+    m_ebCurr = 0;
     BASE->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
     COLL->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
     EMIT->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
@@ -124,7 +129,8 @@ void eBJT::voltChanged()
     if( m_changed ) m_changed = false;
     else if( qFabs(voltBC-m_voltBC) < .001
           && qFabs(voltBE-m_voltBE) < .001
-          && ( m_bvceo == 0 || qFabs( pnp*(voltC-voltE)-m_voltCE ) < .001 ) )
+          && ( m_bvceo == 0 || qFabs( pnp*(voltC-voltE)-m_voltCE ) < .001 )
+          && ( m_bvebo == 0 || qFabs( pnp*(voltE-voltB)-m_voltEB ) < .001 ) )
     {
         // Converged within 1 mV: the stamps stay, but the reported terminal currents
         // must come from the converged voltages, not from the last iteration (BH-034:
@@ -138,9 +144,12 @@ void eBJT::voltChanged()
         double ib2 = 0;
         if( m_bvceo > 0 ) ib2 = pnp*breakdown( pnp*(voltC-voltE), nullptr );
         m_bdCurr = ib2;
-        BASE->setTrueCurrent( -(ie2+ic2) );
+        double ie3 = 0;
+        if( m_bvebo > 0 ) ie3 = pnp*breakdown( pnp*(voltE-voltB), m_ebOfset, nullptr );
+        m_ebCurr = ie3;
+        BASE->setTrueCurrent( -(ie2+ic2) - ie3 );
         COLL->setTrueCurrent( ic2+ib2 );
-        EMIT->setTrueCurrent( ie2-ib2 );
+        EMIT->setTrueCurrent( ie2-ib2 + ie3 );
         m_step = 0;
         // Converged with a large gmin still in the stamps (a long iteration at a switching
         // edge): restamp once without it, or it stays across the junctions (up to 0.1 S)
@@ -181,42 +190,42 @@ void eBJT::voltChanged()
     m_bdCurr = 0;
     if( m_bvceo > 0 )
     {
-        double vce = pnp*(voltC-voltE);
-        double v    = vce - m_bdOfset;
-        double vold = m_voltCE - m_bdOfset;
-        if( v > m_bdCrit && qFabs( v-vold ) > 2*m_vt )   // Same damping as a zener's breakdown
-        {
-            if( vold > 0 ){
-                double arg = 1+(v-vold)/m_vt;
-                v = ( arg > 0 ) ? vold + m_vt*qLn( arg ) : m_bdCrit;
-            }
-            else v = m_vt*qLn( v/m_vt );
-        }
-        vce = v + m_bdOfset;
+        double vce = limitBreak( pnp*(voltC-voltE), m_voltCE, m_bdOfset );
         m_voltCE = vce;
         m_bdCurr = pnp*breakdown( vce, &Gbd );
         vce0 = pnp*vce;                                    // Back to VC-VE
+    }
+    // Breakdown E-B: a conductance Geb between E and B plus its Norton current
+    double Geb = 0, veb0 = 0;
+    m_ebCurr = 0;
+    if( m_bvebo > 0 )
+    {
+        double veb = limitBreak( pnp*(voltE-voltB), m_voltEB, m_ebOfset );
+        m_voltEB = veb;
+        m_ebCurr = pnp*breakdown( veb, m_ebOfset, &Geb );
+        veb0 = pnp*veb;                                    // Back to VE-VB
     }
 
     // True terminal currents (into the device): the matrix stamps below are a
     // linearization whose terms nearly cancel, so they can't be used to recover
     // the currents (CurrentFlow, ePin::getCurrent)
-    BASE->setTrueCurrent( m_baseCurr );
+    BASE->setTrueCurrent( m_baseCurr-m_ebCurr );
     COLL->setTrueCurrent( ic+m_bdCurr );
-    EMIT->setTrueCurrent( ie-m_bdCurr );
+    EMIT->setTrueCurrent( ie-m_bdCurr+m_ebCurr );
 
     // Admitance Matrix OK
     m_BC->stampAdmitance(-Gec-Gcc );
     m_CB->stampAdmitance(-Gce-Gcc );
-    m_BE->stampAdmitance(-Gee-Gce );
-    m_EB->stampAdmitance(-Gee-Gec );
+    m_BE->stampAdmitance(-Gee-Gce+Geb );
+    m_EB->stampAdmitance(-Gee-Gec+Geb );
     m_CE->stampAdmitance( Gce+Gbd );
     m_EC->stampAdmitance( Gec+Gbd );
 
     double bdStamp = -m_bdCurr + Gbd*vce0;
-    BASE->stampCurrent(-m_baseCurr - (Gec+Gcc)*voltBC - (Gee+Gce)*voltBE );
+    double ebStamp = -m_ebCurr + Geb*veb0;
+    BASE->stampCurrent(-m_baseCurr - (Gec+Gcc)*voltBC - (Gee+Gce)*voltBE - ebStamp );
     COLL->stampCurrent(-ic + Gce*voltBE + Gcc*voltBC + bdStamp );
-    EMIT->stampCurrent(-ie + Gee*voltBE + Gec*voltBC - bdStamp );
+    EMIT->stampCurrent(-ie + Gee*voltBE + Gec*voltBC - bdStamp + ebStamp );
 }
 
 void eBJT::noiseSources( QList<NoiseSrc>& list )   // Shot noise of the collector and base currents
@@ -263,15 +272,17 @@ void eBJT::setThreshold( double vCrit )
 {
     m_vCrit = vCrit;
     m_satCur = m_vt/(qExp( vCrit/m_vt )*qSqrt(2));
-    setBvceo( m_bvceo );   // The breakdown knee depends on m_satCur
+    setBvceo( m_bvceo );   // The breakdown knees depend on m_satCur
+    setBvebo( m_bvebo );
     m_changed = true;
 }
 
-// Breakdown current into the collector (pnp-signed VCE in, NPN sense out) and its
-// conductance: m_satCur*exp((vce-ofset)/vt), 5 mA at vce = BVceo, as SimulIDE's zener.
-double eBJT::breakdown( double vce, double* g )
+// Breakdown current (pnp-signed voltage in, NPN sense out: into the collector for C-E,
+// into the emitter for E-B) and its conductance: m_satCur*exp((v-ofset)/vt), 5 mA at
+// v = BV, as SimulIDE's zener.
+double eBJT::breakdown( double v, double ofset, double* g )
 {
-    double e = qExp( qMin( (vce-m_bdOfset)/m_vt, 80.0 ) );
+    double e = qExp( qMin( (v-ofset)/m_vt, 80.0 ) );
     if( g ) *g = m_satCur*e/m_vt;
     return m_satCur*e;
 }
@@ -283,4 +294,28 @@ void eBJT::setBvceo( double bv )
     m_bdOfset = bv - m_vt*qLn( 0.005/m_satCur );
     m_bdCrit  = m_vt*qLn( m_vt/(qSqrt(2)*m_satCur) );
     m_changed = true;
+}
+
+void eBJT::setBvebo( double bv )
+{
+    if( bv < 0 ) bv = -bv;
+    m_bvebo   = bv;
+    m_ebOfset = bv - m_vt*qLn( 0.005/m_satCur );
+    m_changed = true;
+}
+
+// Newton step limit on a breakdown voltage (pnp-signed), the same damping as a zener's
+double eBJT::limitBreak( double vnew, double vold, double ofset )
+{
+    double v  = vnew - ofset;
+    double vo = vold - ofset;
+    if( v > m_bdCrit && qFabs( v-vo ) > 2*m_vt )
+    {
+        if( vo > 0 ){
+            double arg = 1+(v-vo)/m_vt;
+            v = ( arg > 0 ) ? vo + m_vt*qLn( arg ) : m_bdCrit;
+        }
+        else v = m_vt*qLn( v/m_vt );
+    }
+    return v + ofset;
 }
