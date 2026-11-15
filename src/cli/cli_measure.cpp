@@ -625,8 +625,14 @@ void CliApi::registerMeasure()
     {
         Component* comp = CliRefs::comp( c.arg( 0, "component") );
         QAbstractButton* b = control( comp, c.argOr( 1, ""), true ).button;
+        bool wasDown = b->isDown();
         b->setDown( false );
         emit b->released();
+        if( wasDown && b->isCheckable() )   // A toggle switch toggles on release, as a mouse click does (create-circuit #170)
+        {
+            b->toggle();
+            emit b->clicked( b->isChecked() );
+        }
         return compControls( comp );
     });
 
