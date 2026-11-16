@@ -16,7 +16,7 @@
 
 <item itemtype="And Gate" CircId="And Gate-13" mainComp="false" Show_id="false" Show_Val="false" Pos="-404,-304" rotation="0" hflip="1" vflip="1" label="And Gate-1" idLabPos="-16,-24" labelrot="0" valLabPos="0,0" valLabRot="0" Num_Inputs="4 _Inputs" Inverted="false" Open_Collector="false" Input_High_V="3.5 V" Input_Low_V="0.7 V" Input_Imped="1e+14 Ω" Out_High_V="5 V" Out_Low_V="0 V" Out_Imped="40 Ω" rndPD="false" Tpd_ps="10000 ps" Tr_ps="3000 ps" Tf_ps="4000 ps" />
 
-<item itemtype="Buffer" CircId="Buffer-27" mainComp="false" Show_id="false" Show_Val="false" Pos="-264,-252" rotation="0" hflip="1" vflip="1" label="Buffer-2" idLabPos="-16,-24" labelrot="0" valLabPos="0,0" valLabRot="0" Tristate="false" Inverted="true" Open_Collector="false" Input_High_V="3.5 V" Input_Low_V="0.7 V" Input_Imped="1e+14 Ω" Out_High_V="5 V" Out_Low_V="0 V" Out_Imped="40 Ω" rndPD="false" Tpd_ps="10000 ps" Tr_ps="3000 ps" Tf_ps="4000 ps" />
+<item itemtype="Buffer" CircId="Buffer-27" mainComp="false" Show_id="false" Show_Val="false" Pos="-264,-252" rotation="0" hflip="1" vflip="1" label="Buffer-2" idLabPos="-16,-24" labelrot="0" valLabPos="0,0" valLabRot="0" Tristate="false" Inverted="true" Open_Collector="false" Input_High_V="2.6 V" Input_Low_V="0.7 V" Input_Imped="1e+14 Ω" Out_High_V="5 V" Out_Low_V="0 V" Out_Imped="40 Ω" rndPD="false" Tpd_ps="10000 ps" Tr_ps="3000 ps" Tf_ps="4000 ps" />
 
 <item itemtype="Buffer" CircId="Buffer-28" mainComp="false" Show_id="false" Show_Val="false" Pos="-240,-320" rotation="0" hflip="1" vflip="1" label="Buffer-2" idLabPos="-16,-24" labelrot="0" valLabPos="0,0" valLabRot="0" Tristate="false" Inverted="true" Open_Collector="false" Input_High_V="3.5 V" Input_Low_V="0.7 V" Input_Imped="1e+14 Ω" Out_High_V="5 V" Out_Low_V="0 V" Out_Imped="40 Ω" rndPD="false" Tpd_ps="10000 ps" Tr_ps="3000 ps" Tf_ps="4000 ps" />
 
@@ -142,4 +142,9 @@
 
 <item itemtype="Connector" uid="Connector-8" startpinid="Tunnel-7-pin" endpinid="Buffer-2-in0" pointList="-512,-260,-488,-260" />
 
+<item itemtype="Tunnel" CircId="Tunnel-201" mainComp="false" Show_id="false" Show_Val="false" Pos="-268,-140" rotation="0" hflip="1" vflip="1" label="Tunnel-201" idLabPos="-16,-24" labelrot="0" valLabPos="0,0" valLabRot="0" Name="RC" Rotated="true" />
+<item itemtype="Diode" CircId="Diode-200" mainComp="false" Show_id="false" Show_Val="false" Pos="-236,-140" rotation="0" hflip="1" vflip="1" label="Diode-200" idLabPos="-16,-24" labelrot="0" valLabPos="0,0" valLabRot="0" Model="Diode Default" />
+<item itemtype="Rail" CircId="Rail-202" mainComp="false" ShowProp="Voltage" Show_id="false" Show_Val="true" Pos="-196,-140" rotation="0" hflip="-1" vflip="1" label="Rail-202" idLabPos="-16,-24" labelrot="0" valLabPos="6,-4" valLabRot="0" Voltage="5 V" />
+<item itemtype="Connector" uid="Connector-203" startpinid="Tunnel-201-pin" endpinid="Diode-200-lPin" pointList="-256,-140,-252,-140" />
+<item itemtype="Connector" uid="Connector-204" startpinid="Diode-200-rPin" endpinid="Rail-202-outnod" pointList="-220,-140,-204,-140" />
 </circuit>
