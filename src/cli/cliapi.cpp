@@ -298,6 +298,18 @@ void CliApi::exec( const QJsonObject& req, std::function<void(QJsonObject)> done
         done( makeReply( false, QJsonValue(), err, {} ) );
         return;
     }
+    // name=value words reach only the commands that read them; anywhere else they were dropped
+    // without a word (scope set SC InputImped=1G, create-circuit #266)
+    static const QStringList takesSets = {"comp add","comp set","settings set","editor compiler","serial send"};
+    if( !ctx.sets.isEmpty() && !takesSets.contains( cmd ) )
+    {
+        QStringList given;
+        for( QString k : ctx.sets.keys() ) given.append( k+"="+ctx.sets.value( k ).toString() );
+        QString err = cmd+" takes no name=value settings (got "+given.join(" ")+")";
+        if( !ctx.pos.isEmpty() ) err += ": set a part's properties with comp set "+ctx.pos.first()+" "+given.join(" ");
+        done( makeReply( false, QJsonValue(), err, {} ) );
+        return;
+    }
     m_messages.clear();
     m_capturing = true;
 

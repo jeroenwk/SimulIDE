@@ -32,6 +32,7 @@
 #include "e-led.h"
 #include "e-resistor.h"
 #include "varistor.h"
+#include "diode.h"
 #include "lamp.h"
 #include "bjt.h"
 #include "mosfet.h"
@@ -160,6 +161,17 @@ QJsonObject readComp( Component* comp )
         {
             double v = pins[0]->getVoltage() - pins[1]->getVoltage();
             double i = va->current();
+            o["voltage"] = num( v );
+            o["current"] = num( i );
+            o["power"]   = num( v*i );
+    }   }
+    else if( Diode* d = dynamic_cast<Diode*>( comp ) )   // Voltage across and current, anode to cathode (create-circuit #224)
+    {
+        std::vector<Pin*> pins = comp->getPins();
+        if( pins.size() >= 2 && pins[0]->isConnected() && pins[1]->isConnected() )
+        {
+            double v = pins[0]->getVoltage() - pins[1]->getVoltage();
+            double i = d->diodeCurrent();
             o["voltage"] = num( v );
             o["current"] = num( i );
             o["power"]   = num( v*i );

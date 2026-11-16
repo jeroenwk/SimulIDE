@@ -30,6 +30,7 @@ class Diode : public LinkerComponent, public eDiode
         virtual void stepSettled() override;
 
         virtual double res() override{ return m_resistor->res(); }
+        double diodeCurrent() { return m_resistor->current(); } // Anode to cathode (CLI read)
         virtual void setResSafe( double resist ) override { m_resistor->setResSafe(resist);}
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
