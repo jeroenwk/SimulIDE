@@ -213,6 +213,12 @@ int eNoise::startState( const QString& elId )
     return splitmix64( m_seed ^ fnv1a64( elId+"/start" ) ) & 1;
 }
 
+uint64_t eNoise::seedFor( const QString& elId, const QString& tag )
+{
+    if( startState( elId ) < 0 ) return 0;
+    return splitmix64( m_seed ^ fnv1a64( elId+"/"+tag ) ) | 1;   // Never 0 (0 = off)
+}
+
 void eNoise::stamp()
 {
     collect();

@@ -106,10 +106,18 @@ class Simulator : public QObject
             m_settled = el;
         }
 
+        // el->stepSettled() after every solved step, changed nodes or not (one watcher: the
+        // CLI averager reading a pin with no node, e.g. an unconnected gate output)
+        void setStepWatch( eElement* el ) { m_stepWatch = el; }
+        eElement* stepWatch() { return m_stepWatch; }
+
         void addToStartSettle( eElement* el ) { m_startSettle.append( el ); }
         // With noise on: a seeded random start state (0/1) for a logic element, -1 when noise is
         // off or its part is in noiseOff (the element keeps its own start state)
         int randomStart( eElement* el );
+        // With noise on: the seed of an element's own random sequence, 0 when noise is off
+        // or its part is in noiseOff
+        uint64_t noiseSeed( eElement* el, const QString& tag );
 
         void addToEnodeList( eNode* nod );
 
@@ -174,6 +182,7 @@ class Simulator : public QObject
         eElement* m_voltChanged;
         eElement* m_nonLinear;
         eElement* m_settled = nullptr;
+        eElement* m_stepWatch = nullptr;
         uint64_t  m_settledGen = 1;
         inline void runSettled();
         QList<eElement*> m_startSettle;

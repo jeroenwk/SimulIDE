@@ -27,6 +27,10 @@ class IoComponent : public Component
         void initState();
         void runOutputs();
         void scheduleOutPuts( eElement* el, uint64_t extra=0 );
+        // With noise on: each output change comes up to ±2 % of the delay early or late, from a
+        // seeded sequence (0 = off). Two gates that toggle in lockstep (a pulse of exactly one
+        // gate delay going round a latch) then fall out of step, and the pulse dies (#268)
+        void setDelayJitter( uint64_t seed ) { m_jitter = seed; }
         void cancelOutPuts( eElement* el );
 
         double inputHighV() { return m_inHighV; }
@@ -94,6 +98,8 @@ class IoComponent : public Component
         uint m_nextOutVal;
         std::queue<uint> m_outQueue;
         std::queue<uint64_t> m_timeQueue;
+        uint64_t m_jitter = 0;      // Jitter sequence state (xorshift64), 0 = no jitter
+        uint64_t outDelay( uint64_t extra );
 
         double m_propDelay; // Propagation delay
         double m_timeLH;    // Time for Output voltage to switch from 10% to 90% (1 gate)

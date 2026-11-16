@@ -85,6 +85,15 @@ the first solve the gates follow their inputs one by one with no delay, so only
 states the logic allows remain (a latch keeps its random state, a ring of gates
 starts with one gate pending).
 
+**Gate delay jitter:** with noise on, every output change of a gate or flip-flop
+comes up to ±2 % of its delay early or late, from its own seeded sequence (for the
+whole run, not only the noise window; `noiseOff` parts keep exact delays). Two gates
+that switch at the same instant (two equal RC halves of a latch crossing their
+thresholds together) otherwise send a pulse of exactly one gate delay round the
+latch for ever, at 1/(2·tpd); with jitter the pulse falls short of a delay and the
+gate drops it, as a real latch resolves. A ring of inverters runs within the jitter
+of its frequency.
+
 ## Junction capacitance
 
 Diodes, Zeners, LEDs, BJTs, MOSFETs and JFETs have capacitance properties (group
@@ -184,6 +193,7 @@ button to compare. Measured: 20.6 µV against 20.4 µV for kT/C.
 | `test_noise_seed_window` | same seed = same run, reported random seed repeats it, the window ends exactly |
 | `test_noise_settings` | off by default, files unchanged, save/reopen, status, Messages |
 | `test_logic_startup` | gates settled at the start (a ring of N inverters at 1/(2N·tpd)); with noise, a NAND latch and a D flip-flop start in both states over the seeds, the same seed repeats, noiseOff keeps the part's start |
+| `test_cc-268_latch_lockstep_jitter` | a NAND latch with cross-coupled RC timing (Scherz 12.79D) runs at its RC period (430 Hz) over two seeds, not at 1/(2·tpd); the same seed repeats |
 | `test_noise_bistable` | a symmetric bistable ends in a seed-dependent state, with 10 nF base capacitors and with none (junction capacitance); without noise the resistive one stays balanced |
 | `test_noise_reply_tag` | `probe`, `read`, `scope data`: no tag without noise, a tag inside the window, `scope data` of noise-free samples untagged after it, a next run without noise untagged |
 | `test_inductor_cp` | `Cp` 17.9 pF across 374 µH gives the same voltages as a separate capacitor (within 1 nV), rings at 1/(2π√LC); 0 = no ring; save and reopen |

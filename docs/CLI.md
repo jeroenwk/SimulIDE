@@ -354,7 +354,7 @@ Removing wires around a junction works as in the GUI:
 | `sim status` | State, simulated time, target and actual speed |
 | `sim speed [percent]` | Target speed in % of real time |
 | `noise sources` | The transient noise sources of the running circuit: part, type, kind (thermal / shot / channel), nodes, spectral density `psd` (A²/Hz) and the `rms` current per update. See [NOISE.md](NOISE.md) |
-| `sim average --for <time> <pin\|comp> ...` | Run for a span, then pause, and give the time-weighted mean, RMS, min and max over every converged solver step: the voltage at a pin (`R1.lPin`), or for a two-pin part (`R1`, `C1`, `L1`) the voltage across it (pin 0 − pin 1) and the current into pin 0. Exact for switching waveforms; a mean of `scope data` samples is not, since they sit on a fixed time grid |
+| `sim average --for <time> <pin\|comp> ...` | Run for a span, then pause, and give the time-weighted mean, RMS, min and max over every converged solver step: the voltage at a pin (`R1.lPin`), or for a two-pin part (`R1`, `C1`, `L1`) the voltage across it (pin 0 − pin 1) and the current into pin 0. Exact for switching waveforms; a mean of `scope data` samples is not, since they sit on a fixed time grid. A logic output with no wire (an unused Q̄) is read at every solved step; another pin with nothing connected is refused |
 
 ### Measuring
 

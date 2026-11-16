@@ -79,6 +79,9 @@ class eNoise : public eElement
 
         // Seeded random start state (0/1) of a logic element, -1 if its part is in noiseOff
         int startState( const QString& elId );
+        // Seed of an element's own random sequence (e.g. its gate-delay jitter), 0 if its part
+        // is in noiseOff
+        uint64_t seedFor( const QString& elId, const QString& tag );
 
         struct SrcInfo { QString part, type, kind, nodeA, nodeB; double psd, rms; };
         QList<SrcInfo> info();     // GUI thread, for the CLI `noise sources`
