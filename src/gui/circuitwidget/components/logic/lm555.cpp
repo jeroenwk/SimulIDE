@@ -100,7 +100,11 @@ Lm555::Lm555( QString type, QString id )
 
     m_propDelay = 10*1000; // 10 ns
 
+    m_cmos = false;
+
     addPropGroup( { tr("Main"), {
+        new BoolProp<Lm555>("CMOS", tr("CMOS Output (rail to rail)"),""
+                           , this, &Lm555::cmos, &Lm555::setCmos ),
         showStateProp()
     },0} );
     enableStates( true );
@@ -158,7 +162,7 @@ void Lm555::voltChanged()
     }
     if( qFabs(voltPos-m_voltPos) > 1e-3 )
     {
-        double voltHight = voltPos - 1.3;
+        double voltHight = m_cmos ? voltPos : voltPos - 1.3;
         if( voltHight < m_voltNeg ) voltHight = m_voltNeg;
         m_output->setOutHighV( voltHight );
 
