@@ -42,6 +42,7 @@ eBJT::eBJT( QString id )
     m_vt = 0.025865;
     m_satCur = 1e-13;
     m_vCrit = m_vt*qLn( m_vt/(qSqrt(2)*m_satCur) );
+    m_va = 0;
 
     m_gmin   = 0;
     m_gminDropped = false;
@@ -136,11 +137,15 @@ void eBJT::voltChanged()
         // must come from the converged voltages, not from the last iteration (BH-034:
         // up to 47 % off, KCL violated in a current mirror).
         // (no qDebug here: this is the per-step hot path)
-        double pc = pnp/m_vt;
-        double eBE = qExp( voltBE*pc );
-        double eBC = qExp( voltBC*pc );
-        double ie2 = pnp*m_satCur*(-(eBE-1)/m_fgain + (eBC-1) );
-        double ic2 = pnp*m_satCur*( (eBE-1) - (eBC-1)/m_rgain );
+        double ie2, ic2;
+        if( m_va <= 0 ){             // No Early effect: the original expressions, inline (hot path)
+            double pc = pnp/m_vt;
+            double eBE = qExp( voltBE*pc );
+            double eBC = qExp( voltBC*pc );
+            ie2 = pnp*m_satCur*(-(eBE-1)/m_fgain + (eBC-1) );
+            ic2 = pnp*m_satCur*( (eBE-1) - (eBC-1)/m_rgain );
+        }
+        else currents( voltBE, voltBC, &ic2, &ie2 );
         double ib2 = 0;
         if( m_bvceo > 0 ) ib2 = pnp*breakdown( pnp*(voltC-voltE), nullptr );
         m_bdCurr = ib2;
@@ -169,18 +174,23 @@ void eBJT::voltChanged()
     voltBE = pnp*limitStep( pnp*voltBE, pnp*m_voltBE );
     m_voltBE = voltBE;
 
-    double pcoef = pnp/m_vt;
-    double expBC = qExp( voltBC*pcoef );
-    double expBE = qExp( voltBE*pcoef );
-
-    double ie = pnp*m_satCur*(-(expBE-1)/m_fgain + (expBC-1) );
-    double ic = pnp*m_satCur*( (expBE-1) - (expBC-1)/m_rgain );
+    double ie, ic, Gce, Gcc, Gee, Gec;   // dIc/dVbe, dIc/dVbc, dIe/dVbe, dIe/dVbc
+    if( m_va <= 0 ){                     // No Early effect: the original expressions, inline (hot path)
+        double pcoef = pnp/m_vt;
+        double expBC = qExp( voltBC*pcoef );
+        double expBE = qExp( voltBE*pcoef );
+        ie = pnp*m_satCur*(-(expBE-1)/m_fgain + (expBC-1) );
+        ic = pnp*m_satCur*( (expBE-1) - (expBC-1)/m_rgain );
+        Gee = -m_satCur/m_vt*expBE/m_fgain;
+        Gcc = -m_satCur/m_vt*expBC/m_rgain;
+        Gce = -Gee*m_fgain;
+        Gec = -Gcc*m_rgain;
+    }else{
+        double g[4];
+        currents( voltBE, voltBC, &ic, &ie, g );
+        Gce = g[0]; Gcc = g[1]; Gee = g[2]; Gec = g[3];
+    }
     m_baseCurr = -(ie+ic);
-
-    double Gee = -m_satCur/m_vt*expBE/m_fgain;
-    double Gcc = -m_satCur/m_vt*expBC/m_rgain;
-    double Gce = -Gee*m_fgain;
-    double Gec = -Gcc*m_rgain;
 
     Gcc -= gmin;
     Gee -= gmin;
@@ -243,6 +253,32 @@ void eBJT::noiseSources( QList<NoiseSrc>& list )   // Shot noise of the collecto
     list.append( b );
 }
 
+// Ebers-Moll in transport form: Ict = IS (eBE - eBC) K, Ic = Ict - IS (eBC-1)/BR,
+// Ie = -Ict - IS (eBE-1)/BF, with K = 1 - VBC/VA the Early factor (1 with no VA).
+// Called only with VA set: with no VA, voltChanged() runs the original Falstad expressions
+// inline, so existing circuits keep their results to the last bit and their speed.
+void eBJT::currents( double vbe, double vbc, double* ic, double* ie, double* g )
+{
+    double pnp = m_PNP ? -1 : 1;
+    double eBE = qExp( vbe*pnp/m_vt );
+    double eBC = qExp( vbc*pnp/m_vt );
+    double cr = 1/m_rgain-1;             // 1/BR
+    double cf = 1/m_fgain-1;             // 1/BF
+    double K = 1-pnp*vbc/m_va;           // dK: dK/d(pnp-signed VBC)
+    double dK = -1/m_va;
+    if( K < 0.05 ){ K = 0.05; dK = 0; }  // VBC forward past VA: not a real bias, keep it sane
+    double ict = m_satCur*(eBE-eBC);
+    *ic = pnp*( ict*K - m_satCur*(eBC-1)*cr );
+    *ie = pnp*(-ict*K - m_satCur*(eBE-1)*cf );
+    if( !g ) return;
+    double sBE = m_satCur*eBE/m_vt;
+    double sBC = m_satCur*eBC/m_vt;
+    g[0] = sBE*K;                        // dIc/dVbe
+    g[1] = -sBC*K + ict*dK - sBC*cr;     // dIc/dVbc
+    g[2] = -sBE*K - sBE*cf;              // dIe/dVbe
+    g[3] = sBC*K - ict*dK;               // dIe/dVbc
+}
+
 double eBJT::limitStep( double vnew, double vold )
 {
     if( vnew > m_vCrit && qFabs(vnew-vold) > (2*m_vt) ){
@@ -274,6 +310,24 @@ void eBJT::setThreshold( double vCrit )
     m_satCur = m_vt/(qExp( vCrit/m_vt )*qSqrt(2));
     setBvceo( m_bvceo );   // The breakdown knees depend on m_satCur
     setBvebo( m_bvebo );
+    m_changed = true;
+}
+
+void eBJT::setSatCur( double is )
+{
+    if( is < 1e-20 ) is = 1e-20;
+    if( is > 1e-6 )  is = 1e-6;
+    m_satCur = is;
+    m_vCrit = m_vt*qLn( m_vt/(qSqrt(2)*m_satCur) );
+    setBvceo( m_bvceo );   // The breakdown knees depend on m_satCur
+    setBvebo( m_bvebo );
+    m_changed = true;
+}
+
+void eBJT::setEarly( double va )
+{
+    if( va < 0 ) va = -va;
+    m_va = va;
     m_changed = true;
 }
 

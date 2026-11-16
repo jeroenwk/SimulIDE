@@ -46,6 +46,17 @@ class eBJT : public eElement
         double threshold() { return m_vCrit; }
         void   setThreshold( double vCrit );
 
+        // Saturation current IS (A): sets VBE (0.596 V at 1 mA for the default 1e-13 A);
+        // the same model parameter as the threshold, given the SPICE way
+        double satCur() { return m_satCur; }
+        void   setSatCur( double is );
+
+        // Early voltage VA (V; 0 = none, infinite output resistance): the transport current
+        // is scaled by 1 - VBC/VA (SPICE Gummel-Poon base-width factor), so IC rises with
+        // VCE and r_o = (VA + VCE) / IC
+        double early() { return m_va; }
+        void   setEarly( double va );
+
         // Collector-emitter breakdown (BVceo, V; 0 = none): avalanche current from C to E
         // (E to C for PNP) once VCE passes it, so a coil switched off with no diode is
         // clamped there instead of jumping to I*L/step
@@ -59,6 +70,12 @@ class eBJT : public eElement
 
     protected:
         double limitStep( double vnew, double vold );
+
+        // Currents into the collector and emitter at the junction voltages (actual VB-VE,
+        // VB-VC), and their derivatives when g is given: g = {dIc/dVbe, dIc/dVbc, dIe/dVbe, dIe/dVbc}
+        void currents( double vbe, double vbc, double* ic, double* ie, double* g=nullptr );
+
+        double m_va;        // Early voltage, 0 = none
 
         double m_baseCurr;
         double m_voltBE;
