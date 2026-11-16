@@ -136,7 +136,10 @@ void Lamp::runEvent()           // Filament temperature, every m_thStep
     if( m_temp > 3600 ) m_temp = 3600;                            // Tungsten melts at 3695 K
 
     double res = m_rCold*pow( m_temp/t0, 1.2 );
-    if( qFabs( res*m_admit-1 ) > 1e-4 ) eResistor::setRes( res ); // Re-stamps the admittance
+    // Re-stamps the admittance. Not 1e-4: at a dim glow the filament's ripple moves R by ~2.5e-5,
+    // so R stood still, then jumped: a deadband that kept a lamp-stabilised oscillator's
+    // amplitude bouncing for ever (create-circuit #6). Restamping is not what costs time here.
+    if( qFabs( res*m_admit-1 ) > 1e-9 ) eResistor::setRes( res );
 
     Simulator::self()->addEvent( m_thStep, this );
 }
