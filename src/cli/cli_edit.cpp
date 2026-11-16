@@ -576,8 +576,15 @@ void CliApi::registerEdit()
     {
         Component* comp = CliRefs::comp( c.arg( 0, "component") );
         if( c.pos.size() > 1 )   // "comp set A x=1 B x=2" set only A, with B's values (create-circuit #181)
+        {
+            bool isComp = true;  // "Duty=25 %" unquoted: the shell splits off the unit (create-circuit #339)
+            try{ CliRefs::comp( c.pos.at( 1 ) ); }catch( CliError& ){ isComp = false; }
+            if( !isComp )
+                throw CliError("comp set: \""+c.pos.mid( 1 ).join(" ")+"\" is not a prop=value pair:"
+                              " a value with a space needs quotes (\"Duty=25 %\") or no space (Duty=25%)");
             throw CliError("comp set changes one component; also given: "+c.pos.mid( 1 ).join(" ")
                           +" (one comp set per component)");
+        }
         if( c.sets.isEmpty() ) throw CliError("nothing to set: give prop=value pairs");
 
         QMap<QString, QString> changes;
