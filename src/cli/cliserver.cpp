@@ -3,6 +3,7 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <cstdio>
 #include <QApplication>
 #include <QLocalServer>
 #include <QLocalSocket>
@@ -27,6 +28,10 @@ CliServer::CliServer( QObject* parent )
     m_server   = nullptr;
     m_headless = false;
     m_api      = new CliApi();
+    m_idleMs   = 0;
+    m_idleTimer = new QTimer( this );
+    m_idleTimer->setSingleShot( true );
+    connect( m_idleTimer, &QTimer::timeout, this, [this](){ idleCheck(); } );
 }
 CliServer::~CliServer()
 {
@@ -73,6 +78,24 @@ bool CliServer::start( QString name, bool headless )
     return true;
 }
 
+void CliServer::setIdleExit( int ms )
+{
+    m_idleMs = ms;
+    if( ms > 0 ) m_idleTimer->start( ms );
+    else         m_idleTimer->stop();
+}
+
+void CliServer::idleCheck()
+{
+    if( m_idleMs <= 0 ) return;
+    if( !m_busy.isEmpty() ){ m_idleTimer->start( m_idleMs ); return; } // A request still running (sim run --for)
+    fprintf( stderr, "SimulIDE headless: no CLI request on socket '%s' for %d s: exiting "
+                     "(--keep, or --idle-exit 0, to stay)\n", m_name.toLocal8Bit().constData(), m_idleMs/1000 );
+    qDebug() << "[CliServer] idle exit after" << m_idleMs << "ms on" << m_name;
+    if( m_server ) m_server->close();      // Removes the socket file
+    qApp->exit( 0 );
+}
+
 void CliServer::newConnection()
 {
     while( QLocalSocket* sock = m_server->nextPendingConnection() )
@@ -103,9 +126,11 @@ void CliServer::readSocket( QLocalSocket* sock )
 
         QPointer<QLocalSocket> target( sock );
         m_busy.insert( sock );
+        if( m_idleMs > 0 ) m_idleTimer->start( m_idleMs );   // Activity: restart the idle count
         auto send = [this, target, sock]( QJsonObject reply )
         {
             m_busy.remove( sock );
+            if( m_idleMs > 0 ) m_idleTimer->start( m_idleMs );
             if( !target ) return;
             target->write( QJsonDocument( reply ).toJson( QJsonDocument::Compact )+"\n" );
             target->flush();

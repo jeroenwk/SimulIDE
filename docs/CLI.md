@@ -23,9 +23,15 @@ simulide cli --socket demo read R1
 
 ```
 simulide [circuit.sim1]                       GUI, listening on the default socket
-simulide --headless [--socket NAME] [file]    No window; exits on "quit"
+simulide --headless [--socket NAME] [file]    No window; exits on "quit", or after 30 min without a request
+         [--idle-exit TIME] [--keep]          idle limit (90s, 10m, 2h; 0 = never); --keep = never
 simulide --no-server                          GUI without the CLI socket
 ```
+
+- A headless server quits by itself after `--idle-exit` (default 30 min) without a CLI
+  request, counted from the last request or reply and never while one is still running
+  (a long `sim run --for`). Servers started for a session or a script used to outlive it
+  by days. Its circuit is gone with it: a script that pauses longer passes `--keep`.
 
 - The default socket name is `simulide-cli`. Set `SIMULIDE_SOCKET` or pass
   `--socket` to both the server and the client to run several instances.

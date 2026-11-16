@@ -76,7 +76,7 @@ When the user wants to build or try circuits together, follow **`docs/COLLABORAT
 ### Command line interface (`src/cli/`, documented in `docs/CLI.md`)
 - **Entry points:**
   - `simulide cli <cmd>` is a thin client (`cliclient.cpp`, no GUI). `main.cpp` dispatches to it when `argv[1]=="cli"`.
-  - `simulide --headless [--socket N]` sets `QT_QPA_PLATFORM=offscreen` and never shows the window.
+  - `simulide --headless [--socket N]` sets `QT_QPA_PLATFORM=offscreen` and never shows the window. It quits after 30 min without a CLI request (`--idle-exit TIME`, `--keep`; `CliServer::setIdleExit`).
   - The GUI also listens on the default `simulide-cli` socket.
 - **Server** (`cliserver.cpp`):
   - A `QLocalServer` that speaks newline-delimited JSON. Requests are handled one at a time per connection, on the GUI thread.

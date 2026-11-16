@@ -7,6 +7,7 @@
 #define CLISERVER_H
 
 #include <QObject>
+#include <QTimer>
 #include <QHash>
 #include <QSet>
 #include <QByteArray>
@@ -27,6 +28,10 @@ class CliServer : public QObject
  static CliServer* self() { return m_pSelf; }
 
         bool start( QString name, bool headless );
+
+        // Headless: quit after this long without a CLI request (0 = never). A server left
+        // behind by a script or session that ended no longer lives forever.
+        void setIdleExit( int ms );
         QString serverName() { return m_name; }
 
  static QString defaultName();
@@ -45,7 +50,11 @@ class CliServer : public QObject
 
         void readSocket( QLocalSocket* sock );
 
+        void idleCheck();
+
         QLocalServer* m_server;
+        QTimer*       m_idleTimer;
+        int           m_idleMs;
         CliApi*       m_api;
         QString       m_name;
         bool          m_headless;

@@ -103,12 +103,16 @@ int main( int argc, char *argv[] )
     bool cliServer = true;
     QString socketName;
     QString circFile;
+    QString idleExit;                 // Headless: quit after this long without a CLI request
+    bool keep = false;
     for( int i=1; i<argc; ++i )
     {
         QString arg = QString::fromLocal8Bit( argv[i] );
         if     ( arg == "--headless"  ) headless  = true;
         else if( arg == "--no-server" ) cliServer = false;
         else if( arg == "--socket" && i+1 < argc ) socketName = QString::fromLocal8Bit( argv[++i] );
+        else if( arg == "--idle-exit" && i+1 < argc ) idleExit = QString::fromLocal8Bit( argv[++i] );
+        else if( arg == "--keep" ) keep = true;
         else if( arg.endsWith(".simu") || arg.endsWith(".sim1") ) circFile = arg;
     }
     if( headless ){
@@ -148,6 +152,30 @@ int main( int argc, char *argv[] )
             fprintf( stderr, "SimulIDE headless: could not start CLI server on socket '%s'\n",
                      ( socketName.isEmpty() ? CliServer::defaultName() : socketName ).toLocal8Bit().constData() );
             return 2;
+        }
+        if( headless && server && !keep )
+        {
+            // Default 30 min: servers started for a session or a script outlived them by days
+            // (44 of them, 1.9 GB). "--idle-exit 90s|10m|2h|0", "--keep" = never.
+            int ms = 30*60*1000;
+            if( !idleExit.isEmpty() )
+            {
+                QString v = idleExit.trimmed().toLower();
+                double mult = 60*1000;                         // Plain number: minutes
+                if     ( v.endsWith("ms") ){ mult = 1;         v.chop( 2 ); }
+                else if( v.endsWith("s")  ){ mult = 1000;      v.chop( 1 ); }
+                else if( v.endsWith("m")  ){ mult = 60*1000;   v.chop( 1 ); }
+                else if( v.endsWith("h")  ){ mult = 3600*1000; v.chop( 1 ); }
+                bool ok = false;
+                double n = v.toDouble( &ok );
+                if( !ok || n < 0 ){
+                    fprintf( stderr, "SimulIDE headless: --idle-exit takes a time (90s, 10m, 2h; 0 = never), got '%s'\n",
+                             idleExit.toLocal8Bit().constData() );
+                    return 2;
+                }
+                ms = int( n*mult );
+            }
+            server->setIdleExit( ms );
         }
     }
     FileOpenFilter* fileOpen = new FileOpenFilter;
