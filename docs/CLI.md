@@ -373,8 +373,8 @@ Removing wires around a junction works as in the GUI:
 | `messages [--last N] [--grep TEXT]` | Text of the Messages pane, one line per entry (`lines`, `count`). Debug logs are only in it with `logVerbose` on |
 | `log [--since T] [--kind part\|cap] [--comp C] [--last N]` | Event log of the run, as in Messages: part state changes and charge events of capacitors with Log charge on (time, approx, comp, kind, level, text, shown) |
 | `status <comp> [--last N]` | States a part reports with `component.setStatus`: now, and every change since the start with its simulated time (block, text, level `off`/`on`/`wait`/`fault`), oldest first. Restart times and blink rates come straight from it |
-| `scope data <comp> [--ch N] [--last TIME] [--max N]` | Oscilloscope or logic analyzer samples as `[time_s, value]`, oldest first |
-| `scope get <comp>` | Display settings: time/div, trigger, trigger level, auto-scale, and per channel volts/div and positions |
+| `scope data <comp> [--ch N] [--last TIME] [--max N]` | Oscilloscope or logic analyzer samples as `[time_s, value]`, oldest first; a value holds until the next sample. Each channel gives its `oldest` sample time; the oscilloscope gives `sampleSlot`, the resolution (one sample per time/div / 5000, the last change in it). Over `--max` (default 2000; 0 = all) the span is cut into `--max`/4 buckets, the same for every channel, each giving its first, lowest, highest and last sample at their own instants (peaks and edges kept), and the reply has `thinned` |
+| `scope get <comp>` | Display settings: time/div, trigger, trigger level, auto-scale, and per channel volts/div and positions; for the oscilloscope also `sampleSlot` (time/div / 5000) and `historyMin` (BufferSize slots: at least that much history) |
 | `scope set <comp> [--timediv T] [--trigger CH\|none] [--triglevel V\|auto] [--voltdiv V\|a,b,c,d] [--voltpos ...] [--timepos ...] [--ch CH] [--autoscale CH\|none]` | Change display settings, as in the Expand panel |
 
 For `scope set`, channels are 0..3 (`Pin0`..`Pin3`). A single
