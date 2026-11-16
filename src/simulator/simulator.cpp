@@ -194,6 +194,7 @@ void Simulator::runCircuit()
 
 void Simulator::runSettled()   // The step is solved: elements that asked see its final values
 {
+    if( m_stepWatch ) addToSettled( m_stepWatch );
     eElement* el = m_settled;
     m_settled = nullptr;
     m_settledGen++;
@@ -220,6 +221,11 @@ void Simulator::startSettle()  // First step: logic gates settle one by one, wit
 int Simulator::randomStart( eElement* el )
 {
     return m_noiseEl ? m_noiseEl->startState( el->getId() ) : -1;
+}
+
+uint64_t Simulator::noiseSeed( eElement* el, const QString& tag )
+{
+    return m_noiseEl ? m_noiseEl->seedFor( el->getId(), tag ) : 0;
 }
 
 void Simulator::solveCircuit()
@@ -309,6 +315,7 @@ void Simulator::resetSim()
     m_settled = nullptr;      // Elements may be gone: drop the list, a new generation forgets the flags
     m_settledGen++;
     m_startSettle.clear();
+    m_stepWatch = nullptr;
 }
 
 void Simulator::createNodes()

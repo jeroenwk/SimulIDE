@@ -131,17 +131,27 @@ void IoComponent::cancelOutPuts( eElement* el )   // Drop the pending output cha
     while( !m_timeQueue.empty() ) m_timeQueue.pop();
 }
 
+uint64_t IoComponent::outDelay( uint64_t extra )
+{
+    uint64_t delay = m_propDelay*m_propSize+extra;
+    if( !m_jitter || delay < 2 ) return delay;
+    m_jitter ^= m_jitter << 13; m_jitter ^= m_jitter >> 7; m_jitter ^= m_jitter << 17;
+    double u = (double)( m_jitter >> 11 )/(double)( 1ULL << 53 );   // 0..1
+    int64_t d = (int64_t)( ( u*2-1 )*0.02*(double)delay );
+    return (uint64_t)std::max<int64_t>( 1, (int64_t)delay+d );
+}
+
 void IoComponent::scheduleOutPuts( eElement* el, uint64_t extra )
 {
     if(  m_outQueue.empty() )
     {
         if( m_nextOutVal == m_outValue ) return;
-        Simulator::self()->addEvent( m_propDelay*m_propSize+extra, el );
+        Simulator::self()->addEvent( outDelay( extra ), el );
     }
     else          // New Event while previous Event not dispatched
     {
         if( m_nextOutVal == m_outQueue.back() ) return;
-        uint64_t nextTime = Simulator::self()->circTime()+m_propDelay*m_propSize+extra;
+        uint64_t nextTime = Simulator::self()->circTime()+outDelay( extra );
         m_timeQueue.push( nextTime );
 
         m_eElement = el;

@@ -24,6 +24,7 @@
 #include "component.h"
 #include "e-element.h"
 #include "e-node.h"
+#include "iopin.h"
 #include "pin.h"
 #include "simulator.h"
 #include "updatable.h"
@@ -140,15 +141,24 @@ class Averager : public eElement, public Updatable
         }
         void attach()
         {
-            for( Channel& c : m_ch )
+            bool lone = false;          // A pin with no node (an unconnected output): no node tells
+            for( Channel& c : m_ch )    // when it changes, so read every solved step
                 for( Pin* p : { c.p0, c.p1 } )
+                {
                     if( p && p->getEnode() ){ p->getEnode()->voltChangedCallback( this ); m_nodes.append( p->getEnode() ); }
+                    else if( p ) lone = true;
+                }
+            if( lone ){ m_watchSim = Simulator::self(); m_watchSim->setStepWatch( this ); }
         }
         void detach()
         {
             for( eNode* n : m_nodes ) n->remFromChangedCallback( this );
             m_nodes.clear();
+            if( m_watchSim && m_watchSim == Simulator::self() && m_watchSim->stepWatch() == this )
+                m_watchSim->setStepWatch( nullptr );
+            m_watchSim = nullptr;
         }
+        Simulator* m_watchSim = nullptr;
 
         QList<Channel> m_ch;
         QList<eNode*>  m_nodes;
@@ -194,7 +204,7 @@ void CliApi::registerAverage()
 
         for( Channel& ch : chans )               // Nodes exist only once the simulation has started
             for( Pin* p : { ch.p0, ch.p1 } )
-                if( p && !p->getEnode() ){
+                if( p && !p->getEnode() && !dynamic_cast<IoPin*>( p ) ){   // An IoPin drives its own level
                     AVG_LOG << CliRefs::pinRef( p ) << "has no node";
                     throw CliError( CliRefs::pinRef( p )+" is not connected");
                 }

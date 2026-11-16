@@ -43,6 +43,7 @@ void Gate::stamp()
     for( uint i=0; i<m_inPin.size(); ++i ) m_inPin[i]->changeCallBack( this );
 
     int rs = Simulator::self()->randomStart( this );  // Noise on: a random start, as at power-up
+    setDelayJitter( Simulator::self()->noiseSeed( this, "delay" ) );
     bool init = ( rs < 0 ) ? m_initState : rs;
     m_outPin[0]->setOutState( init );
 
