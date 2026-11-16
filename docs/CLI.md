@@ -100,7 +100,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `comp add <name> [--at x,y] [--label L] [--rot DEG] [prop=value ...]` | Add a part. Prints its uid and where each pin is (`pos` x,y, the `side` it points to, and `hidden: true` for a pin the part does not draw in its current mode, e.g. a WaveGen's `gndnod` unless Bipolar) |
 | `comp list [--type TYPE]` | Components in the circuit |
 | `comp get <comp> [--all]` | Properties (with units, or the allowed options for choice properties) and pins (with position, connections, and voltages while running). `--all` adds hidden properties, marked `hidden` |
-| `comp set <comp> prop=value ...` | Change properties. `label=` renames. `idLabPos=dx,dy` / `valLabPos=dx,dy` move the name / value label (offset of its top-left corner from the part's position; switches the part's labels to manual placement). A choice property takes one of the options `comp get` lists, matched without case and stored as listed (`Wave_Type=triangle` sets `Triangle`), or its index; anything else is refused with the options (`comp add` too). Undoable |
+| `comp set <comp> prop=value ...` | Change properties. `label=` renames. `idLabPos=dx,dy` / `valLabPos=dx,dy` move the name / value label (offset of its top-left corner from the part's position; switches the part's labels to manual placement). A choice property takes one of the options `comp get` lists, matched without case and stored as listed (`Wave_Type=triangle` sets `Triangle`), or its index; anything else is refused with the options (`comp add` too). When the part stores another value than asked (a setter that clamps: Battery `Voltage=-9` stores 1e-12 V), the reply has a `note` with both (`comp add` too). Undoable |
 | `comp move <comp> <x,y>` | Move (snapped to the grid) |
 | `comp rotate <comp> [cw\|ccw\|180]` | Rotate |
 | `comp flip <comp> <h\|v>` | Flip |
@@ -331,7 +331,9 @@ button. Animate colors wires by voltage (red/blue) and overrides the wire color.
 Routing:
 - Where two consecutive points differ in both x and y, `wire add` adds a corner.
   The wire leaves its first pin in the direction the pin points, then turns at
-  each corner.
+  each corner. Without `--via`, if that would leave the first pin backwards or
+  enter the second pin from behind (through its own part, e.g. a tunnel facing
+  away from its target), the other corner is used.
 - `wire add` adds a note when the new wire lies along another wire, or passes
   over a pin it doesn't connect to. Both look connected in a picture but are
   not. Use `--via` to route around.
@@ -401,7 +403,7 @@ the pause.
 | Command | |
 |---|---|
 | `ui controls <comp>` | Buttons, switches and dials of a part, with their state |
-| `ui press <comp> [index]` / `ui release <comp> [index]` | Hold or release a push button |
+| `ui press <comp> [index]` / `ui release <comp> [index]` | Hold or release a push button (a press + release toggles a toggle switch, in the order of a mouse click) |
 | `ui click <comp> [index]` | Click (press and release); toggles switches |
 | `ui set <comp> [index] on\|off` | Set a switch or toggle. Switch and DIP switch positions are saved with the circuit (Switch: hidden property `Toggled`, true when flipped away from its Normally Closed setting) |
 | `ui dial <comp> [index] <value\|N%>` | Potentiometers, variable sources, encoders, sliders |

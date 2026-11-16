@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <climits>
+#include <cmath>
 
 #include <QTreeWidgetItem>
 #include <QRegularExpression>
@@ -196,6 +197,38 @@ QString normalizeValue( ComProperty* prop, QString val )
     if( integer )                   // Integer setters read "<int> <unit>": 4.7k -> 4700 Ω
         return QString::number( qRound64( num.toDouble()*mult ) )+" "+base;
     return num+" "+prefix+base;
+}
+
+// The number a normalized double value asks for ("4.7 kΩ" -> 4700), NaN when it is not one
+double requestedNumber( ComProperty* prop, QString val )
+{
+    if( !prop || prop->type() != "double" ) return qQNaN();
+    static const QRegularExpression re("^\\s*([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)\\s*(.*?)\\s*$");
+    QRegularExpressionMatch m = re.match( val );
+    if( !m.hasMatch() ) return qQNaN();
+    static const QString prefixes = "pnµmkMGT";
+    QString base = prop->unit();                  // As normalizeValue writes it: <num> <prefix><base>
+    if( base.size() > 1 && prefixes.contains( base.at(0) ) ) base = base.mid( 1 );
+    QString rest = m.captured( 2 );
+    double mult = 1;
+    if( !rest.isEmpty() && rest != base && prefixes.contains( rest.at(0) ) )
+        mult = QHash<QChar,double>{{'p',1e-12},{'n',1e-9},{QChar(0xB5),1e-6},{'m',1e-3},
+                                   {'k',1e3},{'M',1e6},{'G',1e9},{'T',1e12}}.value( rest.at(0), 1 );
+    return m.captured( 1 ).toDouble()*mult;
+}
+
+// A setter that clamps or rounds a value stores another one than asked: say so, as Battery
+// Voltage=-9 stored 1e-12 V without a word (create-circuit #293)
+QString storedNote( Component* comp, QString name, ComProperty* prop, QString val )
+{
+    double want = requestedNumber( prop, val );
+    if( std::isnan( want ) ) return "";
+    ComProperty* now = findProp( comp, name );
+    if( !now ) return "";
+    double got = now->getValue();
+    if( qAbs( got-want ) <= 1e-9*qMax( qAbs( want ), qAbs( got ) ) ) return "";
+    qDebug() << "[cli:comp set]" << comp->getUid() << name << "asked" << want << "stored" << got;
+    return comp->getUid()+" "+name+": asked "+val+", stored "+now->getValStr()+" (the part limits this value)";
 }
 
 // Settings come sorted by name; a Model loads its own defaults, so set it first and the other
@@ -393,6 +426,16 @@ void layoutWarnings( Connector* con )
     for( QString n : list ) CliApi::self()->addMessage( n+" (use --via to route around)" );
 }
 
+// 1 when a leg from a pin going d runs against the way the pin faces (back into its part)
+int backwards( QString side, QPoint d )
+{
+    if( side == "right" ) return d.x() < 0;
+    if( side == "left"  ) return d.x() > 0;
+    if( side == "down"  ) return d.y() < 0;
+    if( side == "up"    ) return d.y() > 0;
+    return 0;
+}
+
 // Wire path from a to b through the --via points. Every leg is horizontal or vertical:
 // where two points differ in x and y a corner is added, leaving the start pin along its
 // own direction (startVertical) and then turning at each corner.
@@ -498,6 +541,7 @@ void CliApi::registerEdit()
             circ->cancelUndoStep();
             throw CliError( err );
         };
+        QStringList notes;
         for( QString k : modelFirst( c.sets.keys() ) )
         {
             QString name;
@@ -506,6 +550,8 @@ void CliApi::registerEdit()
             try { value = normalizeValue( findProp( comp, name ), c.sets.value( k ).toString() ); }
             catch( CliError& e ){ fail( e.msg ); }
             comp->setPropStr( name, value );
+            QString note = storedNote( comp, name, findProp( comp, name ), value );
+            if( !note.isEmpty() ) notes.append( note );
         }
         if( c.has("label") ) comp->setIdLabel( c.opt("label") );
         if( c.has("rot") ) comp->setPropStr("rotation", c.opt("rot") );
@@ -520,6 +566,8 @@ void CliApi::registerEdit()
                              "or switch it on (ui set "+comp->getUid()+" on)";
             qDebug() << "[cli:comp add]" << comp->getUid() << "added with Always_On off: note sent";
         }
+        if( !notes.isEmpty() )
+            placed["note"] = ( placed.contains("note") ? placed["note"].toString()+"; " : QString() )+notes.join("; ");
         return placed;
     });
 
@@ -556,7 +604,14 @@ void CliApi::registerEdit()
 
         Component* now = CliRefs::comp( uid );   // Some properties recreate pins: reread
         QJsonObject res{ {"uid", uid } };
-        for( QString k : changes.keys() ) res[k] = CliRefs::propValue( now, k );
+        QStringList notes;
+        for( QString k : changes.keys() )
+        {
+            res[k] = CliRefs::propValue( now, k );
+            QString note = storedNote( now, k, findProp( now, k ), changes[k] );
+            if( !note.isEmpty() ) notes.append( note );
+        }
+        if( !notes.isEmpty() ) res["note"] = notes.join("; ");
         return res;
     });
 
@@ -701,8 +756,22 @@ void CliApi::registerEdit()
             QPoint a = con->startPin()->scenePos().toPoint();
             QPoint b = con->endPin()->scenePos().toPoint();
             Pin* sp = con->startPin();
-            QString side = dynamic_cast<Node*>( sp->component() ) ? "" : CliRefs::pinSide( sp );
-            con->setPointList( routePoints( a, b, c.opt("via"), side == "up" || side == "down" ) );
+            Pin* ep = con->endPin();
+            QString side  = dynamic_cast<Node*>( sp->component() ) ? "" : CliRefs::pinSide( sp );
+            QString eside = dynamic_cast<Node*>( ep->component() ) ? "" : CliRefs::pinSide( ep );
+            bool vertical = side == "up" || side == "down";
+            // One corner, two ways to turn: the start pin's axis first, unless that leaves the
+            // start pin backwards or enters the end pin from behind, through its own part
+            // (a tunnel facing away from its target: create-circuit #313)
+            if( c.opt("via").isEmpty() && a.x() != b.x() && a.y() != b.y() )
+            {
+                auto wrong = [&]( bool vert ){
+                    QPoint k = vert ? QPoint( a.x(), b.y() ) : QPoint( b.x(), a.y() );
+                    return backwards( side, k-a ) + backwards( eside, k-b );
+                };
+                if( wrong( !vertical ) < wrong( vertical ) ) vertical = !vertical;
+            }
+            con->setPointList( routePoints( a, b, c.opt("via"), vertical ) );
         }
         if( !con || !circ->conList()->contains( con ) ) throw CliError("wire could not be created");
         layoutWarnings( con );
