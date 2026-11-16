@@ -4,6 +4,8 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QDebug>
+#include <limits>
+#include <algorithm>
 
 #include "capacitorbase.h"
 #include "inductor.h"
@@ -343,6 +345,11 @@ QJsonObject scopeSettings( PlotBase* plot )
                 {"timePos", Cli::timeStr( (uint64_t)qAbs( timePos.value( i ).toLongLong() ) ).prepend( timePos.value( i ).startsWith('-') ? "-":"" ) } } );
         o["channels"] = chans;
         o["autoScale"] = osc->autoSC() > 3 ? QJsonValue("none") : QJsonValue( osc->autoSC() );
+        // The scope keeps one sample per slot of time/div / 5000 (the last change in it), in a
+        // ring of BufferSize slots: the resolution and the history follow the timebase
+        uint64_t slot = osc->timeDiv()*10/50000;
+        o["sampleSlot"] = Cli::timeStr( slot );
+        o["historyMin"] = Cli::timeStr( slot*(uint64_t)osc->bufferSize() );
         o["trigLevel"] = osc->trigAuto() ? QJsonValue("auto") : QJsonValue( osc->trigLevel() );
     }
     else if( LAnalizer* la = dynamic_cast<LAnalizer*>( plot ) )
@@ -563,7 +570,8 @@ void CliApi::registerMeasure()
     });
 
     add("scope data", "scope data <comp> [--ch N] [--last TIME] [--max N]",
-        "Samples captured by an oscilloscope or logic analyzer: [time_s, value] per channel.",
+        "Samples captured by an oscilloscope or logic analyzer: [time_s, value] per channel (a value holds until the next sample). "
+        "Over --max (default 2000) the span is cut into --max/4 buckets, the same for every channel, each giving its first, lowest, highest and last sample.",
         []( CliCtx& c ) -> QJsonValue
     {
         Component* comp = CliRefs::comp( c.arg( 0, "oscilloscope or logic analyzer") );
@@ -578,37 +586,75 @@ void CliApi::registerMeasure()
             uint64_t span = Cli::parseTime( c.opt("last") );
             from = ( now > span ) ? now-span : 0;
         }
-        QJsonArray channels;
-        uint64_t first = 0;                              // Oldest sample returned
+        // Every channel's samples in the window, oldest first
+        struct Chan { int ch; DataChannel* dc; QVector<double> vals; QVector<uint64_t> times; QVector<int> order; };
+        QList<Chan> chans;
+        uint64_t tMin = std::numeric_limits<uint64_t>::max(), tMax = 0;
+        bool thin = false;
         for( int ch=0; ch<plot->numChannels(); ++ch )
         {
             if( onlyCh >= 0 && ch != onlyCh ) continue;
             DataChannel* dc = plot->channel( ch );
             if( !dc ) continue;
-
-            QVector<double>   vals  = dc->buffer();     // Copies: snapshot of the ring buffer
-            QVector<uint64_t> times = dc->times();
-            int size = qMin( vals.size(), times.size() );
+            Chan k{ ch, dc, dc->buffer(), dc->times(), {} };   // Copies: snapshot of the ring buffer
+            int size = qMin( k.vals.size(), k.times.size() );
             int newest = dc->bufferIndex();
-
-            QVector<int> order;                          // Oldest to newest
-            for( int k=1; k<=size; ++k ){
-                int i = ( newest+k ) % size;
-                if( times[i] == 0 || times[i] < from || ( now && times[i] > now ) ) continue;
-                order.append( i );
+            for( int j=1; j<=size; ++j ){
+                int i = ( newest+j ) % size;
+                if( k.times[i] == 0 || k.times[i] < from || ( now && k.times[i] > now ) ) continue;
+                k.order.append( i );
             }
-            int step = ( maxPts > 0 && order.size() > maxPts ) ? ( order.size()+maxPts-1 )/maxPts : 1;
-            QJsonArray samples;
-            if( !order.isEmpty() && ( !first || times[order[0]] < first ) ) first = times[order[0]];
-            for( int k=0; k<order.size(); k+=step )
-                samples.append( QJsonArray{ (double)times[order[k]]/1e12, vals[order[k]] } );
+            if( !k.order.isEmpty() ){
+                tMin = qMin( tMin, k.times[k.order.first()] );
+                tMax = qMax( tMax, k.times[k.order.last()] );
+            }
+            if( maxPts > 0 && k.order.size() > maxPts ) thin = true;
+            chans.append( k );
+        }
+        // Thinning (more samples than --max): the time span is cut into maxPts/4 buckets, the same
+        // for every channel, and each bucket gives its first, earliest lowest, earliest highest
+        // and last sample, at their own instants. Peaks survive, an edge keeps its instant (the
+        // earliest sample at the new level) and both levels, and channels stay comparable; taking
+        // every Nth sample missed peaks and picked different instants per channel (#256, #202).
+        int buckets = qMax( 1, maxPts/4 );
+        double width = ( thin && tMax > tMin ) ? double( tMax-tMin )/buckets : 0;
 
-            channels.append( QJsonObject{
-                {"channel",   ch },
-                {"connected", dc->connected() },
-                {"samples",   samples } } );
+        QJsonArray channels;
+        uint64_t first = 0;                              // Oldest sample returned
+        for( Chan& k : chans )
+        {
+            QJsonArray samples;
+            auto put = [&]( int i ){ samples.append( QJsonArray{ (double)k.times[i]/1e12, k.vals[i] } ); };
+            if( !k.order.isEmpty() && ( !first || k.times[k.order[0]] < first ) ) first = k.times[k.order[0]];
+
+            if( !thin || k.order.size() <= maxPts || width <= 0 ) for( int i : k.order ) put( i );
+            else{
+                int j = 0, n = k.order.size();
+                while( j < n ){
+                    int b = qMin( buckets-1, int( ( k.times[k.order[j]]-tMin )/width ) );
+                    int f = j, lo = j, hi = j;
+                    while( j < n && qMin( buckets-1, int( ( k.times[k.order[j]]-tMin )/width ) ) == b ){
+                        if( k.vals[k.order[j]] < k.vals[k.order[lo]] ) lo = j;   // Earliest lowest
+                        if( k.vals[k.order[j]] > k.vals[k.order[hi]] ) hi = j;   // Earliest highest
+                        ++j;
+                    }
+                    int pick[4] = { f, lo, hi, j-1 };     // First, extremes, last: in time order, once each
+                    std::sort( pick, pick+4 );
+                    for( int q=0; q<4; ++q ) if( q == 0 || pick[q] != pick[q-1] ) put( k.order[pick[q]] );
+                }
+            }
+            QJsonObject co{
+                {"channel",   k.ch },
+                {"connected", k.dc->connected() },
+                {"samples",   samples } };
+            if( !k.order.isEmpty() ) co["oldest"] = (double)k.times[k.order.first()]/1e12;
+            channels.append( co );
         }
         QJsonObject r{ {"uid", comp->getUid() }, {"time", (double)now/1e12 }, {"channels", channels } };
+        if( Oscope* osc = dynamic_cast<Oscope*>( plot ) )
+            r["sampleSlot"] = (double)( osc->timeDiv()*10/50000 )/1e12;  // Resolution: set by time/div
+        if( thin ) r["thinned"] = QJsonObject{ {"buckets", buckets }, {"bucket", width/1e12 },
+                                               {"note", "each bucket gives its first, lowest, highest and last sample; a larger --max gives finer buckets"} };
         if( first && Cli::noiseDuring( first, now ? now : Simulator::self()->circTime() ) )
             r["noise"] = Cli::noiseJson();              // Samples taken with noise active
         return r;
