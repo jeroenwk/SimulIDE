@@ -2,16 +2,19 @@
 
 What SimulIDE's parts leave out, met while building book circuits with the
 create-circuit skill (issues of `jeroenwk/create-circuit`). SimulIDE favours fast,
-simple models: none of these is planned as a fix unless a circuit depends on it.
-When a circuit does, say so in its description, next to the result it changes, and
-build the closest stand-in given here.
+simple models: a limit is fixed when a book circuit depends on it, and kept when the
+stand-in gives the circuit the same result. Each issue says which, and why: kept ones
+are closed (not planned) with the reason, the stand-in and when to revisit; the rows
+marked **fix planned** are open issues with a create-circuit TODO task (label
+`task:...`). Until a fix lands, say so in the circuit's description, next to the result
+it changes, and build the closest stand-in given here.
 
 ## Semiconductors
 
 | Part | Limit | Stand-in / what to do | Issue |
 |---|---|---|---|
-| BJT | VBE is about 0.6 V at 1 mA (books assume 0.7 V), 0.5 V at µA currents, where the effective gain also falls below `Gain`; no IS or VBE setting, `Vcrit` moves the operating point instead | keep the default part, give the difference in the description | [#70](https://github.com/jeroenwk/create-circuit/issues/70), [#289](https://github.com/jeroenwk/create-circuit/issues/289) |
-| BJT | no Early effect (infinite r_o): the collector current is flat with V_CE; a current-mirror load has no r_o to set its output node, so the stage rests soft-saturated (state SAT) and its gain and CMRR fall far below the book's, whatever `Gain` | a resistor across C-E for r_o = V_A / I_C when the gain depends on it; give the difference | [#290](https://github.com/jeroenwk/create-circuit/issues/290), [#291](https://github.com/jeroenwk/create-circuit/issues/291), [#304](https://github.com/jeroenwk/create-circuit/issues/304) |
+| BJT | VBE is about 0.6 V at 1 mA (books assume 0.7 V), 0.5 V at µA currents, where the effective gain also falls below `Gain`; no IS or VBE setting, `Vcrit` moves the operating point instead | **fix planned** (TODO `sim-bjt`); until then: keep the default part, give the difference in the description | [#70](https://github.com/jeroenwk/create-circuit/issues/70), [#289](https://github.com/jeroenwk/create-circuit/issues/289) |
+| BJT | no Early effect (infinite r_o): the collector current is flat with V_CE; a current-mirror load has no r_o to set its output node, so the stage rests soft-saturated (state SAT) and its gain and CMRR fall far below the book's, whatever `Gain` | **fix planned** (TODO `sim-bjt`); until then: a resistor across C-E for r_o = V_A / I_C when the gain depends on it; give the difference | [#290](https://github.com/jeroenwk/create-circuit/issues/290), [#291](https://github.com/jeroenwk/create-circuit/issues/291), [#304](https://github.com/jeroenwk/create-circuit/issues/304) |
 | BJT | `Cje` = `Cjc` = 0 pF by default: no Miller capacitance, so no high-frequency roll-off | set `Cje` / `Cjc` from the datasheet when a bandwidth is the point | [#208](https://github.com/jeroenwk/create-circuit/issues/208) |
 | BJT, Diode, JFET | few named models (no 1N4001–4004, 1N5818, SD101, 2N3053, BFY51, BF862) | the nearest model of the family (1N4007, 1N5711 Schottky), a generic BJT with `Gain`, a JFET with `Model=Custom` and I_DSS / V_p from the datasheet's mid-spread | [#239](https://github.com/jeroenwk/create-circuit/issues/239), [#288](https://github.com/jeroenwk/create-circuit/issues/288), [#292](https://github.com/jeroenwk/create-circuit/issues/292), [#300](https://github.com/jeroenwk/create-circuit/issues/300), [#309](https://github.com/jeroenwk/create-circuit/issues/309) |
 | Mosfet | `RDSon` is the on-resistance at V_GS = 10 V: at other drives R = RDSon × (10 − Vth) / (V_GS − Vth) | for a book's R_ON at V_GS, set RDSon = R_ON × (V_GS − Vth) / (10 − Vth) | [#281](https://github.com/jeroenwk/create-circuit/issues/281) |
@@ -33,7 +36,7 @@ build the closest stand-in given here.
 | Encoders | no priority encoder (ENCODER_HEX/BCD are thumbwheel switches) | build it from gates | [#216](https://github.com/jeroenwk/create-circuit/issues/216) |
 | Sources | no one-click logic input part | a switch between ground and the logic rail | [#255](https://github.com/jeroenwk/create-circuit/issues/255) |
 | CD4066 | a logic model (2.5 V thresholds, logic outputs): it cannot pass analog levels | a MOSFET or relay switch | [#211](https://github.com/jeroenwk/create-circuit/issues/211) |
-| One-shots | the 74XX121 subcircuit times out at about 1.15 RC (the real 74121: 0.7 RC) and needs 4–5 RC to recover (closer triggers are skipped); the CD4098 ignores Rext (about 33 Ω × Cext) | choose R and C for the model's law and say so; scale Cext for the CD4098 | [#277](https://github.com/jeroenwk/create-circuit/issues/277), [#278](https://github.com/jeroenwk/create-circuit/issues/278), [#279](https://github.com/jeroenwk/create-circuit/issues/279) |
+| One-shots | the 74XX121 subcircuit times out at about 1.15 RC (the real 74121: 0.7 RC) and needs 4–5 RC to recover (closer triggers are skipped); the CD4098 ignores Rext (about 33 Ω × Cext) | **fix planned** (TODO `sim-oneshot`); until then: choose R and C for the model's law and say so; scale Cext for the CD4098 | [#277](https://github.com/jeroenwk/create-circuit/issues/277), [#278](https://github.com/jeroenwk/create-circuit/issues/278), [#279](https://github.com/jeroenwk/create-circuit/issues/279) |
 | Flip-flops | power up in a random state with noise on (a JK sets), whatever S and R hold until they act | a power-on reset, as on the bench | [#194](https://github.com/jeroenwk/create-circuit/issues/194) |
 
 ## Analog ICs
@@ -43,8 +46,8 @@ build the closest stand-in given here.
 | opAmp | no analog comparator part (LM339, TLC3702) | an opAmp open loop with `Volt_Pos` / `Volt_Neg` as the output rails; with `Gain` 1000 it stays linear within a few mV of the threshold | [#314](https://github.com/jeroenwk/create-circuit/issues/314), [#318](https://github.com/jeroenwk/create-circuit/issues/318) |
 | opAmp | with `Power_Pins=true` the rails are the pins: `Volt_Pos` / `Volt_Neg` are ignored, and the output swings to about 0.7 V below the positive pin | the pin supply sets the swing | [#312](https://github.com/jeroenwk/create-circuit/issues/312) |
 | opAmp | generic: no internal single-supply bias (LM381), zero output impedance (`Out_Imped` 1 nΩ) can relax numerically at about 100 kHz into a capacitive feedback leg | a split supply, or bias the input at mid-rail; raise `Out_Imped` to tens of Ω | [#272](https://github.com/jeroenwk/create-circuit/issues/272), [#273](https://github.com/jeroenwk/create-circuit/issues/273) |
-| VoltReg | positive regulator only (a negative output reads OFF and leaks); dropout 0.7 V (LM317: about 2 V); no ADJ-pin current (I_adj 50 µA); output through 1 µΩ (no load or line regulation error) | a negative rail: input on the common rail, setpoint as a source; give dropout, I_adj × R2 and regulation from the datasheet | [#305](https://github.com/jeroenwk/create-circuit/issues/305), [#306](https://github.com/jeroenwk/create-circuit/issues/306), [#307](https://github.com/jeroenwk/create-circuit/issues/307), [#325](https://github.com/jeroenwk/create-circuit/issues/325) |
-| 555 | bipolar output stage: about 1.3 V below the supply (a CMOS 555 swings rail to rail) | thresholds and timing are right; give the output level | [#308](https://github.com/jeroenwk/create-circuit/issues/308) |
+| VoltReg | positive regulator only (a negative output reads OFF and leaks); dropout 0.7 V (LM317: about 2 V); no ADJ-pin current (I_adj 50 µA); output through 1 µΩ (no load or line regulation error) | **fix planned** (TODO `sim-vreg`); until then: a negative rail: input on the common rail, setpoint as a source; give dropout, I_adj × R2 and regulation from the datasheet | [#305](https://github.com/jeroenwk/create-circuit/issues/305), [#306](https://github.com/jeroenwk/create-circuit/issues/306), [#307](https://github.com/jeroenwk/create-circuit/issues/307), [#325](https://github.com/jeroenwk/create-circuit/issues/325) |
+| 555 | bipolar output stage: about 1.3 V below the supply (a CMOS 555 swings rail to rail) | **fix planned** (TODO `sim-555`); until then: thresholds and timing are right; give the output level | [#308](https://github.com/jeroenwk/create-circuit/issues/308) |
 
 ## Passive parts, sources and switches
 
@@ -57,7 +60,7 @@ build the closest stand-in given here.
 | Thermistor | the dial runs 0–1000 over `Min_Temp`..`Max_Temp`, not in °C | `ui dial` value = °C × 1000 / range; read `Temp` back | [#237](https://github.com/jeroenwk/create-circuit/issues/237) |
 | DcMotor | a resistor: no winding inductance (no kickback) and no back-EMF (the current never dips) | an inductor + resistor for the kick, a source in series for back-EMF | [#280](https://github.com/jeroenwk/create-circuit/issues/280), [#302](https://github.com/jeroenwk/create-circuit/issues/302) |
 | Fuse, variable capacitor | no part | a small resistor (cannot open); a fixed capacitor whose value is edited | [#316](https://github.com/jeroenwk/create-circuit/issues/316), [#328](https://github.com/jeroenwk/create-circuit/issues/328) |
-| Transformer | no centre-tap pin | two transformers, primaries in parallel, secondaries in series with the junction as the tap | [#327](https://github.com/jeroenwk/create-circuit/issues/327) |
+| Transformer | no centre-tap pin | **fix planned** (TODO `sim-xfmr`); until then: two transformers, primaries in parallel, secondaries in series with the junction as the tap | [#327](https://github.com/jeroenwk/create-circuit/issues/327) |
 | Csource | ideal: no compliance limit (REF200, LM334 lose regulation near the rails); with `Control_Pins=false` it is the floating two-terminal source | check the headroom by hand | [#310](https://github.com/jeroenwk/create-circuit/issues/310), [#311](https://github.com/jeroenwk/create-circuit/issues/311) |
 | AudioOut | not an electrical load (its `Impedance` is audio only); no bell or buzzer part | a resistor of the coil's value, or a lamp of its rating | [#238](https://github.com/jeroenwk/create-circuit/issues/238), [#240](https://github.com/jeroenwk/create-circuit/issues/240), [#245](https://github.com/jeroenwk/create-circuit/issues/245) |
 
@@ -69,8 +72,8 @@ build the closest stand-in given here.
 | Amperimeter | ideal (0 Ω): a meter movement's coil resistance is missing | a resistor of the coil's value in series | [#297](https://github.com/jeroenwk/create-circuit/issues/297) |
 | Oscope | `InputImped` 10 MΩ, like a real probe: it loads a high-impedance node (a 6.2 MΩ timing resistor) | `InputImped=10G` when the node is not the point | [#317](https://github.com/jeroenwk/create-circuit/issues/317) |
 | Sources | no sweep or curve tracer | step the source with `comp set` and read at each step | [#214](https://github.com/jeroenwk/create-circuit/issues/214), [#251](https://github.com/jeroenwk/create-circuit/issues/251) |
-| Oscope | about one sample per µs: a faster edge falls between samples | an instantaneous part reading, `sim average` min/max | [#226](https://github.com/jeroenwk/create-circuit/issues/226) |
-| Oscope | the exported history is decimated (samples sit on transitions, far apart) | read the sample instants, or measure short windows (`run --pp --last`) | [#256](https://github.com/jeroenwk/create-circuit/issues/256), [#296](https://github.com/jeroenwk/create-circuit/issues/296) |
+| Oscope | about one sample per µs: a faster edge falls between samples | **fix planned** (TODO `sim-scope`); until then: an instantaneous part reading, `sim average` min/max | [#226](https://github.com/jeroenwk/create-circuit/issues/226) |
+| Oscope | the exported history is decimated (samples sit on transitions, far apart) | **fix planned** (TODO `sim-scope`); until then: read the sample instants, or measure short windows (`run --pp --last`) | [#256](https://github.com/jeroenwk/create-circuit/issues/256), [#296](https://github.com/jeroenwk/create-circuit/issues/296) |
 | Oscope | a rolling buffer (`BufferSize`): a long run overwrites its start | a fresh short run for the start | [#267](https://github.com/jeroenwk/create-circuit/issues/267) |
 | Canvas | 3200 × 2400 (x −1600..1600, y −1200..1200) | a long chain in rows | [#205](https://github.com/jeroenwk/create-circuit/issues/205) |
 
