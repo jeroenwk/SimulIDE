@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QtMath>
+#include <limits>
 #include <QPainter>
 
 #include "volt_reg.h"
@@ -58,9 +59,16 @@ VoltReg::VoltReg( QString type, QString id )
 
     Simulator::self()->addToUpdateList( this );
 
+    m_drop = 0.7;
+    m_iAdj = 0;
+
     addPropGroup( { tr("Main"), {
         new DoubProp<VoltReg>("Voltage", tr("Output Voltage"),"V"
                              , this, &VoltReg::outVolt, &VoltReg::setOutVolt ),
+        new DoubProp<VoltReg>("Dropout", tr("Dropout Voltage"),"V"
+                             , this, &VoltReg::dropout, &VoltReg::setDropout ),
+        new DoubProp<VoltReg>("I_adj", tr("Ref Pin Current"),"A"
+                             , this, &VoltReg::iAdj, &VoltReg::setIAdj ),
         showStateProp()
     },0 } );
     enableStates( true );
@@ -90,9 +98,14 @@ void VoltReg::stamp()
 
         m_ePin[0]->createCurrent();
         m_ePin[1]->createCurrent();
+        m_ePin[2]->createCurrent();          // I_adj (may be set during a run)
     }
     eResistor::stamp();
     m_lastCurrent = 0;
+    if( m_connected ){                      // I_adj: from the input, out of the ref pin
+        m_pin[0]->stampCurrent(-m_iAdj );
+        m_pin[2]->stampCurrent( m_iAdj );
+    }
 }
 
 void VoltReg::updateStep()
@@ -100,33 +113,39 @@ void VoltReg::updateStep()
     if( !m_changed ) return;
     m_changed = false;
 
-    if( m_connected ) voltChanged();
+    if( m_connected ){
+        m_pin[2]->stampCurrent( m_iAdj );
+        m_lastCurrent = std::numeric_limits<double>::quiet_NaN();   // Restamp the input with it
+        voltChanged();
+    }
 }
 
 void VoltReg::voltChanged()
 {
     Simulator::self()->addToSettled( this );   // State from this step's final values
-    double inVolt  = m_ePin[0]->getVoltage();
-    double outVolt = m_ePin[2]->getVoltage()+m_vRef;
+    // A negative regulator works on mirrored voltages (s = -1): its input sits below its output
+    double s = ( m_vRef < 0 ) ? -1 : 1;
+    double inVolt  = s*m_ePin[0]->getVoltage();
+    double outVolt = s*( m_ePin[2]->getVoltage()+m_vRef );
 
     if( inVolt < 1e-6 ) inVolt = 0;
     double delta = inVolt-outVolt;
-    if( delta < 0.7 )
+    if( delta < m_drop )
     {
-        if( inVolt < 0.7 ) delta = inVolt;
-        else               delta = 0.7;
+        if( inVolt < m_drop ) delta = inVolt;
+        else                  delta = m_drop;
     }
-    double current = delta*m_admit;
+    double current = s*delta*m_admit;
     if( qFabs( m_lastCurrent-current ) < 1e-3 ) return;
     m_lastCurrent = current;
     Simulator::self()->notCorverged();
 
-    m_pin[0]->stampCurrent( current );
+    m_pin[0]->stampCurrent( current-m_iAdj );
     m_pin[1]->stampCurrent(-current );
 }
 
-// Part state (docs/PART_STATES.md), from the model's own test: it keeps at least 0.7 V between input
-// and output, and passes nothing below 0.7 V of input.
+// Part state (docs/PART_STATES.md), from the model's own test: it keeps at least Dropout (0.7 V)
+// between input and output, and passes nothing below Dropout of input (mirrored when Voltage < 0).
 //   REGULATING  output at its set voltage (green)
 //   DROPOUT     less than 0.7 V of headroom: the output follows the input down (amber)
 //   OFF         input below 0.7 V: no output (grey)
@@ -134,14 +153,16 @@ void VoltReg::voltChanged()
 void VoltReg::stepSettled()
 {
     if( !m_connected ) return;
-    double inVolt = m_ePin[0]->getVoltage();
-    double head   = inVolt-( m_ePin[2]->getVoltage()+m_vRef );   // Headroom above the regulated output
+    double s = ( m_vRef < 0 ) ? -1 : 1;                             // Mirrored for a negative regulator
+    double inVolt = s*m_ePin[0]->getVoltage();
+    double head   = inVolt-s*( m_ePin[2]->getVoltage()+m_vRef );   // Headroom past the regulated output
+    double d = m_drop;
     int r = m_region;
-    if( r < 0 ) r = ( inVolt < 0.725 ) ? 0 : ( head < 0.725 ) ? 1 : 2;
-    else if( r == 0 ){ if( inVolt > 0.75 ) r = ( head < 0.7 ) ? 1 : 2; }
-    else if( inVolt < 0.7 ) r = 0;
-    else if( r == 1 ){ if( head > 0.75 ) r = 2; }
-    else if( head < 0.7 ) r = 1;
+    if( r < 0 ) r = ( inVolt < d+0.025 ) ? 0 : ( head < d+0.025 ) ? 1 : 2;
+    else if( r == 0 ){ if( inVolt > d+0.05 ) r = ( head < d ) ? 1 : 2; }
+    else if( inVolt < d ) r = 0;
+    else if( r == 1 ){ if( head > d+0.05 ) r = 2; }
+    else if( head < d ) r = 1;
 
     if( r == m_region ) return;
     m_region = r;
