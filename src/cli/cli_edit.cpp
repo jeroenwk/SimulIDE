@@ -153,12 +153,13 @@ QString normalizeValue( ComProperty* prop, QString val )
         if( isInt && idx >= 0 && idx < vals.size() ) return v;        // an index: setters take "2"
         throw CliError("invalid value for "+prop->name()+": "+val+" (one of "+vals.join(", ")+")");
     }
-    if( type != "double" && type != "int" ) return val;
+    if( type != "double" && type != "int" && type != "uint" ) return val;
 
     static const QString prefixes = "pnuµmkMGT";
     QString unit = prop->unit();
     QString base = unit;
     if( base.size() > 1 && prefixes.contains( base.at(0) ) ) base = base.mid( 1 );
+    QString shown = base.startsWith("_") ? base.mid( 1 ) : base; // "_%", "_º": the unit as typed
 
     static const QRegularExpression re("^\\s*([-+]?[0-9]*\\.?[0-9]+(?:[eE][-+]?[0-9]+)?)\\s*([pnuµmkMGT]?)\\s*(.*?)\\s*$");
     QRegularExpressionMatch m = re.match( val );
@@ -168,22 +169,42 @@ QString normalizeValue( ComProperty* prop, QString val )
     QString prefix = m.captured( 2 );
     QString rest   = m.captured( 3 );
     if( prefix == "u" ) prefix = "µ";
+    if( prefix.compare("m", Qt::CaseInsensitive ) == 0 && rest.startsWith("eg", Qt::CaseInsensitive ) )
+    {   prefix = "M"; rest = rest.mid( 2 ).trimmed(); }    // SPICE "meg" (1meg, 1 Meg)
 
+    bool degrees = ( shown == "º" || shown == "°" );
     if( !rest.isEmpty() && rest != base )
     {
         // "1m" could be a unit (e.g. meters): only accept exact base unit
-        if( base.isEmpty() || rest.compare( base, Qt::CaseInsensitive ) != 0 )
-            throw CliError("unit mismatch for "+prop->name()+": got '"+rest+"', expected '"+base+"'");
+        bool same = !base.isEmpty() && ( rest.compare( base, Qt::CaseInsensitive ) == 0
+                                      || rest.compare( shown, Qt::CaseInsensitive ) == 0
+                                      || ( degrees && ( rest == "º" || rest == "°" || rest == "deg" ) ) );
+        if( !same )
+            throw CliError("unit mismatch for "+prop->name()+": got '"+rest+"', expected '"+shown+"'");
     }
+    double mult = 1;
+    if( !prefix.isEmpty() ) mult = QHash<QString,double>{{"p",1e-12},{"n",1e-9},{"µ",1e-6},{"m",1e-3},
+                                                         {"k",1e3},{"M",1e6},{"G",1e9},{"T",1e12}}.value( prefix, 1 );
+    bool integer = ( type == "int" || type == "uint" );
     if( base.isEmpty() )            // Unitless: plain number
     {
-        double mult = 1;
-        if( !prefix.isEmpty() ) mult = QHash<QString,double>{{"p",1e-12},{"n",1e-9},{"µ",1e-6},{"m",1e-3},
-                                                             {"k",1e3},{"M",1e6},{"G",1e9},{"T",1e12}}.value( prefix, 1 );
         double v = num.toDouble()*mult;
-        return ( type == "int" ) ? QString::number( qRound64( v ) ) : QString::number( v, 'g', 15 );
+        return integer ? QString::number( qRound64( v ) ) : QString::number( v, 'g', 15 );
     }
+    if( base.startsWith("_") )      // A unit without SI prefixes: the value itself
+        return QString::number( num.toDouble()*mult, 'g', 15 )+" "+base;
+    if( integer )                   // Integer setters read "<int> <unit>": 4.7k -> 4700 Ω
+        return QString::number( qRound64( num.toDouble()*mult ) )+" "+base;
     return num+" "+prefix+base;
+}
+
+// Settings come sorted by name; a Model loads its own defaults, so set it first and the other
+// settings given with it on top (Eta, BrkDownV next to Model= were lost: create-circuit #229, #243)
+QStringList modelFirst( QStringList keys )
+{
+    QStringList first, rest;
+    for( QString k : keys ) ( k.compare("Model", Qt::CaseInsensitive ) == 0 ? first : rest ).append( k );
+    return first + rest;
 }
 
 // A straight wire segment long enough to split with a junction on the 8 px grid
@@ -477,8 +498,7 @@ void CliApi::registerEdit()
             circ->cancelUndoStep();
             throw CliError( err );
         };
-        QStringList keys = c.sets.keys();
-        for( QString k : keys )
+        for( QString k : modelFirst( c.sets.keys() ) )
         {
             QString name;
             try { name = propName( comp, k ); } catch( CliError& e ){ fail( e.msg ); }
@@ -523,7 +543,7 @@ void CliApi::registerEdit()
         QString uid = comp->getUid();
         circ->beginUndoStep();
         QMap<QString, QString> old;
-        for( QString k : changes.keys() )
+        for( QString k : modelFirst( changes.keys() ) )
         {
             old[k] = comp->getPropStr( k );
             if( k == "label" ) comp->setIdLabel( changes[k] );
