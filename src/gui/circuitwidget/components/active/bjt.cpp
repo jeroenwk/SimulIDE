@@ -56,6 +56,12 @@ BJT::BJT( QString type, QString id )
         new DoubProp<BJT>("Vcrit", tr("Threshold"),"V"
                          , this, &BJT::threshold, &BJT::setThreshold ),
 
+        new DoubProp<BJT>("IS", tr("Saturation Current"),"A"
+                         , this, &BJT::satCur, &BJT::setSatCur ),
+
+        new DoubProp<BJT>("VA", tr("Early Voltage (0 = none)"),"V"
+                         , this, &BJT::early, &BJT::setEarly ),
+
         new DoubProp<BJT>("BVceo", tr("C-E Breakdown Voltage (0 = none)"),"V"
                          , this, &BJT::bvceo, &BJT::setBvceo ),
 

@@ -25,6 +25,9 @@ class Lm555 : public Component, public eElement
         static Component* construct( QString type, QString id );
         static LibraryItem *libraryItem();
 
+        bool cmos() { return m_cmos; }
+        void setCmos( bool c ) { m_cmos = c; m_voltPos = -1e12; m_changed = true; }
+
         virtual void initialize() override;
         virtual void stamp() override;
         virtual void voltChanged() override;
@@ -56,6 +59,7 @@ class Lm555 : public Component, public eElement
 
         double m_voltPos;
         double m_voltNeg;
+        bool   m_cmos;               // CMOS output stage (7555, TLC555): high at Vcc, not Vcc - 1.3 V
 
         uint64_t m_propDelay;
 
