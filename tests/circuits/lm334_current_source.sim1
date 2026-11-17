@@ -1,0 +1,33 @@
+<circuit version="1.1.0-SR2" rev="261117" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="Battery" CircId="Battery-1" mainComp="false" Show_id="false" Show_Val="false" Pos="-64,72" rotation="0" hflip="1" vflip="1" label="B1" idLabPos="-18,-22" labelrot="0" valLabPos="-10,10" valLabRot="0" labelAuto="true" Voltage="12 V" Resistance="1 mΩ" />
+
+<item itemtype="Resistor" CircId="Resistor-2" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="0,-56" rotation="0" hflip="1" vflip="1" label="RL" idLabPos="-16,-24" labelrot="0" valLabPos="-14,8.5" valLabRot="0" labelAuto="true" Resistance="4700 Ω" Cp="0 pF" />
+
+<item itemtype="CurrReg" CircId="CurrReg-3" mainComp="false" ShowProp="Model" Show_id="false" Show_Val="true" Pos="64,0" rotation="0" hflip="1" vflip="1" label="U1" idLabPos="-16,-30" labelrot="0" valLabPos="20,6" valLabRot="0" labelAuto="true" Model="LM334" Temp="25 °C" Show_State="true" Vsense="64 mV" Ratio="18" />
+
+<item itemtype="Resistor" CircId="Resistor-4" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="120,0" rotation="0" hflip="1" vflip="1" label="RS" idLabPos="-16,-24" labelrot="0" valLabPos="-9,8.5" valLabRot="0" labelAuto="true" Resistance="68 Ω" Cp="0 pF" />
+
+<item itemtype="Ground" CircId="Ground-5" mainComp="false" Show_id="false" Show_Val="false" Pos="64,96" rotation="0" hflip="1" vflip="1" label="G" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Node" CircId="Node-6" mainComp="false" Pos="64,56" />
+
+<item itemtype="Node" CircId="Node-7" mainComp="false" Pos="64,72" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="Battery-1-lPin" endpinid="Resistor-2-lPin" pointList="-80,72,-80,-56,-16,-56" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="Resistor-2-rPin" endpinid="CurrReg-3-vp" pointList="16,-56,64,-56,64,-24" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="CurrReg-3-r" endpinid="Resistor-4-lPin" pointList="88,0,104,0" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Resistor-4-rPin" endpinid="Node-6-1" pointList="136,0,136,56,64,56" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="CurrReg-3-vm" endpinid="Node-6-0" pointList="64,24,64,56" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Battery-1-rPin" endpinid="Node-7-1" pointList="-48,72,64,72" />
+
+<item itemtype="Connector" uid="Connector-9" startpinid="Node-6-2" endpinid="Node-7-0" pointList="64,56,64,72" />
+
+<item itemtype="Connector" uid="Connector-10" startpinid="Node-7-2" endpinid="Ground-5-Gnd" pointList="64,72,64,80" />
+
+</circuit>

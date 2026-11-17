@@ -20,3 +20,4 @@ through the CLI). Turn on Show Capacitor Charge and Inductor Current
 | `text_labels.sim1` | Chip-theme circuit plus three Text labels: defaults, own background/border/white text, own red text | New defaults (no background, no border, name colour); own colours stay |
 | `scope_trigger_level.sim1` | ±2.5 V 50 Hz sine on a scope, trigger on Ch1 at a fixed 1.5 V | Rising 1.5 V crossing on the centre line, dashed level line with an arrow; `--triglevel 4` free runs; `auto` triggers at 0 V |
 | `led_strip.sim1` | Led Strip (12 × 2.75 V, 1 Ω, 300 mA per LED) from 38 V through 10 Ω | 227.3 mA, state ON; 40 V → 318 mA, OVER; 20 V → 0 (below the 33 V knee); `Strings` 2 → 437.5 mA |
+| `lm334_current_source.sim1` | Current Source IC, model LM334: 12 V, 4.7 kΩ load on the high side, R_SET 68 Ω ([CURRENT_SOURCE_IC.md](../../docs/CURRENT_SOURCE_IC.md)) | 1.000 mA (67.7 mV/68 Ω = 0.996), V_R 64.0 mV, I_BIAS 59 µA, state REG; RL 15 kΩ → 0.94 mA, LOW V |

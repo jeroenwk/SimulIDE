@@ -77,6 +77,7 @@
 #include "memory.h"
 #include "mosfet.h"
 #include "jfet.h"
+#include "currreg.h"
 #include "mux.h"
 #include "mux_analog.h"
 #include "op_amp.h"
@@ -201,6 +202,7 @@ void ItemLibrary::loadItems()
     addItem( new LibraryItem( QObject::tr("Other Active"), "Active", "2to2.png","Other Active", NULL ) );
     addItem( OpAmp::libraryItem() );
     addItem( VoltReg::libraryItem() );
+    addItem( CurrReg::libraryItem() );
     addItem( MuxAnalog::libraryItem() );
     // Outputs
     addItem( new LibraryItem( QObject::tr("Outputs"), "", "","Outputs", NULL ) );

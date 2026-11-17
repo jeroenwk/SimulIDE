@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 36 24">
+  <!-- Current Source IC for the component list: box, two linked circles, arrow from R -->
+  <g stroke="#000" fill="none" stroke-width="1.5">
+    <rect x="7" y="1" width="20" height="22"/>
+    <circle cx="14" cy="9" r="4.5"/>
+    <circle cx="14" cy="15" r="4.5"/>
+    <line x1="27" y1="12" x2="21" y2="12"/>
+    <line x1="27" y1="12" x2="34" y2="12"/>
+  </g>
+  <polygon points="18.5,12 22,10.2 22,13.8" fill="#000"/>
+</svg>

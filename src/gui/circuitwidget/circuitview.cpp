@@ -21,6 +21,7 @@
 #include "utils.h"
 #include "e-diode.h"
 #include "e-jfet.h"
+#include "e-currreg.h"
 #include "e-bjt.h"
 #include "linker.h"
 
@@ -41,6 +42,7 @@ CircuitView::CircuitView( QWidget *parent )
 
     eDiode::getModels();
     eJfet::getModels();
+    eCurrReg::getModels();
     eBJT::getModels();
 
     //viewport()->setFixedSize( 3200, 2400 );

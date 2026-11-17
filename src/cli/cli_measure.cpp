@@ -39,6 +39,7 @@
 #include "bjt.h"
 #include "mosfet.h"
 #include "jfet.h"
+#include "currreg.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -203,6 +204,18 @@ QJsonObject readComp( Component* comp )
             o["vds"] = num( pins[0]->getVoltage()-pins[1]->getVoltage() );
             if( pins[0]->hasTrueCurrent() ) o["i_drain"] = num( pins[0]->trueCurrent() );
             if( pins[2]->hasTrueCurrent() ) o["i_gate"]  = num( pins[2]->trueCurrent() );
+        }
+    }
+    else if( CurrReg* cr = dynamic_cast<CurrReg*>( comp ) )   // Current Source IC: headroom, set and bias currents
+    {
+        std::vector<Pin*> pins = comp->getPins();   // V+, V-, R
+        if( pins[0]->isConnected() && pins[1]->isConnected() ){
+            o["voltage"] = num( cr->headroom() );
+            o["v_r"]     = num( cr->vR() );
+            o["i_set"]   = num( cr->iSet() );
+            o["i_r"]     = num( cr->iR() );
+            o["i_bias"]  = num( cr->iBias() );
+            o["power"]   = num( cr->headroom()*cr->iSet() );
         }
     }
     else if( comp->itemType() == "MCU" )          // Scripted core placed on its own: its state text

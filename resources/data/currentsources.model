@@ -1,0 +1,46 @@
+<!DOCTYPE SimulIDE>
+
+<!-- Current Source IC models (e-currreg.cpp, docs/CURRENT_SOURCE_IC.md).
+
+     type="programmable": 3-terminal source set by a resistor from R to V- (LM334 type). The part
+     holds V(R)-V(V-) at vsense and draws a bias current I_SET/n from V+ to V-, so
+     I_SET = vsense/R_SET · n/(n-1).
+       vsense  V across R_SET at 25 °C            ptat   1: vsense proportional to T (K)
+       n       typical I_SET/I_BIAS               ratio  "I_SET:n ..." curve (A), log-interpolated; replaces n
+       ga sa gb sb   turn-on law: loop transconductance G(v) = 1/(1/Ga + 1/Gb + 1/100 S),
+                     log10 Ga = ga + sa·(v - 0.6 V), log10 Gb = gb + sb·(v - 0.6 V), v = V+ - V-
+       klo khi vknee line regulation (relative change of I_SET per V) below / above vknee, zero at 2.5 V
+       grev    reverse conductance (S)
+       vmax vrev imax pmax vrmax   absolute maximum ratings, reported as FAULT states
+
+     LM134/LM234/LM334: TI SNVS746E (2013). They differ only in temperature range and initial
+     accuracy (3 % LM134/LM234, 6 % LM334), not in the typical values used here.
+       vsense 64 mV                    p.1, p.6 ("64mV at 25°C", 214 µV/K)
+       n, ratio                        p.3 table (18 typ) and p.5 Fig 12, read off the curve
+       ga sa gb sb                     [INFERRED] least-squares fit to p.5 Fig 11 (turn-on, R_SET
+                                       14 Ω to 6.8 kΩ) with p.3's minimum operating voltages as anchors:
+                                       within 20 % on the rising edge (one point +64 %), 94-97 % of
+                                       I_SET at 0.8 V/100 µA, 0.9 V/1 mA, 1.0 V/5 mA
+       klo khi                         p.3 "Average change in set current with input voltage",
+                                       0.02 %/V (1.5-5 V) and 0.01 %/V (5-40 V), typical
+       grev                            [INFERRED] p.1 "reverse applied voltages of up to 20V will draw
+                                       only a few dozen microamperes": 30 µA at 20 V
+       vmax vrev imax pmax vrmax       p.2 absolute maximum ratings
+     Left out: the 15 pF shunt capacitance and slew limit (p.3, p.6), self-heating (p.6), noise. -->
+
+<itemlib>
+    <itemset type="programmable">
+        <item name="LM334" vsense="0.064" ptat="1" n="18"
+              ratio="1e-5:16.13 2e-5:16.85 5e-5:17.7 1e-4:17.97 1.8e-4:18.17 4e-4:17.9 1e-3:17.06 2e-3:16.0 4e-3:14.2 5.6e-3:12.56"
+              ga="-3.3" sa="17" gb="-2.7" sb="7" klo="2e-4" khi="1e-4" vknee="5" grev="1.5e-6"
+              vmax="40" vrev="20" imax="10e-3" pmax="0.4" vrmax="5" />
+        <item name="LM234" vsense="0.064" ptat="1" n="18"
+              ratio="1e-5:16.13 2e-5:16.85 5e-5:17.7 1e-4:17.97 1.8e-4:18.17 4e-4:17.9 1e-3:17.06 2e-3:16.0 4e-3:14.2 5.6e-3:12.56"
+              ga="-3.3" sa="17" gb="-2.7" sb="7" klo="2e-4" khi="1e-4" vknee="5" grev="1.5e-6"
+              vmax="40" vrev="20" imax="10e-3" pmax="0.4" vrmax="5" />
+        <item name="LM134" vsense="0.064" ptat="1" n="18"
+              ratio="1e-5:16.13 2e-5:16.85 5e-5:17.7 1e-4:17.97 1.8e-4:18.17 4e-4:17.9 1e-3:17.06 2e-3:16.0 4e-3:14.2 5.6e-3:12.56"
+              ga="-3.3" sa="17" gb="-2.7" sb="7" klo="2e-4" khi="1e-4" vknee="5" grev="1.5e-6"
+              vmax="40" vrev="20" imax="10e-3" pmax="0.4" vrmax="5" />
+    </itemset>
+</itemlib>
