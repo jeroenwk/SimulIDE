@@ -280,12 +280,14 @@ check "comp add reports pin positions" 'r["result"]["pins"][0]["pos"]==[384,-200
 check "comp get lists them too" 'any(p["id"]=="rPin" and p["pos"]==[416,-200] and p["side"]=="right" for p in r["result"]["pins"])' -- comp get RA
 check "rotated: lPin on top"    'r["result"]["pins"][0]["pos"]==[480,-216] and r["result"]["pins"][0]["side"]=="up"' \
       -- comp add Resistor --label RB --at 480,-200 --rot 90
-check "wire routes are orthogonal" 'r["result"]["points"]==[416,-200,480,-200,480,-184]' -- wire add RA.rPin RB.rPin
-check "junction at a chosen point" 'r["result"]["points"][-2:]==[448,-200]' -- wire add RB.lPin @448,-200 --via 448,-216
+# RB's rPin faces down: across then down would enter it from behind, through RB, so the
+# route goes down first and enters from the side (create-circuit #313)
+check "wire routes are orthogonal" 'r["result"]["points"]==[416,-200,416,-184,480,-184]' -- wire add RA.rPin RB.rPin
+check "junction at a chosen point" 'r["result"]["points"][-2:]==[448,-184]' -- wire add RB.lPin @448,-184 --via 448,-216
 check "...is a real junction"   'any(n.startswith("Node-") for w in r["result"] for n in (w["from"],w["to"]))' -- wire list
 check "point off any wire"      'not r["ok"] and "no wire" in r["error"]'  -- wire add RA.lPin @0,-300
 check "point at a wire end"     'not r["ok"] and "connect to that pin" in r["error"]' -- wire add RA.lPin @416,-200
-check "overlap is flagged"      'r["ok"] and any("runs along" in m for m in r.get("messages",[]))' -- wire add RA.lPin @480,-192 --via 384,-184
+check "overlap is flagged"      'r["ok"] and any("runs along" in m for m in r.get("messages",[]))' -- wire add RA.lPin @464,-184 --via 384,-184
 check "pin pass-over is flagged" 'r["ok"] and any("passes over RA.rPin" in m for m in r.get("messages",[]))' -- wire add RA.lPin RB.lPin --via 384,-200
 check "clean up"                'r["ok"]'                                  -- comp remove RA RB
 
