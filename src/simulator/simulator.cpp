@@ -43,6 +43,7 @@ Simulator::Simulator( QObject* parent )
     m_maxNlstp  = 100000;
     m_nlBudget  = m_maxNlstp;
     m_slopeSteps = 0;
+    m_supplyRamp = 0;
 
     m_errors[0] = "";
     //m_errors[1] = "Could not solve Matrix";

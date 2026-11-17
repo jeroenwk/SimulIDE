@@ -210,6 +210,7 @@ void Circuit::loadStrDoc( QString &doc )
                 else if( name == "stepsPS" ) m_simulator->setStepsPerSec( val.toULongLong() );
                 else if( name == "NLsteps" ) m_simulator->setMaxNlSteps( val.toUInt() );
                 else if( name == "reaStep" ) m_simulator->setreactStep( val.toULongLong() );
+                else if( name == "supplyRamp" ) m_simulator->setSupplyRamp( val.toULongLong() );
                 else if( name == "animate" ) setAnimate( val.toInt() );
                 else if( name == "chargeScale" ) m_chargeScale = val.toDouble();
                 else if( name == "currentScale" ) m_currentScale = val.toDouble();
@@ -509,6 +510,7 @@ QString Circuit::circuitHeader()
     header += "stepsPS=\""+QString::number( m_simulator->stepsPerSec() )+"\" ";
     header += "NLsteps=\""+QString::number( m_simulator->maxNlSteps() )+"\" ";
     header += "reaStep=\""+QString::number( m_simulator->reactStep() )+"\" ";
+    if( m_simulator->supplyRamp() ) header += "supplyRamp=\""+QString::number( m_simulator->supplyRamp() )+"\" ";
     header += "animate=\""+QString::number( m_animate )+"\" ";
     if( m_chargeScale > 0 ) header += "chargeScale=\""+QString::number( m_chargeScale )+"\" ";
     if( m_currentScale > 0 ) header += "currentScale=\""+QString::number( m_currentScale )+"\" ";

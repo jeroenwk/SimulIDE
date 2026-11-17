@@ -602,7 +602,7 @@ The groups follow the Settings dialog:
 |---|---|
 | app | `language`, `fontScale`, `fontName`, `userPath` |
 | circuit | `drawGrid`, `showScroll`, `animate`, `fps`, `autoBackup` |
-| simulation | `speed`, `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps`, `noise`, `noiseBW`, `noiseScale`, `noiseSeed`, `noiseStart`, `noiseStop`, `noiseOff` |
+| simulation | `speed`, `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps`, `supplyRamp`, `noise`, `noiseBW`, `noiseScale`, `noiseSeed`, `noiseStart`, `noiseStop`, `noiseOff` |
 
 - Simulation settings are saved with the circuit.
 - `logVerbose` (Messages pane: Log: Verbose) also shows debug logs, the lines
@@ -616,6 +616,12 @@ The groups follow the Settings dialog:
   speed and changes the step instead, also with a `note`.
 - `language` and `userPath` are saved to the user settings immediately.
 - Font changes take effect after a restart.
+- `supplyRamp`: DC sources (Battery, Rail, Fixed Voltage) rise linearly from 0 to their
+  value over this time at each fresh start (50 steps; `0`, the default, is a step). A loop
+  started by an instant step can settle in a state a real, ramping supply never visits (an
+  op-amp current sink railed, a JFET cascode dead at some loads). The value is saved in the
+  circuit; a voltage changed during a run applies at once. An op amp with `Power_Pins=false`
+  keeps its internal rails.
 - `noise*`: transient noise of the parts, off by default ([NOISE.md](NOISE.md)). They
   apply at the next start (a change while running gets a `note`). `sim status` always
   has a `noise` field: `"off"`, or the settings, the `state` (armed / on / ended /

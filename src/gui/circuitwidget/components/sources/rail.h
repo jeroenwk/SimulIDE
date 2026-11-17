@@ -26,6 +26,7 @@ class Rail : public Component, public eElement
         void setVolt( double v );
 
         virtual void stamp() override;
+        virtual void runEvent() override;      // Supply ramp steps (Simulator::supplyRamp)
 
         virtual QPainterPath shape() const override;
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
@@ -34,6 +35,9 @@ class Rail : public Component, public eElement
         double m_volt;
 
         IoPin* m_out;
+        int  m_rampK;          // Supply ramp step, RAMP_STEPS = at full voltage
+        double rampFactor();
+        void startRamp();
 };
 
 #endif

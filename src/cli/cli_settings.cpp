@@ -253,6 +253,9 @@ QList<Setting>& settings()
             Simulator::self()->setMaxNlSteps( parseInt( v, "nlSteps", 1, 1000000000 ) );
             Circuit::self()->setChanged();
         }});
+    list.append({"supplyRamp", "simulation", "DC sources (Battery, Rail, Fixed Voltage) rise from 0 over this time at each start (0 = a step; e.g. 1ms). Saved with the circuit.",
+        [](){ return QJsonValue( Cli::timeStr( Simulator::self()->supplyRamp() ) ); },
+        []( QString v ){ Simulator::self()->setSupplyRamp( Cli::parseTime( v ) ); }});
     list.append({"slopeSteps", "simulation", "Steps used for signal slopes (0 = instant edges).",
         [](){ return QJsonValue( Simulator::self()->slopeSteps() ); },
         []( QString v ){

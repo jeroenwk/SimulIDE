@@ -27,6 +27,7 @@ class FixedVolt : public Component, public eElement
 
         virtual void stamp() override;
         virtual void updateStep() override;
+        virtual void runEvent() override;      // Supply ramp steps (Simulator::supplyRamp)
 
         bool out();
         virtual void setOut( bool out );
@@ -44,6 +45,7 @@ class FixedVolt : public Component, public eElement
         void updateOutput();
 
         double m_voltage;
+        int  m_rampK;          // Supply ramp step, RAMP_STEPS = at full voltage
 
         IoPin* m_outpin;
 

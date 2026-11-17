@@ -1,0 +1,135 @@
+<circuit version="1.1.0-SR2" rev="261116" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+<description>
+# AoE fig 3.27 — cascode JFET current sink
+
+**Source:** Horowitz &amp;amp; Hill, *The Art of Electronics*, 3rd ed., fig 3.27, p. 146
+(PDF 179; §3.2.2 discussion just before §3.2.3).
+
+## What it shows
+
+A **two-terminal** current sink: Q1 is the ordinary self-biased sink (its gate on
+the bottom rail, its source lifted by R_S, so V_GS1 = −I·R_S
+sets the current on Q1's transfer curve). Q2 sits on top of it **as a cascode**:
+its gate is tied to Q1's **source** (no bias network needed — depletion mode),
+so Q2's gate–source voltage equals minus Q1's drain–source voltage and
+**V_DS1 = −V_GS2**: Q1 runs at a fixed, healthy V_DS no matter what
+the load does. Q2 absorbs the load-voltage swing, so the current sees none of it
+through Q1's λ (channel-length modulation): the book's point is that this "nice
+additional benefit" makes the pair a two-terminal source that is much **stiffer**
+than the simple self-biased sink of fig 3.23, at the cost of ~1 V extra
+compliance voltage (V_DS1 plus Q2's saturation margin).
+
+## Parts
+
+| Part | Value | Source |
+|---|---|---|
+| Q2 (JFET, cascode, on top) | Model 2N5485 (SimulIDE: I_DSS 14 mA, V_p −2 V, λ 0.01/V) | figure prints **J111**; [chosen] 2N5485 — the next-stiffer Siliconix model, mirroring the book's bigger-FET-on-top intent. SimulIDE's J111 model drives the solver into a non-converged state (see limits) |
+| Q1 (JFET, current-setting) | Model 2N5484 (I_DSS 6.75 mA, V_p −1.5 V, λ 0.01/V) | figure prints **J112**; [chosen] 2N5484 per this repo's AoE JFET convention (figs 3.20, 3.23 rows); same solver problem with J-series here |
+| RS | 220 Ω | [INFERRED] — the figure names R_S only; 220 Ω puts the design point at ≈2.6 mA, between the fig 3.20 (I_DSS, 7.3 mA) and fig 3.23 (1 mA) rows |
+| RL (load) | 1 kΩ | [chosen] — the figure draws only two terminal circles; load as in the fig 3.20/3.23 rows |
+| +15 V rail | 15 V | [INFERRED] — rails [INFERRED], as in those rows |
+
+*Datasheet-spread caveat:* real J111/J112 run far larger currents (I_DSS
+tens of mA); with the printed parts and R_S the book gives no values, so the
+operating current here is the model's, not a book number.
+
+## How to use it
+
+Run; the sink self-biases in the first time step (V_SNS rises to I·R_S).
+Sweep the load with `cli comp set RL Resistance=…` and the rail with
+`cli comp set V1 Voltage=…`. **Sweep by continuation:** let it settle at a
+known-good load first, then change RL while the sim is paused and run on — a
+cold start at some RL values (2.2 k, 3.3 k, 4.3 k here) can land the solver in a
+dead fixed point (RL current 0, Q2 OFF); re-starting fixes it, and the saved
+design point (RL 1 k) cold-starts cleanly.
+
+## Results [SIMULATED]
+
+- **Design point (RL = 1 kΩ, +15 V): I_out = 2.6063 mA**, V(RS) = 0.5734 V =
+  |V_GS1| — exactly the Shockley point for the 2N5484 model
+  (V_GS = −1.5 V×(1−√(2.6063/6.75×1.0118)) = −0.573 V; R_S =
+  0.5734 V/2.6063 mA = 220.0 Ω — the self-bias loop closes on the value chosen).
+  **The cascode identity holds exactly: V_GS2 = −V_DS1 = 1.180 V**
+  (Shockley alone gives 1.14 V; Q2's λ at V_DS2 = 10.6 V lifts it — the
+  measured 1.180 V matches 2×(1−√(2.6063/(14×1.1064))) to three digits).
+  Both FETs ACTIVE. KCL exact: RL, RS and both channels carry 2.6063 mA.
+- **Load sweep (RL 100 Ω → 4.7 kΩ, +15 V): I_out 2.6064 → 2.6058 mA, −0.023 %**
+  (r_out ≥ 20 MΩ — flat to the last printed digit; the floor is the readout's
+  resolution, the true r_out of r_ds2(1+g_m2r_ds1) ≈ 9 GΩ is
+  far below what the readout can see). Compliance edge: RL = 4.7 kΩ still
+  regulates (TOP node 2.75 V; Q2's V_DS down to 1.04 V, its saturation
+  margin); **RL = 5.6 kΩ → 2.426 mA (−6.9 %, both FETs leave saturation), 10 kΩ →
+  1.434 mA**. The sink complies with ≳2.4 V across it.
+- **Rail sweep (RL = 1 kΩ, +6 → +30 V): I_out 2.6059 → 2.6068 mA, +0.03 %**
+  (r_out ≈ 30 MΩ by the same resolution floor). 5 V rail still regulates (Q2
+  barely OHMIC, I holds); **4 V → 2.489 mA (−4.5 %), 3 V → 1.995 mA**.
+- **Stiffness, against this repo's rows:** fig 3.20 (I = I_DSS, no R_S, no
+  cascode) drooped 7.71 → 6.92 mA = **−10 %**, r_out ≈ 15 kΩ; fig 3.23 (self-biased
+  2N5484) drooped **−2.9 %**, r_out ≈ 430 kΩ. This cascode: **−0.023 %**, r_out
+  ≥ 20 MΩ — ≈50× stiffer than the same-JFET self-biased sink, ≈10³× vs I_DSS.
+  The price: compliance ~2.4 V vs ~1.5 V for both simple sinks (V_DS1 is
+  held *up* at −V_GS2 ≈ 1.2 V rather than sitting near pinch-off).
+
+## What to try [SIMULATED]
+
+- Raise R_S (`comp set RS Resistance=470`) → I falls to ≈1.4 mA and
+  V_DS1 = −V_GS2 **grows** (Q2 needs more back-bias at less current): the
+  compliance voltage cost rises as you trim the current down.
+- Swap Q2 to Model=2N5484 (same part as Q1): V_DS1 drops to ≈0.9 V — the
+  sink gets *more* compliant and slightly *less* stiff; that trade is exactly
+  why the book draws a beefier FET on top.
+- Watch the cascode buy its stiffness: at RL = 4.7 kΩ, Q2's V_DS has eaten
+  12 V of swing while Q1's V_DS moved 0.01 V (1.180 → 1.142 V).
+- `comp set Q1 Model=J112`: SimulIDE's J-series model breaks the solver here —
+  the point of the model substitution above.
+
+## Warnings left
+
+None (rounds 1–2: 0 warnings, 0 crossings). The model substitution is recorded
+under Parts and in the saved limits.
+
+## create-circuit skill
+
+- Version: 1.20.1 (commit a75fa3b)
+- Circuit: fig3_27_cascode_jfet_sink.sim1
+
+### Limitations found while building it
+
+- SimulIDE J-series JFET models (J111, J112) drive the solver non-convergent in this stacked-cascode circuit: [#362](https://github.com/jeroenwk/create-circuit/issues/362)
+- Solver cold-start lands in a dead fixed point at some load values (fresh start, RL 2.2k/3.3k/4.3k observed): [#363](https://github.com/jeroenwk/create-circuit/issues/363)
+</description>
+
+
+<item itemtype="Jfet" CircId="Jfet-1" mainComp="false" Show_id="true" Show_Val="false" Pos="16,-32" rotation="0" hflip="-1" vflip="1" label="Q2" idLabPos="20,-5" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Model="2N5485" P_Channel="false" Show_State="true" IDSS="14 mA" Vp="-2 V" Lambda="0.01 1/V" SatCurrent="0.25 pA" EmCoef="1" Cgs="0 pF" Cgd="0 pF" Pb="0.6 V" Mg="0.5" />
+
+<item itemtype="Jfet" CircId="Jfet-2" mainComp="false" Show_id="true" Show_Val="false" Pos="16,32" rotation="0" hflip="1" vflip="1" label="Q1" idLabPos="20,-5" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Model="2N5484" P_Channel="false" Show_State="true" IDSS="6.75 mA" Vp="-1.5 V" Lambda="0.01 1/V" SatCurrent="0.25 pA" EmCoef="1" Cgs="0 pF" Cgd="0 pF" Pb="0.6 V" Mg="0.5" />
+
+<item itemtype="Rail" CircId="Rail-3" mainComp="false" ShowProp="Voltage" Show_id="false" Show_Val="true" Pos="16,-160" rotation="90" hflip="1" vflip="1" label="V1" idLabPos="-5,-10" labelrot="-90" valLabPos="-12,6" valLabRot="-90" labelAuto="true" Voltage="15 V" />
+
+<item itemtype="Resistor" CircId="Resistor-4" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="16,-96" rotation="90" hflip="1" vflip="1" label="RL" idLabPos="-21,8.5" labelrot="0" valLabPos="-6,8.5" valLabRot="0" labelAuto="true" Resistance="1000 Ω" Cp="0 pF" />
+
+<item itemtype="Resistor" CircId="Resistor-5" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="16,96" rotation="90" hflip="1" vflip="1" label="RS" idLabPos="-19,8.5" labelrot="0" valLabPos="-4,8.5" valLabRot="0" labelAuto="true" Resistance="220 Ω" Cp="0 pF" />
+
+<item itemtype="Ground" CircId="Ground-6" mainComp="false" Show_id="false" Show_Val="false" Pos="-32,80" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Ground" CircId="Ground-7" mainComp="false" Show_id="false" Show_Val="false" Pos="16,144" rotation="0" hflip="1" vflip="1" label="G2" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Node" CircId="Node-8" mainComp="false" Pos="16,72" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="Resistor-4-rPin" endpinid="Jfet-1-Dren" pointList="16,-80,16,-56,8,-56,8,-48" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="Jfet-1-Sour" endpinid="Jfet-2-Dren" pointList="8,-16,8,0,24,0,24,16" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Resistor-4-lPin" endpinid="Rail-3-outnod" pointList="16,-112,16,-144" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Jfet-1-Gate" endpinid="Node-8-1" pointList="32,-24,48,-24,48,72,16,72" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Resistor-5-lPin" endpinid="Node-8-0" pointList="16,80,16,72" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="Node-8-2" endpinid="Jfet-2-Sour" pointList="16,72,16,56,24,56,24,48" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Jfet-2-Gate" endpinid="Ground-6-Gnd" pointList="0,40,-32,40,-32,64" />
+
+<item itemtype="Connector" uid="Connector-9" startpinid="Resistor-5-rPin" endpinid="Ground-7-Gnd" pointList="16,112,16,128" />
+
+</circuit>
