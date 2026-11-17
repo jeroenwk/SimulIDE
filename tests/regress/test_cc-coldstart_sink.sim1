@@ -1,0 +1,125 @@
+<circuit version="1.1.0-SR2" rev="261116" stepSize="1000000" stepsPS="1000" NLsteps="100000" reaStep="1000000" animate="0" noise="1" noiseBW="10000000" noiseScale="1" noiseSeed="0" noiseStart="0" noiseStop="1000000000" >
+<description>
+# Precision current sink with a JFET and BJT — Scherz &amp; Monk fig 8.40
+
+**Source:** Scherz &amp; Monk, *Practical Electronics for Inventors*, 4th ed., fig 8.40, book p. 659 (PDF p. 688) — "Precision Current Source" (the sink: the load hangs from +V and Q2 pulls current down through it).
+
+## What it shows
+
+An op amp holds its **−** input (the Q2 emitter node, top of R2) equal to **+V_in**, so the sense resistor carries `I_load = V_in / R2` — the formula printed on the figure. The op amp does not drive the output transistor directly: it drives the **gate of the N-channel JFET Q1**, whose source follower drives **Q2's base**, and R1 (10k, book value) from source/Q2-base down to the emitter node carries `V_BE/R1 ≈ 59 µA` of bias. Every amp of load current — Q2's collector current **plus** Q1's drain current (= Q2's base current + R1's bias) — flows through the load, so `I_load = I_R2` exactly: the JFET's zero gate current removes the base-current error a single bipolar stage leaks (the book's "essentially zero bias current error"). KCL across the figure: `I_load = I_C + I_D = I_C + I_B + V_BE/R1 = I_E + I_R1 = I_R2`.
+
+The book's caveats: accurate for load currents larger than the JFET's `I_DS(on)` and for `V_in &gt; 0` (here 1 mA vs the follower's 69 µA — satisfied); "additional compensation may be required" (see the startup note below); use transistors rated for the load.
+
+## Parts and values
+
+Book's: **R1 = 10k**, **2N3456** (Q1), **2N2222** (Q2), **R2** (value not given), **load** (unnamed box), **+V**, **+V_in** (values not given).
+Chosen (tagged in the build): Q1 = SimulIDE **2N3819** (no 2N3456 model; I_DSS 11.7 mA, V_p −3 V), Q2 = generic BJT **Gain 100** (fits a 2N2222), **R2 = 1k**, **+V = 12 V**, **V_in = 1 V** (design point 1 mA), **load = 5.6 kΩ**. The op amp's supplies are not drawn in the figure; SimulIDE's opAmp runs with `Power_Pins=false`, so the swing settings (±12 V) stand in for them — the output must sit *below* ground at ≈ −1.2 V because the N-JFET follower's source rides `|V_GS| ≈ 2.77 V` above its gate.
+
+## How to use
+
+Simulate; the loop settles in well under 1 ms (startup noise 0–1 ms is saved with the circuit, see below). Watch V at the emitter node (≈ V_in) and the load current. R2 is the book's adjustment control; V_in programs the current. Changing the load resistance shows the compliance limit.
+
+## Expected vs simulated [SIMULATED]
+
+Design point (V_in 1 V, R2 1k, load 5.6k, +V 12 V):
+
+| quantity | expected | simulated |
+|---|---|---|
+| I_load | V_in/R2 = 1.000 mA | **1.0012 mA** (+0.12%) |
+| I_R2 (= I_load) | 1.000 mA | **1.0012 mA** — equal to I_load to 5 digits |
+| V(emitter node) | 1.000 V | 1.0012 V |
+| I_R1 | V_BE/R1 ≈ 65 µA | 59.4 µA (V_BE = 0.594 V) |
+| Q2 base current | I_C/β ≈ 9.3 µA | 9.4 µA (β_eff 98.8), flows through the load |
+| Q1 | I_D ≈ 75 µA, saturated | I_D 68.8 µA, V_GS −2.772 V, V_DS 4.80 V |
+| op amp output | ≈ −1.15 V | −1.177 V |
+| node A (Q2 collector) | 12 − 5.6 V = 6.4 V | 6.393 V |
+| Q1 gate leakage | 0 | −10 pA |
+
+The +0.12% is the op amp's finite gain (1000): `V⁻ − V⁺ = |V_out|/Gain = 1.18 mV`, i.e. exactly the measured 1.0012 V − 1.000 V.
+
+**Precision (how constant across loads):** I_load stayed **1.0012 mA, identical to five digits**, for load = 1k, 2.2k, 4.7k, 5.6k, 8.2k, 10k (node A swept 11.00 → 1.99 V). **Compliance limit:** at 11k it drops to 0.9458 mA (−5.5%) and at 12k to 0.8674 mA (−13.3%) — node A hits the JFET's V_DS floor at ≈ 1.6–2.0 V, so at +12 V and 1 mA the load can be up to ≈ 10 kΩ.
+
+**Adjustment control (book: "R2 acts as an adjustment control"), inside compliance:** R2 500 Ω → **2.0023 mA**; R2 2k → **0.5006 mA**; V_in 2 V → **2.0001 mA** (+0.005%); V_in 0.5 V → **0.5017 mA** (+0.34%). The error is `|V_out|/(Gain·R2)` and |V_out| ≈ |V_GS| − V_BE... the op amp must drive further below ground at low V_in, so the relative error grows as V_in falls (0.005% at 2 V, 0.34% at 0.5 V). With a 5.6k load, demanding 2 mA exceeds compliance (needs 11.2 V + ≈2 V headroom &gt; 12 V): measured 1.855 mA at R2 = 500 / 1.678 mA at V_in = 2 V — the load-line limit, not a precision failure; with a 2.2k load the same settings give 2.0023 / 2.0001 mA.
+
+**Vs the preceding single-BJT sink (fig 8.39):** there `I_load = V_in/R2 − I_B` (the op amp supplies the base current); here the same 9.4 µA returns through R2 and `I_load = I_R2` to five digits — the ≈ 0.9% base-current error is gone.
+
+## Startup note
+
+Cold-started on instantaneous rails the loop can latch in a wrong self-consistent state: op amp railed at −12 V, Q1 off, and Q2's parasitic collector-base diode feeding R2 from the load node (V(emitter) 1.16 V &gt; 1 V "confirms" the wrong belief). Startup noise 0–1 ms (`noise=on noiseStop=1ms`, saved with the circuit) kicks it into the correct state on every run measured. This matches the book's "additional compensation may be required depending on the load reactance and the transistors' parameters" — a real supply ramps and the loop tracks it; the simulated step is the trigger.
+
+## Warnings left
+
+None — the final layout check is CLEAN (0 errors, 0 crossings). Round 1 had one crossing (the V_in lead crossed the feedback lead) that disappeared when the op amp was un-mirrored to face the JFET as the figure draws it.
+
+**Noise:** on, saved with the circuit: ×1 the physical level, bandwidth 10MHz, 0 s to 1 ms, a new random seed at each start. Results measured with it are [SIMULATED, with noise].
+
+## create-circuit skill
+
+- Version: 1.18.1 (commit 1dfc463)
+- Circuit: fig8_40_precision_current_sink.sim1
+
+### Limitations found while building it
+
+- Startup latch on step rails: [#343](https://github.com/jeroenwk/create-circuit/issues/343)
+- No 2N3456 or 2N2222 model: [#344](https://github.com/jeroenwk/create-circuit/issues/344)
+- JFET follower needs a below-ground op amp output: [#345](https://github.com/jeroenwk/create-circuit/issues/345)
+</description>
+
+
+<item itemtype="opAmp" CircId="opAmp-1" mainComp="false" Show_id="true" Show_Val="false" Pos="-32,8" rotation="0" hflip="1" vflip="1" label="OA" idLabPos="-5.5,-30" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Gain="1000" Out_Imped="1e-09 Ω" Show_State="true" Power_Pins="false" Switch_Pins="false" Volt_Pos="12 V" Volt_Neg="-12 V" />
+
+<item itemtype="Jfet" CircId="Jfet-2" mainComp="false" Show_id="true" Show_Val="false" Pos="32,0" rotation="0" hflip="1" vflip="1" label="Q1" idLabPos="20,-5" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Model="2N3819" P_Channel="false" Show_State="true" IDSS="11.736 mA" Vp="-3 V" Lambda="0.00225 1/V" SatCurrent="0.03357 pA" EmCoef="1" Cgs="0 pF" Cgd="0 pF" Pb="0.6 V" Mg="0.5" />
+
+<item itemtype="BJT" CircId="BJT-3" mainComp="false" Show_id="true" Show_Val="false" Pos="80,80" rotation="0" hflip="1" vflip="1" label="Q2" idLabPos="20,-5" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" PNP="false" Gain="100" Vcrit="0.670736 V" BVceo="0 V" BVebo="0 V" Show_State="true" Cje="0 pF" Vje="0.7 V" Mje="0.33" Cjc="0 pF" Vjc="0.7 V" Mjc="0.33" />
+
+<item itemtype="Rail" CircId="Rail-4" mainComp="false" ShowProp="Voltage" Show_id="false" Show_Val="true" Pos="80,-192" rotation="90" hflip="1" vflip="1" label="VCC" idLabPos="-5,-10" labelrot="-90" valLabPos="-12,6" valLabRot="-90" labelAuto="true" Voltage="12 V" />
+
+<item itemtype="Resistor" CircId="Resistor-5" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="80,-128" rotation="90" hflip="1" vflip="1" label="Load" idLabPos="-24,8.5" labelrot="0" valLabPos="0,8.5" valLabRot="0" labelAuto="true" Resistance="5.6 kΩ" Cp="0 pF" />
+
+<item itemtype="Rail" CircId="Rail-6" mainComp="false" ShowProp="Voltage" Show_id="false" Show_Val="true" Pos="-96,-16" rotation="90" hflip="1" vflip="1" label="VIN" idLabPos="-5,-10" labelrot="-90" valLabPos="-12,6" valLabRot="-90" labelAuto="true" Voltage="1 V" />
+
+<item itemtype="Resistor" CircId="Resistor-7" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="32,80" rotation="90" hflip="-1" vflip="-1" label="R1" idLabPos="-17,8.5" labelrot="0" valLabPos="-4,8.5" valLabRot="0" labelAuto="true" Resistance="10 kΩ" Cp="0 pF" />
+
+<item itemtype="Resistor" CircId="Resistor-8" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="32,144" rotation="90" hflip="1" vflip="1" label="R2" idLabPos="-15.5,8.5" labelrot="0" valLabPos="-0.5,8.5" valLabRot="0" labelAuto="true" Resistance="1 kΩ" Cp="0 pF" />
+
+<item itemtype="Ground" CircId="Ground-9" mainComp="false" Show_id="false" Show_Val="false" Pos="32,192" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Node" CircId="Node-10" mainComp="false" Pos="40,56" />
+
+<item itemtype="Node" CircId="Node-11" mainComp="false" Pos="80,-24" />
+
+<item itemtype="Node" CircId="Node-12" mainComp="false" Pos="32,112" />
+
+<item itemtype="Node" CircId="Node-13" mainComp="false" Pos="32,104" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="Rail-6-outnod" endpinid="opAmp-1-inputNinv" pointList="-96,0,-96,8,-80,8,-80,0,-56,0" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="Jfet-2-Gate" endpinid="opAmp-1-output" pointList="16,8,-8,8" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Resistor-8-rPin" endpinid="Ground-9-Gnd" pointList="32,160,32,176" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="Resistor-5-lPin" endpinid="Rail-4-outnod" pointList="80,-144,80,-176" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Jfet-2-Sour" endpinid="Node-10-1" pointList="40,16,40,56" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="Resistor-7-rPin" endpinid="Node-10-0" pointList="32,64,32,56,40,56" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Node-10-2" endpinid="BJT-3-base" pointList="40,56,56,56,56,80,64,80" />
+
+<item itemtype="Connector" uid="Connector-10" startpinid="Resistor-5-rPin" endpinid="Node-11-1" pointList="80,-112,80,-24" />
+
+<item itemtype="Connector" uid="Connector-11" startpinid="BJT-3-collector" endpinid="Node-11-0" pointList="88,64,88,-24,80,-24" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="Node-11-2" endpinid="Jfet-2-Dren" pointList="80,-24,40,-24,40,-16" />
+
+<item itemtype="Connector" uid="Connector-14" startpinid="BJT-3-emiter" endpinid="Node-12-1" pointList="88,96,88,112,32,112" />
+
+<item itemtype="Connector" uid="Connector-15" startpinid="Resistor-8-lPin" endpinid="Node-12-0" pointList="32,128,32,112" />
+
+<item itemtype="Connector" uid="Connector-17" startpinid="opAmp-1-inputInv" endpinid="Node-13-1" pointList="-56,16,-64,16,-64,104,32,104" />
+
+<item itemtype="Connector" uid="Connector-18" startpinid="Node-12-2" endpinid="Node-13-0" pointList="32,112,32,104" />
+
+<item itemtype="Connector" uid="Connector-19" startpinid="Node-13-2" endpinid="Resistor-7-lPin" pointList="32,104,32,96" />
+
+</circuit>
