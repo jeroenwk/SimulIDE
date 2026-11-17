@@ -134,9 +134,14 @@ void eMosfet::setRDSon( double rdson )
     m_changed = true;
 }
 
+// A negative Threshold is a depletion part's pinch-off, as a datasheet gives it (LND150:
+// -1..-3 V): the channel turns off at V_GS = Threshold exactly. It used to be refused
+// silently, so a depletion part had to be tuned through Depletion=true and a positive
+// Threshold T, which turns off at -1.25 T (create-circuit #425). Kept for old circuits.
 void eMosfet::setThreshold( double th )
 {
-    if( th < 0.01 ) return;
+    if( th >= 0 && th < 0.01 ) return;
+    if( th < -1000 ) th = -1000;
     m_threshold = th; 
     updateValues();
     m_changed = true;
@@ -149,6 +154,8 @@ void eMosfet::updateValues()
     double span = 10-m_threshold;
     if( span < 1 ) span = 1;
     m_kRDSon = m_RDSon*span;
-    qDebug() << "[eMosfet] updateValues Threshold" << m_threshold << "kRDSon" << m_kRDSon;
-    m_Gth    = m_depletion ? -m_threshold-m_threshold/4 : m_threshold-m_threshold/4;
+    if( m_threshold < 0 ) m_Gth = m_threshold;               // pinch-off as given (#425)
+    else m_Gth = m_depletion ? -m_threshold-m_threshold/4 : m_threshold-m_threshold/4;
+    qDebug() << "[eMosfet] updateValues Threshold" << m_threshold << "depletion" << m_depletion
+             << "Gth" << m_Gth << "kRDSon" << m_kRDSon;
 }

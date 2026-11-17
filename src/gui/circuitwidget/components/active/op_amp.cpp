@@ -128,6 +128,8 @@ void OpAmp::initialize()
     m_accuracy = 5e-6;
     m_mode = SAT_P;            // A rail first: a positive-feedback circuit starts at a rail, as a real one
     m_flips = 0;
+    m_changes = 0;
+    m_held = false;
     m_flipTime = 0;
     m_checkStable = false;
     m_satVd = m_satOut = 0;
@@ -274,7 +276,7 @@ void OpAmp::voltChanged() // Called when any pin node change volt
     cst *= m_gain;
     if( qFabs( cst-m_constIn ) > 1e-9*( 1+qFabs( cst ) ) ){ m_constIn = cst; if( m_mode == LIN ) m_dirty = true; }
 
-    if( sim->circTime() != m_flipTime ){ m_flipTime = sim->circTime(); m_flips = 0; }
+    if( sim->circTime() != m_flipTime ){ m_flipTime = sim->circTime(); m_flips = 0; m_changes = 0; m_held = false; }
 
     double eps = 1e-6*( 1+qFabs( m_voltPos )+qFabs( m_voltNeg ) );
     int mode = m_mode;
@@ -308,8 +310,22 @@ void OpAmp::voltChanged() // Called when any pin node change volt
     else{
         if( ideal > m_voltNeg+eps ) mode = LIN;
     }
+    // A loop with no static solution in this time step (a relaxation through another part: an
+    // SCR crowbar collapses the supply, the input swings, the SCR drops out, the supply comes
+    // back...) made the op amp change region for ever. The solver then gave up after its
+    // iteration budget (minutes of CPU) and took the step with the op amp in LIN far beyond its
+    // rails (kV outputs; create-circuit #368). After MAX_CHANGES changes in one step, sit on the
+    // rail the ideal output points to until the next step: the swing then plays out in time.
+    static const int MAX_CHANGES = 12;
+    if( m_held ) mode = m_mode;
+    else if( mode != m_mode && ++m_changes > MAX_CHANGES ){
+        mode = ( ideal >= 0.5*( m_voltPos+m_voltNeg ) ) ? SAT_P : SAT_N;
+        m_held = true;
+        OPAMP_LOG << "t" << sim->circTime() << m_changes << "region changes in one step: held at"
+                  << ( mode == SAT_P ? "SAT+" : "SAT-" ) << "until the next step (ideal" << ideal << ")";
+    }
     m_lastVd = vd;
-    bool waiting = ( mode == LIN ) && ( ideal > m_voltPos+eps || ideal < m_voltNeg-eps );
+    bool waiting = !m_held && ( mode == LIN ) && ( ideal > m_voltPos+eps || ideal < m_voltNeg-eps );
     if( mode == LIN && m_mode != LIN ){         // Leaving a rail: check the loop at the next solve
         m_linIter = 0;
         m_checkStable = true;

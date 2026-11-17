@@ -46,10 +46,11 @@ struct Channel           // One measured quantity
     double sumV = 0, sumV2 = 0, sumI = 0, sumI2 = 0;       // Integrals (unit * ps)
     double minV = INFINITY, maxV = -INFINITY, minI = INFINITY, maxI = -INFINITY;
 
-    void read()
+    void read( bool extremes=true )   // extremes false: a value no solved step has given yet
     {
         v = p1 ? p0->getVoltage() - p1->getVoltage() : p0->getVoltage();
         if( kind == "comp" ) i = p0->getCurrent();
+        if( !extremes ) return;
         minV = std::min( minV, v ); maxV = std::max( maxV, v );
         if( kind == "comp" ){ minI = std::min( minI, i ); maxI = std::max( maxI, i ); }
     }
@@ -90,10 +91,16 @@ class Averager : public eElement, public Updatable
                 attach();
                 m_start = m_last = sim->circTime();
                 m_end = m_start + m_span;
-                for( Channel& c : m_ch ) c.read();
+                // A fresh run (time 0 or its first ps) has solved nothing yet: its pins read the
+                // unsolved circuit (0 V, a battery's 9 V across its 1 mOhm = -9000 A). Hold that
+                // value until the first solved step, but keep it out of min and max (create-circuit
+                // #411). A resumed run starts from a solved step: its values count.
+                bool fresh = m_start <= 1;
+                for( Channel& c : m_ch ) c.read( !fresh );
                 sim->setStopAt( m_end );
                 m_phase = RUNNING;
-                AVG_LOG << "start at" << m_start << "ps, end at" << m_end << "ps," << m_ch.size() << "channel(s)";
+                AVG_LOG << "start at" << m_start << "ps, end at" << m_end << "ps," << m_ch.size() << "channel(s)"
+                        << ( fresh ? "(fresh run: start values kept out of min/max)" : "" );
             }
             else if( m_phase == RUNNING && sim->circTime() >= m_end )
             {
@@ -115,6 +122,7 @@ class Averager : public eElement, public Updatable
             QJsonArray list;
             for( Channel& c : m_ch )
             {
+                if( std::isinf( c.minV ) ){ c.minV = c.maxV = c.v; c.minI = c.maxI = c.i; } // No solved step read
                 QJsonObject o{ {"ref", c.ref} };
                 QJsonObject v{ {"mean", num( c.sumV/T )}, {"rms", num( std::sqrt( c.sumV2/T ) )},
                                {"min", num( c.minV )}, {"max", num( c.maxV )} };
@@ -191,6 +199,13 @@ void CliApi::registerAverage()
             }else{
                 Component* comp = CliRefs::comp( ref );
                 std::vector<Pin*> pins = comp->getPins();
+                QString type = comp->itemType();
+                if( ( type == "Amperimeter" || type == "Voltimeter" ) && pins.size() == 3 ){
+                    // A meter: its two terminals, so the reading is the meter's current (into
+                    // lPin) and the voltage across it; the third pin is its output (create-circuit #471)
+                    AVG_LOG << ref << "is a" << type << ": averaging between its terminals";
+                    pins.resize( 2 );
+                }
                 if( pins.size() != 2 ) throw CliError( ref+" has "+QString::number( pins.size() )
                                                        +" pins: name a pin (e.g. "+ref+".<pin>) instead");
                 ch.kind = "comp"; ch.p0 = pins[0]; ch.p1 = pins[1];
