@@ -6,17 +6,23 @@
 
 #include <QtMath>
 #include <QDebug>
+#include <QDomDocument>
 #include <limits>
 
 #include "e-bjt.h"
 #include "e-pin.h"
 #include "e-node.h"
 #include "simulator.h"
+#include "mainwindow.h"
+#include "utils.h"
 #include "noise.h"
 
 #define COLL m_ePin[0]
 #define EMIT m_ePin[1]
 #define BASE m_ePin[2]
+
+QHash<QString, bjtData_t> eBJT::m_bjts;
+QStringList eBJT::m_names;
 
 eBJT::eBJT( QString id )
     : eElement( id )
@@ -32,6 +38,8 @@ eBJT::eBJT( QString id )
 
     m_ePin.resize(3);
 
+    m_model = "Custom";      // Circuits saved before models existed load as Custom, unchanged
+    m_applying = false;
     m_PNP = false;
     m_baseCurr = 0;
 
@@ -299,6 +307,7 @@ void eBJT::setGain( double gain )
         qDebug() << "[eBJT] setGain: Gain" << gain << "is not positive, using 0.01";
         gain = 0.01;
     }
+    if( differs( gain, m_gain ) ) toCustom("Gain");
     m_gain = gain;
     m_fgain = m_gain/(m_gain+1);
     m_changed = true;
@@ -306,6 +315,7 @@ void eBJT::setGain( double gain )
 
 void eBJT::setThreshold( double vCrit )
 {
+    if( qAbs( vCrit-m_vCrit ) > 1e-5 ) toCustom("Vcrit");   // 10 uV: IS within 0.04 %
     m_vCrit = vCrit;
     m_satCur = m_vt/(qExp( vCrit/m_vt )*qSqrt(2));
     setBvceo( m_bvceo );   // The breakdown knees depend on m_satCur
@@ -317,6 +327,7 @@ void eBJT::setSatCur( double is )
 {
     if( is < 1e-20 ) is = 1e-20;
     if( is > 1e-6 )  is = 1e-6;
+    if( differs( is, m_satCur ) ) toCustom("IS");
     m_satCur = is;
     m_vCrit = m_vt*qLn( m_vt/(qSqrt(2)*m_satCur) );
     setBvceo( m_bvceo );   // The breakdown knees depend on m_satCur
@@ -327,6 +338,7 @@ void eBJT::setSatCur( double is )
 void eBJT::setEarly( double va )
 {
     if( va < 0 ) va = -va;
+    if( differs( va, m_va ) ) toCustom("VA");
     m_va = va;
     m_changed = true;
 }
@@ -372,4 +384,82 @@ double eBJT::limitBreak( double vnew, double vold, double ofset )
         else v = m_vt*qLn( v/m_vt );
     }
     return v + ofset;
+}
+
+void eBJT::toCustom( const char* prop )
+{
+    if( m_applying || m_model == "Custom" ) return;
+    qDebug() << "[eBJT]" << m_elmId << prop << "edited: model" << m_model << "-> Custom";
+    m_model = "Custom";
+}
+
+void eBJT::setModel( QString model )
+{
+    if( !m_bjts.contains( model ) ){             // Custom (or a name this build doesn't have): keep the values
+        if( model != "Custom" )
+            qWarning() << "[eBJT]" << m_elmId << "unknown model" << model << ": kept as Custom";
+        m_model = "Custom";
+        return;
+    }
+    bjtData_t d = m_bjts.value( model );
+    qDebug() << "[eBJT]" << m_elmId << "model" << model << ( d.pnp ? "PNP" : "NPN" ) << "gain" << d.gain
+             << "IS" << d.satCur << "VA" << d.va << "Cje" << d.cje << "pF Cjc" << d.cjc << "pF";
+    m_applying = true;
+    setPnp( d.pnp );          // Virtual: the BJT component redraws its symbol
+    setGain( d.gain );
+    setSatCur( d.satCur );
+    setEarly( d.va );
+    setCje( d.cje*1e-12 ); setVje( d.vje ); setMje( d.mje );
+    setCjc( d.cjc*1e-12 ); setVjc( d.vjc ); setMjc( d.mjc );
+    m_applying = false;
+    m_model = model;
+    m_changed = true;
+}
+
+QStringList eBJT::modelNames() { return m_names; }
+
+void eBJT::getModels() // Static: resources/data/bjts.model
+{
+    m_bjts.clear();
+    m_names.clear();
+
+    QString modelsFile = MainWindow::self()->getDataFilePath( "bjts.model" );
+    QDomDocument domDoc = fileToDomDoc( modelsFile, "eBJT::getModels" );
+    QDomNode node = domDoc.documentElement().firstChild();
+    while( !node.isNull() )
+    {
+        QDomElement itemset = node.toElement();
+        if( itemset.tagName() == "itemset" )
+        {
+            bool pnp = itemset.attribute("type").toUpper() == "PNP";
+            QDomNode nodei = itemset.firstChild();
+            while( !nodei.isNull() )
+            {
+                QDomElement item = nodei.toElement();
+                if( item.tagName() == "item" )
+                {
+                    bjtData_t d;
+                    d.pnp    = pnp;
+                    d.gain   = item.attribute("gain").toDouble();
+                    d.satCur = item.attribute("is").toDouble();
+                    d.va     = item.attribute("va").toDouble();
+                    d.cje = item.attribute("cje").toDouble();
+                    d.vje = item.hasAttribute("vje") ? item.attribute("vje").toDouble() : 0.75;
+                    d.mje = item.hasAttribute("mje") ? item.attribute("mje").toDouble() : 0.33;
+                    d.cjc = item.attribute("cjc").toDouble();
+                    d.vjc = item.hasAttribute("vjc") ? item.attribute("vjc").toDouble() : 0.75;
+                    d.mjc = item.hasAttribute("mjc") ? item.attribute("mjc").toDouble() : 0.33;
+                    QString name = item.attribute("name");
+                    if( d.gain > 0 && d.satCur > 0 && !name.isEmpty() ){
+                        m_bjts.insert( name, d );
+                        m_names.append( name );
+                    }
+                    else qWarning() << "[eBJT] bjts.model: item" << name << "skipped (needs name, gain > 0, is > 0)";
+                }
+                nodei = nodei.nextSibling();
+        }   }
+        node = node.nextSibling();
+    }
+    m_names.append( "Custom" );
+    qDebug() << "[eBJT] getModels:" << m_bjts.size() << "models from" << modelsFile;
 }
