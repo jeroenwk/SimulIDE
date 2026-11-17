@@ -577,6 +577,25 @@ check "...sets P channel"       '[p for p in r["result"]["properties"] if p["nam
 check "edit IDSS -> Custom"     'r["ok"]'                                  -- comp set J1 IDSS=5m
 check "...model Custom"         '[p for p in r["result"]["properties"] if p["name"]=="Model"][0]["value"]=="Custom"' -- comp get J1
 
+echo "BJT models"
+# BC547B (bjts.model: gain 282.3, IS 1.867e-14, VA 63.2) at its fit point VBE 0.639 V, VCE 5 V:
+# IB = 1 mA / 282.3 = 3.54 uA, IC = 1 mA x (1 + 4.361/63.2) = 1.069 mA (Early factor)
+check "new circuit"             'r["ok"]'                                  -- circuit new --discard
+cli comp add BJT --at 0,0 --label Q1 >/dev/null
+cli comp add Rail --at 8,-48 --label VC Voltage=5 >/dev/null
+cli comp add Rail --at -48,0 --label VB Voltage=0.639 >/dev/null
+cli comp add Ground --at 8,72 --label G >/dev/null
+for w in "VC.outnod Q1.collector" "VB.outnod Q1.base" "Q1.emiter G.Gnd"; do cli wire add $w >/dev/null 2>&1; done
+check "default model Custom"    '[p for p in r["result"]["properties"] if p["name"]=="Model"][0]["value"]=="Custom"' -- comp get Q1
+check "model BC547B"            'r["ok"]'                                  -- comp set Q1 Model=BC547B
+check "...sets gain and VA"     '{p["name"]:p["value"] for p in r["result"]["properties"]}["Gain"]=="282.3" and {p["name"]:p["value"] for p in r["result"]["properties"]}["VA"]=="63.2 V"' -- comp get Q1
+check "run 100us"               'r["ok"]'                                  -- sim run --for 100us
+check "IB 3.54 uA, IC 1.069 mA" 'abs(r["result"]["i_base"]-3.546e-6) < 5e-9 and abs(r["result"]["i_collector"]-1.0702e-3) < 1e-6' -- read Q1
+check "model BC557C (PNP)"      'r["ok"]'                                  -- comp set Q1 Model=BC557C
+check "...sets PNP"             '[p for p in r["result"]["properties"] if p["name"]=="PNP"][0]["value"]=="true"' -- comp get Q1
+check "edit Gain -> Custom"     'r["ok"]'                                  -- comp set Q1 Gain=300
+check "...model Custom"         '[p for p in r["result"]["properties"] if p["name"]=="Model"][0]["value"]=="Custom"' -- comp get Q1
+
 echo "Quit"
 check "quit"                    'r["ok"]'                                  -- quit --discard
 wait "$PID"

@@ -6,8 +6,22 @@
 #ifndef EBJT_H
 #define EBJT_H
 
+#include <QHash>
+#include <QStringList>
+
 #include "e-element.h"
 #include "e-junctioncap.h"
+
+// A part model from resources/data/bjts.model (written by tools/bjt_models.py)
+struct bjtData_t
+{
+    bool   pnp;
+    double gain;
+    double satCur;  // A
+    double va;      // V, 0 = none
+    double cje, vje, mje;   // pF, V, -
+    double cjc, vjc, mjc;
+};
 
 class eBJT : public eElement
 {
@@ -24,24 +38,31 @@ class eBJT : public eElement
         double gain() { return m_gain; }
         void setGain( double gain );
 
+        // Part model: a name from bjts.model sets PNP, gain, IS, VA and the junction capacitances;
+        // "Custom" keeps the values. Changing one of them to another value switches to "Custom".
+        QString model() { return m_model; }
+        void setModel( QString model );
+ static void getModels();
+ static QStringList modelNames();
+
         // Junction capacitances B-E and B-C (0 = none; typical 4.5 / 3.6 pF while noise is on)
         double cje() { return m_cje.cj0(); }
-        void setCje( double v ) { m_cje.setCj0( v ); }
+        void setCje( double v ) { if( differs( v, cje() ) ) toCustom("Cje"); m_cje.setCj0( v ); }
         double vje() { return m_cje.vj(); }
-        void setVje( double v ) { m_cje.setVj( v ); }
+        void setVje( double v ) { if( differs( v, vje() ) ) toCustom("Vje"); m_cje.setVj( v ); }
         double mje() { return m_cje.mj(); }
-        void setMje( double v ) { m_cje.setMj( v ); }
+        void setMje( double v ) { if( differs( v, mje() ) ) toCustom("Mje"); m_cje.setMj( v ); }
         double cjc() { return m_cjc.cj0(); }
-        void setCjc( double v ) { m_cjc.setCj0( v ); }
+        void setCjc( double v ) { if( differs( v, cjc() ) ) toCustom("Cjc"); m_cjc.setCj0( v ); }
         double vjc() { return m_cjc.vj(); }
-        void setVjc( double v ) { m_cjc.setVj( v ); }
+        void setVjc( double v ) { if( differs( v, vjc() ) ) toCustom("Vjc"); m_cjc.setVj( v ); }
         double mjc() { return m_cjc.mj(); }
-        void setMjc( double v ) { m_cjc.setMj( v ); }
+        void setMjc( double v ) { if( differs( v, mjc() ) ) toCustom("Mjc"); m_cjc.setMj( v ); }
         // Typical values used while noise is on (a part built of several BJTs shares a junction)
         void setNoiseCaps( double cje, double cjc ) { m_cje.setNoiseDefault( cje ); m_cjc.setNoiseDefault( cjc ); }
 
         virtual bool pnp()              { return m_PNP; }
-        virtual void setPnp( bool pnp ) { m_PNP = pnp; m_changed = true; }
+        virtual void setPnp( bool pnp ) { if( pnp != m_PNP ) toCustom("PNP"); m_PNP = pnp; m_changed = true; }
 
         double threshold() { return m_vCrit; }
         void   setThreshold( double vCrit );
@@ -70,6 +91,15 @@ class eBJT : public eElement
 
     protected:
         double limitStep( double vnew, double vold );
+
+        // A model value edited: the part is no longer the named model
+ static bool differs( double a, double b ){ return qAbs( a-b ) > 1e-4*qMax( qAbs(a), qAbs(b) ); }
+        void toCustom( const char* prop );
+        QString m_model;
+        bool    m_applying;  // setModel() is setting the values: keep the name
+
+ static QHash<QString, bjtData_t> m_bjts;
+ static QStringList m_names;
 
         // Currents into the collector and emitter at the junction voltages (actual VB-VE,
         // VB-VC), and their derivatives when g is given: g = {dIc/dVbe, dIc/dVbc, dIe/dVbe, dIe/dVbc}

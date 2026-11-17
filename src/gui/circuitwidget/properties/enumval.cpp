@@ -86,6 +86,9 @@ void EnumVal::updtValues()
     if( m_blocked ) return;
     m_blocked = true;
     showVal->setChecked( m_component->getPropStr("ShowProp") == m_propName );
+    // Another property may have changed this one (a BJT or JFET value edit sets Model to Custom)
+    int index = m_enums.indexOf( m_property->getValStr() );
+    if( index >= 0 && index != valueBox->currentIndex() ) valueBox->setCurrentIndex( index );
     m_blocked = false;
 }
 

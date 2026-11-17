@@ -16,6 +16,7 @@
 
 #include "doubleprop.h"
 #include "boolprop.h"
+#include "stringprop.h"
 
 #define tr(str) simulideTr("BJT",str)
 
@@ -47,6 +48,9 @@ BJT::BJT( QString type, QString id )
     Simulator::self()->addToUpdateList( this );
 
     addPropGroup( { tr("Main"), {
+        new StrProp<BJT>("Model", tr("Model"), eBJT::modelNames().join(",")
+                        , this, &BJT::model, &BJT::setModelStr, 0,"enum" ),
+
         new BoolProp<BJT>("PNP"  , tr("PNP"),""
                          , this, &BJT::pnp , &BJT::setPnp ),
 
@@ -141,8 +145,15 @@ void BJT::stepSettled()
     else                      reportState("BREAKDOWN", stFault );
 }
 
+void BJT::setModelStr( QString model )
+{
+    eBJT::setModel( model );
+    update();
+}
+
 void BJT::setPnp( bool pnp )
 {
+    if( pnp != m_PNP ) toCustom("PNP");
     m_PNP = pnp;
     m_changed = true;
     update();
