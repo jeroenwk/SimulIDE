@@ -1,0 +1,11 @@
+* Models DERIVED here for parts with no published SPICE model. Second input of tools/bjt_models.py.
+* Each line says how it was made; results with these parts are [SIMULATED] on an [INFERRED] model.
+*
+* 40250 (RCA, now Central Semiconductor): NPN hometaxial power transistor, TO-66.
+*   Datasheet (Central 40250 R0, 15-Jan-2019, https://my.centralsemi.com/datasheets/40250.PDF):
+*   VCBO 50 V, VCEO 40 V, VEBO 5 V, IC 4 A, PD 29 W; hFE 25-100 at VCE 4 V, IC 1.5 A;
+*   VCE(sat) <= 1.5 V at 1.5 A / 150 mA; VBE(on) <= 2.2 V at 1.5 A.
+*   Made from LTspice's 2N3055H (Motorola), the same hometaxial process, scaled to the 4 A die
+*   (area 4/15: IS, ISE, ISC, IKF, IKR, IRB, CJE, CJC x 4/15; RB, RBM, RE, RC x 15/4), then BF set
+*   so hFE = 50 at 1.5 A (geometric mean of the 25-100 range). VAF and the rest unchanged.
+.MODEL 40250 NPN(IS=6.33136e-15 BF=340.8 NF=0.85 VAF=31.1252 IKF=0.264246 ISE=6.59995e-11 NE=1.89002 BR=1.01252 NR=0.924456 VAR=254.624 IKR=0.720605 ISC=6.59995e-11 NC=2.90624 RB=13.7478 IRB=0.0266667 RBM=0.375 RE=0.00132252 RC=0.286672 XTB=1.34801 XTI=1.07207 EG=1.206 CJE=2.40824e-08 VJE=0.513954 MJE=0.59999 TF=1e-08 XTF=1.36696 VTF=1.02605 ITF=0.987296 CJC=1.33333e-10 VJC=0.400243 MJC=0.410238 XCJC=0.803124 FC=0.661216 TR=1e-07 VCEO=40 ICRATING=4 MFG=RCA-derived)
