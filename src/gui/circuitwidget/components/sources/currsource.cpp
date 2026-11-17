@@ -43,7 +43,7 @@ CurrSource::CurrSource( QString type, QString id )
                                 , this, &CurrSource::maxValue, &CurrSource::setMaxValue )
     }, 0} );
 
-    setShowProp("MaxValue");
+    setShowProp("Value_Amp");   // The set current, not the dial range (create-circuit #390)
     setPropStr( "MaxValue", "1 A" );
     dialChanged( 0 );
 }

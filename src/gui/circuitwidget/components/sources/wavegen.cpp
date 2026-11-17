@@ -44,6 +44,8 @@ WaveGen::WaveGen( QString type, QString id )
 {
     m_bipolar  = false;
     m_floating = false;
+    m_impChanged = false;
+    m_outImp   = 0;        // 0 = ideal (the old behaviour): 1 nΩ, or 1 mΩ per pin when floating
     m_voltBase = -2.5;
     m_phaseShift = 0;
     m_voltMid  = 0;
@@ -97,7 +99,10 @@ WaveGen::WaveGen( QString type, QString id )
                              , this, &WaveGen::semiAmpli, &WaveGen::setSemiAmpli ),
 
         new DoubProp<WaveGen>("Mid_Volt", tr("Middle Voltage"), "V"
-                             , this, &WaveGen::midVolt, &WaveGen::setMidVolt )
+                             , this, &WaveGen::midVolt, &WaveGen::setMidVolt ),
+
+        new DoubProp<WaveGen>("Out_Imped", tr("Output Impedance"), "Ω"
+                             , this, &WaveGen::outImp, &WaveGen::setOutImp )
     },0} );
 
     setWaveType("Sine");
@@ -130,21 +135,12 @@ void WaveGen::stamp()
 
         m_outpin->createCurrent();
         m_gndpin->createCurrent();
-
-        // 1 mΩ, not ~0: the pair's potential to the rest of the circuit may hang on tiny
-        // conductances only (e.g. a mains source when every bridge diode is off: ~1e-9 S of
-        // leakage). Next to 1e9 S that leakage is lost in rounding, the pair's potential is
-        // undefined and diodes never converge; next to 1e3 S it is kept
-        m_outpin->setImpedance( 1e-3 );
-        m_gndpin->setImpedance( 1e-3 );
     }
     else{
         m_outpin->skipStamp( false );
         m_gndpin->skipStamp( false );
-
-        m_outpin->setImpedance( cero_doub );
-        m_gndpin->setImpedance( cero_doub );
     }
+    applyOutImp();
     // Start from the rest level, not from the voltage the pins had when the last run stopped:
     // the first sample comes only at the next frame (ClockBase::updateStep), and a stale level
     // (e.g. a mains source stopped near its peak) is a step of hundreds of volts into a
@@ -298,6 +294,43 @@ void WaveGen::setFloating( bool f )
     if( Simulator::self()->isRunning() ) CircuitWidget::self()->powerCircOff();
 
     updtProperties();
+}
+
+// Output impedance (create-circuit #386): a real function generator has 50 Ω (600 Ω for audio
+// generators); an ideal source wired straight to a bias node clamps it to the waveform.
+// Out_Imped is the impedance seen between Out and Gnd (bipolar) or Out and ground (unipolar):
+// - unipolar: the Out pin's impedance to ground;
+// - bipolar, not floating: two ground-referenced pins in series between Out and Gnd: half each;
+// - bipolar floating: each pin stamps the same Out-Gnd branch (enodeComp), and the two Norton
+//   halves act as one source of the pin impedance (measured: 100 Ω per pin into 100 Ω gives
+//   2/3 of the open voltage): the full value on each pin.
+// Floors: 1 nΩ (ideal), and 1 mΩ per pin when floating:
+// the pair's potential to the rest of the circuit may hang on tiny conductances only (e.g. a
+// mains source when every bridge diode is off: ~1e-9 S of leakage). Next to 1e9 S that leakage
+// is lost in rounding, the pair's potential is undefined and diodes never converge; next to
+// 1e3 S it is kept.
+void WaveGen::applyOutImp()
+{
+    double imp = ( m_bipolar && !m_floating ) ? m_outImp/2 : m_outImp;
+    double minImp = ( m_bipolar && m_floating ) ? 1e-3 : cero_doub;
+    if( imp < minImp ) imp = minImp;
+    qDebug() << "[WaveGen]" << m_id << "output impedance" << m_outImp << "Ohm:" << imp << "Ohm per pin";
+    m_outpin->setImpedance( imp );
+    if( m_bipolar ) m_gndpin->setImpedance( imp );
+    else            m_gndpin->setImpedance( cero_doub );
+}
+
+void WaveGen::setOutImp( double imp )
+{
+    if( imp < 0 ) imp = 0;
+    m_outImp = imp;
+    if( Simulator::self()->isRunning() ) m_impChanged = true;   // Applied in updateStep (worker idle)
+}
+
+void WaveGen::updateStep()
+{
+    if( m_impChanged ){ m_impChanged = false; applyOutImp(); }
+    ClockBase::updateStep();
 }
 
 void WaveGen::setWaveType( QString type )
