@@ -1,0 +1,237 @@
+<circuit version="1.1.0-SR2" rev="261116" stepSize="1000000" stepsPS="10000" NLsteps="100000" reaStep="1000000" animate="0" >
+<description>
+# Scherz &amp; Monk fig 8.42 — Overvoltage Protection (Crowbar) with op amp and SCR (book p. 660, PDF p. 689)
+
+## What it shows
+
+The op-amp crowbar from the "Overvoltage Protection (Crowbar)" figure. A +6 V supply feeds the
+load through a fuse/breaker. R1 (10 k) and R2 (10 k trimmer, "adj.") divide the output down to
+the op amp's **+** input; R3 (430 Ω) feeds a 3 V zener (cathode up) that clamps the op amp's
+**−** input at 3.00 V. At the nominal 6 V both inputs sit at ~3 V (book: "the op amp's
+differential input voltage is therefore zero"), the output is low, and the SCR — anode on the
+output rail, cathode through the **reset** switch to ground — is off. When the output rises past
+the trip point the divider lifts the **+** input above 3 V, the comparator output fires the SCR
+gate, and the SCR crowbars the output to ground. The SCR then holds itself on through anode
+current (the comparator only had to pulse the gate), diverting the fault until the fuse blows
+or power is removed; the book: *"the fuse (breaker) blows and the load is saved. The switch is
+opened to reset the SCR."*
+
+## Parts and values
+
+Book values: **R1** 10 K, **R2** 10 K trimmer, **R3** 430 Ω, **V_zener** 3 V, SCR (no type),
+fuse/breaker, "reset" switch. The figure draws no op amp type, no supplies, no load, and no
+component values for the supply.
+
+Chosen / inferred:
+- **V1** battery 6 V, `Resistance` **2 Ω** as the supply's output impedance [INFERRED, same
+  convention as books/scherz/fig11_15_overvoltage_crowbar.sim1] so the fired crowbar draws a
+  finite fault current instead of hundreds of amps (MODEL_LIMITS #191).
+- **RL** **600 Ω** load on the figure's +/− output terminals [INFERRED] (10 mA at 6 V).
+- **F1** switch stands in for the fuse/breaker — SimulIDE has no fuse part (#316); closed =
+  intact, open = tripped. A real 0.5 A fuse would blow instantly at the measured 2.6–3 A fault.
+- **SW1** the "reset" switch, drawn closed; opens to interrupt the SCR's cathode current.
+- **U1** op amp used open-loop as the comparator (the documented stand-in, MODEL_LIMITS #314),
+  powered from the protected rail (`Power_Pins=true`, V+ to the rail via `Switch_Pins=true`),
+  `Gain` **100**. With the default Gain 1000 the model's output-low clamp let go against the SCR
+  gate junction after firing: the gate node escaped to ±kV and the "latched" SCR was kicked out
+  again (see limits). Gain 100 clamps cleanly and still trips within ~40 mV.
+- **Q1** generic SCR, SimulIDE defaults (TrigCurr 10 mA, HoldCurr 8.2 mA).
+
+**R2** is wired as the figure draws it: a two-terminal adjustable resistor from the R1/R2
+junction to ground (wiper tied to the bottom end), so A–B = Value_Ohm and the dial moves the
+trip. At the book's setting (10 k, dial 100 %) the divider is 1:1 and the trip sits at
+2 × V_zener ≈ 6.05 V; dialing down raises the trip (R_AB = 5 k → trip ≈ 9 V).
+
+## How to use
+
+Run at 6 V: the load sees the supply (5.97 V), tap and zener node both at ~3.0 V, SCR off.
+Scope: **CH0** = output rail (yellow), **CH1** = comparator output/SCR gate (cyan),
+**CH2** = divider tap (magenta); 500 ms/div, 2 V/div (CH2 1 V/div).
+
+Raise V1 past ~6.06 V (or dial R2 while above the trip): the comparator output swings to ~6 V,
+the SCR fires, the output collapses to ~0.9 V and the supply pushes ~3 A into the short. Lower
+the supply back to 6 V: the output **stays** collapsed — gate at 0 V, SCR still on: latched.
+Open SW1: the cathode current is interrupted, the fault is diverted and the rail recovers.
+Full reset: remove power (V1 → 0) and re-apply, or (in this model) a fresh start. The R2 dial
+sets the trip: 100 % → ≈ 6.05 V, 50 % → ≈ 9 V.
+
+## Expected vs simulated [SIMULATED]
+
+| Stage | Supply | Output (CH0) | Gate (CH1) | SCR | Fault / load current |
+|---|---|---|---|---|---|
+| Normal | 6.00 V | **5.966 V**, load 9.94 mA | 0 V | OFF | 17.1 mA total |
+| Trip scan | 6.06 V | 6.025 V | 0 V | OFF | — |
+| **Trip** | 6.08 V | fires | fires | ON | — |
+| Fired @ 7 V | 7.00 V | **collapses to 0.899 V** | 0 V after firing | ON | **3.05 A** (battery sags to 0.90 V) |
+| Latched, surge passes | back to 6.00 V | **still 0.884 V** | 0 V (comparator low, tap 0.45 V) | ON at 2.56 A | load gets 1.47 mA |
+| Reset switch open | 6.00 V | recovers to 5.86 V | 0 V | current interrupted | fault gone (68.8 mA residual) |
+| Power removed | 0 V | 0 V | — | OFF | 0 |
+| Power back | 6.00 V | 5.966 V | 0 V | OFF — normal again | 9.94 mA |
+| R2 dialed 50 % (trip ≈ 9 V) | 7.00 V surge | 6.958 V — **does not fire** (tap 2.32 V &lt; 3.01 V) | 0 V | OFF | 21.2 mA |
+| R2 back to 100 % | 7.00 V | comparator crosses → fires → 0.899 V | — | ON | 3.05 A |
+
+**Trip voltage vs book:** fires between **6.06 and 6.08 V** input. Theory: trip when the tap
+crosses the 3.009 V zener reference — V_trip = 3.009 × (R1+R2)/R2 = 6.018 V at the rail, plus
+~40 mV of comparator overdrive (Gain 100 needs ~20 mV to swing the output far enough for
+10 mA of gate current) ≈ 6.06 V at V1 including the 35 mV drop across the 2 Ω. Within one
+50 mV step of the estimate.
+
+**Latching:** after the collapse the tap falls to 0.45 V, the comparator output sits at 0 V —
+the gate is no longer driven — and the SCR still carries 3.05 A, 370× its 8.2 mA holding
+current. That is the crowbar's point: the comparator only pulses the gate; the SCR holds
+itself, and the short persists until the anode path is interrupted (SW1) or the power is
+removed. Measured stable across 4 s of continued runs and through the 7 V → 6 V transition.
+
+**Op-amp trip vs the zener crowbar (fig 11.15):** the zener version trips where the rail passes
+the zener knee **plus** the ~0.6 V gate threshold — measured 6.20–6.25 V against a 6.2 V
+estimate, but the threshold is the sum of two soft, tolerance-dominated edges (a 5.6 V zener's
+knee moves with current and ±5 % tolerance; the 0.6 V gate figure is a rough low-current
+estimate). The op-amp version trips where a resistor ratio meets one fixed reference:
+6.018 V by construction, measured 6.06–6.08 V, and **adjustable** over the whole range with the
+R2 trimmer without touching the reference. The old caveat that simulated zener knees are too
+soft to trip on (#232-era) is now moot — in today's models both circuits trip sharply — but the
+bench argument stands: the op amp trades a zener's knee slop for a ratio-set, trimmable
+threshold, at the cost of a supply-powered comparator that dies with the rail it protects.
+
+## Simulator notes
+
+- U1 `Gain` 100, `Power_Pins=true` + `Switch_Pins=true` (V+ to the rail): see limits. With
+  Gain 1000 the fired state could land on a nonphysical branch (gate node at ±kV, latch
+  oscillating, and one `comp set` on a latched circuit at 2.8 A froze the solver at 100 % CPU).
+- The SCR model keeps its ON flag while the cathode is open: opening SW1 restores the rail but
+  closing it again re-latches; only power removal fully clears the flag.
+- After a source step the scope's endpoint samples can read stale values (2 samples, #183):
+  measure settled windows (`--last 500 ms`) after each change, as the table above does.
+
+## create-circuit skill
+
+- Version: 1.20.1 (commit a75fa3b)
+- Circuit: fig8_42_overvoltage_protection.sim1
+
+### Limitations found while building it
+
+- op amp output-low clamp fails against the SCR gate junction (Gain 1000): [#368](https://github.com/jeroenwk/create-circuit/issues/368)
+- no fuse part (#316): [#369](https://github.com/jeroenwk/create-circuit/issues/369)
+- SCR ON flag persists while the cathode is open: [#370](https://github.com/jeroenwk/create-circuit/issues/370)
+</description>
+
+
+<item itemtype="Potentiometer" CircId="Potentiometer-1" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="-80,48" rotation="90" hflip="1" vflip="1" label="R2" idLabPos="21,-10" labelrot="0" valLabPos="36,-10" valLabRot="0" labelAuto="true" Resistance="10 kΩ" Value_Ohm="10 kΩ" Slider="false" Scale="1" />
+
+<item itemtype="opAmp" CircId="opAmp-2" mainComp="false" Show_id="true" Show_Val="false" Pos="48,-32" rotation="0" hflip="1" vflip="-1" label="U1" idLabPos="-14,-26" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="false" Gain="100" Out_Imped="1e-09 Ω" Show_State="true" Power_Pins="true" Switch_Pins="true" Volt_Pos="6 V" Volt_Neg="0 V" />
+
+<item itemtype="SCR" CircId="SCR-3" mainComp="false" Show_id="true" Show_Val="false" Pos="112,-32" rotation="90" hflip="1" vflip="1" label="Q1" idLabPos="-3.88675,-22" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" GateRes="100 Ω" TrigCurr="10 mA" HoldCurr="8.2 mA" Show_State="true" />
+
+<item itemtype="Switch" CircId="Switch-4" mainComp="false" Show_id="true" Show_Val="false" Pos="-96,-112" rotation="0" hflip="1" vflip="1" label="F1" idLabPos="-4,-22" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Norm_Close="false" DT="false" Poles="1" Bounce_Time="0 ms" Bounces="5" Toggled="true" />
+
+<item itemtype="Resistor" CircId="Resistor-5" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="-48,-64" rotation="90" hflip="1" vflip="1" label="RL" idLabPos="-19,8.5" labelrot="0" valLabPos="-4,8.5" valLabRot="0" labelAuto="true" Resistance="600 Ω" Cp="0 pF" />
+
+<item itemtype="Resistor" CircId="Resistor-6" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="-16,-64" rotation="90" hflip="1" vflip="1" label="R3" idLabPos="-19.5,8.5" labelrot="0" valLabPos="-4.5,8.5" valLabRot="0" labelAuto="true" Resistance="430 Ω" Cp="0 pF" />
+
+<item itemtype="Resistor" CircId="Resistor-7" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="-80,-32" rotation="90" hflip="1" vflip="1" label="R1" idLabPos="-17,8.5" labelrot="0" valLabPos="-4,8.5" valLabRot="0" labelAuto="true" Resistance="10 kΩ" Cp="0 pF" />
+
+<item itemtype="Battery" CircId="Battery-8" mainComp="false" Show_id="true" Show_Val="false" Pos="-128,-16" rotation="90" hflip="1" vflip="1" label="V1" idLabPos="-4.5,-24" labelrot="0" valLabPos="-10,10" valLabRot="0" labelAuto="true" Voltage="6 V" Resistance="2 Ω" />
+
+<item itemtype="Zener" CircId="Zener-9" mainComp="false" Show_id="true" Show_Val="false" Pos="-16,32" rotation="90" hflip="-1" vflip="-1" label="D1" idLabPos="-4.5,-22" labelrot="0" valLabPos="-16,6" valLabRot="0" labelAuto="true" Show_State="true" Model="Zener Default" Threshold="0.634767 V" MaxCurrent="1 A" Resistance="0.05 Ω" BrkDownV="3 V" SatCurrent="171.435 nA" EmCoef="2" Cj0="0 pF" Vj="0.7 V" Mj="0.33" />
+
+<item itemtype="Switch" CircId="Switch-10" mainComp="false" Show_id="true" Show_Val="false" Pos="112,32" rotation="90" hflip="1" vflip="1" label="SW1" idLabPos="-8,-22" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Norm_Close="false" DT="false" Poles="1" Bounce_Time="0 ms" Bounces="5" Toggled="true" />
+
+<item itemtype="Ground" CircId="Ground-11" mainComp="false" Show_id="false" Show_Val="false" Pos="-128,32" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Ground" CircId="Ground-12" mainComp="false" Show_id="false" Show_Val="false" Pos="-96,96" rotation="0" hflip="1" vflip="1" label="G2" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Ground" CircId="Ground-13" mainComp="false" Show_id="false" Show_Val="false" Pos="-48,-8" rotation="0" hflip="1" vflip="1" label="G3" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Ground" CircId="Ground-14" mainComp="false" Show_id="false" Show_Val="false" Pos="48,16" rotation="0" hflip="1" vflip="1" label="G6" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Ground" CircId="Ground-15" mainComp="false" Show_id="false" Show_Val="false" Pos="-16,80" rotation="0" hflip="1" vflip="1" label="G4" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Ground" CircId="Ground-16" mainComp="false" Show_id="false" Show_Val="false" Pos="112,80" rotation="0" hflip="1" vflip="1" label="G5" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Oscope" CircId="Oscope-24" mainComp="false" Show_id="false" Show_Val="false" Pos="272,16" rotation="0" hflip="1" vflip="1" label="SC" idLabPos="-90,-100" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Basic_X="135 _px" Basic_Y="135 _px" BufferSize="600000" connectGnd="true" InputImped="10 MΩ" TimDiv="500000000000" TimPos="0,0,0,0," VolDiv="2,2,1,1," Tunnels=",,,," Trigger="4" Filter="0.1 V" AutoSC="4" Tracks="1" HideCh="false,false,false,false," VolPos="0,0,0,0," TrigAuto="true" TrigLevel="0 V" />
+
+<item itemtype="Node" CircId="Node-17" mainComp="false" Pos="-96,72" />
+
+<item itemtype="Node" CircId="Node-18" mainComp="false" Pos="-64,-96" />
+
+<item itemtype="Node" CircId="Node-19" mainComp="false" Pos="-48,-96" />
+
+<item itemtype="Node" CircId="Node-20" mainComp="false" Pos="-16,-96" />
+
+<item itemtype="Node" CircId="Node-21" mainComp="false" Pos="48,-96" />
+
+<item itemtype="Node" CircId="Node-22" mainComp="false" Pos="-16,-40" />
+
+<item itemtype="Node" CircId="Node-23" mainComp="false" Pos="-80,24" />
+
+<item itemtype="Node" CircId="Node-25" mainComp="false" Pos="-72,-112" />
+
+<item itemtype="Node" CircId="Node-26" mainComp="false" Pos="88,-32" />
+
+<item itemtype="Node" CircId="Node-27" mainComp="false" Pos="-80,8" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="Zener-9-lPin" endpinid="Ground-15-Gnd" pointList="-16,48,-16,64" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Potentiometer-1-PinB" endpinid="Node-17-1" pointList="-80,64,-80,72,-96,72" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="Potentiometer-1-PinM" endpinid="Node-17-0" pointList="-96,48,-104,48,-104,64,-96,64,-96,72" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Node-17-2" endpinid="Ground-12-Gnd" pointList="-96,72,-96,80" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Switch-10-switch0pinN" endpinid="Ground-16-Gnd" pointList="112,48,112,64" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="opAmp-2-powerNeg" endpinid="Ground-14-Gnd" pointList="48,-16,48,0" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Battery-8-rPin" endpinid="Ground-11-Gnd" pointList="-128,0,-128,16" />
+
+<item itemtype="Connector" uid="Connector-9" startpinid="Resistor-5-rPin" endpinid="Ground-13-Gnd" pointList="-48,-48,-48,-24" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="Resistor-7-lPin" endpinid="Node-18-0" pointList="-80,-48,-80,-96,-64,-96" />
+
+<item itemtype="Connector" uid="Connector-14" startpinid="Resistor-5-lPin" endpinid="Node-19-1" pointList="-48,-80,-48,-96" />
+
+<item itemtype="Connector" uid="Connector-15" startpinid="Node-18-2" endpinid="Node-19-0" pointList="-64,-96,-48,-96" />
+
+<item itemtype="Connector" uid="Connector-17" startpinid="Resistor-6-lPin" endpinid="Node-20-1" pointList="-16,-80,-16,-96" />
+
+<item itemtype="Connector" uid="Connector-18" startpinid="Node-19-2" endpinid="Node-20-0" pointList="-48,-96,-16,-96" />
+
+<item itemtype="Connector" uid="Connector-20" startpinid="opAmp-2-powerPos" endpinid="Node-21-1" pointList="48,-48,48,-96" />
+
+<item itemtype="Connector" uid="Connector-21" startpinid="Node-20-2" endpinid="Node-21-0" pointList="-16,-96,48,-96" />
+
+<item itemtype="Connector" uid="Connector-22" startpinid="Node-21-2" endpinid="SCR-3-lPin" pointList="48,-96,112,-96,112,-48" />
+
+<item itemtype="Connector" uid="Connector-24" startpinid="opAmp-2-inputInv" endpinid="Node-22-1" pointList="24,-40,-16,-40" />
+
+<item itemtype="Connector" uid="Connector-25" startpinid="Resistor-6-rPin" endpinid="Node-22-0" pointList="-16,-48,-16,-40" />
+
+<item itemtype="Connector" uid="Connector-26" startpinid="Node-22-2" endpinid="Zener-9-rPin" pointList="-16,-40,-16,16" />
+
+<item itemtype="Connector" uid="Connector-28" startpinid="opAmp-2-inputNinv" endpinid="Node-23-1" pointList="24,-24,0,-24,0,24,-80,24" />
+
+<item itemtype="Connector" uid="Connector-30" startpinid="Node-23-2" endpinid="Potentiometer-1-PinA" pointList="-80,24,-80,32" />
+
+<item itemtype="Connector" uid="Connector-31" startpinid="Switch-10-pinP0" endpinid="SCR-3-rPin" pointList="112,16,112,-16" />
+
+<item itemtype="Connector" uid="Connector-33" startpinid="Battery-8-lPin" endpinid="Switch-4-pinP0" pointList="-128,-32,-128,-112,-112,-112" />
+
+<item itemtype="Connector" uid="Connector-34" startpinid="Node-25-1" endpinid="Oscope-24-Pin0" pointList="-72,-112,-80,-112,-80,-128,184,-128,184,-32" />
+
+<item itemtype="Connector" uid="Connector-35" startpinid="Switch-4-switch0pinN" endpinid="Node-25-0" pointList="-80,-112,-72,-112" />
+
+<item itemtype="Connector" uid="Connector-36" startpinid="Node-25-2" endpinid="Node-18-1" pointList="-72,-112,-64,-112,-64,-96" />
+
+<item itemtype="Connector" uid="Connector-37" startpinid="Node-26-1" endpinid="Oscope-24-Pin1" pointList="88,-32,72,-32,72,0,184,0" />
+
+<item itemtype="Connector" uid="Connector-38" startpinid="opAmp-2-output" endpinid="Node-26-0" pointList="72,-32,88,-32" />
+
+<item itemtype="Connector" uid="Connector-39" startpinid="Node-26-2" endpinid="SCR-3-gPin" pointList="88,-32,96,-32,96,-8,104,-8,104,-16" />
+
+<item itemtype="Connector" uid="Connector-40" startpinid="Node-27-1" endpinid="Oscope-24-Pin2" pointList="-80,8,-64,8,-64,32,-64,96,176,96,176,32,184,32" />
+
+<item itemtype="Connector" uid="Connector-41" startpinid="Resistor-7-rPin" endpinid="Node-27-0" pointList="-80,-16,-80,8" />
+
+<item itemtype="Connector" uid="Connector-42" startpinid="Node-27-2" endpinid="Node-23-0" pointList="-80,8,-80,24" />
+
+</circuit>

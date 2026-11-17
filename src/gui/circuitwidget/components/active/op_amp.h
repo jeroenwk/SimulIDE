@@ -61,6 +61,8 @@ class OpAmp : public Component, public eElement
         eElement m_aux;
         int    m_mode;               // LIN: out = gain*(V+ - V-) stamped in the matrix; SAT_P/N: out = rail
         int    m_flips;              // Unstable LIN -> rail flips in this time step
+        int    m_changes;            // Region changes in this time step
+        bool   m_held;               // Too many changes: on a rail until the next time step
         uint64_t m_flipTime;
         bool   m_checkStable;        // First LIN solve after a rail: is the loop stable?
         double m_satVd, m_satOut;    // vd and output at the rail before it

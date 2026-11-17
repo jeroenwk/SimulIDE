@@ -6,6 +6,8 @@
 #include <QPainter>
 
 #include <QtMath>
+#include <QDebug>
+#include <cstdlib>
 
 #include "scr.h"
 #include "theme.h"
@@ -141,7 +143,17 @@ void SCR::voltChanged()
     double cmult = 1/m_trigCurr;
     double amult = 1/m_holdCurr - cmult;
 
-    bool state = -cathCurr*cmult + anodCurr*amult > 1;
+    // Holding: only the anode current that leaves through the cathode keeps the latch
+    // (regeneration runs through the cathode junction). Anode current that leaves through
+    // the gate (cathode opened by a reset switch, the gate held low) kept an SCR ON with no
+    // cathode current at all, so closing the switch re-latched it without a trigger
+    // (create-circuit #370).
+    double iHold = qMax( 0.0, qMin( anodCurr, -cathCurr ) );
+    bool state = -cathCurr*cmult + iHold*amult > 1;
+    static const bool dbg = getenv("SIMULIDE_DEBUG_SCR");
+    if( dbg )
+        qDebug() << "[SCR]" << m_elmId << "t" << Simulator::self()->circTime() << "vAC" << voltAC << "vGC" << voltGC
+                 << "Ia" << anodCurr << "Ik" << cathCurr << "Ihold" << iHold << "state" << m_state << "->" << state;
 
     if( m_state != state )
     {

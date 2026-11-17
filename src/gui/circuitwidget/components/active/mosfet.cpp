@@ -170,7 +170,7 @@ void Mosfet::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
         QPointF( 5, 2 )     };
         p->drawPolygon( points, 3 );
     }
-    if( m_depletion )
+    if( m_depletion || m_threshold < 0 )    // a negative Threshold is a depletion part (#425)
     {
         QPen pen(Theme::line(), 2.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
         p->setPen( pen );
