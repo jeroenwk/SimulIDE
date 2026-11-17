@@ -28,6 +28,7 @@ class Battery : public Comp2Pin, public eResistor
 
         virtual void stamp() override;
         virtual void updateStep() override;
+        virtual void runEvent() override;      // Supply ramp steps (Simulator::supplyRamp)
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
 
@@ -35,6 +36,10 @@ class Battery : public Comp2Pin, public eResistor
         double m_volt;
 
         bool m_connected;
+        int  m_rampK;          // Supply ramp step, RAMP_STEPS = at full voltage
+        double rampFactor();
+        void startRamp();
+        void stampVolt();
 };
 
 #endif

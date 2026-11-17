@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QPainter>
+#include <QDebug>
 
 #include "rail.h"
 #include "simulator.h"
@@ -32,6 +33,7 @@ Rail::Rail( QString type, QString id )
     : Component( type, id )
     , eElement( id )
 {
+    m_rampK = Simulator::RAMP_STEPS;
     setLabelPos(-64,-24 );
 
     m_area = QRect(-2, -8, 12, 16 );
@@ -58,15 +60,41 @@ void Rail::setVolt( double v )
 {
     Simulator::self()->pauseSim();
     m_volt = v;
-    stamp();
+    m_rampK = Simulator::RAMP_STEPS;          // a change by hand: the new value at once
+    m_out->setOutHighV( m_volt );
+    m_out->setOutState( true );
+    update();
     Simulator::self()->resumeSim();
 }
 
 void Rail::stamp()
 {
-    m_out->setOutHighV( m_volt );
+    startRamp();
+    m_out->setOutHighV( m_volt*rampFactor() );
     m_out->setOutState( true );
     update();
+}
+
+// Supply ramp (create-circuit sim-coldstart): see Battery::startRamp
+void Rail::startRamp()
+{
+    uint64_t ramp = Simulator::self()->supplyRamp();
+    m_rampK = ramp ? 0 : Simulator::RAMP_STEPS;
+    if( ramp ){
+        qDebug() << "[ramp]" << m_elmId << "from 0 to" << m_volt << "V over" << ramp << "ps";
+        Simulator::self()->addEvent( ramp/Simulator::RAMP_STEPS, this );
+    }
+}
+double Rail::rampFactor() { return (double)m_rampK/Simulator::RAMP_STEPS; }
+
+void Rail::runEvent()
+{
+    if( m_rampK >= Simulator::RAMP_STEPS ) return;
+    m_rampK++;
+    m_out->setOutHighV( m_volt*rampFactor() );
+    m_out->setOutState( true );
+    if( m_rampK < Simulator::RAMP_STEPS )
+        Simulator::self()->addEvent( Simulator::self()->supplyRamp()/Simulator::RAMP_STEPS, this );
 }
 
 QPainterPath Rail::shape() const

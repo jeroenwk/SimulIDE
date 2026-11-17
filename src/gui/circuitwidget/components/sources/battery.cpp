@@ -3,6 +3,7 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <QDebug>
 #include "battery.h"
 #include "simulator.h"
 #include "circuitwidget.h"
@@ -33,6 +34,7 @@ Battery::Battery( QString type, QString id )
     m_area = QRect( -10, -10, 20, 20 );
 
     m_volt = 5;
+    m_rampK = Simulator::RAMP_STEPS;
     m_admit = 1e3;
 
     m_ePin[0] = m_pin[0];
@@ -64,9 +66,38 @@ void Battery::stamp()
     if( m_connected ){
         m_pin[0]->createCurrent();
         m_pin[1]->createCurrent();
-        m_pin[0]->stampCurrent( m_volt*m_admit );
-        m_pin[1]->stampCurrent(-m_volt*m_admit );
+        startRamp();
+        stampVolt();
     }
+}
+
+// Supply ramp: from 0 to m_volt in RAMP_STEPS events over Simulator::supplyRamp() (create-circuit
+// sim-coldstart). The property keeps its value; only what is stamped rises.
+void Battery::startRamp()
+{
+    uint64_t ramp = Simulator::self()->supplyRamp();
+    m_rampK = ramp ? 0 : Simulator::RAMP_STEPS;
+    if( ramp ){
+        qDebug() << "[ramp]" << m_elmId << "from 0 to" << m_volt << "V over" << ramp << "ps";
+        Simulator::self()->addEvent( ramp/Simulator::RAMP_STEPS, this );
+    }
+}
+double Battery::rampFactor() { return (double)m_rampK/Simulator::RAMP_STEPS; }
+
+void Battery::stampVolt()
+{
+    double v = m_volt*rampFactor();
+    m_pin[0]->stampCurrent( v*m_admit );
+    m_pin[1]->stampCurrent(-v*m_admit );
+}
+
+void Battery::runEvent()
+{
+    if( m_rampK >= Simulator::RAMP_STEPS ) return;
+    m_rampK++;
+    if( m_connected ) stampVolt();
+    if( m_rampK < Simulator::RAMP_STEPS )
+        Simulator::self()->addEvent( Simulator::self()->supplyRamp()/Simulator::RAMP_STEPS, this );
 }
 
 void Battery::updateStep()
@@ -76,8 +107,7 @@ void Battery::updateStep()
 
     if( !m_connected ) return;
     stampAdmit();
-    m_pin[0]->stampCurrent( m_volt*m_admit );
-    m_pin[1]->stampCurrent(-m_volt*m_admit );
+    stampVolt();
 }
 
 void Battery::setVolt( double volt )

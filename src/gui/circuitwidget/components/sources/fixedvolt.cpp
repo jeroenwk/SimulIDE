@@ -3,6 +3,7 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <QDebug>
 #include <QPainter>
 
 #include "fixedvolt.h"
@@ -34,6 +35,7 @@ FixedVolt::FixedVolt( QString type, QString id )
           : Component( type, id )
           , eElement( id )
 {
+    m_rampK = Simulator::RAMP_STEPS;
     m_area = QRect( -10, -10, 20, 20 );
 
     m_graphical = true;
@@ -74,6 +76,24 @@ FixedVolt::~FixedVolt(){}
 void FixedVolt::stamp()
 {
     if( !Simulator::self()->isPaused() ) m_changed = true;
+    // Supply ramp (create-circuit sim-coldstart): see Battery::startRamp
+    uint64_t ramp = Simulator::self()->supplyRamp();
+    m_rampK = ramp ? 0 : Simulator::RAMP_STEPS;
+    m_outpin->setOutHighV( m_voltage*m_rampK/Simulator::RAMP_STEPS );
+    if( ramp ){
+        qDebug() << "[ramp]" << m_elmId << "from 0 to" << m_voltage << "V over" << ramp << "ps";
+        Simulator::self()->addEvent( ramp/Simulator::RAMP_STEPS, this );
+    }
+}
+
+void FixedVolt::runEvent()
+{
+    if( m_rampK >= Simulator::RAMP_STEPS ) return;
+    m_rampK++;
+    m_outpin->setOutHighV( m_voltage*m_rampK/Simulator::RAMP_STEPS );
+    m_outpin->setOutState( m_button->isChecked() );
+    if( m_rampK < Simulator::RAMP_STEPS )
+        Simulator::self()->addEvent( Simulator::self()->supplyRamp()/Simulator::RAMP_STEPS, this );
 }
 
 void FixedVolt::updateStep()
@@ -110,6 +130,7 @@ void FixedVolt::setOut( bool out )
 void FixedVolt::setVolt( double v )
 {
     m_voltage = v;
+    m_rampK = Simulator::RAMP_STEPS;          // a change by hand: the new value at once
     m_outpin->setOutHighV( m_voltage );
     m_changed = true;
 }

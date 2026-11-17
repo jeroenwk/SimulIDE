@@ -71,6 +71,14 @@ class Simulator : public QObject
         void setreactStep( uint64_t rs ) { m_reactStep = rs; }
 
         void  setSlopeSteps( int steps ) { m_slopeSteps = steps; }
+
+        // Supply ramp (create-circuit sim-coldstart): DC sources (Battery, Rail, Fixed Voltage)
+        // rise from 0 to their value over this time at the start of a run, as a bench supply
+        // does. 0 = a step (the default). Instant steps can start a loop in a state a real
+        // supply never visits (an op amp railed, a cascode dead)
+        uint64_t supplyRamp() { return m_supplyRamp; }
+        void setSupplyRamp( uint64_t ps ) { m_supplyRamp = ps; }
+        static const int RAMP_STEPS = 50;
         int slopeSteps( ) { return m_slopeSteps; }
 
         void  setMaxNlSteps( uint32_t steps ) { m_maxNlstp = steps; m_nlBudget = steps; }
@@ -204,6 +212,7 @@ class Simulator : public QObject
         int m_timerId;
         int m_timerTick_ms;
         int m_slopeSteps;
+        uint64_t m_supplyRamp;
 
         double m_realFPS;
         uint64_t m_fps;
