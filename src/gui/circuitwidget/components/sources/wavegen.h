@@ -63,6 +63,11 @@ class WaveGen : public ClockBase
         bool floating() { return m_floating; }
         void setFloating( bool f );
 
+        double outImp() { return m_outImp; }
+        void setOutImp( double imp );
+
+        virtual void updateStep() override;
+
         virtual void setFreq( double freq ) override;
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )override;
@@ -87,8 +92,13 @@ class WaveGen : public ClockBase
 
         double normalize( double data );
         
+        void applyOutImp();
+
         bool m_bipolar;
         bool m_floating;
+        bool m_impChanged;
+
+        double m_outImp;   // Output impedance (create-circuit #386), between Out and Gnd/ground
 
         QString m_waveTypeStr;
         waveType_t m_waveType;
