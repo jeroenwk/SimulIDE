@@ -7,7 +7,7 @@ the current flows in at V+ and out at V− (and through R_SET). It is a true flo
 2-terminal source: no supply pin, so it can sit on the high side, the low side or between two
 moving nodes.
 
-The **Model** list comes from `resources/data/currentsources.model`; new parts are added there
+The **Model** list comes from `resources/data/currregs.model`; new parts are added there
 (see [Adding a model](#adding-a-model)).
 
 ## Model
@@ -41,7 +41,7 @@ as on the real part (0.7 Ω is −1 % at 1 mA, p.7).
 
 | Property | | |
 |---|---|---|
-| Model | a part from `currentsources.model`, or Custom | choosing one sets the values below and the hidden ones (turn-on, line regulation, ratings) |
+| Model | a part from `currregs.model`, or Custom | choosing one sets the values below and the hidden ones (turn-on, line regulation, ratings) |
 | Junction Temperature (`Temp`) | °C, default 25 | Vsense scales with absolute temperature (PTAT models) |
 | Show State | the state badge and log | |
 | Sense Voltage (`Vsense`) | V across R_SET at 25 °C | |
@@ -92,7 +92,7 @@ Checked by `tests/regress/test_currreg_lm334.py` [SIMULATED]:
 
 ## Adding a model
 
-Add an `<item>` to an `<itemset type="programmable">` in `resources/data/currentsources.model`,
+Add an `<item>` to an `<itemset type="programmable">` in `resources/data/currregs.model`,
 with the attributes listed in its header comment (missing ones take the LM334 values), and
 note the datasheet pages for each. Rebuild, or copy the file into the built app's `data/`
 folder; the list is read at startup. Kinds of part that need more than this:

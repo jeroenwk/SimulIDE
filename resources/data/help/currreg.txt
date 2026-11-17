@@ -1,0 +1,22 @@
+Current Source IC: adjustable 3-terminal current source, e.g. LM334, LM234, LM134.
+
+A true floating 2-terminal current source (current in at V+, out at V-) set by one resistor
+from R to V-: the part holds 64 mV across it, so I_SET = 67.7 mV / R_SET at 25 °C (the bias
+current, I_SET/18, included). Works from about 1 V up to 40 V across it; below that the
+current falls off (LOW V state). The current is proportional to absolute temperature, so it
+also works as a temperature sensor. More in docs/CURRENT_SOURCE_IC.md.
+
+Property: (default value)
+
+- Model: (LM334)
+   LM334, LM234, LM134 or Custom. Changing a parameter makes it Custom.
+
+- Junction Temperature: (25 °C)
+   The sense voltage scales with absolute temperature.
+
+- Sense Voltage: (64 mV)
+   Voltage held across the set resistor at 25 °C.
+
+- I_SET / I_BIAS: (18)
+   Typical ratio of the total current to the bias current; editing it replaces the model's
+   ratio curve with this constant.

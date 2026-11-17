@@ -32,7 +32,7 @@ eCurrReg::eCurrReg( QString id )
 
     m_temp  = 25;
     m_model = "Custom";
-    // LM334 values (resources/data/currentsources.model), so a Custom part works too
+    // LM334 values (resources/data/currregs.model), so a Custom part works too
     m_d.vsense = 0.064;  m_d.ptat = true;  m_d.n = 18;
     m_d.ga = -3.3; m_d.sa = 17; m_d.gb = -2.7; m_d.sb = 7;
     m_d.kLo = 2e-4; m_d.kHi = 1e-4; m_d.vKnee = 5;
@@ -271,12 +271,12 @@ void eCurrReg::setModel( QString model )
 
 QStringList eCurrReg::modelNames() { return m_names; }
 
-void eCurrReg::getModels() // Static: resources/data/currentsources.model
+void eCurrReg::getModels() // Static: resources/data/currregs.model
 {
     m_models.clear();
     m_names.clear();
 
-    QString modelsFile = MainWindow::self()->getDataFilePath( "currentsources.model" );
+    QString modelsFile = MainWindow::self()->getDataFilePath( "currregs.model" );
     QDomDocument domDoc = fileToDomDoc( modelsFile, "eCurrReg::getModels" );
     QDomNode node = domDoc.documentElement().firstChild();
     while( !node.isNull() )
