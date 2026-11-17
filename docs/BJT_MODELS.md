@@ -12,7 +12,8 @@ with the old defaults (gain 100, IS 1e-13 A), so existing circuits simulate exac
 `resources/data/bjts.model` is **generated** by `tools/bjt_models.py` (do not edit it by hand)
 from verbatim SPICE lines of LTspice's `standard.bjt` kept in
 `tools/bjt_models/standard_bjt_subset.lib`. To add a part: copy its `.model` line into that file,
-add a row to `PARTS` in the script, run `python3 tools/bjt_models.py` (`--check` exits 1 when the
+add a row to `PARTS` in the script (a part with no published model gets a line derived from its
+datasheet in `tools/bjt_models/datasheet_bjt.lib`, which says how it was made), run `python3 tools/bjt_models.py` (`--check` exits 1 when the
 data file is out of date), rebuild (the build copies `resources/data`).
 
 SimulIDE's BJT is Ebers-Moll with Early (`e-bjt.cpp`): one IS, one forward gain, a fixed reverse
@@ -42,6 +43,7 @@ part. Vceo is a rating, not a breakdown voltage, so it is not applied to BVceo.
 | BC546C | `BC547C` | BC546 is the 65 V selection of the BC547 die; LTspice's own BC546B is its BC547B with Vceo 65 |
 | BC556C | `BC557C` | the same for BC556 / BC557 |
 | 2N3055 | `2N3055H` (Motorola) | the plain `2N3055` line uses old SPICE2 names and an IS of 2.4e-8 A |
+| 40250 | `2N3055H` scaled to a 4 A die (area 4/15), BF 341 | RCA hometaxial TO-66 part (VCEO 40 V, 4 A, 29 W) with no published SPICE model; BF chosen so hFE = 50 at 1.5 A, the geometric mean of the datasheet's 25–100 (Central 40250 datasheet). Gain is taken at 1.5 A (the datasheet's only hFE point), IS at 100 mA (VBE 0.68 V there); at 1.5 A the real VBE is near 1.0 V, SimulIDE gives about 0.75 V |
 
 ## Fitted values (reference current, hFE, VBE)
 
