@@ -46,11 +46,11 @@ def test(sim):
     sim.check("focus back: cross shown", int(s["cursorVisible"]), 1, absolute=0)
     sim.check("focus back: same place", xy(s)[0], 204, absolute=0)
 
-    # A selection: Shift+Arrow is not the cursor's any more (K2 moves the part)
+    # A selection: Shift+Arrow moves the part (K2) and the cross follows it by 8 px
     sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "300,300")
     sim.cli("select", "R1")
     s = sim.cli("ui", "type", "shift+Right")
-    sim.check("selection: cursor stays", xy(s)[0], 204, absolute=0)
+    sim.check("selection: cross follows the part", xy(s)[0], 212, absolute=0)
 
     # Existing shortcuts still reach the circuit
     sim.cli("select", "--none")

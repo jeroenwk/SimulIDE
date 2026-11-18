@@ -55,6 +55,11 @@ class Circuit : public QGraphicsScene
         void setAutoBck( int secs );
 
         void removeItems();
+
+        // Move the selection (parts, junctions, wire segments) and the wires attached to it,
+        // as a mouse drag does. newStep: the start of a move, the old positions are saved
+        // as one undo step (later calls of the same move add nothing to undo)
+        void moveSelection( QPointF delta, bool newStep );
         void removeComp( Component* comp) ;
         void compRemoved( bool removed ) { m_compRemoved = removed; }
         void removeNode( Node* node );
@@ -145,6 +150,7 @@ class Circuit : public QGraphicsScene
         void redo();
         bool canUndo() { return m_undoIndex >= 0; }
         bool canRedo() { return m_undoIndex < m_undoStack.size()-1; }
+        int  editCount() { return m_editCount; }  // +1 for every undo step saved, undo and redo
         void importCircuit();
         //void bom();
         void saveBackup();
@@ -198,6 +204,7 @@ class Circuit : public QGraphicsScene
         bool m_acceptKeys;
         //bool m_createSubc;
         int m_cicuitBatch;
+        int m_editCount;
 
         QPointF m_eventpoint;
         QPointF m_deltaMove;

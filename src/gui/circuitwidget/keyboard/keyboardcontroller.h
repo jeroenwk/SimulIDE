@@ -15,8 +15,10 @@
 #include <QPoint>
 #include <QRectF>
 #include <QJsonObject>
+#include <QList>
 
 class QKeyEvent;
+class QGraphicsItem;
 class QPainter;
 
 class KeyboardController
@@ -54,6 +56,8 @@ class KeyboardController
     private:
         KeyboardController();
 
+        bool arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods );
+
         void hidePointer();
         void showPointer();
         void updateCross( QPointF p );
@@ -65,6 +69,11 @@ class KeyboardController
         bool    m_pointerHidden;
         QPoint  m_lastMousePos;
         bool    m_lastMouseSet;
+
+        // Arrow presses on the same selection are one undo step, until anything else happens
+        bool    m_arrowBurst;
+        int     m_burstEdit;                    // Circuit::editCount() after the burst's last move
+        QList<QGraphicsItem*> m_burstSelection;
 };
 
 #endif

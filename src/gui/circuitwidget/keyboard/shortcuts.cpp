@@ -29,6 +29,9 @@ const QList<Shortcut>& Shortcuts::all()
         // K1: keyboard cursor
         { "View",   "Pan the canvas",         "Arrows",       "Nothing selected" },
         { "Moving", "Move the keyboard cursor (yellow cross) one grid step", "Shift+Arrows", "Nothing selected" },
+        // K2: moving the selection
+        { "Moving", "Move the selection a big step (64 px), wires follow", "Arrows", "Selection" },
+        { "Moving", "Move the selection one grid step (8 px), wires follow", "Shift+Arrows", "Selection" },
     };
     return list;
 }

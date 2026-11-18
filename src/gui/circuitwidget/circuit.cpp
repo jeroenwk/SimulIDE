@@ -7,6 +7,7 @@
 #include <QFileDialog>
 #include <QClipboard>
 #include <QMimeData>
+#include <QSet>
 #include <QSettings>
 #include <QtMath>
 #include <QUrl>
@@ -63,6 +64,7 @@ Circuit::Circuit( qreal x, qreal y, qreal width, qreal height, CircuitView*  par
     m_conStarted = false;
     m_acceptKeys = true;
     m_cicuitBatch = 0;
+    m_editCount = 0;
 
     m_board = NULL;
     m_newConnector = NULL;
@@ -783,6 +785,7 @@ void Circuit::saveChanges()
         m_undoIndex--;
     }
     m_undoIndex++;
+    m_editCount++;
 
     clearCircChanges();
     m_cicuitBatch = 0;  // Ends all CicuitChanges
@@ -955,6 +958,7 @@ void Circuit::undo()
 {
     if( m_busy || m_deleting || m_conStarted || m_undoIndex < 0 ) return; /// qDebug() << "\nCircuit::undo"<<m_undoIndex<<m_undoStack.size();
     m_undo = true;
+    m_editCount++;
     restoreState();
     m_undoIndex--;
     m_undo = false;
@@ -964,6 +968,7 @@ void Circuit::redo()
 {
     if( m_busy || m_deleting || m_conStarted || m_undoIndex >= (m_undoStack.size()-1) ) return;
     m_redo = true;
+    m_editCount++;
     m_undoIndex++;                                 /// qDebug() << "\nCircuit::redo"<<m_undoIndex<<m_undoStack.size();
     restoreState();
     m_redo = false;
@@ -1325,6 +1330,55 @@ void Circuit::drawBackground( QPainter*  painter, const QRectF &rect )
     int y0 = 8*qFloor( ( r.top() -4 )/8 )+4, y1 = qCeil( r.bottom() );
     for( int x=x0; x<=x1; x+=8 ) painter->drawLine( QLineF( x, r.top(), x, r.bottom() ) );
     for( int y=y0; y<=y1; y+=8 ) painter->drawLine( QLineF( r.left(), y, r.right(), y ) );
+}
+
+void Circuit::moveSelection( QPointF delta, bool newStep )
+{
+    QList<QGraphicsItem*> itemlist = selectedItems();
+    QList<Connector*> conMoveList;
+    QSet<Connector*>  conSeen;
+    QList<Component*> compMoveList;
+
+    if( newStep ) beginCircuitBatch();
+
+    for( QGraphicsItem* item : itemlist )
+    {
+        if( item->type() == QGraphicsItem::UserType+2 )          // ConnectorLine selected
+        {
+            Connector* con = qgraphicsitem_cast<ConnectorLine*>( item )->connector();
+            if( !conSeen.contains( con ) )
+            {
+                conSeen.insert( con );
+                conMoveList.append( con );
+                if( newStep ) addCompChange( con->getUid(), "pointList", con->pListStr() );
+            }
+        }
+        else if( item->type() == QGraphicsItem::UserType+1 )     // Component selected
+        {
+            Component* comp = qgraphicsitem_cast<Component*>( item );
+            if( newStep ) addCompChange( comp->getUid(), "Pos", comp->getPropStr("Pos") );
+            compMoveList.append( comp );
+            for( Pin* pin : comp->getPins() )     // Connectors attached to selected Component
+            {
+                if( !pin ) continue;
+                Connector* con = pin->connector();
+                if( con && !conSeen.contains( con ) )
+                {
+                    conSeen.insert( con );
+                    conMoveList.append( con );
+                    if( newStep ) addCompChange( con->getUid(), "pointList", con->pListStr() );
+    }   }   }   }
+    if( newStep ) saveChanges();
+
+    for( QGraphicsItem* item : itemlist )                        // Move ConnectorLines
+        if( item->type() == QGraphicsItem::UserType+2 ) qgraphicsitem_cast<ConnectorLine*>( item )->moveSimple( delta );
+
+    for( Component* comp : compMoveList ) comp->move( delta );  // Move Components selected
+    for( Connector* con  : conMoveList )                        // Update Connectors
+    {
+        con->startPin()->isMoved();
+        con->endPin()->isMoved();
+    }
 }
 
 void Circuit::drawForeground( QPainter* painter, const QRectF& )

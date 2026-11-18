@@ -269,8 +269,6 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
         int     m_idDefRot;
         int     m_valDefRot;
 
-        QList<Connector*> m_conMoveList;
-        QList<Component*> m_compMoveList;
 
         std::vector<Pin*> m_pin;
         QList<Pin*> m_signalPin;
