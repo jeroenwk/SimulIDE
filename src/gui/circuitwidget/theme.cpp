@@ -47,6 +47,13 @@ QColor Theme::defaultColor( role_t r )
     }
 }
 
+QColor Theme::pinAccent()
+{
+    QColor l = line();
+    QColor to = ( canvas().lightness() >= 128 ) ? QColor( 0, 0, 0 ) : QColor( 255, 255, 255 );
+    return QColor( ( l.red()+to.red() )/2, ( l.green()+to.green() )/2, ( l.blue()+to.blue() )/2 );
+}
+
 QString Theme::key( role_t r )
 {
     static const char* keys[] = { "canvasColor", "wireColor", "lineColor", "textColor", "bodyColor", "flowColor", "nameColor", "valueColor", "highlightColor", "icBodyColor", "icTextColor",

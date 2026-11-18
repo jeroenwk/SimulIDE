@@ -32,6 +32,11 @@ const QList<Shortcut>& Shortcuts::all()
         // K2: moving the selection
         { "Moving", "Move the selection a big step (64 px), wires follow", "Arrows", "Selection" },
         { "Moving", "Move the selection one grid step (8 px), wires follow", "Shift+Arrows", "Selection" },
+        // K3: pins
+        { "Pins & wiring", "Next pin clockwise (the pin to wire to)", ">", "One part selected" },
+        { "Pins & wiring", "Previous pin (the pin to wire to)", "<", "One part selected" },
+        { "Pins & wiring", "Next pin, as the pin to wire from", "Cmd+>", "One part selected" },
+        { "Pins & wiring", "Previous pin, as the pin to wire from", "Cmd+<", "One part selected" },
     };
     return list;
 }

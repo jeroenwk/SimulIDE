@@ -140,6 +140,14 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
 
         virtual std::vector<Pin*> getPins() { return m_pin; }
 
+        // Keyboard input (specs/keyboard-input.md K3): every part has a selected pin.
+        // Auto (never chosen): the topmost pin, then the rightmost; kept through rotation and flips
+        std::vector<Pin*> pinsClockwise();   // Visible pins, clockwise on screen around their centre
+        Pin* selectedPin();                  // nullptr: no visible pins, or a junction
+        void setSelectedPin( Pin* pin, bool manual );
+        Pin* stepSelectedPin( int dir );     // +1 next clockwise, -1 previous; becomes manual
+        bool selectedPinManual() { return m_selPinManual; }
+
         //QString print();
 
         virtual bool isHidden() override { return m_hidden; }
@@ -271,6 +279,8 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
 
 
         std::vector<Pin*> m_pin;
+        Pin* m_selPin;          // Keyboard: selected pin (nullptr: auto, not chosen yet)
+        bool m_selPinManual;
         QList<Pin*> m_signalPin;
 
         //QGraphicsItemGroup* m_group;

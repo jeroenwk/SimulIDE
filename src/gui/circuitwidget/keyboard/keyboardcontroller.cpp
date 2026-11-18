@@ -9,12 +9,15 @@
 #include <QtMath>
 #include <algorithm>
 #include <QDebug>
+#include <QGraphicsItem>
 
 #include "keyboardcontroller.h"
 #include "circuitview.h"
 #include "circuit.h"
 #include "component.h"
 #include "theme.h"
+#include "pin.h"
+#include "node.h"
 
 KeyboardController* KeyboardController::self()
 {
@@ -42,6 +45,8 @@ void KeyboardController::reset()
     showPointer();
     m_cursorSet  = false;
     m_arrowBurst = false;
+    m_pinFrom.clear();
+    m_pinTo.clear();
 }
 
 static bool isModifierKey( int key )
@@ -64,7 +69,77 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     if( arrow && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return arrowKey( event, mods );
 
     m_arrowBurst = false;       // Any other key ends a burst of arrow moves
+
+    // < and > : next / previous pin of the selected part (Cmd: also the "from" pin).
+    // The character decides (AZERTY: < unshifted, > with Shift); with Cmd macOS gives no text
+    QString text = event->text();
+    bool greater = text == ">" || ( text.isEmpty() && key == Qt::Key_Greater );
+    bool less    = text == "<" || ( text.isEmpty() && key == Qt::Key_Less );
+    if( ( greater || less ) && !( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) )
+    {
+        qDebug() << "[kbd] pin key" << Qt::hex << key << Qt::dec << "text" << text << "mods" << (int)mods;
+        return pinKey( greater ? 1 : -1, mods & Qt::ControlModifier );
+    }
     return false;
+}
+
+Component* KeyboardController::singlePart()
+{
+    QList<QGraphicsItem*> sel = Circuit::self()->selectedItems();
+    if( sel.size() != 1 || sel.first()->type() != QGraphicsItem::UserType+1 ) return nullptr;
+    Component* comp = qgraphicsitem_cast<Component*>( sel.first() );
+    if( !comp || comp->itemType() == "Node" ) return nullptr;
+    return comp;
+}
+
+bool KeyboardController::pinKey( int dir, bool from )
+{
+    Component* comp = singlePart();
+    if( !comp || !comp->selectedPin() ) return false;   // Not for us (old behaviour)
+    Pin* pin = comp->stepSelectedPin( dir );
+    if( from ) setPinFrom( pin );
+    else       setPinTo( pin );
+    return true;
+}
+
+Pin* KeyboardController::pinFrom() { return m_pinFrom.isEmpty() ? nullptr : Circuit::self()->pinById( m_pinFrom ); }
+Pin* KeyboardController::pinTo()   { return m_pinTo.isEmpty()   ? nullptr : Circuit::self()->pinById( m_pinTo ); }
+
+void KeyboardController::updatePin( QString id )
+{
+    if( id.isEmpty() ) return;
+    if( Pin* p = Circuit::self()->pinById( id ) ) p->update();
+}
+
+void KeyboardController::setPinFrom( Pin* pin )
+{
+    QString old = m_pinFrom;
+    m_pinFrom = pin ? pin->pinId() : QString();
+    updatePin( old );
+    updatePin( m_pinFrom );
+}
+
+void KeyboardController::setPinTo( Pin* pin )
+{
+    QString old = m_pinTo;
+    m_pinTo = pin ? pin->pinId() : QString();
+    updatePin( old );
+    updatePin( m_pinTo );
+}
+
+KeyboardController::pinLook_t KeyboardController::pinLook( Pin* pin, bool* ring )
+{
+    *ring = false;
+    Component* comp = pin->component();
+    if( !comp || comp->itemType() == "Node" ) return lookNormal;
+
+    QString id = pin->pinId();
+    if( !m_pinFrom.isEmpty() && id == m_pinFrom ){ *ring = true; return lookHighlight; }
+    if( !m_pinTo.isEmpty()   && id == m_pinTo ) return lookHighlight;
+
+    if( comp->parentItem() ) return lookNormal;          // Parts inside a board
+    if( comp->selectedPin() != pin ) return lookNormal;
+    return comp->isSelected() ? lookHighlight : lookAccent;
 }
 
 // Arrows: nothing selected: pan (left to the view), Shift: move the cursor.
@@ -201,5 +276,5 @@ QJsonObject KeyboardController::state()
         for( Component* comp : *c->compList() )
             if( comp->isSelected() ) sel.append( comp->getUid() );
     o["selection"] = sel;
-    return o;
+    return o;      // The CLI adds the pins (pinFrom, pinTo, selectedPin) as "R1.lPin" refs
 }

@@ -15,6 +15,31 @@
 #include "circuit.h"
 #include "keyboardcontroller.h"
 #include "shortcuts.h"
+#include "clirefs.h"
+#include "component.h"
+#include "pin.h"
+
+// The controller's state plus its pins as CLI refs: pinFrom, pinTo, and for one selected
+// part its selected pin (selectedPin, selectedPinManual) and its pins clockwise
+static QJsonObject kbdState()
+{
+    KeyboardController* k = KeyboardController::self();
+    QJsonObject o = k->state();
+    Pin* f = k->pinFrom();
+    Pin* t = k->pinTo();
+    o["pinFrom"] = f ? QJsonValue( CliRefs::pinRef( f ) ) : QJsonValue();
+    o["pinTo"]   = t ? QJsonValue( CliRefs::pinRef( t ) ) : QJsonValue();
+    if( Component* c = k->singlePart() )
+    {
+        Pin* p = c->selectedPin();
+        o["selectedPin"] = p ? QJsonValue( CliRefs::pinRef( p ) ) : QJsonValue();
+        o["selectedPinManual"] = c->selectedPinManual();
+        QJsonArray cw;
+        for( Pin* q : c->pinsClockwise() ) cw.append( CliRefs::pinRef( q ) );
+        o["pinsClockwise"] = cw;
+    }
+    return o;
+}
 
 // One key token: [mod+...]key. Mods: shift, cmd (= ctrl, Qt's ControlModifier, the Command
 // key on macOS), alt (opt), meta. Key: a single character, or a name (Left, Tab, Enter, ...)
@@ -86,7 +111,7 @@ void CliApi::registerKbd()
             QKeyEvent release( QEvent::KeyRelease, k.key, k.mods, k.text );
             QApplication::sendEvent( v, &release );
         }
-        return KeyboardController::self()->state();
+        return kbdState();
     });
 
     add("ui mouse", "ui mouse <x,y>",
@@ -102,7 +127,7 @@ void CliApi::registerKbd()
         QPoint vp = v->mapFromScene( p );
         QMouseEvent move( QEvent::MouseMove, vp, v->viewport()->mapToGlobal( vp ), Qt::NoButton, Qt::NoButton, Qt::NoModifier );
         QApplication::sendEvent( v->viewport(), &move );
-        return KeyboardController::self()->state();
+        return kbdState();
     });
 
     add("ui focus", "ui focus canvas|none",
@@ -120,15 +145,16 @@ void CliApi::registerKbd()
             if( headless ) KeyboardController::self()->setFocused( false );
         }
         else throw CliError("focus must be canvas or none");
-        return KeyboardController::self()->state();
+        return kbdState();
     });
 
     add("kbd state", "kbd state",
         "Keyboard state of the canvas: focus, keyboard cursor (scene x,y on the grid), whether the cross "
-        "is shown and the mouse pointer hidden, the selected parts.",
+        "is shown and the mouse pointer hidden, the selected parts, the pins to wire (pinFrom, pinTo) and, "
+        "with one part selected, its selected pin (manual or auto) and its pins clockwise.",
         []( CliCtx& ) -> QJsonValue
     {
-        return KeyboardController::self()->state();
+        return kbdState();
     });
 
     add("kbd shortcuts", "kbd shortcuts",

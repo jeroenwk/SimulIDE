@@ -129,6 +129,7 @@ class Circuit : public QGraphicsScene
 
         void addPin( Pin* pin, QString pinId ) { m_pinMap[ pinId ] = pin; m_LdPinMap[ pinId ] = pin; }
         void remPin( QString pinId ) { m_pinMap.remove( pinId ); }
+        Pin* pinById( QString pinId ) { return m_pinMap.value( pinId ); }
         void updatePin( ePin* epin, QString oldId, QString newId );
 
         QString getSeqNumber( QString name );

@@ -437,7 +437,7 @@ Keyboard-driven editing (`specs/keyboard-input.md`). Tests: `tests/kbd/run.sh`.
 
 | Command | |
 |---|---|
-| `kbd state` | Focus, keyboard cursor (the cross, scene x,y on the grid lines at 4 + 8k), whether the cross is shown and the mouse pointer hidden, selected parts |
+| `kbd state` | Focus, keyboard cursor (the cross, scene x,y on the grid lines at 4 + 8k), whether the cross is shown and the mouse pointer hidden, selected parts, the pins to wire (`pinFrom`, `pinTo`); with one part selected its `selectedPin` (`selectedPinManual`: chosen with `<` `>`, else auto) and `pinsClockwise` |
 | `kbd shortcuts` | Every shortcut of the circuit editor: category, action, keys, context |
 
 Headless, the window is never active, so `ui type` and `ui focus` set the canvas focus

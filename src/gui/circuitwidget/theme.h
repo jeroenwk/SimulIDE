@@ -33,6 +33,7 @@ class Theme
         static QColor idLabel()  { return get( nameRole ); }  // Component name labels ("R1")
         static QColor valLabel() { return get( valueRole ); } // Component value labels ("470 Ω")
         static QColor highlight() { return get( highlightRole ); } // Keyboard cursor cross, selected pins
+        static QColor pinAccent();  // Selected pin of an unselected part: the outline colour, more contrast
 
         // IC packages (chips, subcircuits, MCUs). At the default IC body colour each kind keeps
         // its own classic shade (classColor); the pin-1 marker is derived from body and text
