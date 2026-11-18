@@ -836,7 +836,8 @@ void KeyboardController::settleSelection()
         setPinTo( nullptr );
     }
     Component* b = singlePart();
-    if( !b || b->getUid() == m_lastPart ) return;
+    if( b ) moveCursorTo( b->pos() );            // Whatever selects one part — Tab, a click,
+    if( !b || b->getUid() == m_lastPart ) return;   // the CLI — parks the hidden cross on it
 
     Component* a = lastPart();
     if( a ){
@@ -1046,6 +1047,7 @@ void KeyboardController::paint( QPainter* painter )
 
 QJsonObject KeyboardController::state()
 {
+    if( m_selPending ) settleSelection();     // First: a click's queued selection rule
     QJsonObject o;
     QPointF p = cursorPos();
     o["focused"]       = m_focused;
@@ -1060,7 +1062,6 @@ QJsonObject KeyboardController::state()
         for( Component* comp : *c->compList() )
             if( comp->isSelected() ) sel.append( comp->getUid() );
     o["selection"] = sel;
-    if( m_selPending ) settleSelection();
     Component* lp = lastPart();
     o["lastPart"] = lp ? QJsonValue( lp->getUid() ) : QJsonValue();
     if( m_valueEdit )                                     // K7: the value being typed

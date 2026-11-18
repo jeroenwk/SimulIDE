@@ -268,7 +268,8 @@ Validate
       snapped to the grid.
 - [ ] Arrows move it 64 px, Shift+arrows 8 px; the view scrolls along.
 - [ ] A key hides the pointer; moving the mouse shows it again.
-- [ ] Select a part (click, Tab): the cross disappears. Unselect: back where it was.
+- [ ] Select a part (click, Tab): the cross disappears, parked at the part's
+      centre. Unselect: shown there.
 - [ ] `h`: pan symbol, arrows pan; another key, a selection or a click ends it.
 - [ ] `Cmd+=` / `Cmd++` zoom in, `Cmd+-` out, `Cmd+0` 100 % — cross kept in place.
 - [ ] Click the component list → cross gone; click the canvas → back.
@@ -519,9 +520,10 @@ Decisions (user, 2026-11-18):
 - **D11** (K1 rev) The keyboard cursor is independent of the mouse: centred at
   start-up, placed by a plain left click on empty canvas, moved by the arrows
   (nothing selected), shown only while the canvas has focus and no part is
-  selected, and it follows a moved selection (Tab puts it at the part's centre;
-  arrow moves and the rotation alignment shift move it along, so Esc shows it
-  where the part ended up).
+  selected. Whatever selects a single part — Tab, a mouse click, the CLI —
+  parks the hidden cross at that part's centre, and it follows a moved
+  selection (arrow moves and the rotation alignment shift move it along), so
+  Esc shows it where the part ended up.
 - **D12** (K1 rev) Enter puts the cross a big step right of the part it unselects
   (not of the old cross position). *Replaced by D16 for parts with pins; still
   the rule for parts without pins.*

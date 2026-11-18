@@ -39,16 +39,17 @@ def test(sim):
     sim.check("no selection: R1 stays", pos(sim, "R1")[0], 300, absolute=0)
     sim.check("no selection: the cross moves", s["cursor"][0], 260, absolute=0)
 
-    # One part: 64 px, Shift 8 px, wire follows, the (hidden) cross follows (K1 rev)
+    # One part: 64 px, Shift 8 px, wire follows, the (hidden) cross follows (K1 rev).
+    # Selecting R1 parked the cross at its centre (300,300)
     sim.cli("select", "R1")
     s = sim.cli("ui", "type", "Right")
     sim.check("Right: R1 x", pos(sim, "R1")[0], 364, absolute=0)
-    sim.check("Right: the cross follows", s["cursor"][0], 324, absolute=0)   # left at 260 by the first Right
+    sim.check("Right: the cross follows", s["cursor"][0], 364, absolute=0)
     s = sim.cli("ui", "type", "shift+Right", "shift+Down")
     p = pos(sim, "R1")
     sim.check("Shift+Right: R1 x", p[0], 372, absolute=0)
     sim.check("Shift+Down: R1 y", p[1], 308, absolute=0)
-    sim.check("Shift moves: the cross follows", s["cursor"][1], 300, absolute=0)
+    sim.check("Shift moves: the cross follows", s["cursor"][1], 308, absolute=0)
     pts = wire(sim, "R1.rPin", "R2.lPin")
     sim.check("wire still on R1.rPin: x", pts[0] if pts else None, 388, absolute=0)
     sim.check("wire still on R1.rPin: y", pts[1] if pts else None, 308, absolute=0)
