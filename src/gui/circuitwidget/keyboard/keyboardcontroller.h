@@ -87,6 +87,7 @@ class KeyboardController
         bool arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods );
         bool pinKey( int dir, bool from );
         bool tabKey( int dir );
+        bool rotateKey( bool ccw );                // Cmd+R: rotate, then aligned to pinFrom (D19)
         bool partKey( QString letter );
         bool spaceKey();
         bool wireKey();                             // _: wire pinFrom to pinTo (K8)

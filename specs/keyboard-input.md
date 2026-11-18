@@ -551,6 +551,13 @@ Decisions (user, 2026-11-18):
   opposite** to the wired one (D16's rule), so the next Enter or placement
   continues out the other side — and pinFrom / pinTo are **cleared**: a made
   wire's pins are no longer the wiring pair, so nothing stays highlighted.
+- **D19** (K4 rev) Rotating a selected part (`Cmd+R`/`Cmd+Shift+R`) with an
+  outgoing pin (pinFrom) on **another** part also moves it: its pin closest to
+  the outgoing pin is brought onto that pin's row or column (the smaller
+  offset is eliminated; the shape is irrelevant — any pin can land off the
+  line), so a straight wire stays possible. pinFrom on the rotated part
+  itself, or none: the plain rotation. The move is one undo step, wires
+  following.
 - **D14** (K1 rev) `h` starts pan mode (pointer: cross with arrows; arrows pan;
   any other key, a selection or a mouse press ends it). `h` is not a part shortcut.
 - **D15** (K1 rev) `Cmd+=`/`Cmd++` zoom in, `Cmd+-` out, `Cmd+0` 100 %, cross kept

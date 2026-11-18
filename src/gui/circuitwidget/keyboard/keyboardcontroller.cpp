@@ -107,6 +107,12 @@ bool KeyboardController::keyPress( QKeyEvent* event )
 
     if( zoomKey( event, mods ) ) return true;
 
+    // Cmd+R / Cmd+Shift+R: rotate; with an outgoing pin (pinFrom) on another part, the
+    // rotated part is also moved so its closest pin shares that pin's row or column
+    if( key == Qt::Key_R && ( mods & Qt::ControlModifier )
+     && !( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) )
+        return rotateKey( mods & Qt::ShiftModifier );
+
     m_arrowBurst = false;       // Any other key ends a burst of arrow moves
 
     // Typing the selected part's value (K7). While editing, value keys build the buffer;
@@ -265,6 +271,43 @@ static QPointF pinDir( Pin* p )
     if( s == "left"  ) return QPointF(-1, 0 );
     if( s == "down"  ) return QPointF( 0, 1 );
     return QPointF( 0,-1 );
+}
+
+// Cmd+R / Cmd+Shift+R: rotate the selected part. With an outgoing pin (pinFrom) on
+// another part, the rotated part is then moved so that its pin closest to that pin
+// shares its row or column (the smaller offset is eliminated), keeping a straight
+// wire possible (D19). The shape does not matter: any pin can end up off the line.
+bool KeyboardController::rotateKey( bool ccw )
+{
+    Component* comp = singlePart();
+    Pin* f = pinFrom();
+    if( !comp || !f || f->component() == comp ) return false;   // The plain rotation
+
+    if( ccw ) comp->rotateCCW();
+    else      comp->rotateCW();
+
+    Pin* near = nullptr;                     // The rotated part's pin closest to the
+    double best = 1e300;                     // outgoing pin
+    for( Pin* q : comp->pinsClockwise() )
+    {
+        QPointF d = q->scenePos()-f->scenePos();
+        double dd = QPointF::dotProduct( d, d );
+        if( dd < best-1e-9 ){ best = dd; near = q; }
+    }
+    if( near )
+    {
+        QPointF d = near->scenePos()-f->scenePos();
+        QPointF move( 0, 0 );
+        if( qAbs( d.y() ) <= qAbs( d.x() ) ) move.ry() = -d.y();   // Side by side: one row
+        else                                 move.rx() = -d.x();   // Stacked: one column
+        if( !move.isNull() )
+        {
+            Circuit::self()->moveSelection( move, true );          // Wires follow, one undo step
+            refreshAutoPins();
+        }
+    }
+    if( CircuitView* v = CircuitView::self() ) v->ensureVisible( comp->sceneBoundingRect(), 32, 32 );
+    return true;
 }
 
 bool KeyboardController::partKey( QString letter )
