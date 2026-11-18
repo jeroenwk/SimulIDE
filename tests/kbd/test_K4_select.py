@@ -92,9 +92,10 @@ def test(sim):
     sim.cli("ui", "type", "Tab")
     part = sim.cli("kbd", "state")["selection"][0]
     sim.cli("comp", "set", part, "Pos=400,300")       # Moves it outside moveSelection
-    at = sim.cli("comp", "get", part)["pos"]          # (snapped to its grid)
+    at = sim.cli("comp", "get", part)["pos"]          # The cross parks on its own grid
+    snap = lambda v: 8*int((v-4)/8+0.5)+4             # (4 + 8k), like moveCursorTo
     s = sim.cli("ui", "type", "Esc")
-    sim.check("esc: the cross where the part moved to", int(s["cursor"] == at), 1, absolute=0,
+    sim.check("esc: the cross where the part moved to", int(s["cursor"] == [snap(at[0]), snap(at[1])]), 1, absolute=0,
               note=str(s["cursor"]))
 
     # Enter: unselect, the cross a big step beyond the selected pin (D16). R1's
