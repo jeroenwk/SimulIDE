@@ -182,6 +182,7 @@ CliApi::CliApi()
     registerEditor();
     registerSettings();
     registerView();
+    registerKbd();
 }
 CliApi::~CliApi(){ m_pSelf = nullptr; }
 

@@ -133,6 +133,7 @@ class Circuit : public QGraphicsScene
         void setFilePath( QString f ) { m_filePath = f; }
 
         void drawBackground( QPainter* painter, const QRectF &rect );
+        void drawForeground( QPainter* painter, const QRectF &rect ) override;
 
     signals:
         void keyEvent( QString key, bool pressed );

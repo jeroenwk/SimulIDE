@@ -24,6 +24,7 @@
 #include "e-currreg.h"
 #include "e-bjt.h"
 #include "linker.h"
+#include "keyboardcontroller.h"
 
 #define tr(str) QCoreApplication::translate("CircuitView",str)
 
@@ -73,6 +74,7 @@ void CircuitView::clear()
     m_scale = 1;
     m_enterItem = NULL;
     centerOn( 0, 0 );
+    KeyboardController::self()->reset();
 }
 
 void CircuitView::setShowScroll( bool show )
@@ -231,6 +233,19 @@ void CircuitView::mouseMoveEvent( QMouseEvent* event )
         }
     }
     QGraphicsView::mouseMoveEvent( event );
+    KeyboardController::self()->mouseMoved( event->pos(), mapToScene( event->pos() ) );
+}
+
+void CircuitView::focusInEvent( QFocusEvent* event )
+{
+    QGraphicsView::focusInEvent( event );
+    KeyboardController::self()->setFocused( true );
+}
+
+void CircuitView::focusOutEvent( QFocusEvent* event )
+{
+    QGraphicsView::focusOutEvent( event );
+    KeyboardController::self()->setFocused( false );
 }
 
 void CircuitView::mouseReleaseEvent( QMouseEvent* event )

@@ -1,0 +1,34 @@
+/***************************************************************************
+ *   Shortcut registry (specs/keyboard-input.md §3)                         *
+ ***( see copyright.txt file at root folder )*******************************/
+
+#include "shortcuts.h"
+
+const QList<Shortcut>& Shortcuts::all()
+{
+    static const QList<Shortcut> list = {
+        // Existing shortcuts (Circuit::keyPressEvent)
+        { "File", "New circuit",            "Cmd+N",       "" },
+        { "File", "Open circuit",           "Cmd+O",       "" },
+        { "File", "Save circuit",           "Cmd+S",       "" },
+        { "File", "Save circuit as",        "Cmd+Shift+S", "" },
+        { "Edit", "Undo",                   "Cmd+Z",       "" },
+        { "Edit", "Redo",                   "Cmd+Shift+Z or Cmd+Y", "" },
+        { "Edit", "Copy",                   "Cmd+C",       "Selection" },
+        { "Edit", "Cut",                    "Cmd+X",       "Selection" },
+        { "Edit", "Paste",                  "Cmd+V",       "" },
+        { "Edit", "Delete",                 "Backspace or Delete", "Selection" },
+        { "Edit", "Rotate clockwise",       "Cmd+R",       "Selection" },
+        { "Edit", "Rotate counter-clockwise", "Cmd+Shift+R", "Selection" },
+        { "Edit", "Flip horizontally",      "Cmd+L",       "Selection" },
+        { "Edit", "Flip vertically",        "Cmd+Shift+L", "Selection" },
+        { "Selection", "Select all",        "Cmd+A",       "" },
+        { "Selection", "Cancel the wire being drawn, stop linking", "Esc", "" },
+        { "Parts", "Add the part bound to a key, at the mouse", "Alt+key", "Set in Manage Components" },
+        { "Switches", "Operate a switch or push button bound to a key", "its Key", "Simulation running" },
+        // K1: keyboard cursor
+        { "View",   "Pan the canvas",         "Arrows",       "Nothing selected" },
+        { "Moving", "Move the keyboard cursor (yellow cross) one grid step", "Shift+Arrows", "Nothing selected" },
+    };
+    return list;
+}

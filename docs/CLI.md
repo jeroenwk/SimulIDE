@@ -414,6 +414,9 @@ the pause.
 | `ui set <comp> [index] on\|off` | Set a switch or toggle. Switch and DIP switch positions are saved with the circuit (Switch: hidden property `Toggled`, true when flipped away from its Normally Closed setting) |
 | `ui dial <comp> [index] <value\|N%>` | Potentiometers, variable sources, encoders, sliders |
 | `ui key <char> [down\|up\|tap]` | Keyboard key, for parts bound to a key |
+| `ui type <key> [key ...]` | Real key presses on the canvas, as typed: a character (`r`, `<`, `_`, `é`) or a name (`Left Right Up Down Tab Enter Esc Backspace Delete Space Home End`), modifiers joined with `+` (`shift+Left`, `cmd+z`). An uppercase letter implies Shift. Gives the canvas focus first; returns `kbd state` |
+| `ui mouse <x,y>` | Move the mouse (no button) to a scene position over the canvas; returns `kbd state` |
+| `ui focus canvas\|none` | Give the canvas keyboard focus or take it away |
 
 These commands work on any part with on-screen controls, including push
 buttons, switches, DIP switches, keypads, clocks, potentiometers, variable
@@ -427,6 +430,19 @@ Bounce_Time (2·Bounces+1 changes), ending in the new state. The burst is the sa
 every time (no randomness). E.g. `comp set S1 Bounce_Time=2ms Bounces=4`, then
 `ui click S1`: a debouncer (RC + Schmitt trigger, SR latch) sees what a real contact
 gives it. The contacts at the start of a run are set cleanly.
+
+### Keyboard input on the canvas
+
+Keyboard-driven editing (`specs/keyboard-input.md`). Tests: `tests/kbd/run.sh`.
+
+| Command | |
+|---|---|
+| `kbd state` | Focus, keyboard cursor (the cross, scene x,y on the grid lines at 4 + 8k), whether the cross is shown and the mouse pointer hidden, selected parts |
+| `kbd shortcuts` | Every shortcut of the circuit editor: category, action, keys, context |
+
+Headless, the window is never active, so `ui type` and `ui focus` set the canvas focus
+of the keyboard state directly. The cross is drawn on the view only: `capture window view`
+shows it, `capture circuit` and image exports don't.
 
 ### Seeing and pointing (working together)
 
