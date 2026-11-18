@@ -536,11 +536,14 @@ Decisions (user, 2026-11-18):
 - **D17** (K5 rev) Placing a part with a part selected continues the chain: the
   new part's **first pin** (the part's pin 0: resistor lPin, BJT collector,
   op amp inNinv, fixed voltage outnod) points back at the selected pin of the
-  selected part, both pin tips on one line 64 px apart, the new part rotated
-  (0/90/180/270°) to match. The cross goes to the new part. **Enter remembers
-  the pin it left from**: with nothing selected, a placement continues from
-  that pin while the cross is still at the spot beyond it (a cross moved
-  elsewhere: the part is centred at the cross, unrotated).
+  selected part, both pin tips on one line 64 px apart, the new part turned
+  to match — rotated, except when the rotation would be 180°/270° (upside
+  down): then a **flip** (horizontal for a horizontal first pin, vertical for
+  a vertical one) reaches the same side with the labels upright. The cross
+  goes to the new part. **Enter remembers the pin it left from**: with
+  nothing selected, a placement continues from that pin while the cross is
+  still at the spot beyond it (a cross moved elsewhere: the part is centred
+  at the cross, unrotated).
 - **D18** (K4/K5 rev) The chain keeps flowing: the new part's **selected pin**
   is the one nearest to the outgoing pin it was placed at (there is none: the
   §4.3 pairing), and pinFrom is that outgoing pin. After `_` wires a pin of

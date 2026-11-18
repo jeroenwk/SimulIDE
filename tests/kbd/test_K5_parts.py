@@ -76,6 +76,22 @@ def test(sim):
     pos = sim.cli("comp", "get", uid)["pos"]
     sim.check("c below the pin: straight below R1's rPin", int(pos == [100, 196]), 1, absolute=0, note=str(pos))
 
+    # Placing to the left flips instead of rotating 180° (D17): with R1's lPin
+    # selected (outgoing left), r lands left of it, lPin pointing right, upright
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "200,100")
+    sim.cli("select", "R1")
+    sim.cli("ui", "type", ">")                      # Selected pin: lPin, pointing left
+    s = sim.cli("ui", "type", "r")
+    uid = s["selection"][0]
+    r2 = sim.cli("comp", "get", uid)
+    sim.check("left: lPin points right at R1's lPin",
+              int([p for p in r2["pins"] if p["id"] == "lPin"][0]["side"] == "right"), 1, absolute=0,
+              note=str([p["side"] for p in r2["pins"]]))
+    up = [l for l in r2["labels"] if l["kind"] == "value"][0]["rect"]    # The label stays
+    sim.check("left: value label below the body, not upside down", int(up[1] > r2["pos"][1]), 1, absolute=0,
+              note=str(up))
+
     # The new part's selected pin is the one nearest to the outgoing pin (D18):
     # the BJT placed after R1 has its collector (the first pin, facing R1) selected
     sim.cli("circuit", "new", "--discard")

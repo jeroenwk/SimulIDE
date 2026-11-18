@@ -291,13 +291,20 @@ bool KeyboardController::partKey( QString letter )
                                                           // straight line
         std::vector<Pin*> pins = comp->getPins();
         if( !pins.empty() )
-        {   // Rotate the new part so its first pin points back at the pin
+        {   // Turn the new part so its first pin points back at the pin
             QString target;                  // The side that faces the pin: opposite of dir
             if( dir.x() > 0 ) target = "left";
             else if( dir.x() < 0 ) target = "right";
             else if( dir.y() > 0 ) target = "up";
             else target = "down";
-            comp->setRotation(( cwQuarter( target ) - cwQuarter( pins.front()->side() ) + 4 ) % 4 * 90 );
+            int q = ( cwQuarter( target ) - cwQuarter( pins.front()->side() ) + 4 ) % 4;
+            if( q >= 2 )
+            {   // 180° or 270° leaves the part upside down. A mirror across the target
+                if( target == "left" || target == "right" )   // direction keeps the first
+                     comp->setVflip( -1 );   // pin facing it (a flip is a scale: -1)
+                else comp->setHflip( -1 );   // and the labels upright (D17)
+            }
+            comp->setRotation( q*90 );
         }
     }
     else if( sel ) at = sel->pos()+QPointF( bigStep, 0 ); // No pins: the old rule (D12)
