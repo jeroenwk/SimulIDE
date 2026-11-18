@@ -456,7 +456,9 @@ bool KeyboardController::escKey()
     if( Linker::m_selecComp ) return false;  // Old behaviour: stop linking
     Circuit* circ = Circuit::self();
     if( circ->selectedItems().isEmpty() ) return false;
-    circ->clearSelection();                  // lastPart and the pins are kept (D3)
+    if( Component* comp = singlePart() )     // The cross is shown where the part is NOW,
+        moveCursorTo( comp->pos() );         // also when it moved without the selection
+    circ->clearSelection();                  // (a library drop): read at unselect time
     return true;
 }
 

@@ -87,6 +87,16 @@ def test(sim):
     sim.check("esc: cross shown at that place", int(s["cursorVisible"] and s["cursor"] == centre), 1, absolute=0,
               note=str(s["cursor"]))
 
+    # Esc re-reads the part's position: a part that moved without the selection
+    # (a library drop's ghost) leaves the cross where the part really is
+    sim.cli("ui", "type", "Tab")
+    part = sim.cli("kbd", "state")["selection"][0]
+    sim.cli("comp", "set", part, "Pos=400,300")       # Moves it outside moveSelection
+    at = sim.cli("comp", "get", part)["pos"]          # (snapped to its grid)
+    s = sim.cli("ui", "type", "Esc")
+    sim.check("esc: the cross where the part moved to", int(s["cursor"] == at), 1, absolute=0,
+              note=str(s["cursor"]))
+
     # Enter: unselect, the cross a big step beyond the selected pin (D16). R1's
     # selected pin is its rPin (116,100) pointing right
     sim.cli("select", "R1")
