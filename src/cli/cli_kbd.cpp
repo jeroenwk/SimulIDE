@@ -167,6 +167,32 @@ void CliApi::registerKbd()
         return kbdState();
     });
 
+    add("ui drag", "ui drag <x1,y1> <x2,y2>",
+        "Drag with the left mouse button from one scene position to another, as the mouse does: "
+        "press at the start, moves in 8 px steps, release at the end. Moves a selected part (the "
+        "hidden keyboard cursor follows). The view scrolls to show both points first.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QStringList p1 = c.arg( 0, "x1,y1").split(',');
+        QStringList p2 = c.arg( 1, "x2,y2").split(',');
+        if( p1.size() != 2 || p2.size() != 2 ) throw CliError("positions must be x,y");
+        QPointF a( Cli::parseNum( p1[0], "x1"), Cli::parseNum( p1[1], "y1") );
+        QPointF b( Cli::parseNum( p2[0], "x2"), Cli::parseNum( p2[1], "y2") );
+        CircuitView* v = CircuitView::self();
+        v->ensureVisible( QRectF( a, b ).normalized(), 40, 40 );
+        auto send = [&]( QEvent::Type t, QPointF scene, Qt::MouseButton button, Qt::MouseButtons buttons ){
+            QPoint vp = v->mapFromScene( scene );
+            QMouseEvent ev( t, vp, v->viewport()->mapToGlobal( vp ), button, buttons, Qt::NoModifier );
+            QApplication::sendEvent( v->viewport(), &ev );
+        };
+        send( QEvent::MouseButtonPress, a, Qt::LeftButton, Qt::LeftButton );
+        int steps = qMax( 1, int( ( b-a ).manhattanLength()/8 ) );
+        for( int i=1; i<=steps; ++i )
+            send( QEvent::MouseMove, a+( b-a )*i/steps, Qt::NoButton, Qt::LeftButton );
+        send( QEvent::MouseButtonRelease, b, Qt::LeftButton, Qt::NoButton );
+        return kbdState();
+    });
+
     add("ui focus", "ui focus canvas|none",
         "Give the canvas keyboard focus, or take it away (as clicking elsewhere does).",
         []( CliCtx& c ) -> QJsonValue

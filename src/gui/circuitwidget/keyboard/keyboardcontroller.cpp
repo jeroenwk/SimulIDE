@@ -303,9 +303,8 @@ bool KeyboardController::rotateKey( bool ccw )
         else                                 move.rx() = -d.x();   // Stacked: one column
         if( !move.isNull() )
         {
-            Circuit::self()->moveSelection( move, true );          // Wires follow, one undo step
-            moveCursorTo( cursorPos()+move );                      // The cross follows the move
-            refreshAutoPins();
+            Circuit::self()->moveSelection( move, true );          // Wires follow, one undo step,
+            refreshAutoPins();                                     // the cross moves along
         }
     }
     if( CircuitView* v = CircuitView::self() ) v->ensureVisible( comp->sceneBoundingRect(), 32, 32 );
@@ -935,13 +934,12 @@ bool KeyboardController::arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods 
 
     std::sort( sel.begin(), sel.end() );
     bool newStep = !m_arrowBurst || m_burstEdit != circ->editCount() || sel != m_burstSelection;
-    circ->moveSelection( d, newStep );
+    circ->moveSelection( d, newStep );         // Also moves the (hidden) cross along
     m_arrowBurst     = true;
     m_burstEdit      = circ->editCount();
     m_burstSelection = sel;
 
-    moveCursorTo( cursorPos()+d );             // The (hidden) cross follows: Esc shows it
-    refreshAutoPins();                         // where the part ended up
+    refreshAutoPins();
     if( CircuitView* v = CircuitView::self() ) v->ensureVisible( v->selectedRect(), 32, 32 );
     return true;
 }

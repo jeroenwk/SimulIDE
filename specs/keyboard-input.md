@@ -522,8 +522,8 @@ Decisions (user, 2026-11-18):
   (nothing selected), shown only while the canvas has focus and no part is
   selected. Whatever selects a single part — Tab, a mouse click, the CLI —
   parks the hidden cross at that part's centre, and it follows a moved
-  selection (arrow moves and the rotation alignment shift move it along), so
-  Esc shows it where the part ended up.
+  selection (arrow moves, mouse drags and the rotation alignment shift move
+  it along), so Esc shows it where the part ended up.
 - **D12** (K1 rev) Enter puts the cross a big step right of the part it unselects
   (not of the old cross position). *Replaced by D16 for parts with pins; still
   the rule for parts without pins.*

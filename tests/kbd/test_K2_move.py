@@ -95,6 +95,20 @@ def test(sim):
                 if a["points"] != b["points"])
     sim.check("dot moved: its wires changed", moved, len(before), absolute=0)
 
+    # A mouse drag moves the part the same way — and the (hidden) cross follows it
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "300,300")
+    sim.cli("select", "R1")                     # Parks the cross at R1's centre
+    s = sim.cli("kbd", "state")
+    sim.check("drag setup: cross parked", int(s["cursor"] == [300, 300]), 1, absolute=0,
+              note=str(s["cursor"]))
+    s = sim.cli("ui", "drag", "300,300", "364,300")
+    sim.check("drag: R1 moved with the mouse", pos(sim, "R1")[0], 364, absolute=0)
+    sim.check("drag: the cross follows", int(s["cursor"] == [364, 300]), 1, absolute=0,
+              note=str(s["cursor"]))
+    sim.cli("ui", "type", "cmd+z")
+    sim.check("drag: cmd+z restores R1", pos(sim, "R1")[0], 300, absolute=0)
+
     # Registry
     sc = sim.cli("kbd", "shortcuts")
     sim.check("registry: Arrows move the selection",

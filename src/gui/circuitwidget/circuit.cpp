@@ -1560,6 +1560,9 @@ void Circuit::moveSelection( QPointF delta, bool newStep )
         con->startPin()->isMoved();
         con->endPin()->isMoved();
     }
+    // The (hidden) cross follows the moved selection — arrows, a mouse drag, the
+    // rotation alignment — so Esc shows it where the parts ended up (specs/keyboard-input.md)
+    KeyboardController::self()->moveCursorTo( KeyboardController::self()->cursorPos()+delta );
 }
 
 void Circuit::drawForeground( QPainter* painter, const QRectF& )
