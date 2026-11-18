@@ -167,6 +167,20 @@ def test(sim):
     sim.check("unselected: pin kept as pinTo", int(unsel > 5), 1, absolute=0, note="%d px" % unsel)
     sim.cli("settings", "set", "colorTheme", "Classic")
 
+    # Deleting the selected part takes the wiring pair with it: the outgoing pin of
+    # the previously connected part is unset too (its ring goes)
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("ui", "click", "100,100")
+    sim.cli("ui", "type", "r")
+    sim.cli("ui", "type", "r")                    # pinFrom R1.rPin, pinTo R2.lPin
+    s = sim.cli("kbd", "state")
+    sim.check("the pair is set", int(bool(s["pinFrom"]) and bool(s["pinTo"])), 1, absolute=0,
+              note="%s -> %s" % (s["pinFrom"], s["pinTo"]))
+    sim.cli("ui", "type", "backspace")            # Delete the selected part (R2)
+    s = sim.cli("kbd", "state")
+    sim.check("delete: pinFrom unset", int(s["pinFrom"] is None), 1, absolute=0, note=str(s["pinFrom"]))
+    sim.check("delete: pinTo unset", int(s["pinTo"] is None), 1, absolute=0, note=str(s["pinTo"]))
+
 
 if __name__ == "__main__":
     run_test(test)

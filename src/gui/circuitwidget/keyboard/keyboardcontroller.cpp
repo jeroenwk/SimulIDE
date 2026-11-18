@@ -782,6 +782,14 @@ void KeyboardController::pairPins( Component* a, Component* b )
 void KeyboardController::settleSelection()
 {
     m_selPending = false;
+    // The wiring pair lives as long as both its pins: when a deleted part took one
+    // (deleting the selected part clears the selection, which lands here), the pair
+    // is gone and its marks go with it
+    if( ( !m_pinFrom.isEmpty() && !pinFrom() ) || ( !m_pinTo.isEmpty() && !pinTo() ) )
+    {
+        setPinFrom( nullptr );
+        setPinTo( nullptr );
+    }
     Component* b = singlePart();
     if( !b || b->getUid() == m_lastPart ) return;
 
