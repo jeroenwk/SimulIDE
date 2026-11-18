@@ -37,6 +37,11 @@ const QList<Shortcut>& Shortcuts::all()
         { "Pins & wiring", "Previous pin (the pin to wire to)", "<", "One part selected" },
         { "Pins & wiring", "Next pin, as the pin to wire from", "Cmd+>", "One part selected" },
         { "Pins & wiring", "Previous pin, as the pin to wire from", "Cmd+<", "One part selected" },
+        // K4: selection
+        { "Selection", "Select the next part (reading order); the nearest to the cursor when none is", "Tab", "" },
+        { "Selection", "Select the previous part", "Shift+Tab", "" },
+        { "Selection", "Unselect all", "Esc", "Selection" },
+        { "Selection", "Unselect the part, move the cursor a big step right", "Enter", "One part selected" },
     };
     return list;
 }

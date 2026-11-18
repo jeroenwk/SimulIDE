@@ -102,7 +102,10 @@ def test(sim):
     s = sim.cli("ui", "type", "<")
     sim.check("R1 <: back to rPin", int(s["selectedPin"] == "R1.rPin" and s["pinTo"] == "R1.rPin"), 1, absolute=0)
 
-    # BJT: clockwise order from the pin positions
+    # BJT: clockwise order from the pin positions. Fresh circuit: no last part, so the
+    # selection rule of K4 does not pair Q1's auto pin with another part's pin
+    sim.cli("circuit", "new", "--discard")
+    q1 = sim.cli("comp", "add", "BJT", "--label", "Q1", "--at", "500,300")["pins"]
     order = clockwise(q1)
     sim.cli("select", "Q1")
     s = sim.cli("kbd", "state")
@@ -124,6 +127,10 @@ def test(sim):
     sim.check("rotate keeps the selected pin", int(sim.cli("kbd", "state")["selectedPin"] == before), 1, absolute=0)
 
     # Op amp (power pins hidden): Cmd+> sets pinFrom, then > sets pinTo, pinFrom stays
+    sim.cli("circuit", "new", "--discard")
+    u1 = sim.cli("comp", "add", "opAmp", "--label", "U1", "--at", "700,300")["pins"]
+    sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "300,300")
+    sim.cli("comp", "add", "BJT", "--label", "Q1", "--at", "500,300")
     order = clockwise(u1)
     sim.cli("select", "U1")
     p0 = sim.cli("kbd", "state")["selectedPin"]
@@ -142,20 +149,22 @@ def test(sim):
     s = sim.cli("ui", "type", ">")
     sim.check("two parts: > does nothing", int(s["pinTo"] == s0["pinTo"]), 1, absolute=0)
 
-    # Colours on the view (Dark theme): selected part's pin highlighted; none when nothing
-    # is selected and no pinFrom/pinTo are on screen
+    # Colours on the view (Dark theme): a part never selected has no highlight; selected,
+    # its pin is highlighted; unselected again, the pin stays highlighted as pinTo (K4)
     sim.cli("settings", "set", "colorTheme", "Dark")
     sim.cli("circuit", "new", "--discard")
     sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "0,0")
     sim.cli("view", "center", "R1")
     tmp = tempfile.mkdtemp()
-    sim.cli("select", "R1")
     sim.cli("ui", "focus", "none")                    # hide the cross
+    never = yellow_pixels(sim, os.path.join(tmp, "never.png"))
+    sim.cli("select", "R1")
     sel = yellow_pixels(sim, os.path.join(tmp, "sel.png"))
     sim.cli("select", "--none")
     unsel = yellow_pixels(sim, os.path.join(tmp, "unsel.png"))
+    sim.check("never selected: no highlight", never, 0, absolute=0)
     sim.check("selected: pin highlighted", int(sel > 5), 1, absolute=0, note="%d px" % sel)
-    sim.check("unselected: no highlight", unsel, 0, absolute=0)
+    sim.check("unselected: pin kept as pinTo", int(unsel > 5), 1, absolute=0, note="%d px" % unsel)
     sim.cli("settings", "set", "colorTheme", "Classic")
 
 
