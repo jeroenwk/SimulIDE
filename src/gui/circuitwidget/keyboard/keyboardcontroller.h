@@ -66,6 +66,14 @@ class KeyboardController
 
         Component* singlePart();                 // The one part selected (not a junction), or nullptr
 
+        // Selection change rule (K4, spec §4.3): when the selection settles on one part B,
+        // pinFrom = the pin of the last part A, pinTo = B's pin (auto pins: nearest), lastPart = B.
+        // Evaluated once the selection has settled (a click passes through partial states)
+        void selectionChanged();
+        void settleSelection();
+        void refreshAutoPins();                  // After A or B moved: auto pins nearest again
+        Component* lastPart();                   // nullptr: none, or deleted
+
         QJsonObject state();                     // CLI: kbd state
 
     private:
@@ -73,6 +81,13 @@ class KeyboardController
 
         bool arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods );
         bool pinKey( int dir, bool from );
+        bool tabKey( int dir );
+        bool escKey();
+        bool enterKey();
+        void selectPart( Component* comp );
+        Component* compByUid( QString uid );
+        QList<Component*> readingOrder();
+        void pairPins( Component* a, Component* b );
 
         void updatePin( QString id );
 
@@ -95,6 +110,11 @@ class KeyboardController
 
         QString m_pinFrom;                      // Pin ids
         QString m_pinTo;
+
+        QString m_lastPart;                     // Uid of the last single-selected part (B)
+        QString m_prevPart;                     // Uid of the part before it (A)
+        bool    m_selPending;                   // A settleSelection() is queued
+        void*   m_circuit;                      // Circuit whose selectionChanged is connected
 };
 
 #endif

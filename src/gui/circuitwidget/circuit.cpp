@@ -1149,6 +1149,23 @@ void Circuit::mouseMoveEvent( QGraphicsSceneMouseEvent* event )
     QGraphicsScene::mouseMoveEvent( event );
 }
 
+bool Circuit::event( QEvent* event )
+{
+    // QGraphicsScene uses Tab / Shift+Tab to move item focus before keyPressEvent sees them:
+    // the keyboard controller gets them first (K4: next / previous part)
+    if( event->type() == QEvent::KeyPress && m_acceptKeys && !m_conStarted )
+    {
+        QKeyEvent* k = static_cast<QKeyEvent*>( event );
+        if( ( k->key() == Qt::Key_Tab || k->key() == Qt::Key_Backtab )
+         && KeyboardController::self()->keyPress( k ) )
+        {
+            k->accept();
+            return true;
+        }
+    }
+    return QGraphicsScene::event( event );
+}
+
 void Circuit::keyPressEvent( QKeyEvent* event )
 {
     if( !m_acceptKeys )  // Text Component

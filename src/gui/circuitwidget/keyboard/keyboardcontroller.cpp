@@ -9,6 +9,7 @@
 #include <QtMath>
 #include <algorithm>
 #include <QDebug>
+#include <QTimer>
 #include <QGraphicsItem>
 
 #include "keyboardcontroller.h"
@@ -18,6 +19,7 @@
 #include "theme.h"
 #include "pin.h"
 #include "node.h"
+#include "linker.h"
 
 KeyboardController* KeyboardController::self()
 {
@@ -33,6 +35,8 @@ KeyboardController::KeyboardController()
     m_lastMouseSet  = false;
     m_arrowBurst    = false;
     m_burstEdit     = -1;
+    m_selPending    = false;
+    m_circuit       = nullptr;
 }
 
 QPointF KeyboardController::snap( QPointF p )
@@ -47,6 +51,16 @@ void KeyboardController::reset()
     m_arrowBurst = false;
     m_pinFrom.clear();
     m_pinTo.clear();
+    m_lastPart.clear();
+    m_prevPart.clear();
+    m_selPending = false;
+
+    Circuit* circ = Circuit::self();     // A new Circuit (scene) for every new / opened circuit
+    if( circ && circ != m_circuit )
+    {
+        m_circuit = circ;
+        QObject::connect( circ, &QGraphicsScene::selectionChanged, [](){ KeyboardController::self()->selectionChanged(); } );
+    }
 }
 
 static bool isModifierKey( int key )
@@ -69,6 +83,17 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     if( arrow && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return arrowKey( event, mods );
 
     m_arrowBurst = false;       // Any other key ends a burst of arrow moves
+
+    if( mods == Qt::NoModifier || mods == Qt::ShiftModifier )
+    {
+        if( key == Qt::Key_Backtab || ( key == Qt::Key_Tab && mods == Qt::ShiftModifier ) ) return tabKey(-1 );
+        if( key == Qt::Key_Tab ) return tabKey( 1 );
+    }
+    if( mods == Qt::NoModifier )
+    {
+        if( key == Qt::Key_Escape ) return escKey();
+        if( key == Qt::Key_Return || key == Qt::Key_Enter ) return enterKey();
+    }
 
     // < and > : next / previous pin of the selected part (Cmd: also the "from" pin).
     // The character decides (AZERTY: < unshifted, > with Shift); with Cmd macOS gives no text
@@ -100,6 +125,157 @@ bool KeyboardController::pinKey( int dir, bool from )
     if( from ) setPinFrom( pin );
     else       setPinTo( pin );
     return true;
+}
+
+Component* KeyboardController::compByUid( QString uid )
+{
+    if( uid.isEmpty() ) return nullptr;
+    for( Component* c : *Circuit::self()->compList() ) if( c->getUid() == uid ) return c;
+    return nullptr;
+}
+
+Component* KeyboardController::lastPart() { return compByUid( m_lastPart ); }
+
+// Parts (no junctions, no hidden parts, no parts inside boards) in reading order:
+// rows top to bottom (centres within 16 px are one row), left to right in a row
+QList<Component*> KeyboardController::readingOrder()
+{
+    QList<Component*> parts;
+    for( Component* c : *Circuit::self()->compList() )
+        if( c->itemType() != "Node" && c->isVisible() && !c->parentItem() ) parts.append( c );
+
+    std::sort( parts.begin(), parts.end(), []( Component* a, Component* b ){
+        return a->sceneBoundingRect().center().y() < b->sceneBoundingRect().center().y(); });
+
+    QList<Component*> out, row;
+    double rowY = 0;
+    auto flush = [&](){
+        std::sort( row.begin(), row.end(), []( Component* a, Component* b ){
+            return a->sceneBoundingRect().center().x() < b->sceneBoundingRect().center().x(); });
+        out += row;
+        row.clear();
+    };
+    for( Component* c : parts )
+    {
+        double y = c->sceneBoundingRect().center().y();
+        if( !row.isEmpty() && y-rowY > 16 ) flush();
+        if( row.isEmpty() ) rowY = y;
+        row.append( c );
+    }
+    flush();
+    return out;
+}
+
+void KeyboardController::selectPart( Component* comp )
+{
+    Circuit* circ = Circuit::self();
+    circ->clearSelection();
+    comp->setSelected( true );
+    settleSelection();                       // Now, not queued: the keys that follow see it
+    if( CircuitView* v = CircuitView::self() ) v->ensureVisible( comp->sceneBoundingRect(), 32, 32 );
+}
+
+bool KeyboardController::tabKey( int dir )
+{
+    QList<Component*> order = readingOrder();
+    if( order.isEmpty() ) return true;       // Keep Tab on the canvas anyway
+
+    Component* cur = nullptr;
+    for( Component* c : order ) if( c->isSelected() ){ cur = c; break; }   // First selected, in order
+
+    Component* next;
+    if( cur ){
+        int n = order.size();
+        next = order[ ( ( order.indexOf( cur )+dir ) % n + n ) % n ];
+    }else{                                   // Nothing selected: the part nearest the cursor
+        QPointF p = cursorPos();
+        next = order.first();
+        double best = 1e300;
+        for( Component* c : order )
+        {
+            QPointF d = c->sceneBoundingRect().center()-p;
+            double dd = QPointF::dotProduct( d, d );
+            if( dd < best ){ best = dd; next = c; }
+        }
+    }
+    selectPart( next );
+    return true;
+}
+
+bool KeyboardController::escKey()
+{
+    if( Linker::m_selecComp ) return false;  // Old behaviour: stop linking
+    Circuit* circ = Circuit::self();
+    if( circ->selectedItems().isEmpty() ) return false;
+    circ->clearSelection();                  // lastPart and the pins are kept (D3)
+    return true;
+}
+
+bool KeyboardController::enterKey()
+{
+    if( !singlePart() ) return false;
+    Circuit::self()->clearSelection();
+    moveCursorTo( cursorPos()+QPointF( bigStep, 0 ) );
+    return true;
+}
+
+void KeyboardController::selectionChanged()
+{
+    if( m_selPending ) return;
+    m_selPending = true;
+    QTimer::singleShot( 0, [](){ KeyboardController::self()->settleSelection(); } );
+}
+
+// The nearest pins of a and b, keeping a pin chosen by hand
+void KeyboardController::pairPins( Component* a, Component* b )
+{
+    Pin* pa = a->selectedPin();
+    Pin* pb = b->selectedPin();
+    if( !pa || !pb ) return;
+    bool ma = a->selectedPinManual(), mb = b->selectedPinManual();
+
+    auto dist = []( Pin* x, Pin* y ){ QPointF d = x->scenePos()-y->scenePos(); return QPointF::dotProduct( d, d ); };
+    std::vector<Pin*> la = ma ? std::vector<Pin*>{ pa } : a->pinsClockwise();
+    std::vector<Pin*> lb = mb ? std::vector<Pin*>{ pb } : b->pinsClockwise();
+    double best = 1e300;
+    for( Pin* x : la ) for( Pin* y : lb )
+    {
+        double d = dist( x, y );
+        if( d < best-1e-9 ){ best = d; pa = x; pb = y; }
+    }
+    if( !ma ) a->setSelectedPin( pa, false );
+    if( !mb ) b->setSelectedPin( pb, false );
+    setPinFrom( pa );
+    setPinTo( pb );
+}
+
+void KeyboardController::settleSelection()
+{
+    m_selPending = false;
+    Component* b = singlePart();
+    if( !b || b->getUid() == m_lastPart ) return;
+
+    Component* a = lastPart();
+    if( a ){
+        m_prevPart = m_lastPart;
+        pairPins( a, b );
+    }else{
+        m_prevPart.clear();
+        setPinTo( b->selectedPin() );
+    }
+    m_lastPart = b->getUid();
+}
+
+void KeyboardController::refreshAutoPins()
+{
+    Component* a = compByUid( m_prevPart );
+    Component* b = lastPart();
+    if( !a || !b || a == b ) return;
+    Pin* f = pinFrom();
+    Pin* t = pinTo();
+    if( !f || !t || f->component() != a || t->component() != b ) return;   // Changed by hand since
+    if( a->selectedPinManual() && b->selectedPinManual() ) return;
+    pairPins( a, b );
 }
 
 Pin* KeyboardController::pinFrom() { return m_pinFrom.isEmpty() ? nullptr : Circuit::self()->pinById( m_pinFrom ); }
@@ -172,6 +348,7 @@ bool KeyboardController::arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods 
     m_burstSelection = sel;
 
     moveCursorTo( cursorPos()+d );                          // The cursor follows the selection
+    refreshAutoPins();
     if( CircuitView* v = CircuitView::self() ) v->ensureVisible( v->selectedRect(), 32, 32 );
     return true;
 }
@@ -276,5 +453,8 @@ QJsonObject KeyboardController::state()
         for( Component* comp : *c->compList() )
             if( comp->isSelected() ) sel.append( comp->getUid() );
     o["selection"] = sel;
+    if( m_selPending ) settleSelection();
+    Component* lp = lastPart();
+    o["lastPart"] = lp ? QJsonValue( lp->getUid() ) : QJsonValue();
     return o;      // The CLI adds the pins (pinFrom, pinTo, selectedPin) as "R1.lPin" refs
 }

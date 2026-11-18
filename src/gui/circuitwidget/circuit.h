@@ -160,6 +160,7 @@ class Circuit : public QGraphicsScene
         void mousePressEvent( QGraphicsSceneMouseEvent* event );
         void mouseReleaseEvent( QGraphicsSceneMouseEvent* event );
         void mouseMoveEvent( QGraphicsSceneMouseEvent* event );
+        bool event( QEvent* event ) override;     // Tab / Shift+Tab to the keyboard controller
         void keyPressEvent( QKeyEvent* event );
         void keyReleaseEvent( QKeyEvent* event );
         void dropEvent( QGraphicsSceneDragDropEvent* event );
