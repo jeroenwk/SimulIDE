@@ -17,9 +17,11 @@
 #include <QJsonObject>
 #include <QList>
 #include <QString>
+#include <QPointer>
 
 class QKeyEvent;
 class QGraphicsItem;
+class QDialog;
 class Component;
 class Pin;
 class QPainter;
@@ -86,6 +88,7 @@ class KeyboardController
         bool pinKey( int dir, bool from );
         bool tabKey( int dir );
         bool partKey( QString letter );
+        bool spaceKey();
         bool escKey();
         bool enterKey();
         void selectPart( Component* comp );
@@ -126,6 +129,8 @@ class KeyboardController
         QString m_prevPart;                     // Uid of the part before it (A)
         bool    m_selPending;                   // A settleSelection() is queued
         void*   m_circuit;                      // Circuit whose selectionChanged is connected
+
+        QPointer<QDialog> m_focusDialog;        // Properties dialog that returns focus to the canvas
 };
 
 #endif
