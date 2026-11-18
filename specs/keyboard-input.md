@@ -424,7 +424,9 @@ Validate
 
 - `_`: connect pinFrom → pinTo with `Circuit::connectPins` (the CLI `wire add`
   path: H/V route, dot inserted if a pin already has a wire). The new wire is
-  not selected; selection and pins stay.
+  not selected; the selection stays; pinFrom and pinTo are **cleared** (the
+  wired pins lose their highlight and ring), and the selected part's selected
+  pin becomes the pin most opposite to its wired one (D18).
 - Nothing happens (status message) when pinFrom or pinTo is empty, they are the
   same pin, or already directly connected.
 - Simulation running: powered off first, like a mouse wire.
@@ -544,7 +546,8 @@ Decisions (user, 2026-11-18):
   §4.3 pairing), and pinFrom is that outgoing pin. After `_` wires a pin of
   the selected part, that part's selected pin becomes the pin **most
   opposite** to the wired one (D16's rule), so the next Enter or placement
-  continues out the other side.
+  continues out the other side — and pinFrom / pinTo are **cleared**: a made
+  wire's pins are no longer the wiring pair, so nothing stays highlighted.
 - **D14** (K1 rev) `h` starts pan mode (pointer: cross with arrows; arrows pan;
   any other key, a selection or a mouse press ends it). `h` is not a part shortcut.
 - **D15** (K1 rev) `Cmd+=`/`Cmd++` zoom in, `Cmd+-` out, `Cmd+0` 100 %, cross kept

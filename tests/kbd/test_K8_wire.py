@@ -43,11 +43,13 @@ def test(sim):
     s = sim.cli("ui", "type", "_")
     sim.check("_: wired R1.rPin to R2.lPin", int(ends(sim) == [(r1+".rPin", r2+".lPin")]), 1, absolute=0,
               note=str(ends(sim)))
-    sim.check("_: pinFrom stays", int(s["pinFrom"] == r1+".rPin"), 1, absolute=0, note=str(s["pinFrom"]))
-    sim.check("_: pinTo stays", int(s["pinTo"] == r2+".lPin"), 1, absolute=0, note=str(s["pinTo"]))
+    sim.check("_: pinFrom cleared", int(s["pinFrom"] is None), 1, absolute=0, note=str(s["pinFrom"]))
+    sim.check("_: pinTo cleared", int(s["pinTo"] is None), 1, absolute=0, note=str(s["pinTo"]))
     sim.check("_: nothing gets selected", len(s["selection"]), 0, absolute=0)
 
-    # _ again: already wired, a note says so
+    # _ again on the same pair: already wired, a note says so. The first _ cleared
+    # the pins; re-selecting R1 pairs R2's (flipped) pin with R1's — the same wire
+    sim.cli("select", r1)
     sim.cli("ui", "type", "_")
     sim.check("already wired: still one wire", len(ends(sim)), 1, absolute=0)
     sim.check("already wired: note in Messages", int("already wired" in pane(sim)), 1, absolute=0)

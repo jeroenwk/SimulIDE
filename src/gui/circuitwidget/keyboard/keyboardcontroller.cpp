@@ -394,6 +394,8 @@ bool KeyboardController::wireKey()
             if( Pin* op = oppositePin( comp, wired ) )
                 comp->setSelectedPin( op, false );
     }
+    setPinFrom( nullptr );                   // The wire is made: the wired pins are no
+    setPinTo( nullptr );                     // longer the wiring pair, their marks go
     return true;
 }
 
