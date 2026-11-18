@@ -227,6 +227,7 @@ void KeyboardController::selectPart( Component* comp )
     Circuit* circ = Circuit::self();
     circ->clearSelection();
     comp->setSelected( true );
+    moveCursorTo( comp->pos() );             // The (hidden) cross at the part: Esc shows it there
     settleSelection();                       // Now, not queued: the keys that follow see it
     if( CircuitView* v = CircuitView::self() ) v->ensureVisible( comp->sceneBoundingRect(), 32, 32 );
 }

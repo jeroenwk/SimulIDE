@@ -316,7 +316,8 @@ Validate
 
 - Tab / Shift+Tab: next/previous part in **reading order** (rows top→bottom by
   part centre, 16 px tolerance, then left→right), wrapping. Nothing selected: the
-  part nearest the cursor. Dots are skipped. Applies §4.3.
+  part nearest the cursor. Dots are skipped. Applies §4.3. The (hidden) cross
+  moves to the selected part's centre, so Esc shows it there.
 - Esc: unselect all (C7). Enter: unselect the single part; the cross goes a
   big step beyond its **selected pin**, in the pin's direction (D16; a part
   without pins: a big step right of it, D12). Shift+Enter: the same, but

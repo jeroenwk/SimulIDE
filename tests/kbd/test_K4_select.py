@@ -75,6 +75,18 @@ def test(sim):
     sim.check("Esc keeps the last part", int(s["lastPart"] == u["R4"]), 1, absolute=0)
     sim.check("Esc keeps pinTo", int(s["pinTo"] == "R4.lPin"), 1, absolute=0)
 
+    # Tab puts the (hidden) cross at the selected part's centre: Esc shows it there
+    sim.cli("ui", "type", "Tab")                     # Selects a part (reading order)
+    s = sim.cli("kbd", "state")
+    part = s["selection"][0]
+    centre = sim.cli("comp", "get", part)["pos"]
+    sim.check("tab: cross hidden at the part's centre: x", s["cursor"][0], centre[0], absolute=0)
+    sim.check("tab: cross hidden at the part's centre: y", s["cursor"][1], centre[1], absolute=0)
+    sim.check("tab: cross hidden while selected", int(s["cursorVisible"]), 0, absolute=0)
+    s = sim.cli("ui", "type", "Esc")
+    sim.check("esc: cross shown at that place", int(s["cursorVisible"] and s["cursor"] == centre), 1, absolute=0,
+              note=str(s["cursor"]))
+
     # Enter: unselect, the cross a big step beyond the selected pin (D16). R1's
     # selected pin is its rPin (116,100) pointing right
     sim.cli("select", "R1")
