@@ -35,6 +35,10 @@ class ComponentSelector : public QTreeWidget
         void setShortCuts( QHash<QString, QString> s ) { m_shortCuts = s; }
         QHash<QString, QString> getShortCuts() { return m_shortCuts; }
 
+        // Keyboard input (K5): default single-key shortcuts (component name -> lowercase letter).
+        // A user setting (Manage Components), even empty, replaces the default
+ static const QHash<QString, QString>& defaultShortCuts();
+
     private slots:
         void slotItemClicked( QTreeWidgetItem* item, int );
         void slotContextMenu( const QPoint& );

@@ -87,7 +87,7 @@ void Switch::setToggled( bool t )
 
 void Switch::keyEvent( QString key, bool pressed )
 {
-    if( key == m_key )
+    if( key == m_key && validKey( m_key ) )
     {
         if( !pressed )
         {

@@ -20,6 +20,8 @@
 #include "pin.h"
 #include "node.h"
 #include "linker.h"
+#include "componentselector.h"
+#include "utils.h"
 
 KeyboardController* KeyboardController::self()
 {
@@ -94,6 +96,10 @@ bool KeyboardController::keyPress( QKeyEvent* event )
         if( key == Qt::Key_Escape ) return escKey();
         if( key == Qt::Key_Return || key == Qt::Key_Enter ) return enterKey();
     }
+
+    // A lowercase letter bound to a part (Manage Components; defaults r, c, ...): place it
+    QString t = event->text();
+    if( mods == Qt::NoModifier && t.size() == 1 && t[0] >= 'a' && t[0] <= 'z' && partKey( t ) ) return true;
 
     // < and > : next / previous pin of the selected part (Cmd: also the "from" pin).
     // The character decides (AZERTY: < unshifted, > with Shift); with Cmd macOS gives no text
@@ -199,6 +205,23 @@ bool KeyboardController::tabKey( int dir )
         }
     }
     selectPart( next );
+    return true;
+}
+
+bool KeyboardController::partKey( QString letter )
+{
+    QHash<QString, QString> keys = ComponentSelector::self()->getShortCuts();
+    QString name = keys.key( letter );
+    if( name.isEmpty() ) return false;
+
+    Circuit* circ = Circuit::self();
+    Component* comp = circ->createItem( name, name+"-"+circ->newSceneId() );
+    if( !comp ) return false;
+    comp->setPos( toGrid( cursorPos() ) );
+    circ->addComponent( comp );
+    circ->saveCompChange( comp->getUid(), COMP_STATE_NEW, "" );
+    qDebug() << "[kbd] key" << letter << "places" << name << "at" << comp->pos();
+    selectPart( comp );                      // Selected, pins paired with the last part
     return true;
 }
 
