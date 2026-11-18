@@ -1,8 +1,8 @@
 """K2 (specs/keyboard-input.md): moving the selection with the arrow keys.
 
 Expected values follow the spec: with a selection, Arrows move it 64 px and Shift+Arrows 8 px,
-the wires attached follow (their end stays on the pin), the keyboard cursor follows by the same
-amount; a burst of arrow presses on the same selection is one undo step, anything else in
+the wires attached follow (their end stays on the pin), the keyboard cursor does not move
+(K1 rev); a burst of arrow presses on the same selection is one undo step, anything else in
 between (another edit, an undo) starts a new one; with nothing selected the arrows don't move
 parts. Nothing is simulated.
 """
@@ -31,24 +31,24 @@ def test(sim):
     sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "300,300")
     sim.cli("comp", "add", "Resistor", "--label", "R2", "--at", "500,300")
     sim.cli("wire", "add", "R1.rPin", "R2.lPin")
-    sim.cli("ui", "mouse", "300,300")                 # cross at (300, 300)
+    sim.cli("ui", "click", "196,292")                 # empty canvas: cross at (196, 292)
 
-    # Nothing selected: arrows pan, nothing moves
+    # Nothing selected: the arrows move the cross (K1 rev), parts stay
     sim.cli("select", "--none")
     s = sim.cli("ui", "type", "Right")
     sim.check("no selection: R1 stays", pos(sim, "R1")[0], 300, absolute=0)
-    sim.check("no selection: cursor stays", s["cursor"][0], 300, absolute=0)
+    sim.check("no selection: the cross moves", s["cursor"][0], 260, absolute=0)
 
-    # One part: 64 px, Shift 8 px, wire follows, cursor follows
+    # One part: 64 px, Shift 8 px, wire follows, the cross does not follow (K1 rev)
     sim.cli("select", "R1")
     s = sim.cli("ui", "type", "Right")
     sim.check("Right: R1 x", pos(sim, "R1")[0], 364, absolute=0)
-    sim.check("Right: cursor follows", s["cursor"][0], 364, absolute=0)
+    sim.check("Right: the cross does not follow", s["cursor"][0], 260, absolute=0)   # left at 260 by the first Right
     s = sim.cli("ui", "type", "shift+Right", "shift+Down")
     p = pos(sim, "R1")
     sim.check("Shift+Right: R1 x", p[0], 372, absolute=0)
     sim.check("Shift+Down: R1 y", p[1], 308, absolute=0)
-    sim.check("cursor follows Shift moves", s["cursor"][1], 308, absolute=0)
+    sim.check("Shift moves: the cross does not follow", s["cursor"][1], 292, absolute=0)
     pts = wire(sim, "R1.rPin", "R2.lPin")
     sim.check("wire still on R1.rPin: x", pts[0] if pts else None, 388, absolute=0)
     sim.check("wire still on R1.rPin: y", pts[1] if pts else None, 308, absolute=0)

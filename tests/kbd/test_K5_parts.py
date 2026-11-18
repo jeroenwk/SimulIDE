@@ -34,7 +34,7 @@ def placed(sim, s):
 
 def test(sim):
     sim.cli("circuit", "new", "--discard")
-    sim.cli("ui", "mouse", "100,100")             # cross at (100, 100)
+    sim.cli("ui", "click", "100,100")             # cross at (100, 100)
     wrong = []
     for key, typ in KEYS.items():
         s = sim.cli("ui", "type", key)
@@ -48,11 +48,11 @@ def test(sim):
     # With R1 selected, r places R2 there, selected and paired (nearest pins)
     sim.cli("circuit", "new", "--discard")
     sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "100,100")
-    sim.cli("select", "R1")
-    sim.cli("ui", "mouse", "300,100")
+    sim.cli("select", "R1")                        # selected: the new part lands right of it (D13)
     s = sim.cli("ui", "type", "r")
     t, p = placed(sim, s)
-    sim.check("r: a resistor at the cursor", int(t == "Resistor" and p == [300, 100]), 1, absolute=0)
+    sim.check("r with R1 selected: a resistor 64 px right of R1", int(t == "Resistor" and p == [164, 100]), 1, absolute=0,
+              note=str(p))
     sim.check("r: pinFrom R1.rPin", int(s["pinFrom"] == "R1.rPin"), 1, absolute=0, note=str(s["pinFrom"]))
     sim.check("r: pinTo the new part's left pin", int((s["pinTo"] or "").endswith(".lPin")), 1, absolute=0,
               note=str(s["pinTo"]))
@@ -89,7 +89,7 @@ def test(sim):
         f.write(text.replace('Key="K"', 'Key="a"'))
     sim.cli("circuit", "open", path, "--discard")
     sim.check("old key loaded as is", int(prop(sim, "S1", "Key") == "a"), 1, absolute=0, note=repr(prop(sim, "S1", "Key")))
-    sim.cli("ui", "mouse", "300,300")
+    sim.cli("ui", "click", "300,300")
     s = sim.cli("ui", "type", "a")
     t, _ = placed(sim, s)
     sim.check("a places an ammeter (not the old switch key)", int(t == "Amperimeter"), 1, absolute=0, note=str(t))

@@ -1,7 +1,8 @@
 # Keyboard input to create circuits (epic)
 
-Status: ready for implementation (2026-11-18). All decisions (D1–D10, §6) taken
-by the user on 2026-11-18.
+Status: ready for implementation (2026-11-18). All decisions (D1–D15, §6) taken
+by the user on 2026-11-18. K1 revised the same day (D11–D15: the keyboard cursor
+is independent of the mouse, pan mode, zoom keys).
 
 Goal: build a circuit without the mouse — place parts at a keyboard cursor, type
 their values, pick pins and wire them, walk and edit the wire network.
@@ -50,14 +51,14 @@ Corrections to the epic's assumptions:
 | # | Conflict | Resolution |
 |---|---|---|
 | C1 | `m` was assigned to both mosfet and opamp | **D1**: opamp = `u`, UJT = `q` |
-| C2 | **Shift+Arrow** = move the keyboard cursor *and* the small part step | Context: no selection → Shift+Arrow moves the cursor; selection → small step. Plain arrows: no selection → pan, selection → big step. The cursor follows a moved selection (C9) |
+| C2 | **Shift+Arrow** = move the keyboard cursor *and* the small part step | Context: no selection → the arrows move the cursor (big) / Shift+arrows (small); selection → the arrows move it (big) / Shift+arrows (small). Panning is only in pan mode (D14) |
 | C3 | Value input uses `p n u m k M G` as multipliers, the same letters add parts | Only in *edit value* state (entered by a digit or `-`); there all multiplier letters are units and no part is added |
 | C4 | `-` was the wiring key and the minus sign of a value | **D6**: `-` is numeric (starts / continues a value, first char only). Wiring is **`_`** |
 | C5 | Lowercase letters become part shortcuts, but existing circuits have switches with `Key="a"` etc. | **D7**: `Switch`/`Push` `Key` accepts **one capital A–Z** only, pressed as Shift+letter. Any other saved value is kept in the file but does nothing; opening the part's properties clears it. The Key field gets a description |
 | C6 | Tab / Shift+Tab are eaten by Qt's focus chain before any `keyPressEvent` | `CircuitView::event()` intercepts `Key_Tab` / `Key_Backtab` while the canvas has focus |
 | C7 | Esc has several meanings | Priority, first match wins: (1) wire being drawn by mouse → cancel it, (2) linking → stop, (3) value edit → revert, stay selected, (4) network mode → back to parts mode, the part selected, (5) unselect all |
 | C8 | Backspace in value edit, then delete | **D8**: a value is never empty. When the last typed char is removed, edit state ends and the value from before the edit is shown; the **next** Backspace deletes the part (as today) |
-| C9 | Where is the cursor after placing / moving / Enter? | Placing a part leaves the cursor where it is; moving with arrows moves the cursor by the same delta; Enter moves it a big step right. A mouse move puts it back under the mouse |
+| C9 | Where is the cursor after placing / moving / Enter? | **D11**: the cross is independent of the mouse — it starts centred in the view, a plain left click on empty canvas places it, moving a selection does not move it. **D12/D13**: Enter, and part placement with a part selected, put it a big step right of that part |
 | C10 | **Default pin = upper-right** breaks a chain: `r 1k Enter r 2k _` would wire R1.right to R2.right | **D2**, nearest pin: see the *auto pin* rule, §4.3 |
 | C11 | After Enter or Esc nothing is selected, so the next part has no previous part to wire from | **D3** (most logical): the controller remembers the **last single-selected part**; unselecting (Esc, Enter, clicking empty canvas) never forgets it. Only deleting that part, or a new / opened circuit, clears it |
 | C12 | Pin colour on unselected parts | **D4**: every part shows its selected pin; on unselected parts in the normal pin colour with slightly more contrast (`Theme::pinAccent()`, derived from the line colour, ~1.5× contrast against the canvas) |
@@ -156,8 +157,12 @@ Parts mode:
 
 | Key | Nothing selected | Part(s) selected | Single part selected | EditValue |
 |---|---|---|---|---|
-| Arrows | pan | move 64 px | move 64 px | – |
-| Shift+Arrows | move cursor 8 px | move 8 px | move 8 px | – |
+| Arrows | move the cross 64 px | move 64 px | move 64 px | – |
+| Shift+Arrows | move the cross 8 px | move 8 px | move 8 px | – |
+| `h` | pan mode: the arrows (Shift: small) pan, any other key / selection / mouse press ends it | same | same | – |
+| `Cmd+=` / `Cmd++` | zoom in (the cross or view centre kept in place) | same | same | – |
+| `Cmd+-` | zoom out | same | same | – |
+| `Cmd+0` | zoom 100 % | same | same | – |
 | Tab / Shift+Tab | part nearest the cursor | next/prev part | next/prev part | revert, then next/prev |
 | Esc | – | unselect all | unselect all | revert value |
 | Enter | – | – | unselect, cursor 64 px right | commit, unselect, cursor right |
@@ -206,7 +211,8 @@ new/open.
 
 ### 4.5 Status line
 The current mode, the edit buffer and messages ("pin has no wire", "already
-connected") show in the status bar and as a small label next to the cross.
+connected") show in the status bar only (the cross is hidden while a part is
+selected, D11).
 
 ### 4.6 Testing hooks (part of K1)
 - CLI `ui type <keys...>` sends real `QKeyEvent`s to the circuit view, e.g.
@@ -228,20 +234,37 @@ them). All checks on the Mac AZERTY keyboard.
 ### K1 — Controller, highlight colour, keyboard cursor
 *(epic: "keyboard cursor")*
 
-- While the canvas has focus, a cross (11×11 px, 1.5 px, `Theme::highlight()`)
-  sits on the 8 px grid point nearest the mouse.
-- Any key (not a lone modifier) pressed while the canvas has focus hides the mouse
-  pointer; the cross stays. Moving the mouse shows the pointer and puts the cross under it.
+- While the canvas has focus and **no part is selected**, a cross (11×11 px,
+  1.5 px, `Theme::highlight()`) sits on an 8 px grid point: at start-up in the
+  middle of the view, moved with the arrows (64 px, Shift 8 px) when nothing is
+  selected, or **placed by a plain left click on empty canvas** (D11). A click on
+  a part, a wire or a rubber-band drag does not move it.
+- The cross does **not** follow the mouse. Any key (not a lone modifier) hides
+  the mouse pointer; moving the mouse shows the pointer again (the cross stays).
+- A part selected by any means hides the cross; no part selected shows it again,
+  where it was. (A selected junction dot or wire segment is not a part: the cross
+  shows, and the arrows still move that selection.)
 - Canvas loses focus → cross hidden; regains it → cross back where it was.
-- Shift+Arrow with nothing selected moves the cross 8 px; the view scrolls along.
+- **Pan mode** (D14): `h` — the pointer becomes a cross with arrows and the
+  arrows (Shift: 8 px) pan the canvas; any other key, selecting a part or a
+  mouse press ends it. `h` is not a part shortcut (Manage Components refuses).
+- **Zoom** (D15): `Cmd+=` / `Cmd++` in, `Cmd+-` out, `Cmd+0` back to 100 %,
+  keeping the cross (or the view centre) in place. On AZERTY, `Cmd+0` is matched
+  with or without Shift (physical number-row key).
 
 Implementation: `KeyboardController`, `Shortcuts` registry skeleton, Theme role,
-`Circuit::drawForeground`, `CircuitView` focus/mouse hooks, `ui type`, `kbd state`.
+`Circuit::drawForeground`, `CircuitView` focus/mouse/click hooks, `ui type`,
+`ui click`, `ui mouse`, `kbd state`.
 
 Validate
-- [ ] Cross follows the mouse, snapped to the grid, in dark and light theme.
-- [ ] Shift+Right ×3 → pointer hidden, cross 24 px right.
-- [ ] Move the mouse → pointer back, cross under it.
+- [ ] At start-up the cross is in the middle of the canvas, dark and light theme.
+- [ ] The cross does not follow the mouse; a click on empty canvas places it,
+      snapped to the grid.
+- [ ] Arrows move it 64 px, Shift+arrows 8 px; the view scrolls along.
+- [ ] A key hides the pointer; moving the mouse shows it again.
+- [ ] Select a part (click, Tab): the cross disappears. Unselect: back where it was.
+- [ ] `h`: pan symbol, arrows pan; another key, a selection or a click ends it.
+- [ ] `Cmd+=` / `Cmd++` zoom in, `Cmd+-` out, `Cmd+0` 100 % — cross kept in place.
 - [ ] Click the component list → cross gone; click the canvas → back.
 - [ ] Highlight colour editable in Settings → Circuit → colours ("Highlight"); the
       Dark preset gives yellow, Classic/Light orange.
@@ -250,7 +273,7 @@ Validate
 ### K2 — Moving parts with the arrows
 *(epic: "moving parts")*
 
-- Nothing selected: arrows pan (as today). Selection (parts, dots, wire segments,
+- Nothing selected: the arrows move the cross (K1 rev). Selection (parts, dots, wire segments,
   as a mouse drag would move them): arrows 64 px, Shift+arrows 8 px.
 - Wires follow exactly as in a mouse drag; the cursor follows (C9); auto-scroll.
 - Refactor: `Circuit::moveSelection(delta)`, used by `Component::mouseMoveEvent`.
@@ -288,7 +311,8 @@ Validate
 - Tab / Shift+Tab: next/previous part in **reading order** (rows top→bottom by
   part centre, 16 px tolerance, then left→right), wrapping. Nothing selected: the
   part nearest the cursor. Dots are skipped. Applies §4.3.
-- Esc: unselect all (C7). Enter: unselect the single part, cursor 64 px right.
+- Esc: unselect all (C7). Enter: unselect the single part, the cross a big
+  step right of it (D12).
 - The selected part is scrolled into view.
 
 Validate
@@ -310,7 +334,9 @@ Validate
 - Stored as the defaults of the existing per-part shortcut (`<name>/shortcut`);
   a user setting overrides. Manage Components refuses a key already used by a
   part or by the keymap (`_ - = < > . ,`, digits, uppercase letters).
-- Plain key → part at the cursor (not the mouse), selected, §4.3 applied.
+- Plain key → part at the cross (not the mouse), selected, §4.3 applied.
+  A part is selected: the new part lands a big step right of it and the cross
+  moves there (D13).
   Alt+key keeps working.
 - Switch/Push `Key` (D7): one capital A–Z, triggered with Shift+letter. Other
   saved values are ignored at run time; opening the properties clears the field
@@ -462,6 +488,18 @@ Decisions (user, 2026-11-18):
   Backspace deletes.
 - **D9** Mac AZERTY keyboard.
 
+- **D11** (K1 rev) The keyboard cursor is independent of the mouse: centred at
+  start-up, placed by a plain left click on empty canvas, moved by the arrows
+  (nothing selected), shown only while the canvas has focus and no part is
+  selected, and it does not follow a moved selection.
+- **D12** (K1 rev) Enter puts the cross a big step right of the part it unselects
+  (not of the old cross position).
+- **D13** (K1 rev) Placing a part with a part selected puts the new part (and the
+  cross) a big step right of the selected part.
+- **D14** (K1 rev) `h` starts pan mode (pointer: cross with arrows; arrows pan;
+  any other key, a selection or a mouse press ends it). `h` is not a part shortcut.
+- **D15** (K1 rev) `Cmd+=`/`Cmd++` zoom in, `Cmd+-` out, `Cmd+0` 100 %, cross kept
+  in place.
 - **D10** Mac AZERTY number row: while a single part with a numeric value is
   selected (or in EditValue), the number-row keys count as digits with or without
   Shift, matched by physical key (macOS `nativeVirtualKey` = `kVK_ANSI_0…9`, the
