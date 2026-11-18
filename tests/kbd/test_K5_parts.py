@@ -77,7 +77,8 @@ def test(sim):
     sim.check("c below the pin: straight below R1's rPin", int(pos == [100, 196]), 1, absolute=0, note=str(pos))
 
     # Placing to the left flips instead of rotating 180° (D17): with R1's lPin
-    # selected (outgoing left), r lands left of it, lPin pointing right, upright
+    # selected (outgoing left), r lands left of it, lPin pointing right, and the
+    # label upright — the saved circuit shows the transform: hflip, rotation 0
     sim.cli("circuit", "new", "--discard")
     sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "200,100")
     sim.cli("select", "R1")
@@ -88,9 +89,12 @@ def test(sim):
     sim.check("left: lPin points right at R1's lPin",
               int([p for p in r2["pins"] if p["id"] == "lPin"][0]["side"] == "right"), 1, absolute=0,
               note=str([p["side"] for p in r2["pins"]]))
-    up = [l for l in r2["labels"] if l["kind"] == "value"][0]["rect"]    # The label stays
-    sim.check("left: value label below the body, not upside down", int(up[1] > r2["pos"][1]), 1, absolute=0,
-              note=str(up))
+    import tempfile
+    path = os.path.join(tempfile.mkdtemp(), "leftplace.sim1")
+    sim.cli("circuit", "save", path)
+    xml = [l for l in open(path).read().split("><") if 'CircId="%s"' % uid in l]
+    sim.check("left: a flip, not a rotation", int(any('hflip="-1"' in l and 'rotation="0"' in l for l in xml)), 1,
+              absolute=0, note=str(xml)[:120])
 
     # The new part's selected pin is the one nearest to the outgoing pin (D18):
     # the BJT placed after R1 has its collector (the first pin, facing R1) selected

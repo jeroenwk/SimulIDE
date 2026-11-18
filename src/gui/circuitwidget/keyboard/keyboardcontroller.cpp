@@ -299,10 +299,11 @@ bool KeyboardController::partKey( QString letter )
             else target = "down";
             int q = ( cwQuarter( target ) - cwQuarter( pins.front()->side() ) + 4 ) % 4;
             if( q >= 2 )
-            {   // 180° or 270° leaves the part upside down. A mirror across the target
-                if( target == "left" || target == "right" )   // direction keeps the first
-                     comp->setVflip( -1 );   // pin facing it (a flip is a scale: -1)
-                else comp->setHflip( -1 );   // and the labels upright (D17)
+            {   // The same orientation, reached as a flip plus a 0/90° rotation instead
+                q = ( q+2 ) % 4;             // of 180/270°: a label counter-flips a flip,
+                if( target == "left" || target == "right" )   // so it stays upright — the
+                     comp->setHflip( -1 );   // flip mirrors the side the rotation lands
+                else comp->setVflip( -1 );   // on (a flip is a scale: -1 mirrors) (D17)
             }
             comp->setRotation( q*90 );
         }
