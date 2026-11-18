@@ -130,6 +130,26 @@ void CliApi::registerKbd()
         return kbdState();
     });
 
+    add("ui click", "ui click <x,y>",
+        "Left click (press and release, no modifier) at a scene position on the canvas, as the mouse does: "
+        "on empty canvas it clears the selection and places the keyboard cursor there. The view scrolls "
+        "to show the point first.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QStringList xy = c.arg( 0, "x,y").split(',');
+        if( xy.size() != 2 ) throw CliError("position must be x,y");
+        QPointF p( Cli::parseNum( xy[0], "x"), Cli::parseNum( xy[1], "y") );
+        CircuitView* v = CircuitView::self();
+        v->ensureVisible( QRectF( p.x()-1, p.y()-1, 2, 2 ), 40, 40 );
+        QPoint vp = v->mapFromScene( p );
+        QPoint gp = v->viewport()->mapToGlobal( vp );
+        QMouseEvent press( QEvent::MouseButtonPress, vp, gp, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier );
+        QApplication::sendEvent( v->viewport(), &press );
+        QMouseEvent release( QEvent::MouseButtonRelease, vp, gp, Qt::LeftButton, Qt::NoButton, Qt::NoModifier );
+        QApplication::sendEvent( v->viewport(), &release );
+        return kbdState();
+    });
+
     add("ui focus", "ui focus canvas|none",
         "Give the canvas keyboard focus, or take it away (as clicking elsewhere does).",
         []( CliCtx& c ) -> QJsonValue

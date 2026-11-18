@@ -73,6 +73,9 @@ class CircuitView : public QGraphicsView
 
         QPoint m_mousePressPos;
         bool m_waitForDragStart;
+
+        QPoint m_kbdPressPos;       // Keyboard cursor: a left click on empty canvas places it
+        bool   m_kbdPressEmpty;
 };
 
 #endif

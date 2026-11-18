@@ -40,6 +40,7 @@ CircuitView::CircuitView( QWidget *parent )
     m_help = "";
     m_circuit   = NULL;
     m_enterItem = NULL;
+    m_kbdPressEmpty = false;
 
     eDiode::getModels();
     eJfet::getModels();
@@ -186,6 +187,10 @@ void CircuitView::dragLeaveEvent( QDragLeaveEvent* event )
 void CircuitView::mousePressEvent( QMouseEvent* event )
 {
     m_waitForDragStart = false;
+    KeyboardController::self()->mousePressed();
+    m_kbdPressPos   = event->pos();
+    m_kbdPressEmpty = event->button() == Qt::LeftButton && event->modifiers() == Qt::NoModifier
+                   && !itemAt( event->pos() ) && !m_circuit->is_constarted();
 
     if( event->button()   == Qt::LeftButton
      && event->modifiers() & Qt::ControlModifier
@@ -233,7 +238,7 @@ void CircuitView::mouseMoveEvent( QMouseEvent* event )
         }
     }
     QGraphicsView::mouseMoveEvent( event );
-    KeyboardController::self()->mouseMoved( event->pos(), mapToScene( event->pos() ) );
+    KeyboardController::self()->mouseMoved( event->pos() );
 }
 
 void CircuitView::focusInEvent( QFocusEvent* event )
@@ -260,6 +265,11 @@ void CircuitView::mouseReleaseEvent( QMouseEvent* event )
         setDragMode( QGraphicsView::RubberBandDrag );
     }
     else QGraphicsView::mouseReleaseEvent( event );
+
+    if( event->button() == Qt::LeftButton && m_kbdPressEmpty
+     && ( event->pos()-m_kbdPressPos ).manhattanLength() < 4 )   // A click, not a rubber band
+        KeyboardController::self()->clickedEmpty( mapToScene( event->pos() ) );
+    m_kbdPressEmpty = false;
 }
 
 void CircuitView::overrideCursor( const QCursor &cursor )
