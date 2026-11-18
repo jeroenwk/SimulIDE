@@ -108,6 +108,7 @@ class CliApi
         void registerEditor();    // cli_editor.cpp
         void registerSettings();  // cli_settings.cpp
         void registerView();      // cli_view.cpp
+        void registerKbd();       // cli_kbd.cpp
 
         QMap<QString, CliCommand> m_cmds;
 

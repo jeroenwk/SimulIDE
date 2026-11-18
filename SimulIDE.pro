@@ -23,6 +23,7 @@ INCLUDEPATH += ../src \
     ../src/cli \
     ../src/gui \
     ../src/gui/circuitwidget \
+    ../src/gui/circuitwidget/keyboard \
     ../src/gui/circuitwidget/components \
     ../src/gui/circuitwidget/components/active \
     ../src/gui/circuitwidget/components/logic \

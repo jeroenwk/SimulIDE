@@ -230,8 +230,8 @@ them). All checks on the Mac AZERTY keyboard.
 
 - While the canvas has focus, a cross (11×11 px, 1.5 px, `Theme::highlight()`)
   sits on the 8 px grid point nearest the mouse.
-- Any key handled by the controller hides the mouse pointer over the canvas; the
-  cross stays. Moving the mouse shows the pointer and puts the cross under it.
+- Any key (not a lone modifier) pressed while the canvas has focus hides the mouse
+  pointer; the cross stays. Moving the mouse shows the pointer and puts the cross under it.
 - Canvas loses focus → cross hidden; regains it → cross back where it was.
 - Shift+Arrow with nothing selected moves the cross 8 px; the view scrolls along.
 
@@ -243,7 +243,8 @@ Validate
 - [ ] Shift+Right ×3 → pointer hidden, cross 24 px right.
 - [ ] Move the mouse → pointer back, cross under it.
 - [ ] Click the component list → cross gone; click the canvas → back.
-- [ ] Highlight colour editable in Settings → theme colours.
+- [ ] Highlight colour editable in Settings → Circuit → colours ("Highlight"); the
+      Dark preset gives yellow, Classic/Light orange.
 - [ ] All existing shortcuts (Ctrl+…, Delete, Esc, switch keys) still work.
 
 ### K2 — Moving parts with the arrows

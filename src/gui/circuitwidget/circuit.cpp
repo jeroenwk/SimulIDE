@@ -11,6 +11,7 @@
 #include <QtMath>
 #include <QUrl>
 
+#include "keyboardcontroller.h"
 #include "circuit.h"
 #include "appfonts.h"
 #include "instrumentview.h"
@@ -1152,6 +1153,11 @@ void Circuit::keyPressEvent( QKeyEvent* event )
     }
     int key = event->key();
 
+    if( !m_conStarted && KeyboardController::self()->keyPress( event ) )
+    {
+        event->accept();
+        return;
+    }
     if( m_conStarted )
     {
         if( key == Qt::Key_Escape ) deleteNewConnector();
@@ -1319,6 +1325,11 @@ void Circuit::drawBackground( QPainter*  painter, const QRectF &rect )
     int y0 = 8*qFloor( ( r.top() -4 )/8 )+4, y1 = qCeil( r.bottom() );
     for( int x=x0; x<=x1; x+=8 ) painter->drawLine( QLineF( x, r.top(), x, r.bottom() ) );
     for( int y=y0; y<=y1; y+=8 ) painter->drawLine( QLineF( r.left(), y, r.right(), y ) );
+}
+
+void Circuit::drawForeground( QPainter* painter, const QRectF& )
+{
+    KeyboardController::self()->paint( painter );
 }
 
 void Circuit::updatePin( ePin* epin, QString oldId, QString newId )

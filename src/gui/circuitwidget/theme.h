@@ -9,11 +9,13 @@
 #include <QColor>
 #include <QString>
 #include <QStringList>
+#include <QList>
 
 class Theme
 {
     public:
         enum role_t { canvasRole=0, wireRole, lineRole, textRole, bodyRole, flowRole, nameRole, valueRole,
+                      highlightRole,            // Keyboard cursor, selected pins
                       icBodyRole, icTextRole,   // Chips, subcircuits and MCUs
                       // Animate mode: wires by voltage, pins by logic state
                       animHighRole, animLowRole, outHighRole, outLowRole, inHighRole, inLowRole, openHighRole,
@@ -30,6 +32,7 @@ class Theme
 
         static QColor idLabel()  { return get( nameRole ); }  // Component name labels ("R1")
         static QColor valLabel() { return get( valueRole ); } // Component value labels ("470 Ω")
+        static QColor highlight() { return get( highlightRole ); } // Keyboard cursor cross, selected pins
 
         // IC packages (chips, subcircuits, MCUs). At the default IC body colour each kind keeps
         // its own classic shade (classColor); the pin-1 marker is derived from body and text
@@ -79,7 +82,7 @@ class Theme
 
     private:
         static void load();
-        static void adoptPresetIcColors();
+        static void adoptPresetColors( QList<role_t> missing );  // Roles added later: from the matching preset
         static bool setPreset( QString name );     // Colours of a preset, saved (no change to following)
         static void setFollowSystem( bool on );
         static void systemChanged( bool dark );
