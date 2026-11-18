@@ -304,6 +304,7 @@ bool KeyboardController::rotateKey( bool ccw )
         if( !move.isNull() )
         {
             Circuit::self()->moveSelection( move, true );          // Wires follow, one undo step
+            moveCursorTo( cursorPos()+move );                      // The cross follows the move
             refreshAutoPins();
         }
     }
@@ -938,7 +939,8 @@ bool KeyboardController::arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods 
     m_burstEdit      = circ->editCount();
     m_burstSelection = sel;
 
-    refreshAutoPins();                                      // (The cross stays where it is)
+    moveCursorTo( cursorPos()+d );             // The (hidden) cross follows: Esc shows it
+    refreshAutoPins();                         // where the part ended up
     if( CircuitView* v = CircuitView::self() ) v->ensureVisible( v->selectedRect(), 32, 32 );
     return true;
 }

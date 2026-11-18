@@ -519,7 +519,9 @@ Decisions (user, 2026-11-18):
 - **D11** (K1 rev) The keyboard cursor is independent of the mouse: centred at
   start-up, placed by a plain left click on empty canvas, moved by the arrows
   (nothing selected), shown only while the canvas has focus and no part is
-  selected, and it does not follow a moved selection.
+  selected, and it follows a moved selection (Tab puts it at the part's centre;
+  arrow moves and the rotation alignment shift move it along, so Esc shows it
+  where the part ended up).
 - **D12** (K1 rev) Enter puts the cross a big step right of the part it unselects
   (not of the old cross position). *Replaced by D16 for parts with pins; still
   the rule for parts without pins.*
