@@ -65,6 +65,7 @@ void KeyboardController::reset()
     m_valueUid.clear();
     m_valueProp.clear();
     m_valueBuf.clear();
+    m_leavePin.clear();
     showPointer();
     m_cursorSet  = false;
     m_arrowBurst = false;
@@ -276,28 +277,30 @@ bool KeyboardController::partKey( QString letter )
     Component* comp = circ->createItem( name, name+"-"+circ->newSceneId() );
     if( !comp ) return false;
     QPointF at = cursorPos();
-    bool byPin = false;                      // Placed relative to the selected pin (D17)
-    if( Component* sel = singlePart() )      // A part selected: continue from its pin (D17)
+    bool byPin = false;                      // Placed relative to a pin of the chain (D17)
+    Pin* fromPin = nullptr;
+    Component* sel = singlePart();
+    if( sel ) fromPin = sel->selectedPin();  // A part selected: continue from its pin
+    else if( !m_leavePin.isEmpty() && cursorPos() == m_leavePos )
+        fromPin = Circuit::self()->pinById( m_leavePin );  // The cross still where Enter left it
+    if( fromPin )
     {
-        if( Pin* p = sel->selectedPin() )
-        {
-            byPin = true;
-            QPointF dir = pinDir( p );       // The new part's first pin goes a big step
-            at = snap( p->scenePos() + dir*bigStep );   // beyond the pin, facing it in a
-                                                         // straight line
-            std::vector<Pin*> pins = comp->getPins();
-            if( !pins.empty() )
-            {   // Rotate the new part so its first pin points back at the selected pin
-                QString target;              // The side that faces the pin: opposite of dir
-                if( dir.x() > 0 ) target = "left";
-                else if( dir.x() < 0 ) target = "right";
-                else if( dir.y() > 0 ) target = "up";
-                else target = "down";
-                comp->setRotation(( cwQuarter( target ) - cwQuarter( pins.front()->side() ) + 4 ) % 4 * 90 );
-            }
+        byPin = true;
+        QPointF dir = pinDir( fromPin );     // The new part's first pin goes a big step
+        at = snap( fromPin->scenePos() + dir*bigStep );   // beyond the pin, facing it in a
+                                                          // straight line
+        std::vector<Pin*> pins = comp->getPins();
+        if( !pins.empty() )
+        {   // Rotate the new part so its first pin points back at the pin
+            QString target;                  // The side that faces the pin: opposite of dir
+            if( dir.x() > 0 ) target = "left";
+            else if( dir.x() < 0 ) target = "right";
+            else if( dir.y() > 0 ) target = "up";
+            else target = "down";
+            comp->setRotation(( cwQuarter( target ) - cwQuarter( pins.front()->side() ) + 4 ) % 4 * 90 );
         }
-        else at = sel->pos()+QPointF( bigStep, 0 );       // No pins: the old rule (D12)
     }
+    else if( sel ) at = sel->pos()+QPointF( bigStep, 0 ); // No pins: the old rule (D12)
     comp->setPos( toGrid( at ) );
     circ->addComponent( comp );
     if( byPin && !comp->getPins().empty() )              // The first pin exactly at its spot
@@ -409,8 +412,9 @@ Pin* KeyboardController::oppositePin( Component* comp, Pin* sel )
 // Where the cross goes when a part is left (Enter, Shift+Enter, a committed value):
 // a big step beyond its selected pin, in the pin's direction (Shift+Enter: beyond the
 // most opposite pin). A part without pins: a big step right of the centre (D12)
-QPointF KeyboardController::leavePos( Component* comp, bool opposite )
+QPointF KeyboardController::leavePos( Component* comp, bool opposite, Pin** used )
 {
+    if( used ) *used = nullptr;
     Pin* pin = comp->selectedPin();
     if( pin )
     {
@@ -418,17 +422,25 @@ QPointF KeyboardController::leavePos( Component* comp, bool opposite )
             Pin* op = oppositePin( comp, pin );
             if( op ) pin = op;
         }
+        if( used ) *used = pin;
         return pin->scenePos() + pinDir( pin )*bigStep;
     }
     return comp->pos() + QPointF( bigStep, 0 );
 }
 
+// Enter: unselect the part, the cross beyond its (opposite: most opposite) pin.
+// The pin is remembered (D17): a part placed while the cross is still there
+// continues the chain, as with the part selected
 bool KeyboardController::enterKey( bool opposite )
 {
     Component* comp = singlePart();
     if( !comp ) return false;
+    Pin* pin = nullptr;
+    QPointF at = leavePos( comp, opposite, &pin );
     Circuit::self()->clearSelection();
-    moveCursorTo( leavePos( comp, opposite ) );           // Beyond the selected pin (D16)
+    moveCursorTo( at );                                   // Beyond the selected pin (D16)
+    m_leavePin = pin ? pin->pinId() : QString();
+    m_leavePos = cursorPos();
     return true;
 }
 
@@ -621,8 +633,12 @@ void KeyboardController::commitValue()
     endValueEdit();
     if( comp )                                           // Then as Enter (K4): beyond the pin (D16)
     {
+        Pin* pin = nullptr;
+        QPointF at = leavePos( comp, false, &pin );
         Circuit::self()->clearSelection();
-        moveCursorTo( leavePos( comp, false ) );
+        moveCursorTo( at );
+        m_leavePin = pin ? pin->pinId() : QString();
+        m_leavePos = cursorPos();
     }
 }
 

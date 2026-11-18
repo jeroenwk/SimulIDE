@@ -92,7 +92,7 @@ class KeyboardController
         bool wireKey();                             // _: wire pinFrom to pinTo (K8)
         bool escKey();
         bool enterKey( bool opposite = false );     // Shift+Enter: leave by the opposite pin
-        QPointF leavePos( Component* comp, bool opposite );  // Where the cross goes (D16)
+        QPointF leavePos( Component* comp, bool opposite, Pin** used = nullptr );  // Where the cross goes (D16)
         Pin* oppositePin( Component* comp, Pin* sel );       // Most opposite visible pin, or nullptr
 
         // Typing the selected part's value (K7): buffer [-]digits[.digits][mult[digits]]
@@ -148,6 +148,9 @@ class KeyboardController
         QString m_valueUid;
         QString m_valueProp;
         QString m_valueBuf;
+
+        QString m_leavePin;                     // The pin Enter left from (D17), and the
+        QPointF m_leavePos;                     // cross spot beyond it: placement continues there
 
         QPointer<QDialog> m_focusDialog;        // Properties dialog that returns focus to the canvas
 };

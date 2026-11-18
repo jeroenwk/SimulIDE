@@ -346,7 +346,10 @@ Validate
   A part is selected: the new part is placed a big step beyond the selected
   part's **selected pin**, rotated so that its **first pin** points back at
   that pin with the two pin tips 64 px apart on one line (D17), and the cross
-  moves to the new part. No pins: a big step right of the part (D13).
+  moves to the new part. Nothing selected, but the cross is still where
+  Enter left it, beyond a pin: the same continuation from that pin (D17);
+  a cross moved elsewhere places the part centred at the cross as usual.
+  No pins: a big step right of the part (D13).
   Alt+key keeps working.
 - Switch/Push `Key` (D7): one capital A–Z, triggered with Shift+letter. Other
   saved values are ignored at run time; opening the properties clears the field
@@ -532,7 +535,10 @@ Decisions (user, 2026-11-18):
   new part's **first pin** (the part's pin 0: resistor lPin, BJT collector,
   op amp inNinv, fixed voltage outnod) points back at the selected pin of the
   selected part, both pin tips on one line 64 px apart, the new part rotated
-  (0/90/180/270°) to match. The cross goes to the new part.
+  (0/90/180/270°) to match. The cross goes to the new part. **Enter remembers
+  the pin it left from**: with nothing selected, a placement continues from
+  that pin while the cross is still at the spot beyond it (a cross moved
+  elsewhere: the part is centred at the cross, unrotated).
 - **D14** (K1 rev) `h` starts pan mode (pointer: cross with arrows; arrows pan;
   any other key, a selection or a mouse press ends it). `h` is not a part shortcut.
 - **D15** (K1 rev) `Cmd+=`/`Cmd++` zoom in, `Cmd+-` out, `Cmd+0` 100 %, cross kept

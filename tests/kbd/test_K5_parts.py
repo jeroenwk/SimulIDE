@@ -76,6 +76,38 @@ def test(sim):
     pos = sim.cli("comp", "get", uid)["pos"]
     sim.check("c below the pin: straight below R1's rPin", int(pos == [100, 196]), 1, absolute=0, note=str(pos))
 
+    # Enter remembers the pin it left from: a part placed while the cross is still
+    # there continues the chain, also with nothing selected (D17). A transistor
+    # with its collector (first pin, pointing up) selected, Enter, then r
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("ui", "click", "100,100")
+    s = sim.cli("ui", "type", "t")                   # BJT, selected pin = collector (top)
+    bjt = s["selection"][0]
+    s = sim.cli("ui", "type", "enter")
+    col = sim.cli("comp", "get", bjt)["pins"]
+    col = [p for p in col if p["id"] == "collector"][0]["pos"]
+    sim.check("enter: cross beyond the collector", int(s["cursor"] == [col[0], col[1]-64]), 1, absolute=0,
+              note=str(s["cursor"]))
+    s = sim.cli("ui", "type", "r")
+    uid = s["selection"][0]
+    pins = sim.cli("comp", "get", uid)["pins"]
+    sim.check("r after enter: lPin on the collector's pin, pointing down",
+              int(pins[0]["pos"] == [col[0], col[1]-64]), 1, absolute=0, note=str(pins))
+
+    # A cross moved after Enter places the part centred at the cross, unrotated
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("ui", "click", "100,100")
+    sim.cli("ui", "type", "r")
+    sim.cli("ui", "type", "enter")
+    sim.cli("ui", "type", "Right")                   # The cross moves away
+    s = sim.cli("ui", "type", "r")
+    uid = s["selection"][0]
+    r2 = sim.cli("comp", "get", uid)
+    sim.check("cross moved: part centred at the cross", int(r2["pos"] == [244, 100]), 1, absolute=0,
+              note=str(r2["pos"]))
+    sim.check("cross moved: part unrotated", int(r2["pins"][1]["pos"][0] - r2["pins"][0]["pos"][0] == 32), 1, absolute=0,
+              note=str([p["pos"] for p in r2["pins"]]))
+
     # Switch keys: typed values
     sim.cli("circuit", "new", "--discard")
     sim.cli("comp", "add", "Switch", "--label", "S1", "--at", "100,100")

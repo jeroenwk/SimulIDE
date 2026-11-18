@@ -24,8 +24,9 @@ const QList<Shortcut>& Shortcuts::all()
         { "Edit", "Flip vertically",        "Cmd+Shift+L", "Selection" },
         { "Selection", "Select all",        "Cmd+A",       "" },
         { "Selection", "Cancel the wire being drawn, stop linking", "Esc", "" },
-        { "Parts", "Add the part bound to a letter at the keyboard cursor. A part selected: the new part's first pin "
-                   "faces the selected pin, a big step beyond it, in a straight line; the part is rotated to match", "its letter", "Set in Manage Components" },
+        { "Parts", "Add the part bound to a letter at the keyboard cursor. A part selected (or the cross still where "
+                   "Enter left it, beyond a pin): the new part's first pin faces that pin, a big step beyond it, in "
+                   "a straight line; the part is rotated to match", "its letter", "Set in Manage Components" },
         { "Parts", "Add the part bound to a letter, at the mouse", "Alt+its letter", "Set in Manage Components" },
         { "Switches", "Operate a switch or push button (its Key property, A–Z)", "Shift+its Key", "Simulation running" },
         // K1: keyboard cursor (revised: independent of the mouse)
