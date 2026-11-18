@@ -3,6 +3,8 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <algorithm>
+#include <QtMath>
 #include <math.h>
 
 #include <QDebug>
@@ -61,6 +63,8 @@ Component::Component( QString type, QString id )
     m_linkedTo   = nullptr;
     m_background = "";
     m_showProperty = "";
+    m_selPin = nullptr;
+    m_selPinManual = false;
     m_linkNumber = -1;
 
     m_boardPos = QPointF(-1e6,-1e6 );
@@ -209,8 +213,75 @@ void Component::substitution( QString &propName ) // static, Old: TODELETE
    /// else if( propName == "Inverted")    propName = "InvertOuts";
 }
 
+std::vector<Pin*> Component::pinsClockwise()
+{
+    std::vector<Pin*> pins;
+    if( itemType() == "Node" ) return pins;
+    for( Pin* p : getPins() ) if( p && p->isVisible() ) pins.push_back( p );
+    if( pins.size() < 2 ) return pins;
+
+    QPointF c( 0, 0 );
+    for( Pin* p : pins ) c += p->scenePos();
+    c /= (double)pins.size();
+    // Scene y points down, so a growing atan2 angle turns clockwise on screen
+    std::stable_sort( pins.begin(), pins.end(), [c]( Pin* a, Pin* b ){
+        QPointF da = a->scenePos()-c, db = b->scenePos()-c;
+        double aa = qAtan2( da.y(), da.x() ), ab = qAtan2( db.y(), db.x() );
+        if( qAbs( aa-ab ) > 1e-6 ) return aa < ab;
+        return QPointF::dotProduct( da, da ) < QPointF::dotProduct( db, db );
+    });
+    return pins;
+}
+
+Pin* Component::selectedPin()
+{
+    if( m_selPin )         // Fast path (called from Pin::paint): still one of our visible pins
+    {
+        std::vector<Pin*> all = getPins();
+        if( std::find( all.begin(), all.end(), m_selPin ) != all.end() && m_selPin->isVisible()
+         && itemType() != "Node" ) return m_selPin;
+    }
+    std::vector<Pin*> pins = pinsClockwise();
+    if( pins.empty() ) return nullptr;
+    if( m_selPin && std::find( pins.begin(), pins.end(), m_selPin ) != pins.end() ) return m_selPin;
+
+    Pin* best = pins.front();                // Auto: topmost, then rightmost
+    for( Pin* p : pins )
+    {
+        QPointF a = p->scenePos(), b = best->scenePos();
+        if( a.y() < b.y()-0.5 || ( qAbs( a.y()-b.y() ) <= 0.5 && a.x() > b.x() ) ) best = p;
+    }
+    m_selPin = best;
+    m_selPinManual = false;
+    return best;
+}
+
+void Component::setSelectedPin( Pin* pin, bool manual )
+{
+    Pin* old = selectedPin();
+    m_selPin = pin;
+    m_selPinManual = manual;
+    if( old ) old->update();
+    if( pin ) pin->update();
+}
+
+Pin* Component::stepSelectedPin( int dir )
+{
+    std::vector<Pin*> pins = pinsClockwise();
+    Pin* cur = selectedPin();
+    if( !cur ) return nullptr;
+    int n = pins.size();
+    int i = std::find( pins.begin(), pins.end(), cur ) - pins.begin();
+    Pin* next = pins[ ( ( i+dir ) % n + n ) % n ];
+    setSelectedPin( next, true );
+    return next;
+}
+
 QVariant Component::itemChange( GraphicsItemChange change, const QVariant &value )
 {
+    if( change == QGraphicsItem::ItemSelectedHasChanged )   // Selected pin: highlight or accent
+        for( Pin* p : m_pin ) if( p ) p->update();
+
     if( m_isLinker && change == QGraphicsItem::ItemSelectedChange && value == false ) // Hide linked Components
     {
         Linker* linker = dynamic_cast<Linker*>(this);

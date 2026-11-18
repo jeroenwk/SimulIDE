@@ -11,6 +11,7 @@
 #include <QDebug>
 #include <QSet>
 
+#include "keyboardcontroller.h"
 #include "pin.h"
 #include "appfonts.h"
 #include "theme.h"
@@ -449,9 +450,25 @@ void Pin::paint( QPainter* painter, const QStyleOptionGraphicsItem* option, QWid
     else if( m_isBus   ) pen.setColor( Qt::darkGreen );
     else if( m_animate ) pen.setColor( Theme::pinState( m_pinState, m_color[0] == QColor( Qt::black ) ? Theme::line() : m_color[0] ) );
 
+    bool ring = false;               // Keyboard input: selected pin, pins to wire
+    KeyboardController::pinLook_t look = KeyboardController::self()->pinLook( this, &ring );
+    if( look == KeyboardController::lookHighlight ) pen.setColor( Theme::highlight() );
+    else if( look == KeyboardController::lookAccent ){
+        pen.setColor( Theme::pinAccent() );
+        pen.setWidthF( 3.6 );
+    }
     painter->setPen(pen);
     if( m_length > 1 ) painter->drawLine( QPointF(0, 0), QPointF( m_length-0.7, 0) );
     else               painter->drawLine( QPointF(-0.01, 0 ), QPointF( 0.03, 0 ) );
+
+    if( ring )                       // The "from" pin of a wire to make: a ring at its tip
+    {
+        painter->save();
+        painter->setPen( QPen( Theme::highlight(), 1 ) );
+        painter->setBrush( Qt::NoBrush );
+        painter->drawEllipse( QPointF( 0, 0 ), 3, 3 );
+        painter->restore();
+    }
 
     if( m_inverted )
     {

@@ -16,9 +16,12 @@
 #include <QRectF>
 #include <QJsonObject>
 #include <QList>
+#include <QString>
 
 class QKeyEvent;
 class QGraphicsItem;
+class Component;
+class Pin;
 class QPainter;
 
 class KeyboardController
@@ -51,12 +54,27 @@ class KeyboardController
 
         void paint( QPainter* painter );         // From Circuit::drawForeground
 
+        // Pins for wiring (K3, K4, K8), kept by id: they survive undo and vanish with their part
+        Pin* pinFrom();
+        Pin* pinTo();
+        void setPinFrom( Pin* pin );
+        void setPinTo( Pin* pin );
+
+        // How Pin::paint draws a pin
+        enum pinLook_t { lookNormal=0, lookAccent, lookHighlight };
+        pinLook_t pinLook( Pin* pin, bool* ring );
+
+        Component* singlePart();                 // The one part selected (not a junction), or nullptr
+
         QJsonObject state();                     // CLI: kbd state
 
     private:
         KeyboardController();
 
         bool arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods );
+        bool pinKey( int dir, bool from );
+
+        void updatePin( QString id );
 
         void hidePointer();
         void showPointer();
@@ -74,6 +92,9 @@ class KeyboardController
         bool    m_arrowBurst;
         int     m_burstEdit;                    // Circuit::editCount() after the burst's last move
         QList<QGraphicsItem*> m_burstSelection;
+
+        QString m_pinFrom;                      // Pin ids
+        QString m_pinTo;
 };
 
 #endif
