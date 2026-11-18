@@ -366,12 +366,15 @@ Validate
 - Single part selected with a numeric `valueProperty()`: a digit (number-row key
   with or without Shift, D10), `-`, `.` or `,` enters **EditValue**. Buffer grammar:
   `[-] digits [(.|,) digits] [multiplier [digits]]` — the last form is `4k7`
-  (= 4.7 k). Multipliers `p n u m k M G` (`M` mega, `m` milli). Extra keys
-  after a complete value are ignored. On AZERTY the unshifted 6 key (`-`) is
-  the minus and the unshifted 8 key (`_`, the wire key, K8) is never a digit:
-  the typed character decides before the physical key does.
+  (= 4.7 k). Multipliers `p n u m k M G` (`M` mega, `m` milli); capitals type
+  the small ones too (`K` = k, `U` = u), so a shifted keyboard works the same.
+  Extra keys after a complete value are ignored. On AZERTY the unshifted 6 key
+  (`-`) is the minus and the unshifted 8 key (`_`, the wire key, K8) is never
+  a digit: the typed character decides before the physical key does.
 - The value label shows the buffer + unit with an edit marker (`200k▏Ω`, in
-  `highlight`); the property is **not** changed until Enter.
+  `highlight`); the property is **not** changed until Enter. A buffer without a
+  multiplier keeps the part's current one (4.7 kΩ + `1 0 0 Enter` = 100 kΩ,
+  the label already shows `100▏kΩ` while typing); a typed multiplier replaces it.
 - Backspace removes one char; when none is left, edit ends and the value from
   before the edit is shown (D8); the next Backspace deletes the part.
 - Enter: set the property (one undo step), leave edit, unselect, cursor right.

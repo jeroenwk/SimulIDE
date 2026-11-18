@@ -3,10 +3,12 @@
 Expected values follow the spec: with one part that has a numeric valueProperty()
 selected, a digit (also the AZERTY number row without Shift, D10), - . or , starts
 EditValue; the buffer grammar is [-]digits[.digits][mult[digits]] (4k7 = 4.7 k, u = µ);
-Enter sets the property in one undo step, unselects and moves the cross right; Esc
-reverts (D8): Backspace on an empty buffer ends the edit and the next deletes the part;
-Tab or a click reverts then does that action; parts without a numeric value (a scope)
-take no typed value. Nothing is simulated.
+a buffer without a multiplier keeps the part's current unit (4.7 kΩ + 100 = 100 kΩ);
+capitals type multipliers too (K = k, U = u; M mega, m milli); Enter sets the property
+in one undo step, unselects and moves the cross right; Esc reverts (D8): Backspace on
+an empty buffer ends the edit and the next deletes the part; Tab or a click reverts
+then does that action; parts without a numeric value (a scope) take no typed value.
+Nothing is simulated.
 """
 
 import os
@@ -87,6 +89,32 @@ def test(sim):
     uid = placed(sim)
     sim.cli("ui", "type", "2", "k", "enter")
     sim.check("wavegen 2 kHz", int(prop(sim, uid, "Freq") == "2 kHz"), 1, absolute=0, note=prop(sim, uid, "Freq"))
+
+    # No multiplier typed: the part's current one stays (4.7 kΩ, then 100 = 100 kΩ)
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("ui", "click", "100,100")
+    sim.cli("ui", "type", "r")
+    uid = placed(sim)
+    sim.cli("ui", "type", "4", "k", "7", "enter")
+    sim.check("4k7 set (unit k)", int(prop(sim, uid, "Resistance") == "4.7 kΩ"), 1, absolute=0,
+              note=prop(sim, uid, "Resistance"))
+    sim.cli("select", uid)
+    sim.cli("ui", "type", "1", "0", "0", "enter")
+    sim.check("digits only keep the k", int(prop(sim, uid, "Resistance") == "100 kΩ"), 1, absolute=0,
+              note=prop(sim, uid, "Resistance"))
+
+    # Capitals type multipliers too (K = k, U = u); M mega, m milli
+    for keys, part, pname, want, note in [(["2", "0", "0", "K"], "r", "Resistance", "200 kΩ", "capital K"),
+                                          (["4", "U", "7"], "c", "Capacitance", "4.7 µF", "capital U"),
+                                          (["1", "M"], "r", "Resistance", "1 MΩ", "M mega"),
+                                          (["1", "m"], "r", "Resistance", "1 mΩ", "m milli")]:
+        sim.cli("circuit", "new", "--discard")
+        sim.cli("ui", "click", "100,100")
+        sim.cli("ui", "type", part)
+        uid = placed(sim)
+        sim.cli("ui", "type", *keys, "enter")
+        sim.check("%s: %s" % (note, want), int(prop(sim, uid, pname) == want), 1, absolute=0,
+                  note=prop(sim, uid, pname))
 
     # Backspace (D8): the buffer shrinks, an empty one ends the edit showing the old
     # value, and the next Backspace deletes the part

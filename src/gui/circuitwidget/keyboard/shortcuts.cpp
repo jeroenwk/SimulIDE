@@ -51,8 +51,9 @@ const QList<Shortcut>& Shortcuts::all()
         // K6: properties
         { "Edit", "Open the selected part's properties dialog (closing it returns to the canvas)", "Space", "One part selected" },
         // K7: typing a value
-        { "Edit", "Type the selected part's value: digits, - . , and p n u m k M G (4k7 = 4.7 k). "
-                  "Enter sets it (one undo step), Esc or any other action reverts", "0-9  -  .  ,", "One part selected" },
+        { "Edit", "Type the selected part's value: digits, - . , and p n u m k M G (capitals too; "
+                  "4k7 = 4.7 k; no multiplier keeps the part's one). Enter sets it (one undo step), "
+                  "Esc or any other action reverts", "0-9  -  .  ,", "One part selected" },
     };
     return list;
 }

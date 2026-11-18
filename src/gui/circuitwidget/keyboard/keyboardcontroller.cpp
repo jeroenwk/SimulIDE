@@ -375,24 +375,31 @@ bool KeyboardController::valueKey( QKeyEvent* event, Qt::KeyboardModifiers mods 
     QChar c = valueEntryChar( event, mods );
     if( c != '\0' ){ valueChar( c ); return true; }
     QString t = event->text();
-    if( t.size() == 1 && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier )
-                     && QString("pnumkMG").contains( t[0] ) )          // p n u m k M G (u = µ)
-    { valueChar( t[0] ); return true; }
+    if( t.size() == 1 && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) )
+    {   // Multipliers p n u m k M G (u = µ, M mega, m milli); capitals type the small
+        // ones too (K = k), so a shifted keyboard works the same
+        if( QString("pnumkMG").contains( t[0] ) )          { valueChar( t[0] );          return true; }
+        if( QString("PNUK").contains( t[0] ) )             { valueChar( t[0].toLower() ); return true; }
+    }
     return false;
+}
+
+// The buffer's multiplier letter, '\0' when none is typed
+static QChar bufferMult( const QString& buf )
+{
+    for( QChar c : buf )
+        if( !c.isDigit() && c != '-' && c != '.' && c != ',' ) return c;
+    return '\0';
 }
 
 // One buffer char, per the grammar [-]digits[.digits][mult[digits]]. What does not
 // fit (a second dot, a second multiplier, a sign mid-value) is ignored
 void KeyboardController::valueChar( QChar c )
 {
-    bool hasMult = false, hasDot = false;
+    bool hasMult = bufferMult( m_valueBuf ) != '\0';
+    bool hasDot  = m_valueBuf.contains( '.' );
     int  digits  = 0;
-    for( QChar ch : m_valueBuf )
-    {
-        if( ch.isDigit() ) digits++;
-        else if( ch == '.' ) hasDot = true;
-        else                hasMult = true;              // The multiplier letter
-    }
+    for( QChar ch : m_valueBuf ) if( ch.isDigit() ) digits++;
     if( c.isDigit() ) m_valueBuf.append( c );            // Digits always fit (4k7 too)
     else if( c == '.' )            { if( !hasDot && !hasMult && digits > 0 ) m_valueBuf.append( c ); }
     else if( c != '-' )            { if( !hasMult && digits > 0 ) m_valueBuf.append( c ); }
@@ -400,7 +407,9 @@ void KeyboardController::valueChar( QChar c )
     updateValueLabel();
 }
 
-// The value label shows the buffer, an edit marker and the unit: 200k▏Ω, in highlight
+// The value label shows the buffer, an edit marker and the unit: 200k▏Ω, in highlight.
+// While no multiplier is typed the part's current one is shown (200▏kΩ): it does not
+// change unless the buffer types one
 void KeyboardController::updateValueLabel()
 {
     Component* comp = compByUid( m_valueUid );
@@ -409,7 +418,8 @@ void KeyboardController::updateValueLabel()
     if( ComProperty* p = comp->property( m_valueProp ) )
     {
         unit = p->unit();
-        if( unit.size() > 1 && QString("pnµmkMGT").contains( unit.at(0) ) ) unit = unit.mid( 1 );
+        if( bufferMult( m_valueBuf ) != '\0'             // A typed multiplier replaces it:
+         && unit.size() > 1 && QString("pnµmkMGT").contains( unit.at(0) ) ) unit = unit.mid( 1 );
         if( unit.startsWith("_") ) unit = unit.mid( 1 );                 // "_%": shown without the _
     }
     comp->valLabel()->setDefaultTextColor( Theme::highlight() );
@@ -432,30 +442,32 @@ void KeyboardController::endValueEdit()
 }
 
 // The buffer as a value string the property takes: "200 kΩ", "4.7 µF", "100 nF";
-// digits after the multiplier are the fraction (4k7 = 4.7 k)
+// digits after the multiplier are the fraction (4k7 = 4.7 k). A buffer without a
+// multiplier keeps the part's current unit (4.7 kΩ + 100 Enter = 100 kΩ): the
+// multiplier only changes when the buffer types one
 QString KeyboardController::valueString( Component* comp )
 {
     ComProperty* p = comp->property( m_valueProp );
     if( !p ) return "";
     QString num = m_valueBuf;
-    QString mult;
-    for( int i=0; i<m_valueBuf.size(); ++i )
+    QChar mult = bufferMult( m_valueBuf );
+    if( mult != '\0' )
     {
-        QChar c = m_valueBuf.at( i );
-        if( c.isDigit() || c == '-' || c == '.' || c == ',' ) continue;
-        mult = ( c == 'u' ) ? "µ" : QString( c );
+        int i = m_valueBuf.indexOf( mult );
         num  = m_valueBuf.left( i );
         QString tail = m_valueBuf.mid( i+1 );
         if( !tail.isEmpty() ) num = num.contains('.') ? num+tail : num+"."+tail;
-        break;
     }
     num.replace( ',', '.' );
 
-    QString base = p->unit();
+    QString unit = p->unit();
+    if( mult == '\0' )                                   // Keep the current multiplier
+        return num + ( unit.isEmpty() ? "" : " "+unit );
+    QString base = unit;
     if( base.size() > 1 && QString("pnµmkMGT").contains( base.at(0) ) ) base = base.mid( 1 );
     if( base.startsWith("_") || base.isEmpty() )         // No SI prefixes: the value itself
-        return QString::number( num.toDouble()*getMultiplier( mult ), 'g', 15 )+" "+base;
-    return num+" "+mult+base;
+        return QString::number( num.toDouble()*getMultiplier( QString( mult ) ), 'g', 15 )+" "+base;
+    return num+" "+( mult == 'u' ? QString("µ") : QString( mult ) )+base;
 }
 
 // Enter: set the property (one undo step), leave the edit, unselect, cursor right.
