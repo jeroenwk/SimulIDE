@@ -44,6 +44,7 @@ class Pin : public QGraphicsItem, public ePin, public Updatable
         QRectF boundingRect() const override { return m_area; }
 
         QString pinId() { return m_id; }
+        QString side();               // The way the pin faces: left / right / up / down
         
         bool unused() { return m_unused; }
         void setUnused( bool unused );

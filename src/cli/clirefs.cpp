@@ -110,10 +110,7 @@ QPoint pinPos( Pin* p ) { return p->scenePos().toPoint(); }
 
 QString pinSide( Pin* p )
 {
-    // The pin's tip is its local origin and its body runs along local +x, towards the component
-    QPointF out = p->mapToScene( QPointF( 0, 0 ) ) - p->mapToScene( QPointF( 1, 0 ) );
-    if( qAbs( out.x() ) >= qAbs( out.y() ) ) return out.x() > 0 ? "right" : "left";
-    return out.y() > 0 ? "down" : "up";
+    return p->side();     // Moved to Pin (shared with Circuit::connectPins)
 }
 
 QJsonObject pinJson( Pin* p, int index )

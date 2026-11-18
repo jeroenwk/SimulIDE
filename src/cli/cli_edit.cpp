@@ -241,33 +241,10 @@ QStringList modelFirst( QStringList keys )
 }
 
 // A straight wire segment long enough to split with a junction on the 8 px grid
-bool splittable( ConnectorLine* line )
-{
-    int len = qAbs( line->dx() ) + qAbs( line->dy() );
-    if( len < 16 ) return false;                         // Too short to split cleanly
-    return line->dx() == 0 || line->dy() == 0;           // Only straight segments
-}
+bool splittable( ConnectorLine* line ) { return Circuit::splittable( line ); }
 
 // Every wire of the net a pin's wire belongs to, following junction nodes (no simulation needed)
-QList<Connector*> netWires( Connector* first )
-{
-    QList<Connector*> wires{ first };
-    for( int i=0; i<wires.size(); ++i )
-    {
-        for( Pin* end : { wires[i]->startPin(), wires[i]->endPin() } )
-        {
-            if( !end || !end->component() || end->component()->itemType() != "Node" ) continue;
-            Node* node = static_cast<Node*>( end->component() );
-            for( int p=0; p<3; ++p )
-            {
-                Pin* np = node->getPin( p );
-                Connector* c = np ? np->connector() : nullptr;
-                if( c && !wires.contains( c ) ) wires.append( c );
-            }
-        }
-    }
-    return wires;
-}
+QList<Connector*> netWires( Connector* first ) { return Circuit::netWires( first ); }
 
 // Wire segment next to a pin, to attach a junction to. First the pin's own wire, from the pin
 // outwards; if all its segments are too short (bug hunt IMP-022), the splittable segment of the
@@ -427,18 +404,10 @@ void layoutWarnings( Connector* con )
 }
 
 // 1 when a leg from a pin going d runs against the way the pin faces (back into its part)
-int backwards( QString side, QPoint d )
-{
-    if( side == "right" ) return d.x() < 0;
-    if( side == "left"  ) return d.x() > 0;
-    if( side == "down"  ) return d.y() < 0;
-    if( side == "up"    ) return d.y() > 0;
-    return 0;
-}
+int backwards( QString side, QPoint d ) { return Circuit::backwards( side, d ); }
 
-// Wire path from a to b through the --via points. Every leg is horizontal or vertical:
-// where two points differ in x and y a corner is added, leaving the start pin along its
-// own direction (startVertical) and then turning at each corner.
+// Wire path from a to b through the --via points (Circuit::routePoints does the legs).
+// Every leg is horizontal or vertical
 QStringList routePoints( QPoint a, QPoint b, QString via, bool startVertical )
 {
     QList<QPoint> target;
@@ -448,22 +417,7 @@ QStringList routePoints( QPoint a, QPoint b, QString via, bool startVertical )
         if( v.size() % 2 ) throw CliError("--via needs x,y pairs");
         for( int i=0; i<v.size(); i+=2 ) target.append( QPoint( v[i].toInt(), v[i+1].toInt() ) );
     }
-    target.append( b );
-
-    QList<QPoint> pts{ a };
-    bool vertical = startVertical;                 // Direction of the next leg
-    for( QPoint p : target )
-    {
-        QPoint last = pts.last();
-        if( p == last ) continue;
-        if( p.x() != last.x() && p.y() != last.y() )   // Two legs: "vertical" then the other way,
-            pts.append( vertical ? QPoint( last.x(), p.y() ) : QPoint( p.x(), last.y() ) ); // so the next turns back to "vertical"
-        else vertical = ( p.x() != last.x() );           // Straight leg: the next one turns
-        pts.append( p );
-    }
-    QStringList out;
-    for( QPoint p : pts ) { out.append( QString::number( p.x() ) ); out.append( QString::number( p.y() ) ); }
-    return out;
+    return Circuit::routePoints( a, b, target, startVertical );
 }
 }
 

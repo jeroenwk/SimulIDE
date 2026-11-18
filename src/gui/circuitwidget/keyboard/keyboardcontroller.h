@@ -89,6 +89,7 @@ class KeyboardController
         bool tabKey( int dir );
         bool partKey( QString letter );
         bool spaceKey();
+        bool wireKey();                             // _: wire pinFrom to pinTo (K8)
         bool escKey();
         bool enterKey();
 
