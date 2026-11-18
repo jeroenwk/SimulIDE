@@ -317,8 +317,10 @@ Validate
 - Tab / Shift+Tab: next/previous part in **reading order** (rows top→bottom by
   part centre, 16 px tolerance, then left→right), wrapping. Nothing selected: the
   part nearest the cursor. Dots are skipped. Applies §4.3.
-- Esc: unselect all (C7). Enter: unselect the single part, the cross a big
-  step right of it (D12).
+- Esc: unselect all (C7). Enter: unselect the single part; the cross goes a
+  big step beyond its **selected pin**, in the pin's direction (D16; a part
+  without pins: a big step right of it, D12). Shift+Enter: the same, but
+  beyond the part's **most opposite pin** (D16).
 - The selected part is scrolled into view.
 
 Validate
@@ -341,8 +343,10 @@ Validate
   a user setting overrides. Manage Components refuses a key already used by a
   part or by the keymap (`_ - = < > . ,`, digits, uppercase letters).
 - Plain key → part at the cross (not the mouse), selected, §4.3 applied.
-  A part is selected: the new part lands a big step right of it and the cross
-  moves there (D13).
+  A part is selected: the new part is placed a big step beyond the selected
+  part's **selected pin**, rotated so that its **first pin** points back at
+  that pin with the two pin tips 64 px apart on one line (D17), and the cross
+  moves to the new part. No pins: a big step right of the part (D13).
   Alt+key keeps working.
 - Switch/Push `Key` (D7): one capital A–Z, triggered with Shift+letter. Other
   saved values are ignored at run time; opening the properties clears the field
@@ -511,9 +515,24 @@ Decisions (user, 2026-11-18):
   (nothing selected), shown only while the canvas has focus and no part is
   selected, and it does not follow a moved selection.
 - **D12** (K1 rev) Enter puts the cross a big step right of the part it unselects
-  (not of the old cross position).
+  (not of the old cross position). *Replaced by D16 for parts with pins; still
+  the rule for parts without pins.*
 - **D13** (K1 rev) Placing a part with a part selected puts the new part (and the
-  cross) a big step right of the selected part.
+  cross) a big step right of the selected part. *Replaced by D17 when the
+  selected part has a selected pin; still the rule without pins.*
+- **D16** (K4 rev) Enter leaves a part towards its **selected pin**: the cross
+  goes a big step (64 px) beyond that pin's tip, in the pin's direction. This
+  applies everywhere Enter leaves a part — plain Enter, and Enter after a
+  committed typed value (K7). **Shift+Enter** does the same from the part's
+  most opposite pin: the pin whose direction is most opposite to the selected
+  pin's (the dot product, exact for the four directions); ties → the one
+  pointing more downwards; still tied → the nearest to the selected pin. No
+  other pin: as Enter.
+- **D17** (K5 rev) Placing a part with a part selected continues the chain: the
+  new part's **first pin** (the part's pin 0: resistor lPin, BJT collector,
+  op amp inNinv, fixed voltage outnod) points back at the selected pin of the
+  selected part, both pin tips on one line 64 px apart, the new part rotated
+  (0/90/180/270°) to match. The cross goes to the new part.
 - **D14** (K1 rev) `h` starts pan mode (pointer: cross with arrows; arrows pan;
   any other key, a selection or a mouse press ends it). `h` is not a part shortcut.
 - **D15** (K1 rev) `Cmd+=`/`Cmd++` zoom in, `Cmd+-` out, `Cmd+0` 100 %, cross kept

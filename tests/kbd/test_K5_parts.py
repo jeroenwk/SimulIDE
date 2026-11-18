@@ -45,19 +45,36 @@ def test(sim):
     sim.check("23 keys place their part at the cursor", len(KEYS) - len(wrong), len(KEYS), absolute=0,
               note="; ".join(wrong))
 
-    # With R1 selected, r places R2 there, selected and paired (nearest pins)
+    # With R1 selected, r places R2 there, selected and paired (nearest pins):
+    # R1's selected pin rPin (116,100) points right, so R2's first pin lPin goes
+    # 64 px beyond it (180,100), unrotated, in a straight line (D17)
     sim.cli("circuit", "new", "--discard")
     sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "100,100")
-    sim.cli("select", "R1")                        # selected: the new part lands right of it (D13)
+    sim.cli("select", "R1")
     s = sim.cli("ui", "type", "r")
     t, p = placed(sim, s)
-    sim.check("r with R1 selected: a resistor 64 px right of R1", int(t == "Resistor" and p == [164, 100]), 1, absolute=0,
+    sim.check("r with R1 selected: R2 at 196,100 (lPin at 180,100)", int(t == "Resistor" and p == [196, 100]), 1, absolute=0,
               note=str(p))
+    pins = sim.cli("comp", "get", s["selection"][0])["pins"]
+    sim.check("r: the new part's lPin faces R1.rPin at 64 px", int(pins[0]["pos"] == [180, 100]), 1, absolute=0,
+              note=str(pins))
     sim.check("r: pinFrom R1.rPin", int(s["pinFrom"] == "R1.rPin"), 1, absolute=0, note=str(s["pinFrom"]))
     sim.check("r: pinTo the new part's left pin", int((s["pinTo"] or "").endswith(".lPin")), 1, absolute=0,
               note=str(s["pinTo"]))
     sim.cli("ui", "type", "cmd+z")
     sim.check("Cmd+Z removes the placed part", len(sim.cli("comp", "list", "--type", "Resistor")), 1, absolute=0)
+
+    # The same from a pin pointing down: R1 rotated (Cmd+R), its rPin now points
+    # down, so c places a capacitor below with its lPin pointing up at it (D17)
+    sim.cli("select", "R1")
+    sim.cli("ui", "type", "cmd+r")
+    s = sim.cli("ui", "type", "c")
+    uid = s["selection"][0]
+    pins = sim.cli("comp", "get", uid)["pins"]
+    sim.check("c below the pin: lPin at 100,180 pointing up", int(pins[0]["pos"] == [100, 180]), 1, absolute=0,
+              note=str(pins))
+    pos = sim.cli("comp", "get", uid)["pos"]
+    sim.check("c below the pin: straight below R1's rPin", int(pos == [100, 196]), 1, absolute=0, note=str(pos))
 
     # Switch keys: typed values
     sim.cli("circuit", "new", "--discard")

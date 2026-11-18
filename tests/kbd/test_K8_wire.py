@@ -74,15 +74,17 @@ def test(sim):
     sim.check("cmd+z removes the wired junction", int(ends(sim) == [(r1+".rPin", r2+".lPin")]), 1, absolute=0,
               note=str(ends(sim)))
 
-    # A BJT: > to the base, _ wires to it
+    # A BJT: > to the base, _ wires to it. (Placed after R1, the BJT is rotated
+    # with its first pin, the collector, facing R1's pin — D17.)
     sim.cli("circuit", "new", "--discard")
     sim.cli("ui", "click", "100,100")
     sim.cli("ui", "type", "r")
     r1 = placed(sim)
     sim.cli("ui", "type", "t")
     bjt = placed(sim)
-    for _i in range(3):                                # collector, emiter, base
+    for _i in range(4):                                # Step until the base is selected
         s = sim.cli("ui", "type", ">")
+        if s.get("selectedPin") == bjt+".base": break
     sim.check("the base is the selected pin", int(s["selectedPin"] == bjt+".base"), 1, absolute=0,
               note=str(s.get("selectedPin")))
     sim.cli("ui", "type", "_")

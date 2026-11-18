@@ -45,8 +45,8 @@ def test(sim):
     sim.check("typing builds the buffer", int(s["valueEdit"]["buffer"] == "200k"), 1, absolute=0)
     s = sim.cli("ui", "type", "enter")
     sim.check("enter: unselected", len(s["selection"]), 0, absolute=0)
-    sim.check("enter: cross right of the part: x", s["cursor"][0], 164, absolute=0)
-    sim.check("enter: cross right of the part: y", s["cursor"][1], 100, absolute=0)
+    sim.check("enter: cross beyond the pin: x", s["cursor"][0], 180, absolute=0)
+    sim.check("enter: cross beyond the pin: y", s["cursor"][1], 100, absolute=0)
     sim.check("enter: edit off", int("valueEdit" not in s), 1, absolute=0)
     sim.check("200k set", int(prop(sim, uid, "Resistance") == "200 kΩ"), 1, absolute=0,
               note=prop(sim, uid, "Resistance"))

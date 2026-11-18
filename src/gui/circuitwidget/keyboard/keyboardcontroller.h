@@ -91,7 +91,9 @@ class KeyboardController
         bool spaceKey();
         bool wireKey();                             // _: wire pinFrom to pinTo (K8)
         bool escKey();
-        bool enterKey();
+        bool enterKey( bool opposite = false );     // Shift+Enter: leave by the opposite pin
+        QPointF leavePos( Component* comp, bool opposite );  // Where the cross goes (D16)
+        Pin* oppositePin( Component* comp, Pin* sel );       // Most opposite visible pin, or nullptr
 
         // Typing the selected part's value (K7): buffer [-]digits[.digits][mult[digits]]
         QChar   valueEntryChar( QKeyEvent* event, Qt::KeyboardModifiers mods );  // '\0': not one
