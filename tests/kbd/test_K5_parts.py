@@ -76,6 +76,18 @@ def test(sim):
     pos = sim.cli("comp", "get", uid)["pos"]
     sim.check("c below the pin: straight below R1's rPin", int(pos == [100, 196]), 1, absolute=0, note=str(pos))
 
+    # The new part's selected pin is the one nearest to the outgoing pin (D18):
+    # the BJT placed after R1 has its collector (the first pin, facing R1) selected
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("ui", "click", "100,100")
+    sim.cli("ui", "type", "r")
+    s = sim.cli("ui", "type", "t")
+    bjt = s["selection"][0]
+    sim.check("the new part's selected pin faces the outgoing pin",
+              int(s["selectedPin"] == bjt+".collector"), 1, absolute=0, note=str(s.get("selectedPin")))
+    sim.check("pinFrom is the outgoing pin", int(s["pinFrom"] == "Resistor-1.rPin"), 1, absolute=0,
+              note=str(s["pinFrom"]))
+
     # Enter remembers the pin it left from: a part placed while the cross is still
     # there continues the chain, also with nothing selected (D17). A transistor
     # with its collector (first pin, pointing up) selected, Enter, then r

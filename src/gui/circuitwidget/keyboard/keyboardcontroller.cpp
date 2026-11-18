@@ -310,6 +310,23 @@ bool KeyboardController::partKey( QString letter )
              << "rotation" << comp->rotation();
     moveCursorTo( comp->pos() );             // The cross goes with the part (D13)
     selectPart( comp );                      // Selected, pins paired with the last part
+    if( fromPin )                            // Its selected pin: the one nearest to the
+    {                                        // outgoing pin (D18), pinFrom that pin
+        Pin* near = nullptr;
+        double best = 1e300;
+        for( Pin* q : comp->pinsClockwise() )
+        {
+            QPointF d = q->scenePos()-fromPin->scenePos();
+            double dd = QPointF::dotProduct( d, d );
+            if( dd < best-1e-9 ){ best = dd; near = q; }
+        }
+        if( near )
+        {
+            comp->setSelectedPin( near, false );
+            setPinFrom( fromPin );
+            setPinTo( near );
+        }
+    }
     return true;
 }
 
@@ -368,6 +385,15 @@ bool KeyboardController::wireKey()
     }
     if( running && !Simulator::self()->isRunning() )
         say( "Keyboard: simulation stopped to wire" );
+    if( Component* comp = singlePart() )     // The wired part continues out its other
+    {                                        // side: its selected pin becomes the pin
+        Pin* wired = nullptr;                // most opposite to the wired one (D18)
+        if( f->component() == comp ) wired = f;
+        else if( t->component() == comp ) wired = t;
+        if( wired )
+            if( Pin* op = oppositePin( comp, wired ) )
+                comp->setSelectedPin( op, false );
+    }
     return true;
 }
 

@@ -52,6 +52,24 @@ def test(sim):
     sim.check("already wired: still one wire", len(ends(sim)), 1, absolute=0)
     sim.check("already wired: note in Messages", int("already wired" in pane(sim)), 1, absolute=0)
 
+    # After _, the selected part continues out its other side: its selected pin
+    # becomes the pin most opposite to the wired one (D18). R2 selected, wired at
+    # its lPin (pointing back at R1): its selected pin becomes its rPin
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("ui", "click", "100,100")
+    sim.cli("ui", "type", "r")
+    ra = placed(sim)
+    sim.cli("ui", "type", "r")
+    rb = placed(sim)                                  # Selected, its lPin facing R1 (D18)
+    s = sim.cli("kbd", "state")
+    sim.check("R2's selected pin is the wired lPin", int(s["selectedPin"] == rb+".lPin"), 1, absolute=0,
+              note=str(s.get("selectedPin")))
+    s = sim.cli("ui", "type", "_")
+    sim.check("_ wired R1.rPin to R2.lPin", int(ends(sim) == [(ra+".rPin", rb+".lPin")]), 1, absolute=0,
+              note=str(ends(sim)))
+    sim.check("_: the selected part continues out its other pin",
+              int(s["selectedPin"] == rb+".rPin"), 1, absolute=0, note=str(s.get("selectedPin")))
+
     # A pin that already has a wire: a junction dot is inserted on that wire
     sim.cli("ui", "click", "300,100")
     sim.cli("ui", "type", "r")

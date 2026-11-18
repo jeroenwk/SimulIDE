@@ -539,6 +539,12 @@ Decisions (user, 2026-11-18):
   the pin it left from**: with nothing selected, a placement continues from
   that pin while the cross is still at the spot beyond it (a cross moved
   elsewhere: the part is centred at the cross, unrotated).
+- **D18** (K4/K5 rev) The chain keeps flowing: the new part's **selected pin**
+  is the one nearest to the outgoing pin it was placed at (there is none: the
+  §4.3 pairing), and pinFrom is that outgoing pin. After `_` wires a pin of
+  the selected part, that part's selected pin becomes the pin **most
+  opposite** to the wired one (D16's rule), so the next Enter or placement
+  continues out the other side.
 - **D14** (K1 rev) `h` starts pan mode (pointer: cross with arrows; arrows pan;
   any other key, a selection or a mouse press ends it). `h` is not a part shortcut.
 - **D15** (K1 rev) `Cmd+=`/`Cmd++` zoom in, `Cmd+-` out, `Cmd+0` 100 %, cross kept
