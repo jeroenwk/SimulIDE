@@ -7,6 +7,7 @@
 #include <QGuiApplication>
 #include <QJsonArray>
 #include <QtMath>
+#include <algorithm>
 #include <QDebug>
 
 #include "keyboardcontroller.h"
@@ -27,6 +28,8 @@ KeyboardController::KeyboardController()
     m_focused       = false;
     m_pointerHidden = false;
     m_lastMouseSet  = false;
+    m_arrowBurst    = false;
+    m_burstEdit     = -1;
 }
 
 QPointF KeyboardController::snap( QPointF p )
@@ -37,7 +40,8 @@ QPointF KeyboardController::snap( QPointF p )
 void KeyboardController::reset()
 {
     showPointer();
-    m_cursorSet = false;
+    m_cursorSet  = false;
+    m_arrowBurst = false;
 }
 
 static bool isModifierKey( int key )
@@ -57,17 +61,44 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     Qt::KeyboardModifiers mods = event->modifiers() & ~Qt::KeypadModifier;
 
     bool arrow = key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down;
-    if( arrow && mods == Qt::ShiftModifier && Circuit::self()->selectedItems().isEmpty() )
+    if( arrow && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return arrowKey( event, mods );
+
+    m_arrowBurst = false;       // Any other key ends a burst of arrow moves
+    return false;
+}
+
+// Arrows: nothing selected: pan (left to the view), Shift: move the cursor.
+// A selection: move it 64 px, Shift: 8 px, with the wires attached, as a mouse drag does
+bool KeyboardController::arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
+{
+    int key = event->key();
+    QPointF dir;
+    if     ( key == Qt::Key_Left  ) dir = QPointF(-1, 0 );
+    else if( key == Qt::Key_Right ) dir = QPointF( 1, 0 );
+    else if( key == Qt::Key_Up    ) dir = QPointF( 0,-1 );
+    else                            dir = QPointF( 0, 1 );
+
+    Circuit* circ = Circuit::self();
+    QList<QGraphicsItem*> sel = circ->selectedItems();
+    if( sel.isEmpty() )
     {
-        QPointF d;
-        if     ( key == Qt::Key_Left  ) d = QPointF(-smallStep, 0 );
-        else if( key == Qt::Key_Right ) d = QPointF( smallStep, 0 );
-        else if( key == Qt::Key_Up    ) d = QPointF( 0,-smallStep );
-        else                            d = QPointF( 0, smallStep );
-        moveCursorTo( cursorPos()+d );
+        m_arrowBurst = false;
+        if( mods != Qt::ShiftModifier ) return false;      // Pan
+        moveCursorTo( cursorPos()+dir*smallStep );
         return true;
     }
-    return false;
+    QPointF d = dir*( mods == Qt::ShiftModifier ? smallStep : bigStep );
+
+    std::sort( sel.begin(), sel.end() );
+    bool newStep = !m_arrowBurst || m_burstEdit != circ->editCount() || sel != m_burstSelection;
+    circ->moveSelection( d, newStep );
+    m_arrowBurst     = true;
+    m_burstEdit      = circ->editCount();
+    m_burstSelection = sel;
+
+    moveCursorTo( cursorPos()+d );                          // The cursor follows the selection
+    if( CircuitView* v = CircuitView::self() ) v->ensureVisible( v->selectedRect(), 32, 32 );
+    return true;
 }
 
 void KeyboardController::mouseMoved( QPoint viewPos, QPointF scenePos )
