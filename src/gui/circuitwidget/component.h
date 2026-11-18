@@ -98,6 +98,10 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
         void setShowState( bool s ) { m_showState = s; }
 
         QString showProp();
+
+        // K7: the property typed values go to: the shown property when it is a
+        // double / int property (a part without a numeric shown value takes none)
+        virtual QString valueProperty();
         void setShowProp( QString prop );
 
         bool isGraphical() { return m_graphical; }

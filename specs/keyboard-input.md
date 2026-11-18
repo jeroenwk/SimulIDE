@@ -367,7 +367,9 @@ Validate
   with or without Shift, D10), `-`, `.` or `,` enters **EditValue**. Buffer grammar:
   `[-] digits [(.|,) digits] [multiplier [digits]]` — the last form is `4k7`
   (= 4.7 k). Multipliers `p n u m k M G` (`M` mega, `m` milli). Extra keys
-  after a complete value are ignored.
+  after a complete value are ignored. On AZERTY the unshifted 6 key (`-`) is
+  the minus and the unshifted 8 key (`_`, the wire key, K8) is never a digit:
+  the typed character decides before the physical key does.
 - The value label shows the buffer + unit with an edit marker (`200k▏Ω`, in
   `highlight`); the property is **not** changed until Enter.
 - Backspace removes one char; when none is left, edit ends and the value from
@@ -380,9 +382,16 @@ Validate
   the same way.
 - `valueProperty()` for the K5 parts, checked in code during K7: resistor and
   potentiometer Resistance, capacitors Capacitance, inductor Inductance,
-  battery / fixed voltage Voltage, wave gen frequency, zener breakdown voltage;
-  the others (meters, scope, ground, switches, semiconductors without one
-  obvious value) none → value keys do nothing.
+  battery Voltage, fixed voltage Voltage (kept negative), wave gen Freq;
+  the others (meters, scope, ground, switches, semiconductors) none → value
+  keys do nothing. Checked findings: the zener's breakdown voltage is its
+  `Model` enum (BZX… strings), not a number, so a zener takes no typed value;
+  battery, fixed voltage and wave gen had no shown value, and now show one
+  (`setShowProp`: Voltage, Voltage, Freq) so the typed buffer is visible.
+  The default rule is the shown property when it is a double/int property
+  (`Component::valueProperty`), so other parts with a numeric shown value
+  (resistor DIP, varistor, rail, current source, voltage regulator) take
+  typed values too.
 
 Validate
 - [ ] `r 2 0 0 k Enter` typed on AZERTY **without Shift** (`r é à à k`): R = 200 kΩ,

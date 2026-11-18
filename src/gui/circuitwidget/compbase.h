@@ -61,6 +61,10 @@ class CompBase
         // A description shown under a property's field in the properties dialog ("": none)
         virtual QString propHelp( QString prop ) { return ""; }
 
+        // The property typed values go to (K7, specs/keyboard-input.md): "" = this part
+        // takes no typed value. Component's default: the shown property if it is numeric
+        virtual QString valueProperty() { return ""; }
+
         PropDialog* propDialog() { return m_propDialog; }   // CLI: view props / capture window props
 
     protected:

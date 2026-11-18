@@ -91,6 +91,17 @@ class KeyboardController
         bool spaceKey();
         bool escKey();
         bool enterKey();
+
+        // Typing the selected part's value (K7): buffer [-]digits[.digits][mult[digits]]
+        QChar   valueEntryChar( QKeyEvent* event, Qt::KeyboardModifiers mods );  // '\0': not one
+        bool    valueKey( QKeyEvent* event, Qt::KeyboardModifiers mods );        // While editing
+        bool    startValueEdit( QChar first );
+        void    endValueEdit();                     // Revert: the label shows the value from before
+        void    commitValue();                      // Enter: set the property (one undo step)
+        void    valueChar( QChar c );               // One buffer char, per the grammar
+        void    updateValueLabel();                 // The label shows the buffer + unit (200k▏Ω)
+        QString valueString( Component* comp );     // The buffer as a property value ("200 kΩ")
+
         void selectPart( Component* comp );
         Component* compByUid( QString uid );
         QList<Component*> readingOrder();
@@ -129,6 +140,11 @@ class KeyboardController
         QString m_prevPart;                     // Uid of the part before it (A)
         bool    m_selPending;                   // A settleSelection() is queued
         void*   m_circuit;                      // Circuit whose selectionChanged is connected
+
+        bool    m_valueEdit;                    // A value is being typed on the selected part
+        QString m_valueUid;
+        QString m_valueProp;
+        QString m_valueBuf;
 
         QPointer<QDialog> m_focusDialog;        // Properties dialog that returns focus to the canvas
 };

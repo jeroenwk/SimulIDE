@@ -15,6 +15,8 @@
 #include <QCursor>
 #include <QDialog>
 #include "propdialog.h"
+#include "comproperty.h"
+#include "label.h"
 
 #include "keyboardcontroller.h"
 #include "circuitview.h"
@@ -45,6 +47,7 @@ KeyboardController::KeyboardController()
     m_burstEdit     = -1;
     m_selPending    = false;
     m_circuit       = nullptr;
+    m_valueEdit     = false;
 }
 
 QPointF KeyboardController::snap( QPointF p )
@@ -55,6 +58,10 @@ QPointF KeyboardController::snap( QPointF p )
 void KeyboardController::reset()
 {
     m_panMode = false;
+    m_valueEdit = false;
+    m_valueUid.clear();
+    m_valueProp.clear();
+    m_valueBuf.clear();
     showPointer();
     m_cursorSet  = false;
     m_arrowBurst = false;
@@ -94,11 +101,24 @@ bool KeyboardController::keyPress( QKeyEvent* event )
 
     if( arrow && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return arrowKey( event, mods );
 
-    if( panKey ){ setPanMode( true ); return true; }
-
     if( zoomKey( event, mods ) ) return true;
 
     m_arrowBurst = false;       // Any other key ends a burst of arrow moves
+
+    // Typing the selected part's value (K7). While editing, value keys build the buffer;
+    // any other key reverts first and then does its normal action
+    if( m_valueEdit )
+    {
+        if( valueKey( event, mods ) ) return true;
+        endValueEdit();
+    }
+    else
+    {
+        QChar first = valueEntryChar( event, mods );           // A digit, - . , enters the edit
+        if( first != '\0' && startValueEdit( first ) ) return true;
+    }
+
+    if( panKey ){ setPanMode( true ); return true; }
 
     if( mods == Qt::NoModifier || mods == Qt::ShiftModifier )
     {
@@ -284,6 +304,188 @@ bool KeyboardController::enterKey()
     return true;
 }
 
+// The char a digit, - or . , key types ('\0': not a value key). D10: the AZERTY number
+// row counts as digits with or without Shift, matched by its physical key (kVK_ANSI_0…9,
+// the number row on every layout) — except "-" (the AZERTY 6 key), which is a minus,
+// and "_", the wire key (K8)
+QChar KeyboardController::valueEntryChar( QKeyEvent* event, Qt::KeyboardModifiers mods )
+{
+    if( !( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return '\0';
+    QString t = event->text();
+    if( t.size() == 1 )
+    {
+        if( t[0].isDigit() ) return t[0];
+        if( t[0] == '-' ) return '-';
+        if( t[0] == '.' || t[0] == ',' ) return '.';
+        if( t[0] == '_' ) return '\0';
+    }
+    int key = event->key();
+    if( key >= Qt::Key_0 && key <= Qt::Key_9 ) return QChar( '0'+key-Qt::Key_0 );  // é = Key_2
+#ifdef Q_OS_MACOS
+    quint32 vk = event->nativeVirtualKey();              // D10, as the zoom 0 key (K1 rev)
+    if     ( vk == 0x12 ) return '1';
+    else if( vk == 0x13 ) return '2';
+    else if( vk == 0x14 ) return '3';
+    else if( vk == 0x15 ) return '4';
+    else if( vk == 0x16 ) return '6';
+    else if( vk == 0x17 ) return '5';
+    else if( vk == 0x19 ) return '9';
+    else if( vk == 0x1A ) return '7';
+    else if( vk == 0x1C ) return '8';
+    else if( vk == 0x1D ) return '0';
+#endif
+    if( key == Qt::Key_Minus ) return '-';
+    if( key == Qt::Key_Period || key == Qt::Key_Comma ) return '.';
+    return '\0';
+}
+
+bool KeyboardController::startValueEdit( QChar first )
+{
+    Component* comp = singlePart();
+    if( !comp ) return false;
+    QString prop = comp->valueProperty();
+    if( prop.isEmpty() ) return false;                   // This part takes no typed value
+
+    m_valueEdit = true;
+    m_valueUid  = comp->getUid();
+    m_valueProp = prop;
+    m_valueBuf  = ( first == '.' ) ? "0." : QString( first );
+    qDebug() << "[kbd] value edit" << prop << "on" << m_valueUid;
+    updateValueLabel();
+    return true;
+}
+
+// A key while a value is typed. false: not a value key, the edit reverts and the key
+// does its normal action (Tab: next part, r: place a part, ...)
+bool KeyboardController::valueKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
+{
+    int key = event->key();
+    if( key == Qt::Key_Backspace && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) )
+    {
+        if( !m_valueBuf.isEmpty() ) m_valueBuf.chop(1);
+        if( m_valueBuf.isEmpty() ) endValueEdit();       // D8: no char left: the edit ends; the
+        else                       updateValueLabel();   // next Backspace deletes the part
+        return true;
+    }
+    if( mods == Qt::NoModifier )
+    {
+        if( key == Qt::Key_Escape ) { endValueEdit(); return true; }   // Revert, stay selected
+        if( key == Qt::Key_Return || key == Qt::Key_Enter ) { commitValue(); return true; }
+    }
+    QChar c = valueEntryChar( event, mods );
+    if( c != '\0' ){ valueChar( c ); return true; }
+    QString t = event->text();
+    if( t.size() == 1 && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier )
+                     && QString("pnumkMG").contains( t[0] ) )          // p n u m k M G (u = µ)
+    { valueChar( t[0] ); return true; }
+    return false;
+}
+
+// One buffer char, per the grammar [-]digits[.digits][mult[digits]]. What does not
+// fit (a second dot, a second multiplier, a sign mid-value) is ignored
+void KeyboardController::valueChar( QChar c )
+{
+    bool hasMult = false, hasDot = false;
+    int  digits  = 0;
+    for( QChar ch : m_valueBuf )
+    {
+        if( ch.isDigit() ) digits++;
+        else if( ch == '.' ) hasDot = true;
+        else                hasMult = true;              // The multiplier letter
+    }
+    if( c.isDigit() ) m_valueBuf.append( c );            // Digits always fit (4k7 too)
+    else if( c == '.' )            { if( !hasDot && !hasMult && digits > 0 ) m_valueBuf.append( c ); }
+    else if( c != '-' )            { if( !hasMult && digits > 0 ) m_valueBuf.append( c ); }
+    // c == '-': the sign is only the entry key; mid-edit it is ignored
+    updateValueLabel();
+}
+
+// The value label shows the buffer, an edit marker and the unit: 200k▏Ω, in highlight
+void KeyboardController::updateValueLabel()
+{
+    Component* comp = compByUid( m_valueUid );
+    if( !comp ) return;
+    QString unit;
+    if( ComProperty* p = comp->property( m_valueProp ) )
+    {
+        unit = p->unit();
+        if( unit.size() > 1 && QString("pnµmkMGT").contains( unit.at(0) ) ) unit = unit.mid( 1 );
+        if( unit.startsWith("_") ) unit = unit.mid( 1 );                 // "_%": shown without the _
+    }
+    comp->valLabel()->setDefaultTextColor( Theme::highlight() );
+    comp->setValLabelText( m_valueBuf+QChar( 0x258F )+unit );
+}
+
+// Revert: the value from before the edit is shown again (the property was never changed)
+void KeyboardController::endValueEdit()
+{
+    if( !m_valueEdit ) return;
+    m_valueEdit = false;
+    Component* comp = compByUid( m_valueUid );
+    m_valueUid.clear();
+    m_valueBuf.clear();
+    if( !comp ) return;
+    comp->valLabel()->setDefaultTextColor( Theme::valLabel() );
+    if( ComProperty* p = comp->property( m_valueProp ) )
+        comp->setValLabelText( p->getValStr() );
+    m_valueProp.clear();
+}
+
+// The buffer as a value string the property takes: "200 kΩ", "4.7 µF", "100 nF";
+// digits after the multiplier are the fraction (4k7 = 4.7 k)
+QString KeyboardController::valueString( Component* comp )
+{
+    ComProperty* p = comp->property( m_valueProp );
+    if( !p ) return "";
+    QString num = m_valueBuf;
+    QString mult;
+    for( int i=0; i<m_valueBuf.size(); ++i )
+    {
+        QChar c = m_valueBuf.at( i );
+        if( c.isDigit() || c == '-' || c == '.' || c == ',' ) continue;
+        mult = ( c == 'u' ) ? "µ" : QString( c );
+        num  = m_valueBuf.left( i );
+        QString tail = m_valueBuf.mid( i+1 );
+        if( !tail.isEmpty() ) num = num.contains('.') ? num+tail : num+"."+tail;
+        break;
+    }
+    num.replace( ',', '.' );
+
+    QString base = p->unit();
+    if( base.size() > 1 && QString("pnµmkMGT").contains( base.at(0) ) ) base = base.mid( 1 );
+    if( base.startsWith("_") || base.isEmpty() )         // No SI prefixes: the value itself
+        return QString::number( num.toDouble()*getMultiplier( mult ), 'g', 15 )+" "+base;
+    return num+" "+mult+base;
+}
+
+// Enter: set the property (one undo step), leave the edit, unselect, cursor right.
+// What the property refuses it clamps; the label shows what was set
+void KeyboardController::commitValue()
+{
+    Component* comp = compByUid( m_valueUid );
+    bool digits = false;
+    for( QChar ch : m_valueBuf ) if( ch.isDigit() ) digits = true;
+    if( comp && digits )
+    {
+        QString val = valueString( comp );
+        QString old = comp->getPropStr( m_valueProp );
+        Circuit* circ = Circuit::self();
+        circ->beginUndoStep();
+        comp->setPropStr( m_valueProp, val );
+        circ->calcCircuitChanges();
+        circ->addCompChange( comp->getUid(), m_valueProp, old );
+        circ->endCircuitBatch();
+        circ->setChanged();
+        qDebug() << "[kbd] value" << val << "->" << m_valueProp << "on" << m_valueUid;
+    }
+    endValueEdit();
+    if( comp )                                           // Then as Enter (K4)
+    {
+        Circuit::self()->clearSelection();
+        moveCursorTo( comp->pos()+QPointF( bigStep, 0 ) );
+    }
+}
+
 bool KeyboardController::anyPartSelected()
 {
     Circuit* circ = Circuit::self();
@@ -350,6 +552,11 @@ void KeyboardController::zoomAround( double factor )
 
 void KeyboardController::selectionChanged()
 {
+    if( m_valueEdit )                                    // The edit ends when its part is no
+    {                                                    // longer the single selection (K7)
+        Component* c = singlePart();
+        if( !c || c->getUid() != m_valueUid ) endValueEdit();
+    }
     if( m_cursorSet ) updateCross( m_cursor );   // Shown only while no part is selected
     if( m_panMode && anyPartSelected() ) setPanMode( false );
     if( m_selPending ) return;
@@ -501,7 +708,7 @@ void KeyboardController::mouseMoved( QPoint viewPos )
     showPointer();                          // The cross does not follow the mouse
 }
 
-void KeyboardController::mousePressed() { setPanMode( false ); }
+void KeyboardController::mousePressed() { endValueEdit(); setPanMode( false ); }   // A click reverts (K7)
 
 void KeyboardController::clickedEmpty( QPointF scenePos )
 {
@@ -610,5 +817,8 @@ QJsonObject KeyboardController::state()
     if( m_selPending ) settleSelection();
     Component* lp = lastPart();
     o["lastPart"] = lp ? QJsonValue( lp->getUid() ) : QJsonValue();
+    if( m_valueEdit )                                     // K7: the value being typed
+        o["valueEdit"] = QJsonObject{ {"part", m_valueUid}, {"property", m_valueProp},
+                                       {"buffer", m_valueBuf} };
     return o;      // The CLI adds the pins (pinFrom, pinTo, selectedPin) as "R1.lPin" refs
 }
