@@ -43,9 +43,62 @@ static QJsonObject kbdState()
 
 // One key token: [mod+...]key. Mods: shift, cmd (= ctrl, Qt's ControlModifier, the Command
 // key on macOS), alt (opt), meta. Key: a single character, or a name (Left, Tab, Enter, ...)
-static void parseKey( QString tok, int& key, Qt::KeyboardModifiers& mods, QString& text )
+// A layout's printable keys as macOS reports them (D21): the character, the physical key
+// (kVK_ code), Shift, and Qt's key code (from the character with Shift, as with Cmd)
+struct LayoutKey { quint32 vk; bool shift; int key; };
+
+static const QHash<QChar, LayoutKey>& layoutKeys( QString layout )
+{
+    static QHash<QString, QHash<QChar, LayoutKey>> layouts;
+    if( layouts.isEmpty() )
+    {
+        const quint32 row[10] = { 0x1D, 0x12, 0x13, 0x14, 0x15, 0x17, 0x16, 0x1A, 0x1C, 0x19 };  // 0 … 9
+        QHash<QChar, LayoutKey> us, de, fr;
+        for( int d=0; d<10; ++d )
+        {
+            us[ QChar('0'+d) ] = { row[d], false, Qt::Key_0+d };    // QWERTY, QWERTZ: digits
+            de[ QChar('0'+d) ] = { row[d], false, Qt::Key_0+d };    // unshifted
+            fr[ QChar('0'+d) ] = { row[d], true,  Qt::Key_0+d };    // AZERTY: with Shift
+        }
+        // US QWERTY
+        us['!'] = { 0x12, true, Qt::Key_Exclam };    us['-'] = { 0x1B, false, Qt::Key_Minus };
+        us['_'] = { 0x1B, true, Qt::Key_Underscore };us['='] = { 0x18, false, Qt::Key_Equal };
+        us['+'] = { 0x18, true, Qt::Key_Plus };      us['.'] = { 0x2F, false, Qt::Key_Period };
+        us['>'] = { 0x2F, true, Qt::Key_Greater };   us[','] = { 0x2B, false, Qt::Key_Comma };
+        us['<'] = { 0x2B, true, Qt::Key_Less };      us[';'] = { 0x29, false, Qt::Key_Semicolon };
+        us[':'] = { 0x29, true, Qt::Key_Colon };     us['/'] = { 0x2C, false, Qt::Key_Slash };
+        // German QWERTZ (Mac)
+        de['!'] = { 0x12, true, Qt::Key_Exclam };    de['/'] = { 0x1A, true, Qt::Key_Slash };
+        de['('] = { 0x1C, true, Qt::Key_ParenLeft }; de[')'] = { 0x19, true, Qt::Key_ParenRight };
+        de['='] = { 0x1D, true, Qt::Key_Equal };     de['+'] = { 0x1E, false, Qt::Key_Plus };
+        de['<'] = { 0x32, false, Qt::Key_Less };     de['>'] = { 0x32, true, Qt::Key_Greater };
+        de['-'] = { 0x2C, false, Qt::Key_Minus };    de['_'] = { 0x2C, true, Qt::Key_Underscore };
+        de['.'] = { 0x2F, false, Qt::Key_Period };   de[':'] = { 0x2F, true, Qt::Key_Colon };
+        de[','] = { 0x2B, false, Qt::Key_Comma };    de[';'] = { 0x2B, true, Qt::Key_Semicolon };
+        // French AZERTY (Mac): the number row types & é " ' ( § è ! ç à without Shift
+        fr['&'] = { 0x12, false, Qt::Key_Ampersand };  fr[QChar(0xE9)] = { 0x13, false, Qt::Key_Eacute };
+        fr['"'] = { 0x14, false, Qt::Key_QuoteDbl };   fr['\''] = { 0x15, false, Qt::Key_Apostrophe };
+        fr['('] = { 0x17, false, Qt::Key_ParenLeft };  fr[QChar(0xA7)] = { 0x16, false, Qt::Key_section };
+        fr[QChar(0xE8)] = { 0x1A, false, Qt::Key_Egrave }; fr['!'] = { 0x1C, false, Qt::Key_Exclam };
+        fr[QChar(0xE7)] = { 0x19, false, Qt::Key_Ccedilla }; fr[QChar(0xE0)] = { 0x1D, false, Qt::Key_Agrave };
+        fr[')'] = { 0x1B, false, Qt::Key_ParenRight }; fr['-'] = { 0x18, false, Qt::Key_Minus };
+        fr['_'] = { 0x18, true, Qt::Key_Underscore };  fr['<'] = { 0x32, false, Qt::Key_Less };
+        fr['>'] = { 0x32, true, Qt::Key_Greater };     fr[':'] = { 0x2F, false, Qt::Key_Colon };
+        fr['/'] = { 0x2F, true, Qt::Key_Slash };       fr['='] = { 0x2C, false, Qt::Key_Equal };
+        fr['+'] = { 0x2C, true, Qt::Key_Plus };        fr[','] = { 0x2E, false, Qt::Key_Comma };
+        fr[';'] = { 0x2B, false, Qt::Key_Semicolon };  fr['.'] = { 0x2B, true, Qt::Key_Period };
+        layouts["us"] = us; layouts["de"] = de; layouts["fr"] = fr;
+    }
+    static const QHash<QChar, LayoutKey> none;
+    auto it = layouts.constFind( layout );
+    return it == layouts.constEnd() ? none : it.value();
+}
+
+static void parseKey( QString tok, int& key, Qt::KeyboardModifiers& mods, QString& text,
+                      QString layout, quint32& vk )
 {
     mods = Qt::NoModifier;
+    vk = 0;
     while( tok.size() > 1 && tok.contains('+') )
     {
         int i = tok.indexOf('+');
@@ -80,6 +133,16 @@ static void parseKey( QString tok, int& key, Qt::KeyboardModifiers& mods, QStrin
     }
     if( tok.isEmpty() ) throw CliError("empty key");
     QChar ch = tok.at( 0 );
+    const QHash<QChar, LayoutKey>& lk = layoutKeys( layout );
+    if( lk.contains( ch ) )                                 // --layout: as that keyboard sends it
+    {
+        LayoutKey k = lk.value( ch );
+        if( k.shift ) mods |= Qt::ShiftModifier;
+        key  = k.key;
+        vk   = k.vk;
+        text = ( mods & ( Qt::ControlModifier | Qt::MetaModifier ) ) ? QString() : QString( ch );
+        return;
+    }
     // The AZERTY number row without Shift (D10): the physical digit keys with their
     // AZERTY characters, as macOS reports them (key code by position, text by layout).
     // "-" and "_" stay their own keys, which the editor also reads by text
@@ -98,30 +161,34 @@ static void parseKey( QString tok, int& key, Qt::KeyboardModifiers& mods, QStrin
 
 void CliApi::registerKbd()
 {
-    add("ui type", "ui type <key> [key ...]",
+    add("ui type", "ui type <key> [key ...] [--layout us|de|fr]",
         "Type keys on the canvas as real key events (press + release each), as the keyboard does. "
         "A key is a character (r, 2, <, _, é) or a name (Left Right Up Down Tab Enter Esc Backspace "
         "Delete Space Home End), with modifiers joined by +: shift+Left, cmd+z, cmd+shift+<. "
         "An uppercase letter implies shift. The AZERTY number row without Shift is typed by its "
         "characters (& é \" ' ( è ç à): each is its physical digit key with that text. "
-        "Gives the canvas focus first.",
+        "--layout us|de|fr: printable keys as macOS sends them on a US QWERTY, German QWERTZ or "
+        "French AZERTY keyboard (Shift where that layout needs it, the physical key code): "
+        "e.g. = is Shift+0 with de, digits need Shift with fr. Gives the canvas focus first.",
         []( CliCtx& c ) -> QJsonValue
     {
         if( c.pos.isEmpty() ) throw CliError("missing keys");
         CircuitView* v = CircuitView::self();
         if( !v ) throw CliError("no circuit view");
 
-        struct K { int key; Qt::KeyboardModifiers mods; QString text; };
+        struct K { int key; Qt::KeyboardModifiers mods; QString text; quint32 vk; };
+        QString layout = c.opt("layout");
+        if( !layout.isEmpty() && layoutKeys( layout ).isEmpty() ) throw CliError("unknown layout: "+layout+" (us, de, fr)");
         QList<K> keys;
-        for( QString tok : c.pos ){ K k; parseKey( tok, k.key, k.mods, k.text ); keys.append( k ); }
+        for( QString tok : c.pos ){ K k; parseKey( tok, k.key, k.mods, k.text, layout, k.vk ); keys.append( k ); }
 
         v->setFocus( Qt::OtherFocusReason );
         if( CliApi::self()->headless() ) KeyboardController::self()->setFocused( true ); // No active window offscreen
         for( const K& k : keys )
         {
-            QKeyEvent press( QEvent::KeyPress, k.key, k.mods, k.text );
+            QKeyEvent press( QEvent::KeyPress, k.key, k.mods, 0, k.vk, 0, k.text );
             QApplication::sendEvent( v, &press );
-            QKeyEvent release( QEvent::KeyRelease, k.key, k.mods, k.text );
+            QKeyEvent release( QEvent::KeyRelease, k.key, k.mods, 0, k.vk, 0, k.text );
             QApplication::sendEvent( v, &release );
         }
         return kbdState();

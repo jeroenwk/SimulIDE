@@ -6,6 +6,7 @@
 #include <QDebug>
 
 #include "valueeditor.h"
+#include "physicalkeys.h"
 #include "circuit.h"
 #include "component.h"
 #include "comproperty.h"
@@ -30,20 +31,17 @@ QChar ValueEditor::entryChar( QKeyEvent* event, Qt::KeyboardModifiers mods )
         if( t[0] == '_' ) return '\0';       // The AZERTY 8 key unshifted: never a digit
     }
     int key = event->key();
-    if( key >= Qt::Key_0 && key <= Qt::Key_9 ) return QChar( '0'+key-Qt::Key_0 );  // é = Key_2
-#ifdef Q_OS_MACOS
-    quint32 vk = event->nativeVirtualKey();   // kVK_ANSI_0…9: the number row on every layout
-    if     ( vk == 0x12 ) return '1';         // ("-", the AZERTY 6 key, is a minus: by text)
-    else if( vk == 0x13 ) return '2';
-    else if( vk == 0x14 ) return '3';
-    else if( vk == 0x15 ) return '4';
-    else if( vk == 0x16 ) return '6';
-    else if( vk == 0x17 ) return '5';
-    else if( vk == 0x19 ) return '9';
-    else if( vk == 0x1A ) return '7';
-    else if( vk == 0x1C ) return '8';
-    else if( vk == 0x1D ) return '0';
-#endif
+    // A number-row key without Shift whose character is not a digit (AZERTY: & é " …):
+    // its digit, by position (D10). With Shift the character decides: on QWERTY and
+    // QWERTZ the shifted row types symbols that are commands (= is Shift+0 on QWERTZ,
+    // / is Shift+7), so they are not digits there (D21)
+    if( mods == Qt::NoModifier )
+    {
+        int d = PhysicalKeys::numberRowDigit( event );
+        if( d >= 0 ) return QChar( '0'+d );
+        if( key >= Qt::Key_0 && key <= Qt::Key_9 ) return QChar( '0'+key-Qt::Key_0 );  // é = Key_2
+    }
+    if( !t.isEmpty() ) return '\0';          // Any other character: not a value key
     if( key == Qt::Key_Minus ) return '-';
     if( key == Qt::Key_Period || key == Qt::Key_Comma ) return '.';
     return '\0';

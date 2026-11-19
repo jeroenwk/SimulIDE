@@ -23,8 +23,8 @@ class ValueEditor
     public:
         ValueEditor();
 
-        // The char a digit, - or . , key types ('\0': not one). D10: the number row
-        // counts as digits with or without Shift (AZERTY), matched by its physical key
+        // The char a digit, - or . , key types ('\0': not one). A digit character on any
+        // layout; the number row without Shift also by position (AZERTY: D10, D21)
  static QChar entryChar( QKeyEvent* event, Qt::KeyboardModifiers mods );
 
         bool active() { return m_active; }
