@@ -337,6 +337,15 @@ QJsonObject compControls( Component* comp )
 }
 }
 
+// ui click's component form (cli_kbd.cpp owns the "ui click" name and calls this
+// for a component instead of an x,y position): click a part's button or toggle its switch
+QJsonValue uiClickControl( CliCtx& c )
+{
+    Component* comp = CliRefs::comp( c.arg( 0, "component") );
+    control( comp, c.argOr( 1, ""), true ).button->click();
+    return compControls( comp );
+}
+
 namespace
 {
 QJsonObject scopeSettings( PlotBase* plot )
@@ -709,13 +718,6 @@ void CliApi::registerMeasure()
         return compControls( comp );
     });
 
-    add("ui click", "ui click <comp> [index]", "Click a button or toggle a switch (press + release).",
-        []( CliCtx& c ) -> QJsonValue
-    {
-        Component* comp = CliRefs::comp( c.arg( 0, "component") );
-        control( comp, c.argOr( 1, ""), true ).button->click();
-        return compControls( comp );
-    });
 
     add("ui set", "ui set <comp> [index] <on|off>", "Set a switch/toggle to a state.",
         []( CliCtx& c ) -> QJsonValue

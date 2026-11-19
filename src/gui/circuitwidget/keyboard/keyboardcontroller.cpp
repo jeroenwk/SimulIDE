@@ -21,6 +21,9 @@
 #include "keyboardcontroller.h"
 #include "circuitview.h"
 #include "circuit.h"
+#include "circuitwidget.h"
+#include "simulator.h"
+#include "connector.h"
 #include "component.h"
 #include "theme.h"
 #include "pin.h"
@@ -136,9 +139,12 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     QString t = event->text();
     if( mods == Qt::NoModifier && t.size() == 1 && t[0] >= 'a' && t[0] <= 'z' && partKey( t ) ) return true;
 
+    // _ : wire pinFrom to pinTo (K8). Unshifted on AZERTY, shifted elsewhere: matched by text
+    QString text = event->text();
+    if( text == "_" && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return wireKey();
+
     // < and > : next / previous pin of the selected part (Cmd: also the "from" pin).
     // The character decides (AZERTY: < unshifted, > with Shift); with Cmd macOS gives no text
-    QString text = event->text();
     bool greater = text == ">" || ( text.isEmpty() && key == Qt::Key_Greater );
     bool less    = text == "<" || ( text.isEmpty() && key == Qt::Key_Less );
     if( ( greater || less ) && !( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) )
@@ -283,6 +289,44 @@ bool KeyboardController::spaceKey()
             });
         }
     }
+    return true;
+}
+
+// _: wire pinFrom to pinTo (K8). The pins and the selection stay; the new wire is not
+// selected. A line in Messages says why nothing was wired
+bool KeyboardController::wireKey()
+{
+    auto say = []( QString text ){
+        if( CircuitWidget* w = CircuitWidget::self() ) w->eventMessage( text, 0 );
+    };
+    Pin* f = pinFrom();
+    Pin* t = pinTo();
+    if( !f || !t )
+    {
+        say( "Keyboard: nothing to wire — choose the pins with > and < (one part selected)" );
+        return true;
+    }
+    if( f == t )
+    {
+        say( "Keyboard: both ends are the same pin ("+f->pinId()+")" );
+        return true;
+    }
+    if( f->connector() && f->connector() == t->connector() )
+    {
+        say( "Keyboard: "+f->pinId()+" and "+t->pinId()+" are already wired ("+f->connector()->getUid()+")" );
+        return true;
+    }
+
+    bool running = Simulator::self()->isRunning();
+    Connector* con = Circuit::self()->connectPins( f, t );
+    if( !con )
+    {
+        say( "Keyboard: could not wire "+f->pinId()+" to "+t->pinId()
+            +" (no wire segment of the net long enough for a junction dot)" );
+        return true;
+    }
+    if( running && !Simulator::self()->isRunning() )
+        say( "Keyboard: simulation stopped to wire" );
     return true;
 }
 

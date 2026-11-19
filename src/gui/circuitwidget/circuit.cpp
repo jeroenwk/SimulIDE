@@ -1050,6 +1050,170 @@ void Circuit::closeconnector( Pin* endpin, bool save )
     if( save ) endUndoStep();
 }
 
+// ----- Wiring two pins (K8, specs/keyboard-input.md; shared with the CLI wire add) -----
+
+// A straight wire segment long enough to split with a junction on the 8 px grid
+bool Circuit::splittable( ConnectorLine* line )
+{
+    int len = qAbs( line->dx() ) + qAbs( line->dy() );
+    if( len < 16 ) return false;                         // Too short to split cleanly
+    return line->dx() == 0 || line->dy() == 0;           // Only straight segments
+}
+
+// Every wire of the net a pin's wire belongs to, following junction nodes (no simulation needed)
+QList<Connector*> Circuit::netWires( Connector* first )
+{
+    QList<Connector*> wires{ first };
+    for( int i=0; i<wires.size(); ++i )
+    {
+        for( Pin* end : { wires[i]->startPin(), wires[i]->endPin() } )
+        {
+            if( !end || !end->component() || end->component()->itemType() != "Node" ) continue;
+            Node* node = static_cast<Node*>( end->component() );
+            for( int p=0; p<3; ++p )
+            {
+                Pin* np = node->getPin( p );
+                Connector* c = np ? np->connector() : nullptr;
+                if( c && !wires.contains( c ) ) wires.append( c );
+            }
+        }
+    }
+    return wires;
+}
+
+// 1 when a leg from a pin going d runs against the way the pin faces (back into its part)
+int Circuit::backwards( QString side, QPoint d )
+{
+    if( side == "right" ) return d.x() < 0;
+    if( side == "left"  ) return d.x() > 0;
+    if( side == "down"  ) return d.y() < 0;
+    if( side == "up"    ) return d.y() > 0;
+    return 0;
+}
+
+// Wire path from a to b through the via points. Every leg is horizontal or vertical:
+// where two points differ in x and y a corner is added, leaving the start pin along its
+// own direction (startVertical) and then turning at each corner
+QStringList Circuit::routePoints( QPoint a, QPoint b, QList<QPoint> via, bool startVertical )
+{
+    QList<QPoint> target = via;
+    target.append( b );
+
+    QList<QPoint> pts{ a };
+    bool vertical = startVertical;                 // Direction of the next leg
+    for( QPoint p : target )
+    {
+        QPoint last = pts.last();
+        if( p == last ) continue;
+        if( p.x() != last.x() && p.y() != last.y() )   // Two legs: "vertical" then the other way,
+            pts.append( vertical ? QPoint( last.x(), p.y() ) : QPoint( p.x(), last.y() ) ); // so the next turns back to "vertical"
+        else vertical = ( p.x() != last.x() );           // Straight leg: the next one turns
+        pts.append( p );
+    }
+    QStringList out;
+    for( QPoint p : pts ) { out.append( QString::number( p.x() ) ); out.append( QString::number( p.y() ) ); }
+    return out;
+}
+
+// The middle of a segment, on the 8 px grid: where a junction dot goes
+static QPoint segmentMid( ConnectorLine* line )
+{
+    return toCompGrid( QPointF( ( line->p1()+line->p2() )/2 ) ).toPoint();
+}
+
+// The wire segment a junction for pin goes on: the one next to the pin in its own wire,
+// outwards; if all its segments are too short (bug hunt IMP-022), the splittable segment
+// of the same net whose middle is nearest to the pin. nullptr with *wired true: the pin
+// has a wire but no segment of its net is long enough
+static ConnectorLine* junctionSegment( Pin* pin, bool* wired )
+{
+    *wired = false;
+    Connector* con = pin->connector();
+    if( !con ) return nullptr;                          // No wire: a plain connection
+    *wired = true;
+
+    QList<ConnectorLine*>* lines = con->lineList();
+    QList<ConnectorLine*> order;
+    if( con->startPin() == pin ) for( int i=0; i<lines->size(); ++i )    order.append( lines->at( i ) );
+    else                         for( int i=lines->size()-1; i>=0; --i ) order.append( lines->at( i ) );
+
+    for( ConnectorLine* line : order )
+        if( Circuit::splittable( line ) ) return line;
+
+    QPoint at = pin->scenePos().toPoint();
+    QList<Connector*> net = Circuit::netWires( con );
+    ConnectorLine* best = nullptr;
+    int bestDist = INT_MAX;
+    for( Connector* w : net )
+    {
+        if( w == con ) continue;
+        for( ConnectorLine* line : *w->lineList() )
+        {
+            if( !Circuit::splittable( line ) ) continue;
+            int d = ( segmentMid( line )-at ).manhattanLength();
+            if( d < bestDist ){ bestDist = d; best = line; }
+        }
+    }
+    return best;
+}
+
+// The wire's route: one corner, two ways to turn — the start pin's axis first, unless
+// that leaves the start pin backwards or enters the end pin from behind, through its
+// own part (a tunnel facing away from its target: create-circuit #313)
+static void routeConnector( Connector* con )
+{
+    Pin* sp = con->startPin();
+    Pin* ep = con->endPin();
+    if( !sp || !ep ) return;
+    QPoint a = sp->scenePos().toPoint();
+    QPoint b = ep->scenePos().toPoint();
+    QString side  = sp->component()->itemType() == "Node" ? "" : sp->side();
+    QString eside = ep->component()->itemType() == "Node" ? "" : ep->side();
+    bool vertical = side == "up" || side == "down";
+    if( a.x() != b.x() && a.y() != b.y() )
+    {
+        auto wrong = [&]( bool vert ){
+            QPoint k = vert ? QPoint( a.x(), b.y() ) : QPoint( b.x(), a.y() );
+            return Circuit::backwards( side, k-a ) + Circuit::backwards( eside, k-b );
+        };
+        if( wrong( !vertical ) < wrong( vertical ) ) vertical = !vertical;
+    }
+    con->setPointList( Circuit::routePoints( a, b, QList<QPoint>(), vertical ) );
+}
+
+Connector* Circuit::connectPins( Pin* pinA, Pin* pinB )
+{
+    if( !pinA || !pinB || pinA == pinB ) return nullptr;
+    if( pinA->isBus() != pinB->isBus() ) return nullptr;
+    Connector* wired = pinA->connector();
+    if( wired && wired == pinB->connector() ) return nullptr;   // Already the same wire
+
+    if( m_simulator->isRunning() ) CircuitWidget::self()->powerCircOff();  // As a mouse wire
+
+    bool hasA = false, hasB = false;
+    ConnectorLine* lineA = junctionSegment( pinA, &hasA );
+    ConnectorLine* lineB = junctionSegment( pinB, &hasB );
+    if( ( hasA && !lineA ) || ( hasB && !lineB ) )
+    {
+        qDebug() << "[Circuit] connectPins: no wire segment of the net long enough (16 px) for a junction";
+        return nullptr;
+    }
+
+    if( lineA ) lineA->connectToWire( segmentMid( lineA ) );    // Starts on a dot on A's wire
+    else        newconnector( pinA, true );
+    Connector* con = m_newConnector;
+    if( lineB ) lineB->connectToWire( segmentMid( lineB ) );    // Ends on a dot on B's wire
+    else        closeconnector( pinB, true );
+
+    if( !con || !con->startPin() || !con->endPin() || !m_connList.contains( con ) )
+    {
+        qDebug() << "[Circuit] connectPins: wire could not be created";
+        return nullptr;
+    }
+    routeConnector( con );
+    return con;
+}
+
 void Circuit::deleteNewConnector()
 {
     if( !m_conStarted ) return;

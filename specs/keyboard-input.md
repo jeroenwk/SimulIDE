@@ -131,6 +131,12 @@ CircuitView (QGraphicsView)          Circuit (QGraphicsScene)
     coordinates (rotation and flip respected). Not saved in the `.sim1`.
   - `virtual QString valueProperty()` = the property typed values go to; default
     `m_showProperty` if it is a `DoubProp`/`IntProp`, overridden where needed.
+- **`Circuit::connectPins(pinA, pinB)`** (K8): wires two pins as the CLI
+  `wire add` does — H/V route with the corner chosen by the pins' sides
+  (`Pin::side()`), a junction dot on a pin that already has a wire, one undo
+  step, the simulation powered off first. The wire helpers it shares with the
+  CLI moved to `Circuit` (`splittable`, `netWires`, `backwards`,
+  `routePoints`); K9's network walk builds on `netWires`.
 - **`NetworkWalk`** (K9): builds the ordered list of wires, dots and corners
   reachable from a pin, without crossing parts.
 - **Pin painting**: `Pin::paint` asks the controller for its role

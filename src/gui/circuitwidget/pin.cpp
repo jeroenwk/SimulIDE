@@ -238,6 +238,15 @@ void Pin::mousePressEvent( QGraphicsSceneMouseEvent* event )
             else                                   Circuit::self()->newconnector( this, true );
 }   }   }
 
+// The way the pin faces, from its rotation: the pin's tip is its local origin and its
+// body runs along local +x, towards the component
+QString Pin::side()
+{
+    QPointF out = mapToScene( QPointF( 0, 0 ) ) - mapToScene( QPointF( 1, 0 ) );
+    if( qAbs( out.x() ) >= qAbs( out.y() ) ) return out.x() > 0 ? "right" : "left";
+    return out.y() > 0 ? "down" : "up";
+}
+
 void Pin::setLabelText( QString label, bool over )
 {
     label = label.simplified();

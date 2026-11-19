@@ -143,12 +143,16 @@ void CliApi::registerKbd()
         return kbdState();
     });
 
-    add("ui click", "ui click <x,y>",
+    add("ui click", "ui click <x,y> | ui click <comp> [index]",
         "Left click (press and release, no modifier) at a scene position on the canvas, as the mouse does: "
-        "on empty canvas it clears the selection and places the keyboard cursor there. The view scrolls "
-        "to show the point first.",
+        "on empty canvas it clears the selection and places the keyboard cursor there. With a component "
+        "name instead of x,y: click that part's button or toggle its switch. The view scrolls to show "
+        "the point first.",
         []( CliCtx& c ) -> QJsonValue
     {
+        if( c.pos.isEmpty() ) throw CliError("missing position x,y or component name");
+        if( !c.pos.at( 0 ).contains(',') ) return uiClickControl( c );   // The older form
+
         QStringList xy = c.arg( 0, "x,y").split(',');
         if( xy.size() != 2 ) throw CliError("position must be x,y");
         QPointF p( Cli::parseNum( xy[0], "x"), Cli::parseNum( xy[1], "y") );

@@ -20,6 +20,7 @@ class SubPackage;
 class Simulator;
 class SubCircuit;
 class Node;
+class ConnectorLine;
 
 class Circuit : public QGraphicsScene
 {
@@ -103,6 +104,20 @@ class Circuit : public QGraphicsScene
         void closeconnector( Pin* endpin, bool save=false );
         void deleteNewConnector();
         Connector* getNewConnector() { return m_newConnector; }
+
+        // Wire two pins, as the CLI wire add and the keyboard "_" key do (K8, specs/
+        // keyboard-input.md): a pin that already has a wire gets a junction dot on it,
+        // H/V route with the corner chosen by the pins' sides. One undo step; the
+        // simulation is powered off first, as for a mouse wire.
+        // nullptr: same pin, bus mismatch, already the same wire, or no wire segment
+        // of the net long enough for the junction
+        Connector* connectPins( Pin* pinA, Pin* pinB );
+
+        // Wire helpers, shared by the CLI wire add and connectPins
+        static bool splittable( ConnectorLine* line );          // Straight, long enough to split
+        static QList<Connector*> netWires( Connector* first );  // The net's wires, through junctions
+        static int backwards( QString side, QPoint d );         // A leg against the way a pin faces
+        static QStringList routePoints( QPoint a, QPoint b, QList<QPoint> via, bool startVertical );
 
         void addNode( Node* node );
         void addComponent( Component* comp );
