@@ -245,8 +245,23 @@ void ComponentSelector::addItem( QString caption, QTreeWidgetItem* catItem, QStr
     bool hidden = MainWindow::self()->compSettings()->value( name+"/hidden" ).toBool();
     hideFromList( item, hidden );
 
-    QString shortCut = MainWindow::self()->compSettings()->value( name+"/shortcut" ).toString();
+    QSettings* cs = MainWindow::self()->compSettings();
+    QString shortCut = cs->contains( name+"/shortcut" ) ? cs->value( name+"/shortcut" ).toString()
+                                                         : defaultShortCuts().value( name );
     if( !shortCut.isEmpty() ) m_shortCuts[name] = shortCut;
+}
+
+const QHash<QString, QString>& ComponentSelector::defaultShortCuts()
+{
+    static const QHash<QString, QString> keys = {
+        {"Oscope", "o"},      {"Amperimeter", "a"},   {"Voltimeter", "v"}, {"FreqMeter", "f"},
+        {"Fixed Voltage", "x"}, {"Battery", "y"},     {"WaveGen", "w"},    {"Ground", "g"},
+        {"Push", "b"},        {"Switch", "s"},        {"Resistor", "r"},   {"Potentiometer", "p"},
+        {"elCapacitor", "e"}, {"Capacitor", "c"},     {"Inductor", "i"},   {"Diode", "d"},
+        {"Zener", "z"},       {"Mosfet", "m"},        {"Jfet", "j"},       {"BJT", "t"},
+        {"UJT", "q"},         {"opAmp", "u"},         {"Led", "l"},
+    };
+    return keys;
 }
 
 QTreeWidgetItem* ComponentSelector::getCategory( QString category )

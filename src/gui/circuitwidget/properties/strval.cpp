@@ -3,6 +3,10 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <QLabel>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+
 #include "strval.h"
 #include "appfonts.h"
 #include "component.h"
@@ -29,6 +33,30 @@ void StrVal::setup( bool )
     value->setFixedWidth( 192.0*scale );
 
     valLabel->setText( m_property->capt() );
+
+    QString help = m_component->propHelp( m_propName );
+    if( !help.isEmpty() )                 // A description under the field
+    {
+        value->setToolTip( help );
+        QLayout* old = layout();
+        QMargins m = old->contentsMargins();
+        QHBoxLayout* row = new QHBoxLayout();
+        row->setContentsMargins( 0, 0, 0, 0 );
+        row->addWidget( valLabel );
+        row->addWidget( value );
+        delete old;
+        QVBoxLayout* col = new QVBoxLayout( this );
+        col->setContentsMargins( m );
+        col->setSpacing( 2 );
+        col->addLayout( row );
+        QLabel* h = new QLabel( help, this );
+        h->setWordWrap( true );
+        QFont f = h->font();
+        f.setPointSizeF( f.pointSizeF()*0.85 );
+        h->setFont( f );
+        h->setEnabled( false );           // Dimmed, like a hint
+        col->addWidget( h );
+    }
     updtValues();
     this->adjustSize();
 }

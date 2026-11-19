@@ -82,6 +82,7 @@ class KeyboardController
         bool arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods );
         bool pinKey( int dir, bool from );
         bool tabKey( int dir );
+        bool partKey( QString letter );
         bool escKey();
         bool enterKey();
         void selectPart( Component* comp );

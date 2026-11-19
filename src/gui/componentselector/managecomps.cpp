@@ -19,6 +19,7 @@
 
 #include <QSettings>
 #include <QCloseEvent>
+#include <QMessageBox>
 
 #include "managecomps.h"
 #include "componentselector.h"
@@ -92,9 +93,29 @@ void manCompDialog::slotItemChanged( QTableWidgetItem* item )
     if( !m_initialized ) return;
     int column = item->column();
     if( column == 0 ) setItemVisible( item, item->checkState() );
-    else{
+    else{                  // Shortcut: one lowercase letter, not used by another part
         QString text = item->text();
-        if( text.length() > 1 ) item->setText( text.left(1) );
+        QString key  = text.left( 1 );
+        QString why;
+        if( !key.isEmpty() && !( key[0] >= 'a' && key[0] <= 'z' ) )
+            why = tr("A part shortcut is one lowercase letter a–z.\n"
+                     "Capital letters are the keys of switches and push buttons; "
+                     "digits and - _ = < > . , are used by the keyboard input.");
+        else if( !key.isEmpty() )
+            for( int row=0; row<table->rowCount(); row++ )
+            {
+                QTableWidgetItem* other = table->item( row, 1 );
+                if( !other || other == item || other->text() != key ) continue;
+                why = tr("\"%1\" is already the shortcut of %2.").arg( key ).arg( table->item( row, 0 )->text() );
+                break;
+            }
+        if( !why.isEmpty() ) key = "";
+        if( key != text ){
+            table->blockSignals( true );
+            item->setText( key );
+            table->blockSignals( false );
+        }
+        if( !why.isEmpty() ) QMessageBox::warning( this, tr("Shortcut"), why );
     }
 }
 
@@ -129,11 +150,12 @@ void manCompDialog::reject()
         MainWindow::self()->compSettings()->setValue( name+"/hidden", hidden );
 
         QString shortCut = table->item( row, 1 )->text();
-        if( !shortCut.isEmpty() )
-        {
-            shortCuts[name] = shortCut;
-            MainWindow::self()->compSettings()->setValue( name+"/shortcut", shortCut );
-        }
+        if( !shortCut.isEmpty() ) shortCuts[name] = shortCut;
+        if( table->item( row, 0 ) && m_qtwItem.value( listItem )->childCount() > 0 ) continue;  // Category
+        // Saved even when empty, so a cleared default stays cleared
+        QString def = ComponentSelector::defaultShortCuts().value( name );
+        if( shortCut == def ) MainWindow::self()->compSettings()->remove( name+"/shortcut" );
+        else                  MainWindow::self()->compSettings()->setValue( name+"/shortcut", shortCut );
     }
     ComponentSelector::self()->setShortCuts( shortCuts );
 }

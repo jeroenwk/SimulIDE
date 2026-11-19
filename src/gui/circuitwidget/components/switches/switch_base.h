@@ -36,6 +36,12 @@ class SwitchBase : public MechContact
 
         QString key() { return m_key; }
         void setKey( QString key );
+
+        // Keyboard input (K5): a switch key is one capital A-Z, operated with Shift+letter.
+        // Other values (older circuits) are kept but do nothing; opening the properties clears them
+ static bool validKey( QString key ) { return key.size() == 1 && key[0] >= 'A' && key[0] <= 'Z'; }
+        virtual QString propHelp( QString prop ) override;
+        virtual void slotProperties() override;
         
         CustomButton* button() { return m_button; }
 

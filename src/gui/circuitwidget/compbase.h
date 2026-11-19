@@ -58,6 +58,9 @@ class CompBase
 
         virtual bool isHidden() { return false;}
 
+        // A description shown under a property's field in the properties dialog ("": none)
+        virtual QString propHelp( QString prop ) { return ""; }
+
         PropDialog* propDialog() { return m_propDialog; }   // CLI: view props / capture window props
 
     protected:

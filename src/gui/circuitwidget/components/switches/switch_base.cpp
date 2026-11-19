@@ -14,6 +14,8 @@
 #include "custombutton.h"
 #include <QtMath>
 
+#define tr(str) simulideTr("SwitchBase",str)
+
 SwitchBase::SwitchBase( QString type, QString id )
           : MechContact( type, id )
 {
@@ -161,6 +163,31 @@ void SwitchBase::setNClose( bool nc )
 void SwitchBase::setKey( QString key )
 {
     if( key.size()>1 ) key = key.left( 1 );
+    if( !Circuit::self()->loading() )      // Typed (dialog, CLI): a letter becomes capital, anything else none
+    {
+        key = key.toUpper();
+        if( !key.isEmpty() && !validKey( key ) ) key = "";
+    }
     m_key = key;
     m_button->setText( key );
+}
+
+QString SwitchBase::propHelp( QString prop )
+{
+    if( prop == "Key" ) return tr("Capital letter A–Z. Press Shift + this letter to operate the switch while the simulation runs.");
+    return "";
+}
+
+void SwitchBase::slotProperties()
+{
+    if( !m_key.isEmpty() && !validKey( m_key ) )  // From an older circuit: does nothing, cleared
+    {
+        qDebug() << "[kbd] switch" << m_id << "key" << m_key << "is not A-Z: cleared";
+        Circuit::self()->beginCircuitBatch();
+        Circuit::self()->addCompChange( m_id, "Key", m_key );
+        m_key = "";
+        m_button->setText("");
+        Circuit::self()->endCircuitBatch();
+    }
+    Component::slotProperties();
 }
