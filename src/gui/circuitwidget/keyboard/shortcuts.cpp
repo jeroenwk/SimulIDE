@@ -28,6 +28,8 @@ const QList<Shortcut>& Shortcuts::all()
                    "Enter left it, beyond a pin): the new part's first pin faces that pin, a big step beyond it, in "
                    "a straight line; the part is rotated to match", "its letter", "Set in Manage Components" },
         { "Parts", "Add the part bound to a letter, at the mouse", "Alt+its letter", "Set in Manage Components" },
+        { "Parts", "Add the part selected in the component list, at the cross (or continuing the chain, as a part letter)", "k", "" },
+        { "Parts", "Select the next / previous part in the component list (the canvas keeps the keys)", ": / /", "" },
         { "Switches", "Operate a switch or push button (its Key property, A–Z)", "Shift+its Key", "Simulation running" },
         // K1: keyboard cursor (revised: independent of the mouse)
         { "Moving", "Move the keyboard cursor (yellow cross) a big step (64 px)", "Arrows", "Nothing selected" },

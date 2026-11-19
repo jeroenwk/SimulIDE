@@ -98,6 +98,8 @@ class KeyboardController
         bool tabKey( int dir );
         bool rotateKey( bool ccw );                // Cmd+R: rotate, then aligned to pinFrom (D19)
         bool partKey( QString letter );
+        bool placePart( QString type, QString name );   // At the cross / continuing the chain
+        bool libraryPartKey();                      // k: the part selected in the list (K9e)
         bool spaceKey();
         bool wireKey();                             // w: wire pinFrom to pinTo (K8)
         bool escKey();

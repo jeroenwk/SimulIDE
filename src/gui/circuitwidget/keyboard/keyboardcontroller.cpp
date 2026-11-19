@@ -30,6 +30,7 @@
 #include "node.h"
 #include "linker.h"
 #include "componentselector.h"
+#include "subcircuit.h"
 #include "pinchain.h"
 #include "connectorline.h"
 #include "utils.h"
@@ -172,6 +173,15 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     // w : wire pinFrom to pinTo (K8, D20: reserved, never a part shortcut)
     QString text = event->text();
     if( text == "w" && mods == Qt::NoModifier ) return wireKey();
+
+    // The component list (K9e): k places its selected part, : / select the next / previous
+    if( text == "k" && mods == Qt::NoModifier ) return libraryPartKey();
+    if( ( text == ":" || text == "/" ) && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) )
+    {
+        QString name = ComponentSelector::self()->stepPart( text == ":" ? 1 : -1 );
+        if( name.isEmpty() ) say("Keyboard: no part in the component list");
+        return true;
+    }
 
     // A lowercase letter bound to a part (Manage Components; defaults r, c, ...): place it
     if( mods == Qt::NoModifier && text.size() == 1 && text[0] >= 'a' && text[0] <= 'z' && partKey( text ) ) return true;
@@ -321,10 +331,33 @@ bool KeyboardController::partKey( QString letter )
     QHash<QString, QString> keys = ComponentSelector::self()->getShortCuts();
     QString name = keys.key( letter );
     if( name.isEmpty() ) return false;
+    return placePart( name, name );
+}
 
+// k (K9e): the part selected in the component list, placed as a part letter places
+bool KeyboardController::libraryPartKey()
+{
+    QString type, name;
+    if( !ComponentSelector::self()->selectedPart( &type, &name ) )
+    {
+        say("Keyboard: no part selected in the component list — choose one with : and /");
+        return true;
+    }
+    if( !placePart( type, name ) ) say("Keyboard: could not place "+name );
+    return true;
+}
+
+// type, name: as the component list gives them (a native part: both its type; a
+// subcircuit or MCU: "Subcircuit" / "MCU" and its name). At the cross, or continuing
+// the chain from the selected part's pin (D17)
+bool KeyboardController::placePart( QString type, QString name )
+{
     Circuit* circ = Circuit::self();
-    Component* comp = circ->createItem( name, name+"-"+circ->newSceneId() );
+    Component* comp = circ->createItem( type, name+"-"+circ->newSceneId() );
     if( !comp ) return false;
+    if( type == "Subcircuit" )                           // As a drop from the list does
+        if( SubCircuit* subC = static_cast<SubCircuit*>( comp ) )
+            if( !subC->isBoard() ) subC->setLogicSymbol( true );
     QPointF at = cursorPos();
     bool byPin = false;                      // Placed relative to a pin of the chain (D17)
     Pin* fromPin = nullptr;
@@ -345,7 +378,7 @@ bool KeyboardController::partKey( QString letter )
     if( byPin && !comp->getPins().empty() )              // The first pin exactly at its spot
         comp->setPos( comp->pos() + ( at-comp->getPins().front()->scenePos() ) );
     circ->saveCompChange( comp->getUid(), COMP_STATE_NEW, "" );
-    qDebug() << "[kbd] key" << letter << "places" << name << "at" << comp->pos()
+    qDebug() << "[kbd] places" << name << "at" << comp->pos()
              << "rotation" << comp->rotation();
     selectPart( comp );                      // Selected (the hidden cross goes with it, D13),
                                              // pins paired with the last part
@@ -1289,6 +1322,9 @@ QJsonObject KeyboardController::state()
     o["selection"] = sel;
     Component* lp = lastPart();
     o["lastPart"] = lp ? QJsonValue( lp->getUid() ) : QJsonValue();
+    QString libType, libName;                             // K9e: the part selected in the list
+    if( ComponentSelector::self() && ComponentSelector::self()->selectedPart( &libType, &libName ) )
+        o["libraryPart"] = QJsonObject{ {"type", libType}, {"name", libName} };
     if( m_value.active() ) o["valueEdit"] = m_value.state();   // K7: the value being typed
     if( m_drawing )                                       // K9b: the wire being drawn
     {

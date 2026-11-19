@@ -601,6 +601,28 @@ Validate
 - [ ] Cmd+click near a corner: the corner; arrows move it.
 - [ ] Cmd+click a dot: the dot. Cmd+click a part: toggled as before.
 
+### K9e — The component list from the keyboard
+*(user request 2026-11-19, before K10)*
+
+- `k`: place the part **selected in the component list** (left pane), as a part
+  letter places its part (`KeyboardController::placePart`, shared with the
+  letters): at the cross, or continuing the chain from the selected part's pin
+  (D17). A subcircuit gets its logic symbol, as a drop from the list does.
+  Nothing selected in the list: a message. `k` is reserved like `h` and `w`
+  (Manage Components refuses it); during a value edit it is still the kilo
+  multiplier.
+- `:` selects the **next** part in the list, `/` the **previous** one
+  (`ComponentSelector::stepPart`): parts only (categories skipped), parts hidden
+  in Manage Components or by the search box skipped, the category opened and
+  the part scrolled into view, wrapping at both ends. The canvas keeps the
+  keyboard. On AZERTY `:` and `/` are one key (`/` with Shift), like `<` `>`.
+- `kbd state` reports `libraryPart` (type, name).
+
+Validate
+- [ ] `:` `:` `/`: the list selection moves down, down, up; typing goes on on
+      the canvas.
+- [ ] `k`: that part at the cross. With a part selected: placed in the chain.
+
 ### K10 — Shortcut list in Settings
 *(epic: "listing shortcuts")*
 

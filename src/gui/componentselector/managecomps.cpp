@@ -101,6 +101,8 @@ void manCompDialog::slotItemChanged( QTableWidgetItem* item )
             why = tr("h is the pan key of the keyboard input (h, then the arrows pan the canvas).");
         else if( key == "w" )
             why = tr("w is the wire key of the keyboard input (it wires the two chosen pins).");
+        else if( key == "k" )
+            why = tr("k is the keyboard input's key for the part selected in the component list.");
         else if( !key.isEmpty() && !( key[0] >= 'a' && key[0] <= 'z' ) )
             why = tr("A part shortcut is one lowercase letter a–z.\n"
                      "Capital letters are the keys of switches and push buttons; "
