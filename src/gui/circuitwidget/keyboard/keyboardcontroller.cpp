@@ -471,11 +471,26 @@ void KeyboardController::say( QString text )
     if( CircuitWidget* w = CircuitWidget::self() ) w->eventMessage( text, 0 );
 }
 
-// =: walk the network of the selected part's selected pin. No wire: a message, parts mode
+// =: walk the network of the selected part's selected pin. No wire: a message, parts mode.
+// Nothing selected (K9c): from the dot, corner or wire nearest to the cross
 bool KeyboardController::enterNetwork()
 {
     Component* comp = singlePart();
-    if( !comp ) return false;
+    if( !comp )
+    {
+        if( !Circuit::self()->selectedItems().isEmpty() ) return false;   // Several parts, a wire...
+        NetworkWalk::Step seed;
+        if( !NetworkWalk::nearestItem( cursorPos(), &seed ) || !m_walk.startFrom( seed ) )
+        {
+            say("Keyboard: no wire in the circuit to walk");
+            return true;
+        }
+        qDebug() << "[kbd] network mode from the" << NetworkWalk::kindName( seed.kind ) << seed.uid
+                 << "nearest to the cross," << m_walk.size() << "steps";
+        m_arrowBurst = false;
+        showStep();
+        return true;
+    }
     Pin* pin = comp->selectedPin();
     if( !pin ){ say("Keyboard: "+comp->getUid()+" has no pin to walk from"); return true; }
     if( !m_walk.start( pin ) )
@@ -493,6 +508,8 @@ void KeyboardController::leaveNetwork( bool reselect )
 {
     if( !m_walk.active() ) return;
     QString uid = m_walk.partUid();
+    bool fromPart = !uid.isEmpty();
+    QPoint at = m_walk.size() ? m_walk.current().pos : cursorPos().toPoint();
     markCorner( false );
     m_walk.stop();
     m_arrowBurst = false;
@@ -500,8 +517,11 @@ void KeyboardController::leaveNetwork( bool reselect )
     Circuit::self()->clearSelection();
     m_walkSelecting = false;
     qDebug() << "[kbd] parts mode";
-    if( reselect )
+    if( reselect && fromPart )
+    {
         if( Component* comp = compByUid( uid ) ) selectPart( comp );   // Its pin unchanged
+    }
+    else if( reselect ) moveCursorTo( at );              // K9c, no part: the cross where it was
 }
 
 // Repaints where the step's mark was (on: and where it is now)
@@ -635,7 +655,8 @@ void KeyboardController::deleteWire()
     qDebug() << "[kbd] deleted wire" << s.uid;
     if( !m_walk.rebuild( s.pos, NetworkWalk::stepWire ) )
     {
-        say("Keyboard: no wire left on the pin — back to parts mode");
+        say( m_walk.pinId().isEmpty() ? "Keyboard: no wire left — back to parts mode"
+                                      : "Keyboard: no wire left on the pin — back to parts mode" );
         leaveNetwork( true );
         return;
     }

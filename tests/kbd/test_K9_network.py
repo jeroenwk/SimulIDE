@@ -170,6 +170,51 @@ def test(sim):
     s = sim.cli("ui", "click", "500,500")
     sim.check("click: parts mode", int(net(s) is None), 1, absolute=0)
 
+    # = with nothing selected (K9c): from the dot, corner or wire nearest to the cross;
+    # a dot or corner next to the cross beats the wire it is on
+    build(sim)                                            # Dot 200,100; corners 284,100 and 200,200
+    sim.cli("ui", "click", "204,108")
+    s = sim.cli("ui", "type", "=")
+    sim.check("nothing selected, near the dot: the dot", int(net(s) is not None and step(s)["kind"] == "dot"), 1,
+              absolute=0, note=str(net(s) and step(s)))
+    sim.check("nothing selected: no pin", int(net(s)["pin"] == ""), 1, absolute=0, note=str(net(s)["pin"]))
+    sim.check("nothing selected: the whole net (6 steps)", net(s)["steps"], 6, absolute=0)
+    s = sim.cli("ui", "type", "esc")
+    sim.check("esc: parts mode, nothing selected", int(net(s) is None and s["selection"] == []), 1, absolute=0)
+    sim.check("esc: the cross shown at the dot", int(s["cursorVisible"] and abs(s["cursor"][0] - 200) <= 4
+              and abs(s["cursor"][1] - 100) <= 4), 1, absolute=0, note=str(s["cursor"]))
+
+    sim.cli("ui", "click", "292,108")
+    s = sim.cli("ui", "type", "=")
+    sim.check("near a corner: the corner", int(step(s)["kind"] == "corner" and step(s)["pos"] == [284, 100]), 1,
+              absolute=0, note=str(step(s)))
+    sim.cli("ui", "type", "esc")
+    sim.cli("ui", "click", "244,108")
+    s = sim.cli("ui", "type", "=")
+    sim.check("near the middle of a wire: the wire", int(step(s)["kind"] == "wire"), 1, absolute=0,
+              note=str(step(s)))
+    sim.check("near a wire: highlighted", int(net(s)["selectedWires"] == [step(s)["uid"]]), 1, absolute=0)
+    lens = [step(sim.cli("ui", "type", "tab"))["kind"] for _ in range(6)]
+    sim.check("tab from a wire: walks the net and wraps", int(sorted(lens) == ["corner", "corner", "dot",
+              "wire", "wire", "wire"]), 1, absolute=0, note=str(lens))
+
+    # Deleting the wire it started from: the walk goes on from the nearest item left
+    sim.cli("ui", "type", "esc")
+    sim.cli("ui", "click", "244,108")
+    s = sim.cli("ui", "type", "=", "Backspace")
+    sim.check("delete the start wire: still network mode", int(net(s) is not None), 1, absolute=0)
+    sim.check("delete the start wire: a wire selected", int(step(s)["kind"] == "wire"), 1, absolute=0,
+              note=str(step(s)))
+    sim.cli("ui", "type", "esc")
+
+    # No wire in the circuit: a message, parts mode
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "100,100")
+    sim.cli("ui", "click", "300,300")
+    s = sim.cli("ui", "type", "=")
+    sim.check("no wires: parts mode", int(net(s) is None), 1, absolute=0)
+    sim.check("no wires: message", int("no wire in the circuit" in str(sim.cli("messages"))), 1, absolute=0)
+
     # Registry
     sc = sim.cli("kbd", "shortcuts")
     sim.check("registry: = network mode", int(any(r["keys"] == "=" and "Network" in r["action"] for r in sc)), 1,
