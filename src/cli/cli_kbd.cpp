@@ -143,9 +143,10 @@ void CliApi::registerKbd()
         return kbdState();
     });
 
-    add("ui click", "ui click <x,y> | ui click <comp> [index]",
-        "Left click (press and release, no modifier) at a scene position on the canvas, as the mouse does: "
-        "on empty canvas it clears the selection and places the keyboard cursor there. With a component "
+    add("ui click", "ui click <x,y> [--cmd] | ui click <comp> [index]",
+        "Left click (press and release) at a scene position on the canvas, as the mouse does: "
+        "on empty canvas it clears the selection and places the keyboard cursor there; --cmd holds Cmd "
+        "(Ctrl elsewhere): on a wire, corner or dot it starts network mode there. With a component "
         "name instead of x,y: click that part's button or toggle its switch. The view scrolls to show "
         "the point first.",
         []( CliCtx& c ) -> QJsonValue
@@ -160,9 +161,10 @@ void CliApi::registerKbd()
         v->ensureVisible( QRectF( p.x()-1, p.y()-1, 2, 2 ), 40, 40 );
         QPoint vp = v->mapFromScene( p );
         QPoint gp = v->viewport()->mapToGlobal( vp );
-        QMouseEvent press( QEvent::MouseButtonPress, vp, gp, Qt::LeftButton, Qt::LeftButton, Qt::NoModifier );
+        Qt::KeyboardModifiers mods = c.flag("cmd") ? Qt::ControlModifier : Qt::NoModifier;   // Qt: Cmd on macOS
+        QMouseEvent press( QEvent::MouseButtonPress, vp, gp, Qt::LeftButton, Qt::LeftButton, mods );
         QApplication::sendEvent( v->viewport(), &press );
-        QMouseEvent release( QEvent::MouseButtonRelease, vp, gp, Qt::LeftButton, Qt::NoButton, Qt::NoModifier );
+        QMouseEvent release( QEvent::MouseButtonRelease, vp, gp, Qt::LeftButton, Qt::NoButton, mods );
         QApplication::sendEvent( v->viewport(), &release );
         return kbdState();
     });

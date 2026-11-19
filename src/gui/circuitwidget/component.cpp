@@ -13,6 +13,7 @@
 #include <QGraphicsProxyWidget>
 
 #include "component.h"
+#include "keyboardcontroller.h"
 #include "theme.h"
 #include "label.h"
 #include "mainwindow.h"
@@ -306,7 +307,9 @@ void Component::mousePressEvent( QGraphicsSceneMouseEvent* event )
         }
         else if( event->modifiers() & Qt::ControlModifier )
         {
-            setSelected( !isSelected() );
+            if( itemType() == "Node" )                    // A dot: as the keyboard walk selects it (K9d)
+                KeyboardController::self()->walkFromMouse( 2, m_id, -1, scenePos().toPoint() );
+            else setSelected( !isSelected() );            // A part: toggled in the selection
         }
         else{
             QList<QGraphicsItem*> itemlist = Circuit::self()->selectedItems();

@@ -539,7 +539,9 @@ void KeyboardController::markCorner( bool on )
     circ->update( m_stepMark );
 }
 
-void KeyboardController::showStep()
+// scroll false: from a mouse press (the item is in view). Scrolling under a pressed
+// button sends the wire a mouse move, which drags its segment
+void KeyboardController::showStep( bool scroll )
 {
     Circuit* circ = Circuit::self();
     NetworkWalk::Step s = m_walk.current();
@@ -560,7 +562,21 @@ void KeyboardController::showStep()
     }
     m_walkSelecting = false;
     markCorner( true );
-    if( CircuitView* v = CircuitView::self() ) v->ensureVisible( show, 32, 32 );
+    if( scroll )
+        if( CircuitView* v = CircuitView::self() ) v->ensureVisible( show, 32, 32 );
+}
+
+void KeyboardController::walkFromMouse( int kind, QString uid, int index, QPoint pos )
+{
+    m_value.revert();
+    if( m_drawing ) cancelDraw();
+    if( m_walk.active() ) leaveNetwork( false );
+    NetworkWalk::Step seed{ (NetworkWalk::kind_t)kind, uid, index, pos, 0 };
+    if( !m_walk.startFrom( seed ) ) return;
+    qDebug() << "[kbd] network mode from a click on the" << NetworkWalk::kindName( seed.kind ) << uid;
+    m_arrowBurst = false;
+    showStep( false );
+    if( CircuitView* v = CircuitView::self() ) v->setFocus( Qt::MouseFocusReason );   // Keys work at once
 }
 
 bool KeyboardController::networkKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
