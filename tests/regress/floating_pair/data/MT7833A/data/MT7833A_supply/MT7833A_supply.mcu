@@ -1,0 +1,10 @@
+<!DOCTYPE SimulIDE>
+
+<!-- MT7833A block: links 0 IVDD supply current VDD -> GND, 1 VEN enable output (EN -> GND) -->
+
+<iou name="MT7833A_supply" core="scripted" script="MT7833A_supply.as" linker="true" >
+  <propertygroup name="Model">
+    <property name="Hiccup_mA"     type="double" unit="mA" />
+  </propertygroup>
+  <ioport name="PORTA" pins="VDD,FAULT,GND" />
+</iou>

@@ -1,0 +1,11 @@
+<!DOCTYPE SimulIDE>
+
+<packageB name="MT7833A_pwm" width="8" height="6" background="" type="None" >
+    <pin type="" xpos="-8" ypos="32" angle="180" length="8" id="ZCD" label="ZCD" />
+    <pin type="" xpos="-8" ypos="16" angle="180" length="8" id="FAULT" label="FAULT" />
+    <pin type="" xpos="16" ypos="-8" angle="90" length="8" id="EN" label="EN" />
+    <pin type="" xpos="8" ypos="56" angle="270" length="8" id="COMP" label="COMP" />
+    <pin type="" xpos="24" ypos="56" angle="270" length="8" id="OCP" label="OCP" />
+    <pin type="" xpos="40" ypos="56" angle="270" length="8" id="CS" label="CS" />
+    <pin type="" xpos="56" ypos="-8" angle="90" length="8" id="GND" label="GND" />
+</packageB>

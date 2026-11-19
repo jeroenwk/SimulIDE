@@ -26,6 +26,7 @@ class CircMatrix
 
         void createMatrix( QList<eNode*> &eNodeList );
         bool solveMatrix();
+        void setRefine( bool r ) { m_refineOn = r; }   // Refine ill-conditioned groups (slow steps)
 
         QString stats() const;            // Node groups (size, factorizations, solves) since analyze()
 
@@ -51,6 +52,8 @@ class CircMatrix
 
         inline void factorMatrix( int n, int group );
         inline bool luSolve( int n, int group );
+        bool substitute( int n, int group, d_vector_t& x );         // Solves LU x = x
+        void refine( int n, int group, d_vector_t& x );               // Iterative refinement
 
         int m_numEnodes;
         QList<eNode*>* m_eNodeList;
@@ -70,6 +73,10 @@ class CircMatrix
 
         std::vector<uint64_t> m_factorCount;
         std::vector<uint64_t> m_solveCount;
+        std::vector<uint64_t> m_refineCount;
+        bool                  m_refineOn;
+        std::vector<char>     m_illCond;    // A pivot lost most of its digits to cancellation
+        d_vector_t m_resid;
 
         d_vector_t m_work;
 

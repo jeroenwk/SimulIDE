@@ -1,0 +1,7 @@
+<!DOCTYPE SimulIDE>
+
+<!-- MT7833A block: links 0 VZCD demagnetised output, 1 VFAULT fault output -->
+
+<iou name="MT7833A_fb" core="scripted" script="MT7833A_fb.as" linker="true" >
+  <ioport name="PORTA" pins="DSEN,DRV,GND" />
+</iou>

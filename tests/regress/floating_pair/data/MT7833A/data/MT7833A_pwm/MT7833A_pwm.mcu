@@ -1,0 +1,14 @@
+<!DOCTYPE SimulIDE>
+
+<!-- MT7833A block: links 0 VGATE gate drive (GATE -> CS), 1 VISENSE CS average of the last cycle (ISENSE -> GND), 2 VEA error amplifier (current GND -> COMP; R_EA 85 kOhm COMP -> GND) -->
+
+<iou name="MT7833A_pwm" core="scripted" script="MT7833A_pwm.as" linker="true" >
+  <propertygroup name="Model">
+    <property name="Ton_us_per_V"  type="double" unit="µs/V" />
+    <property name="Ton_max_us"    type="double" unit="µs" />
+    <property name="Period_max_us" type="double" unit="µs" />
+    <property name="EA_gm_uS"      type="double" unit="µS" />
+    <property name="SoftStart_uA"  type="double" unit="µA" />
+  </propertygroup>
+  <ioport name="PORTA" pins="ZCD,FAULT,EN,COMP,OCP,CS,GND" />
+</iou>
