@@ -1,6 +1,6 @@
 # Spec: fuse
 
-Status: **implemented** on branch `feature/fuse` (2026-11-19), see § 12 for where the code
+Status: **implemented**, merged into main (2026-11-19), see § 12 for where the code
 differs from this text and for the test and benchmark results. Decided with the user on 2026-11-19: a heat
 model with two stages and presets, the one-shot fuse first (the resettable PTC fuse right after,
 on the same heat code), no arc model in the first version, presets for the IEC speed classes,
