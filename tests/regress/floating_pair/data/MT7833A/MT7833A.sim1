@@ -1,0 +1,236 @@
+<circuit version="1.1.0-SR2" rev="261103" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+<description>
+# MT7833A: inside of the part
+
+Drawn like the block diagram on datasheet p.4. The tunnels named like the package pins (VDD, GND, DSEN, CS, COMP, D5/D6 = DRAIN) are the IC's pins; EN and GATE are internal.
+
+- **Supply &amp; VDD detection, Start-up** (`SUP`, script): start at 18 V, lockout at 9 V, supply current through `IVDD` (link 0), 24 V clamp `ZVDD`. Drives **EN** (`VEN`, link 1). A FAULT starts the hiccup.
+- **Feedback detection** (`FB`, script): samples DSEN 2 µs after each turn-off; **ZCD** when demagnetised (`VZCD`), **FAULT** on OVP or SCP (`VFAULT`).
+- **PWM controller** (`PWM`, script): on-time from COMP, off on OCP, on again at ZCD (≥ 10 µs); drives the **Driver** `VGATE` (link 0) holds the average of CS over the last cycle on `VISENSE` (link 1, loaded by `R_IS`) and computes the **EA**: current `VEA` (link 2) into COMP.
+- **OCP**: op-amp, CS &gt; 1.4 V (`VOCP`). **EA**: gm 200 µS × (0.2 V − ISENSE), ± 59 µA into COMP; `R_EA` (85 kΩ) pre-charges and discharges COMP.
+
+Every signal is relative to GND, so the IC ground may float. Not a circuit to run on its own: place the part from the component list (Projects / Power ICs). See `components/MT7833A/README.md`.
+</description>
+
+
+<item itemtype="MCU" CircId="MT7833A_supply-1" mainComp="true" Show_id="true" Show_Val="false" Pos="-56,-176" rotation="0" hflip="1" vflip="1" label="SUP" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Hiccup_mA="3" Links="Csource-5,Csource-7," MainMcu="true" />
+
+<item itemtype="MCU" CircId="MT7833A_fb-2" mainComp="false" Show_id="true" Show_Val="false" Pos="-232,-16" rotation="0" hflip="1" vflip="1" label="FB" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Links="Csource-19,Csource-18," MainMcu="false" />
+
+<item itemtype="Csource" CircId="Csource-5" mainComp="false" Show_id="false" Show_Val="false" Pos="40,-172" rotation="0" hflip="1" vflip="1" label="IVDD" idLabPos="4,-28" labelrot="0" valLabPos="4,18" valLabRot="0" Control_Pins="false" CurrSource="true" CurrControl="false" Gain="1" Voltage="5 V" Current="1 A" />
+
+<item itemtype="Zener" CircId="Zener-6" mainComp="false" Show_id="false" Show_Val="false" Pos="80,-176" rotation="-90" hflip="1" vflip="1" label="ZVDD" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Model="Custom" Threshold="0.634767 V" MaxCurrent="1 A" Resistance="1 Ω" BrkDownV="24 V" SatCurrent="171.435 nA" EmCoef="2" />
+
+<item itemtype="Csource" CircId="Csource-7" mainComp="false" Show_id="false" Show_Val="false" Pos="120,-172" rotation="0" hflip="1" vflip="1" label="VEN" idLabPos="4,-28" labelrot="0" valLabPos="4,18" valLabRot="0" Control_Pins="false" CurrSource="false" CurrControl="false" Gain="1" Voltage="5 V" Current="1 A" />
+
+<item itemtype="Tunnel" CircId="Tunnel-8" mainComp="false" Show_id="false" Show_Val="false" Pos="-120,-208" rotation="0" hflip="1" vflip="1" label="T_VDD" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="VDD" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-11" mainComp="false" Show_id="false" Show_Val="false" Pos="152,-128" rotation="0" hflip="-1" vflip="1" label="T_GND1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="GND" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-15" mainComp="false" Show_id="false" Show_Val="false" Pos="152,-192" rotation="0" hflip="-1" vflip="1" label="T_EN1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="EN" IsBus="false" />
+
+<item itemtype="MCU" CircId="MT7833A_pwm-16" mainComp="true" Show_id="true" Show_Val="false" Pos="-56,-24" rotation="0" hflip="1" vflip="1" label="PWM" idLabPos="0,-20" labelrot="0" valLabPos="-16,20" valLabRot="0" Ton_us_per_V="5" Ton_max_us="25" Period_max_us="60" EA_gm_uS="200" Links="Csource-27,Csource-49,Csource-61," MainMcu="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-17" mainComp="false" Show_id="false" Show_Val="false" Pos="-264,0" rotation="0" hflip="1" vflip="1" label="T_DSEN" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="DSEN" IsBus="false" />
+
+<item itemtype="Csource" CircId="Csource-18" mainComp="false" Show_id="false" Show_Val="false" Pos="-136,12" rotation="0" hflip="1" vflip="1" label="VFAULT" idLabPos="4,-28" labelrot="0" valLabPos="4,18" valLabRot="0" Control_Pins="false" CurrSource="false" CurrControl="false" Gain="1" Voltage="5 V" Current="1 A" />
+
+<item itemtype="Csource" CircId="Csource-19" mainComp="false" Show_id="false" Show_Val="false" Pos="-104,28" rotation="0" hflip="1" vflip="1" label="VZCD" idLabPos="4,-28" labelrot="0" valLabPos="4,18" valLabRot="0" Control_Pins="false" CurrSource="false" CurrControl="false" Gain="1" Voltage="5 V" Current="1 A" />
+
+<item itemtype="Tunnel" CircId="Tunnel-21" mainComp="false" Show_id="false" Show_Val="false" Pos="-248,64" rotation="0" hflip="1" vflip="1" label="T_GND2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="GND" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-24" mainComp="false" Show_id="false" Show_Val="false" Pos="-200,-48" rotation="0" hflip="1" vflip="1" label="T_GATE1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="GATE" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-25" mainComp="false" Show_id="false" Show_Val="false" Pos="-48,-48" rotation="0" hflip="1" vflip="1" label="T_EN2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="EN" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-26" mainComp="false" Show_id="false" Show_Val="false" Pos="16,-48" rotation="0" hflip="-1" vflip="1" label="T_GND3" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="GND" IsBus="false" />
+
+<item itemtype="Csource" CircId="Csource-27" mainComp="false" Show_id="false" Show_Val="false" Pos="112,4" rotation="0" hflip="1" vflip="1" label="VGATE" idLabPos="4,-28" labelrot="0" valLabPos="4,18" valLabRot="0" Control_Pins="false" CurrSource="false" CurrControl="false" Gain="1" Voltage="5 V" Current="1 A" />
+
+<item itemtype="Mosfet" CircId="Mosfet-28" mainComp="false" Show_id="false" Show_Val="false" Pos="160,-16" rotation="0" hflip="1" vflip="1" label="M1" idLabPos="18,0" labelrot="0" valLabPos="-16,20" valLabRot="0" P_Channel="false" Depletion="false" RDSon="3 Ω" Threshold="2.5 V" />
+
+<item itemtype="Tunnel" CircId="Tunnel-29" mainComp="false" Show_id="false" Show_Val="false" Pos="232,16" rotation="0" hflip="-1" vflip="1" label="T_CS1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="CS" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-31" mainComp="false" Show_id="false" Show_Val="false" Pos="232,-64" rotation="0" hflip="-1" vflip="1" label="T_D5" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="D5" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-32" mainComp="false" Show_id="false" Show_Val="false" Pos="232,-80" rotation="0" hflip="-1" vflip="1" label="T_D6" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="D6" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-34" mainComp="false" Show_id="false" Show_Val="false" Pos="128,-48" rotation="0" hflip="1" vflip="1" label="T_GATE2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="GATE" IsBus="false" />
+
+<item itemtype="opAmp" CircId="opAmp-36" mainComp="false" Show_id="false" Show_Val="false" Pos="40,96" rotation="0" hflip="-1" vflip="1" label="OCP" idLabPos="-16,-32" labelrot="0" valLabPos="-16,20" valLabRot="0" Gain="1e+06" Out_Imped="1e-09 Ω" Power_Pins="true" Switch_Pins="false" Volt_Pos="5 V" Volt_Neg="0 V" />
+
+<item itemtype="Battery" CircId="Battery-37" mainComp="false" Show_id="false" Show_Val="false" Pos="88,120" rotation="90" hflip="1" vflip="1" label="VOCP" idLabPos="-18,-22" labelrot="0" valLabPos="-10,10" valLabRot="0" Voltage="1.4 V" Resistance="1 mΩ" />
+
+<item itemtype="Tunnel" CircId="Tunnel-38" mainComp="false" Show_id="false" Show_Val="false" Pos="88,88" rotation="0" hflip="-1" vflip="1" label="T_CS2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="CS" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-39" mainComp="false" Show_id="false" Show_Val="false" Pos="56,72" rotation="0" hflip="-1" vflip="1" label="T_EN3" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="EN" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-40" mainComp="false" Show_id="false" Show_Val="false" Pos="24,128" rotation="0" hflip="1" vflip="1" label="T_GND4" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="GND" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-41" mainComp="false" Show_id="false" Show_Val="false" Pos="112,152" rotation="0" hflip="-1" vflip="1" label="T_GND5" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="GND" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-42" mainComp="false" Show_id="false" Show_Val="false" Pos="-8,48" rotation="0" hflip="-1" vflip="1" label="T_CS3" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="CS" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-43" mainComp="false" Show_id="false" Show_Val="false" Pos="-56,48" rotation="0" hflip="1" vflip="1" label="T_COMP1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="COMP" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-46" mainComp="false" Show_id="false" Show_Val="false" Pos="-248,184" rotation="0" hflip="1" vflip="1" label="T_COMP2" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="COMP" IsBus="false" />
+
+<item itemtype="Csource" CircId="Csource-49" mainComp="false" Show_id="true" Show_Val="false" Pos="-88,228" rotation="0" hflip="1" vflip="1" label="VISENSE" idLabPos="4,-28" labelrot="0" valLabPos="4,18" valLabRot="0" Control_Pins="false" CurrSource="false" CurrControl="false" Gain="1" Voltage="5 V" Current="1 A" />
+
+<item itemtype="Tunnel" CircId="Tunnel-50" mainComp="false" Show_id="false" Show_Val="false" Pos="-64,248" rotation="0" hflip="-1" vflip="1" label="T_GND7" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="GND" IsBus="false" />
+
+<item itemtype="Tunnel" CircId="Tunnel-52" mainComp="false" Show_id="false" Show_Val="false" Pos="-144,240" rotation="0" hflip="-1" vflip="1" label="T_GND8" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Name="GND" IsBus="false" />
+
+<item itemtype="TextComponent" CircId="TextComponent-53" mainComp="false" Show_id="false" Show_Val="false" Pos="-56,-240" rotation="0" hflip="1" vflip="1" label="TXT_SUP" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Margin="2 _px" Border="1 _px" Color="#ffffdc" Opacity="1" Font="Helvetica [Cronyx]" Font_Color="#000080" Font_Size="6 _px" Fixed_Width="false" Text="Supply &amp; VDD detection, Start-up (link 0 IVDD, 1 VEN &#x3D; EN)" />
+
+<item itemtype="TextComponent" CircId="TextComponent-54" mainComp="false" Show_id="false" Show_Val="false" Pos="-272,-96" rotation="0" hflip="1" vflip="1" label="TXT_FB" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Margin="2 _px" Border="1 _px" Color="#ffffdc" Opacity="1" Font="Helvetica [Cronyx]" Font_Color="#000080" Font_Size="6 _px" Fixed_Width="false" Text="Feedback detection (link 0 VZCD, 1 VFAULT)" />
+
+<item itemtype="TextComponent" CircId="TextComponent-55" mainComp="false" Show_id="false" Show_Val="false" Pos="-88,-96" rotation="0" hflip="1" vflip="1" label="TXT_PWM" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Margin="2 _px" Border="1 _px" Color="#ffffdc" Opacity="1" Font="Helvetica [Cronyx]" Font_Color="#000080" Font_Size="6 _px" Fixed_Width="false" Text="PWM controller (link 0 VGATE, 1 VISENSE)" />
+
+<item itemtype="TextComponent" CircId="TextComponent-56" mainComp="false" Show_id="false" Show_Val="false" Pos="72,-112" rotation="0" hflip="1" vflip="1" label="TXT_DRV" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Margin="2 _px" Border="1 _px" Color="#ffffdc" Opacity="1" Font="Helvetica [Cronyx]" Font_Color="#000080" Font_Size="6 _px" Fixed_Width="false" Text="Driver and switch (3 Ω)" />
+
+<item itemtype="TextComponent" CircId="TextComponent-57" mainComp="false" Show_id="false" Show_Val="false" Pos="104,56" rotation="0" hflip="1" vflip="1" label="TXT_OCP" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Margin="2 _px" Border="1 _px" Color="#ffffdc" Opacity="1" Font="Helvetica [Cronyx]" Font_Color="#000080" Font_Size="6 _px" Fixed_Width="false" Text="OCP: CS &#x3E; 1.4 V" />
+
+<item itemtype="TextComponent" CircId="TextComponent-58" mainComp="false" Show_id="false" Show_Val="false" Pos="-200,104" rotation="0" hflip="1" vflip="1" label="TXT_EA" idLabPos="-16,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" Margin="2 _px" Border="1 _px" Color="#ffffdc" Opacity="1" Font="Helvetica [Cronyx]" Font_Color="#000080" Font_Size="6 _px" Fixed_Width="false" Text="EA, linear (PWM script): 5 (0.2 V - ISENSE) + COMP, as VEA / R_EA into COMP" />
+
+<item itemtype="Resistor" CircId="Resistor-60" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-200,216" rotation="90" hflip="1" vflip="1" label="R_EA" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="85 kΩ" />
+
+<item itemtype="Csource" CircId="Csource-61" mainComp="false" Show_id="true" Show_Val="false" Pos="-160,204" rotation="180" hflip="1" vflip="1" label="VEA" idLabPos="4,-28" labelrot="0" valLabPos="4,18" valLabRot="0" Control_Pins="false" CurrSource="true" CurrControl="false" Gain="1" Voltage="5 V" Current="0 A" />
+
+<item itemtype="Resistor" CircId="Resistor-64" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="-40,216" rotation="90" hflip="1" vflip="1" label="R_IS" idLabPos="-16,-24" labelrot="0" valLabPos="-16,6" valLabRot="0" Resistance="10 MΩ" />
+
+<item itemtype="Node" CircId="Node-9" mainComp="false" Pos="-40,-208" />
+
+<item itemtype="Node" CircId="Node-10" mainComp="false" Pos="40,-208" />
+
+<item itemtype="Node" CircId="Node-12" mainComp="false" Pos="40,-128" />
+
+<item itemtype="Node" CircId="Node-13" mainComp="false" Pos="80,-128" />
+
+<item itemtype="Node" CircId="Node-14" mainComp="false" Pos="120,-128" />
+
+<item itemtype="Node" CircId="Node-20" mainComp="false" Pos="-96,-8" />
+
+<item itemtype="Node" CircId="Node-22" mainComp="false" Pos="-216,64" />
+
+<item itemtype="Node" CircId="Node-23" mainComp="false" Pos="-136,64" />
+
+<item itemtype="Node" CircId="Node-30" mainComp="false" Pos="168,16" />
+
+<item itemtype="Node" CircId="Node-33" mainComp="false" Pos="200,-64" />
+
+<item itemtype="Node" CircId="Node-35" mainComp="false" Pos="128,-16" />
+
+<item itemtype="Node" CircId="Node-62" mainComp="false" Pos="-200,184" />
+
+<item itemtype="Node" CircId="Node-63" mainComp="false" Pos="-160,240" />
+
+<item itemtype="Node" CircId="Node-65" mainComp="false" Pos="-72,248" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="MT7833A_supply-1-PORTAVDD" endpinid="Node-9-1" pointList="-40,-184,-40,-208" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Tunnel-8-pin" endpinid="Node-9-0" pointList="-120,-208,-40,-208" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Csource-5-s1Pin" endpinid="Node-10-1" pointList="40,-192,40,-208" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Node-9-2" endpinid="Node-10-0" pointList="-40,-208,40,-208" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="Node-10-2" endpinid="Zener-6-rPin" pointList="40,-208,80,-208,80,-192" />
+
+<item itemtype="Connector" uid="Connector-9" startpinid="Csource-5-s2Pin" endpinid="Node-12-1" pointList="40,-152,40,-128" />
+
+<item itemtype="Connector" uid="Connector-10" startpinid="MT7833A_supply-1-PORTAGND" endpinid="Node-12-0" pointList="-40,-136,-40,-128,40,-128" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="Zener-6-lPin" endpinid="Node-13-1" pointList="80,-160,80,-128" />
+
+<item itemtype="Connector" uid="Connector-13" startpinid="Node-12-2" endpinid="Node-13-0" pointList="40,-128,80,-128" />
+
+<item itemtype="Connector" uid="Connector-15" startpinid="Csource-7-s2Pin" endpinid="Node-14-1" pointList="120,-152,120,-128" />
+
+<item itemtype="Connector" uid="Connector-16" startpinid="Node-13-2" endpinid="Node-14-0" pointList="80,-128,120,-128" />
+
+<item itemtype="Connector" uid="Connector-17" startpinid="Node-14-2" endpinid="Tunnel-11-pin" pointList="120,-128,152,-128" />
+
+<item itemtype="Connector" uid="Connector-18" startpinid="Csource-7-s1Pin" endpinid="Tunnel-15-pin" pointList="120,-192,152,-192" />
+
+<item itemtype="Connector" uid="Connector-19" startpinid="Tunnel-17-pin" endpinid="MT7833A_fb-2-PORTADSEN" pointList="-264,0,-240,0" />
+
+<item itemtype="Connector" uid="Connector-21" startpinid="Csource-19-s1Pin" endpinid="MT7833A_pwm-16-PORTAZCD" pointList="-104,8,-64,8" />
+
+<item itemtype="Connector" uid="Connector-22" startpinid="MT7833A_supply-1-PORTAFAULT" endpinid="Node-20-1" pointList="-64,-160,-96,-160,-96,-8" />
+
+<item itemtype="Connector" uid="Connector-23" startpinid="Csource-18-s1Pin" endpinid="Node-20-0" pointList="-136,-8,-96,-8" />
+
+<item itemtype="Connector" uid="Connector-24" startpinid="Node-20-2" endpinid="MT7833A_pwm-16-PORTAFAULT" pointList="-96,-8,-64,-8" />
+
+<item itemtype="Connector" uid="Connector-26" startpinid="MT7833A_fb-2-PORTAGND" endpinid="Node-22-1" pointList="-216,24,-216,64" />
+
+<item itemtype="Connector" uid="Connector-27" startpinid="Tunnel-21-pin" endpinid="Node-22-0" pointList="-248,64,-216,64" />
+
+<item itemtype="Connector" uid="Connector-29" startpinid="Csource-18-s2Pin" endpinid="Node-23-1" pointList="-136,32,-136,64" />
+
+<item itemtype="Connector" uid="Connector-30" startpinid="Node-22-2" endpinid="Node-23-0" pointList="-216,64,-136,64" />
+
+<item itemtype="Connector" uid="Connector-31" startpinid="Node-23-2" endpinid="Csource-19-s2Pin" pointList="-136,64,-104,64,-104,48" />
+
+<item itemtype="Connector" uid="Connector-32" startpinid="MT7833A_fb-2-PORTADRV" endpinid="Tunnel-24-pin" pointList="-200,-24,-200,-48" />
+
+<item itemtype="Connector" uid="Connector-33" startpinid="MT7833A_pwm-16-PORTAEN" endpinid="Tunnel-25-pin" pointList="-40,-32,-40,-48,-48,-48" />
+
+<item itemtype="Connector" uid="Connector-34" startpinid="MT7833A_pwm-16-PORTAGND" endpinid="Tunnel-26-pin" pointList="0,-32,0,-48,16,-48" />
+
+<item itemtype="Connector" uid="Connector-37" startpinid="Tunnel-29-pin" endpinid="Node-30-1" pointList="232,16,168,16" />
+
+<item itemtype="Connector" uid="Connector-38" startpinid="Csource-27-s2Pin" endpinid="Node-30-0" pointList="112,24,168,24,168,16" />
+
+<item itemtype="Connector" uid="Connector-39" startpinid="Node-30-2" endpinid="Mosfet-28-Sour" pointList="168,16,168,0" />
+
+<item itemtype="Connector" uid="Connector-41" startpinid="Tunnel-32-pin" endpinid="Node-33-1" pointList="232,-80,200,-80,200,-64" />
+
+<item itemtype="Connector" uid="Connector-42" startpinid="Mosfet-28-Dren" endpinid="Node-33-0" pointList="168,-32,168,-64,200,-64" />
+
+<item itemtype="Connector" uid="Connector-43" startpinid="Node-33-2" endpinid="Tunnel-31-pin" pointList="200,-64,232,-64" />
+
+<item itemtype="Connector" uid="Connector-44" startpinid="Tunnel-34-pin" endpinid="Node-35-1" pointList="128,-48,128,-16" />
+
+<item itemtype="Connector" uid="Connector-45" startpinid="Csource-27-s1Pin" endpinid="Node-35-0" pointList="112,-16,128,-16" />
+
+<item itemtype="Connector" uid="Connector-46" startpinid="Node-35-2" endpinid="Mosfet-28-Gate" pointList="128,-16,144,-16" />
+
+<item itemtype="Connector" uid="Connector-47" startpinid="opAmp-36-output" endpinid="MT7833A_pwm-16-PORTAOCP" pointList="16,96,-32,96,-32,32" />
+
+<item itemtype="Connector" uid="Connector-48" startpinid="opAmp-36-inputInv" endpinid="Battery-37-lPin" pointList="64,104,88,104" />
+
+<item itemtype="Connector" uid="Connector-49" startpinid="opAmp-36-inputNinv" endpinid="Tunnel-38-pin" pointList="64,88,88,88" />
+
+<item itemtype="Connector" uid="Connector-50" startpinid="opAmp-36-powerPos" endpinid="Tunnel-39-pin" pointList="40,80,40,72,56,72" />
+
+<item itemtype="Connector" uid="Connector-51" startpinid="opAmp-36-powerNeg" endpinid="Tunnel-40-pin" pointList="40,112,40,128,24,128" />
+
+<item itemtype="Connector" uid="Connector-52" startpinid="Battery-37-rPin" endpinid="Tunnel-41-pin" pointList="88,136,88,152,112,152" />
+
+<item itemtype="Connector" uid="Connector-53" startpinid="MT7833A_pwm-16-PORTACS" endpinid="Tunnel-42-pin" pointList="-16,32,-16,48,-8,48" />
+
+<item itemtype="Connector" uid="Connector-54" startpinid="MT7833A_pwm-16-PORTACOMP" endpinid="Tunnel-43-pin" pointList="-48,32,-48,48,-56,48" />
+
+<item itemtype="Connector" uid="Connector-66" startpinid="Resistor-60-lPin" endpinid="Node-62-1" pointList="-200,200,-200,184" />
+
+<item itemtype="Connector" uid="Connector-67" startpinid="Tunnel-46-pin" endpinid="Node-62-0" pointList="-248,184,-200,184" />
+
+<item itemtype="Connector" uid="Connector-68" startpinid="Node-62-2" endpinid="Csource-61-s2Pin" pointList="-200,184,-160,184" />
+
+<item itemtype="Connector" uid="Connector-70" startpinid="Resistor-60-rPin" endpinid="Node-63-1" pointList="-200,232,-200,240,-160,240" />
+
+<item itemtype="Connector" uid="Connector-71" startpinid="Csource-61-s1Pin" endpinid="Node-63-0" pointList="-160,224,-160,240" />
+
+<item itemtype="Connector" uid="Connector-72" startpinid="Node-63-2" endpinid="Tunnel-52-pin" pointList="-160,240,-144,240" />
+
+<item itemtype="Connector" uid="Connector-73" startpinid="Csource-49-s1Pin" endpinid="Resistor-64-lPin" pointList="-88,208,-88,192,-40,192,-40,200" />
+
+<item itemtype="Connector" uid="Connector-74" startpinid="Resistor-64-rPin" endpinid="Node-65-1" pointList="-40,232,-40,256,-72,256,-72,248" />
+
+<item itemtype="Connector" uid="Connector-75" startpinid="Csource-49-s2Pin" endpinid="Node-65-0" pointList="-88,248,-72,248" />
+
+<item itemtype="Connector" uid="Connector-76" startpinid="Node-65-2" endpinid="Tunnel-50-pin" pointList="-72,248,-64,248" />
+
+</circuit>

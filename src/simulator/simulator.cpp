@@ -75,6 +75,9 @@ inline void Simulator::solveMatrix()
     }
     //if( !m_matrix->solveMatrix() ) // m_matrix sets the eNode voltages
     //    m_warning = 2;             // Warning if diagonal element = 0.
+    // A step still iterating after 50 passes: solve the ill-conditioned groups with iterative
+    // refinement (CircMatrix::refine), in case rounding is what keeps it from settling
+    m_matrix->setRefine( m_NLstep >= 50 );
     m_matrix->solveMatrix(); // m_matrix sets the eNode voltages
 }
 

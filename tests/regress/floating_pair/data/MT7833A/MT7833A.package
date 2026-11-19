@@ -1,0 +1,16 @@
+<!DOCTYPE SimulIDE>
+
+<!-- MT7833A, SOP-8 pinout [DOC p.2]. Pin ids match the tunnel names in MT7833A.sim1. -->
+
+<packageB name="MT7833A" pins="8" width="5" height="5" background="" type="None" >
+
+    <pin type=""   xpos="-8" ypos="8"  angle="180" length="8" id="COMP" label="COMP"  /><!-- packagePin1 -->
+    <pin type=""   xpos="-8" ypos="16" angle="180" length="8" id="DSEN" label="DSEN"  /><!-- packagePin2 -->
+    <pin type=""   xpos="-8" ypos="24" angle="180" length="8" id="VDD"  label="VDD"   /><!-- packagePin3 -->
+    <pin type=""   xpos="-8" ypos="32" angle="180" length="8" id="CS"   label="CS"    /><!-- packagePin4 -->
+    <pin type=""   xpos="48" ypos="32" angle="0"   length="8" id="D5"   label="DRAIN" /><!-- packagePin5 -->
+    <pin type=""   xpos="48" ypos="24" angle="0"   length="8" id="D6"   label="DRAIN" /><!-- packagePin6 -->
+    <pin type="nc" xpos="48" ypos="16" angle="0"   length="8" id="NC"   label="NC"    /><!-- packagePin7 -->
+    <pin type=""   xpos="48" ypos="8"  angle="0"   length="8" id="GND"  label="GND"   /><!-- packagePin8 -->
+
+</packageB>

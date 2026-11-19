@@ -3,6 +3,7 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <cmath>
 #include <iostream>
 #include <QtMath>
 #include <QHash>
@@ -17,6 +18,7 @@ CircMatrix::CircMatrix()
 {
     m_pSelf = this;
     m_numEnodes = 0;
+    m_refineOn  = false;
 }
 CircMatrix::~CircMatrix(){}
 
@@ -113,6 +115,8 @@ void CircMatrix::analyze()
     m_currChanged.resize(  group, true );
     m_factorCount.assign( group, 0 );
     m_solveCount.assign(  group, 0 );
+    m_refineCount.assign( group, 0 );
+    m_illCond.assign( group, false );
 
     /// qDebug() <<"CircMatrix::solveMatrix"<<group<<"Circuits";
     /// qDebug() <<"CircMatrix::solveMatrix"<<singleNode<<"Single Nodes\n";
@@ -186,9 +190,13 @@ QString CircMatrix::stats() const
 {
     QStringList groups;
     for( int i=0; i<m_eNodeActList.size(); ++i )
-        groups.append( QString("%1 nodes: %2 factor, %3 solve").arg( m_eNodeActList[i].size() )
-                       .arg( i < (int)m_factorCount.size() ? m_factorCount[i] : 0 )
-                       .arg( i < (int)m_solveCount.size()  ? m_solveCount[i]  : 0 ) );
+    {
+        QString g = QString("%1 nodes: %2 factor, %3 solve").arg( m_eNodeActList[i].size() )
+                    .arg( i < (int)m_factorCount.size() ? m_factorCount[i] : 0 )
+                    .arg( i < (int)m_solveCount.size()  ? m_solveCount[i]  : 0 );
+        if( i < (int)m_refineCount.size() && m_refineCount[i] ) g += QString(", %1 refined").arg( m_refineCount[i] );
+        groups.append( g );
+    }
     return groups.join("; ");
 }
 
@@ -225,9 +233,11 @@ void CircMatrix::factorMatrix( int n, int group ) // Factor matrix into Lower/Up
         for( int j : lower[i] ) a[i][j] = *(ap[i][j]);
         for( int j : upper[i] ) a[i][j] = *(ap[i][j]);
     }
+    bool ill = false;
     for( int k=0; k<n; ++k )                 // Doolittle: L unit diagonal, U holds the diagonal
     {
         double div = a[k][k];
+        if( qFabs( div ) < 1e-8*qFabs( *(ap[k][k]) ) ) ill = true;   // Lost 8+ digits
         if( div == 0 ) continue;
         const std::vector<int>& cols = upper[k];  // Symmetric pattern: also the rows below k
         for( int i : cols )
@@ -240,17 +250,106 @@ void CircMatrix::factorMatrix( int n, int group ) // Factor matrix into Lower/Up
             for( int j : cols ) ai[j] -= l*ak[j];
         }
     }
+    m_illCond[group] = ill;
+}
+
+bool CircMatrix::substitute( int n, int group, d_vector_t& b ) // b in: right side; out: solution
+{
+    const d_matrix_t& a = m_aFaList[group];
+    const pattern_t& lower = m_lowerList[group];
+    const pattern_t& upper = m_upperList[group];
+
+    for( int i=0; i<n; ++i )                 // Forward substitution from lower triangular matrix
+    {
+        double tot = b[i];
+        const double* ai = a[i].data();
+        for( int j : lower[i] ) tot -= ai[j]*b[j];
+        b[i] = tot;
+    }
+    bool isOk = true;
+    for( int i=n-1; i>=0; --i )              // Back substitution from upper triangular matrix
+    {
+        double tot = b[i];
+        const double* ai = a[i].data();
+        for( int j : upper[i] ) tot -= ai[j]*b[j];
+
+        double div = a[i][i];
+        if( div != 0 ) b[i] = tot/div;
+        else { b[i] = 0; isOk = false; }
+    }
+    return isOk;
+}
+
+// A pivot that is the difference of two large admittances keeps few digits, and the solution
+// with it is off by up to eps × (their ratio) in the direction that pivot stands for. Example:
+// a floating mains source (1 mΩ, 1e3 S, between its pins) when every bridge diode is off: the
+// pair's common-mode voltage hangs on ~1e-11 S of diode leakage, the pivot for it is
+// 1e3 - 1e3 + 1e-11, and each solve put the pair somewhere else by ~10 mV, so the diodes never
+// converged (led_driver board_mains; test_floating_pair_refine). The matrix itself holds that
+// 1e-11 to 2 %, so iterative refinement recovers it: the residual b - A x computed exactly
+// (products split with fma, sums with two-sum), solved with the same factors, added to x.
+// Each pass gains the digits the factors keep (here 2); at most 3 passes.
+void CircMatrix::refine( int n, int group, d_vector_t& x )
+{
+    const dp_matrix_t& ap = m_aList[group];
+    const dp_vector_t& bp = m_bList[group];
+    const pattern_t& lower = m_lowerList[group];
+    const pattern_t& upper = m_upperList[group];
+    d_vector_t& r = m_resid;
+    r.resize( n );
+
+    for( int pass=0; pass<3; ++pass )
+    {
+        double rMax = 0;
+        for( int i=0; i<n; ++i )
+        {
+            double hi = *(bp[i]), lo = 0;
+            auto sub = [&]( double aij, double xj ){
+                double p  = aij*xj;
+                double pe = std::fma( aij, xj, -p );        // a·x = p + pe exactly
+                double s  = hi-p;                           // hi - p = s + e exactly (two-sum)
+                double bb = s-hi;
+                double e  = ( hi-( s-bb ) ) + ( -p-bb );
+                hi = s;
+                lo += e-pe;
+            };
+            sub( *(ap[i][i]), x[i] );
+            for( int j : lower[i] ) sub( *(ap[i][j]), x[j] );
+            for( int j : upper[i] ) sub( *(ap[i][j]), x[j] );
+            r[i] = hi+lo;
+            rMax = qMax( rMax, qFabs( r[i] ) );
+        }
+        if( rMax == 0 ) return;                // Exact: nothing to correct. (A residual small next
+                                               // to b is not enough: that is all LU guarantees)
+        substitute( n, group, r );
+        double dMax = 0, xMax = 0;
+        for( int i=0; i<n; ++i ){
+            x[i] += r[i];
+            dMax = qMax( dMax, qFabs( r[i] ) );
+            xMax = qMax( xMax, qFabs( x[i] ) );
+        }
+        m_refineCount[group]++;
+        if( dMax <= 1e-13*xMax ) return;
+    }
 }
 
 bool CircMatrix::luSolve( int n, int group ) // Solves the system to get voltages for each node
 {
-    const d_matrix_t&  a  = m_aFaList[group];
     const dp_vector_t& bp = m_bList[group];
-    const pattern_t& lower = m_lowerList[group];
-    const pattern_t& upper = m_upperList[group];
-
     d_vector_t& b = m_work;
     b.resize( n );
+
+    if( m_refineOn && m_illCond[group] )     // Slow step, ill-conditioned group: refine
+    {
+        for( int i=0; i<n; ++i ) b[i] = *(bp[i]);
+        bool isOk = substitute( n, group, b );
+        refine( n, group, b );               // Also with a zero pivot (a node with nothing on it: 0 V)
+        for( int i=n-1; i>=0; --i ) m_eNodeActive->at(i)->setVolt( b[i] );
+        return isOk;
+    }
+    const d_matrix_t& a = m_aFaList[group];  // Usual path: the substitutions, setting the voltages
+    const pattern_t& lower = m_lowerList[group];
+    const pattern_t& upper = m_upperList[group];
 
     for( int i=0; i<n; ++i )                 // Forward substitution from lower triangular matrix
     {
