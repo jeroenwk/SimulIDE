@@ -1,8 +1,9 @@
 """K9e (specs/keyboard-input.md): the component list from the keyboard.
 
-Expected values follow the spec: : selects the next part in the component list and /
-the previous one (categories skipped, wrapping), the canvas keeping the keyboard; k
-places the part selected in the list as a part letter does — at the cross, or
+Expected values follow the spec: : selects the next row of the component list and /
+the previous one (groups are rows; a collapsed group is not opened; wrapping), the
+canvas keeping the keyboard; k on a group expands / collapses it, on a part places it
+as a part letter does — at the cross, or
 continuing the chain from a selected part's pin; k with nothing selected in the list
 gives a message. Nothing is simulated.
 """
@@ -18,6 +19,10 @@ def lib(s):
     return s.get("libraryPart")
 
 
+def grp(s):
+    return s.get("libraryGroup")
+
+
 def test(sim):
     sim.cli("circuit", "new", "--discard")
     sim.cli("ui", "click", "100,100")
@@ -28,24 +33,38 @@ def test(sim):
     sim.check("k, no list part: message", int("no part selected in the component list" in str(sim.cli("messages"))),
               1, absolute=0)
 
-    # : and / step through the list; the canvas keeps the keys
+    # : and / step through the rows the list shows, groups included; a collapsed group
+    # is not opened; k on a group expands / collapses it. The canvas keeps the keys
     s = sim.cli("ui", "type", ":")
-    first = lib(s)
-    sim.check(": selects the first part", int(first is not None and first["name"] == "Probe"), 1, absolute=0,
-              note=str(first))
+    sim.check(": the first row: the Meters group", int(grp(s) is not None and grp(s)["name"] == "Meters"
+              and lib(s) is None), 1, absolute=0, note=str(grp(s)))
     sim.check(": the canvas keeps the focus", int(s["focused"]), 1, absolute=0)
+    if not grp(s)["expanded"]:
+        s = sim.cli("ui", "type", "k")
+    sim.check("k on a group: expanded", int(grp(s)["expanded"]), 1, absolute=0)
+    s = sim.cli("ui", "type", "k")
+    sim.check("k on a group again: collapsed", int(grp(s)["expanded"]), 0, absolute=0)
+    sim.check("k on a group: nothing placed", len(sim.cli("comp", "list")), 0, absolute=0)
     s = sim.cli("ui", "type", ":")
-    sim.check(": the next part", int(lib(s)["name"] == "Voltimeter"), 1, absolute=0, note=str(lib(s)))
-    s = sim.cli("ui", "type", "/")
-    sim.check("/ the previous part", int(lib(s) == first), 1, absolute=0, note=str(lib(s)))
-    s = sim.cli("ui", "type", "/")
-    sim.check("/ from the first: wraps to the last", int(lib(s) != first and lib(s) is not None), 1, absolute=0,
+    sim.check(": past a collapsed group: the next group, not opened",
+              int(grp(s) is not None and grp(s)["name"] == "Sources"), 1, absolute=0, note=str(grp(s) or lib(s)))
+    s = sim.cli("ui", "type", "/", "k", ":")              # Back to Meters, open it, down
+    sim.check("open group: its first part", int(lib(s) is not None and lib(s)["name"] == "Probe"), 1, absolute=0,
               note=str(lib(s)))
     s = sim.cli("ui", "type", ":")
-    sim.check(": from the last: wraps to the first", int(lib(s) == first), 1, absolute=0, note=str(lib(s)))
+    sim.check(": the next part", int(lib(s)["name"] == "Voltimeter"), 1, absolute=0, note=str(lib(s)))
+    s = sim.cli("ui", "type", "/", "/")
+    sim.check("/ back up to the group row", int(grp(s) is not None and grp(s)["name"] == "Meters"), 1, absolute=0,
+              note=str(grp(s) or lib(s)))
+    s = sim.cli("ui", "type", "/")
+    sim.check("/ from the first row: wraps to the last", int(grp(s) != {"name": "Meters", "expanded": True}), 1,
+              absolute=0, note=str(grp(s) or lib(s)))
+    s = sim.cli("ui", "type", ":")
+    sim.check(": from the last row: wraps to the first", int(grp(s) is not None and grp(s)["name"] == "Meters"), 1,
+              absolute=0, note=str(grp(s) or lib(s)))
 
     # k places it at the cross, selected
-    s = sim.cli("ui", "type", ":", ":")                  # Amperimeter
+    s = sim.cli("ui", "type", ":", ":", ":")             # Probe, Voltimeter, Amperimeter
     sim.check("setup: the ammeter selected in the list", int(lib(s)["name"] == "Amperimeter"), 1, absolute=0,
               note=str(lib(s)))
     s = sim.cli("ui", "type", "k")
@@ -76,9 +95,12 @@ def test(sim):
     sim.cli("circuit", "new", "--discard")
     sim.cli("ui", "click", "300,300")
     found = None
-    for _ in range(400):
+    for _ in range(600):
         s = sim.cli("ui", "type", ":")
-        if lib(s)["type"] == "Subcircuit":
+        if grp(s) is not None and not grp(s)["expanded"]:
+            s = sim.cli("ui", "type", "k")               # Open it to reach its parts
+            continue
+        if lib(s) is not None and lib(s)["type"] == "Subcircuit":
             found = lib(s)
             break
     sim.check("a subcircuit in the list", int(found is not None), 1, absolute=0)

@@ -12,6 +12,8 @@
 #include "managecomps.h"
 #include "itemlibrary.h"
 
+class Component;
+
 class ComponentSelector : public QTreeWidget
 {
     public:
@@ -39,7 +41,19 @@ class ComponentSelector : public QTreeWidget
         // gives them; false: none), and stepping it to the next / previous part shown
         // (categories skipped, its category opened, wrapping). The canvas keeps the focus
         bool selectedPart( QString* type, QString* name );
-        QString stepPart( int dir );                     // The new part's name, "" if none
+
+        // Part shortcuts (one lowercase letter per part, specs/keyboard-input.md K9f),
+        // shared by the part's properties dialog, Manage Components and the CLI
+ static QString keyRefusal( QString key );          // Why key can't be a part shortcut ("": it can)
+        QString libraryName( Component* comp );         // Its name in the list ("": not in the list)
+        QString caption( QString name );                // As the list shows it
+        QString shortcutOwner( QString key, QString except = "" );   // The part that has key
+        void    setShortcut( QString name, QString key, bool save=true );  // "" clears; taken from its owner
+        bool    isListed( QString name );               // A part of that name in the list
+        QString stepPart( int dir );                     // The new row's text, "" if none
+        QString selectedGroup( bool* expanded=nullptr ); // The group row selected ("": none)
+        bool    toggleSelectedGroup();                   // Expand / collapse it (false: none)
+        void    showItem( QTreeWidgetItem* item );       // Scrolled into the visible rows
 
         // Keyboard input (K5): default single-key shortcuts (component name -> lowercase letter).
         // A user setting (Manage Components), even empty, replaces the default

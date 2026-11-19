@@ -14,6 +14,7 @@
 #include "circuitview.h"
 #include "circuit.h"
 #include "keyboardcontroller.h"
+#include "componentselector.h"
 #include "shortcuts.h"
 #include "clirefs.h"
 #include "component.h"
@@ -192,6 +193,37 @@ void CliApi::registerKbd()
             QApplication::sendEvent( v, &release );
         }
         return kbdState();
+    });
+
+    add("kbd partkey", "kbd partkey <part> [<letter>|none] [--replace]",
+        "A part's keyboard shortcut (the letter that places it at the cross), as its properties dialog "
+        "sets it: <part> is a component on the canvas or a name in the component list. Without a letter: "
+        "show it. A letter another part has is refused unless --replace (that part then has none); "
+        "h w k and non-letters are refused. none clears it. Saved in the user's settings, except on "
+        "a headless server (in memory only: it shares the user's settings).",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        ComponentSelector* sel = ComponentSelector::self();
+        QString ref = c.arg( 0, "part");
+        QString name;
+        for( Component* comp : *Circuit::self()->compList() )
+            if( comp->getUid() == ref || comp->idLabel() == ref ) name = sel->libraryName( comp );
+        if( name.isEmpty() && sel->isListed( ref ) ) name = ref;
+        if( name.isEmpty() ) throw CliError("no such part on the canvas or in the component list: "+ref );
+        if( c.pos.size() > 1 )
+        {
+            QString key = c.pos.at( 1 ) == "none" ? QString() : c.pos.at( 1 ).toLower();
+            QString why = ComponentSelector::keyRefusal( key );
+            if( !why.isEmpty() ) throw CliError( why.replace('\n', ' ') );
+            QString owner = sel->shortcutOwner( key, name );
+            if( !owner.isEmpty() && !c.flag("replace") )
+                throw CliError("\""+key+"\" is already the shortcut of "+sel->caption( owner )+" ("+owner+"): add --replace");
+            if( !owner.isEmpty() ) CliApi::self()->addMessage( sel->caption( owner )+" no longer has \""+key+"\"" );
+            sel->setShortcut( name, key, !CliApi::self()->headless() );   // Headless: not saved
+        }
+        return QJsonObject{ {"name", name}, {"caption", sel->caption( name )},
+                            {"key", sel->getShortCuts().value( name )},
+                            {"default", ComponentSelector::defaultShortCuts().value( name )} };
     });
 
     add("ui mouse", "ui mouse <x,y>",

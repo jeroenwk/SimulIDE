@@ -180,7 +180,7 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     if( ( text == ":" || text == "/" ) && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) )
     {
         QString name = ComponentSelector::self()->stepPart( text == ":" ? 1 : -1 );
-        if( name.isEmpty() ) say("Keyboard: no part in the component list");
+        if( name.isEmpty() ) say("Keyboard: the component list is empty");
         return true;
     }
 
@@ -335,10 +335,12 @@ bool KeyboardController::partKey( QString letter )
     return placePart( name, name );
 }
 
-// k (K9e): the part selected in the component list, placed as a part letter places
+// k (K9e): the part selected in the component list, placed as a part letter places;
+// on a group row it expands or collapses the group instead
 bool KeyboardController::libraryPartKey()
 {
     QString type, name;
+    if( ComponentSelector::self()->toggleSelectedGroup() ) return true;
     if( !ComponentSelector::self()->selectedPart( &type, &name ) )
     {
         say("Keyboard: no part selected in the component list — choose one with : and /");
@@ -1322,6 +1324,9 @@ QJsonObject KeyboardController::state()
     QString libType, libName;                             // K9e: the part selected in the list
     if( ComponentSelector::self() && ComponentSelector::self()->selectedPart( &libType, &libName ) )
         o["libraryPart"] = QJsonObject{ {"type", libType}, {"name", libName} };
+    bool groupOpen = false;
+    QString group = ComponentSelector::self() ? ComponentSelector::self()->selectedGroup( &groupOpen ) : QString();
+    if( !group.isEmpty() ) o["libraryGroup"] = QJsonObject{ {"name", group}, {"expanded", groupOpen} };
     if( m_value.active() ) o["valueEdit"] = m_value.state();   // K7: the value being typed
     if( m_drawing )                                       // K9b: the wire being drawn
     {

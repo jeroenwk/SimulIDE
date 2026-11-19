@@ -12,6 +12,8 @@
 
 class CompBase;
 class PropVal;
+class QLineEdit;
+class QLabel;
 
 class PropDialog : public QDialog, private Ui::PropDialog
 {
@@ -45,6 +47,14 @@ class PropDialog : public QDialog, private Ui::PropDialog
     private:
         void commitEdit();
         void setUndoable( QString prop, QString val );
+
+        // The part's keyboard shortcut (K9f): one lowercase letter for its kind of part
+        void addShortcutRow( CompBase* comp );
+        void shortcutEdited( QString text );
+        void updateShortcutHint();
+        QString    m_shortcutName;          // The part's name in the component list
+        QLineEdit* m_shortcutBox = nullptr;
+        QLabel*    m_shortcutHint = nullptr;
 
         CompBase* m_component;
 
