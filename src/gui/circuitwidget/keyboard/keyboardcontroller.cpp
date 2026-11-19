@@ -103,20 +103,11 @@ bool KeyboardController::keyPress( QKeyEvent* event )
 
     hidePointer();              // Typing on the canvas: the pointer goes (pan mode shows its symbol)
 
-    if( arrow && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return arrowKey( event, mods );
-
-    if( zoomKey( event, mods ) ) return true;
-
-    // Cmd+R / Cmd+Shift+R: rotate; with an outgoing pin (pinFrom) on another part, the
-    // rotated part is also moved so its closest pin shares that pin's row or column
-    if( key == Qt::Key_R && ( mods & Qt::ControlModifier )
-     && !( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) )
-        return rotateKey( mods & Qt::ShiftModifier );
-
-    m_arrowBurst = false;       // Any other key ends a burst of arrow moves
+    if( zoomKey( event, mods ) ) return true;   // The view only: a value being typed stays
 
     // Typing the selected part's value (K7). While editing, value keys build the buffer;
-    // any other key reverts first and then does its normal action
+    // any other key (arrows and Cmd+R too, spec §4.1) reverts first and then does its
+    // normal action
     if( m_valueEdit )
     {
         if( valueKey( event, mods ) ) return true;
@@ -127,6 +118,16 @@ bool KeyboardController::keyPress( QKeyEvent* event )
         QChar first = valueEntryChar( event, mods );           // A digit, - . , enters the edit
         if( first != '\0' && startValueEdit( first ) ) return true;
     }
+
+    if( arrow && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return arrowKey( event, mods );
+
+    // Cmd+R / Cmd+Shift+R: rotate; with an outgoing pin (pinFrom) on another part, the
+    // rotated part is also moved so its closest pin shares that pin's row or column
+    if( key == Qt::Key_R && ( mods & Qt::ControlModifier )
+     && !( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) )
+        return rotateKey( mods & Qt::ShiftModifier );
+
+    m_arrowBurst = false;       // Any other key ends a burst of arrow moves
 
     if( panKey ){ setPanMode( true ); return true; }
 
@@ -227,8 +228,8 @@ void KeyboardController::selectPart( Component* comp )
     Circuit* circ = Circuit::self();
     circ->clearSelection();
     comp->setSelected( true );
-    moveCursorTo( comp->pos() );             // The (hidden) cross at the part: Esc shows it there
     settleSelection();                       // Now, not queued: the keys that follow see it
+                                             // (it parks the hidden cross at the part)
     if( CircuitView* v = CircuitView::self() ) v->ensureVisible( comp->sceneBoundingRect(), 32, 32 );
 }
 
@@ -284,6 +285,8 @@ bool KeyboardController::rotateKey( bool ccw )
     Pin* f = pinFrom();
     if( !comp || !f || f->component() == comp ) return false;   // The plain rotation
 
+    Circuit* circ = Circuit::self();
+    int undoIndex = circ->undoIndex();       // The rotation and the shift: one undo step
     if( ccw ) comp->rotateCCW();
     else      comp->rotateCW();
 
@@ -303,10 +306,11 @@ bool KeyboardController::rotateKey( bool ccw )
         else                                 move.rx() = -d.x();   // Stacked: one column
         if( !move.isNull() )
         {
-            Circuit::self()->moveSelection( move, true );          // Wires follow, one undo step,
-            refreshAutoPins();                                     // the cross moves along
+            circ->moveSelection( move, true );                     // Wires follow, the cross
+            refreshAutoPins();                                     // moves along
         }
     }
+    circ->joinUndoSteps( undoIndex );
     if( CircuitView* v = CircuitView::self() ) v->ensureVisible( comp->sceneBoundingRect(), 32, 32 );
     return true;
 }
@@ -360,8 +364,8 @@ bool KeyboardController::partKey( QString letter )
     circ->saveCompChange( comp->getUid(), COMP_STATE_NEW, "" );
     qDebug() << "[kbd] key" << letter << "places" << name << "at" << comp->pos()
              << "rotation" << comp->rotation();
-    moveCursorTo( comp->pos() );             // The cross goes with the part (D13)
-    selectPart( comp );                      // Selected, pins paired with the last part
+    selectPart( comp );                      // Selected (the hidden cross goes with it, D13),
+                                             // pins paired with the last part
     if( fromPin )                            // Its selected pin: the one nearest to the
     {                                        // outgoing pin (D18), pinFrom that pin
         Pin* near = nullptr;
@@ -571,6 +575,8 @@ bool KeyboardController::startValueEdit( QChar first )
     m_valueEdit = true;
     m_valueUid  = comp->getUid();
     m_valueProp = prop;
+    m_valueOldText = comp->valLabel()->toPlainText();    // Restored on revert; the label shows
+    comp->valLabel()->setVisible( true );                // while typing, even when hidden
     m_valueBuf  = ( first == '.' ) ? "0." : QString( first );
     qDebug() << "[kbd] value edit" << prop << "on" << m_valueUid;
     updateValueLabel();
@@ -658,8 +664,10 @@ void KeyboardController::endValueEdit()
     m_valueBuf.clear();
     if( !comp ) return;
     comp->valLabel()->setDefaultTextColor( Theme::valLabel() );
-    if( ComProperty* p = comp->property( m_valueProp ) )
-        comp->setValLabelText( p->getValStr() );
+    comp->valLabel()->setVisible( comp->showVal() );
+    ComProperty* p = comp->property( m_valueProp );
+    if( p && comp->showProp() == m_valueProp ) comp->setValLabelText( p->getValStr() );  // As set now
+    else                                       comp->setValLabelText( m_valueOldText );
     m_valueProp.clear();
 }
 
@@ -704,10 +712,16 @@ void KeyboardController::commitValue()
         QString val = valueString( comp );
         QString old = comp->getPropStr( m_valueProp );
         Circuit* circ = Circuit::self();
+        QString oldShow = comp->getPropStr("ShowProp");
         circ->beginUndoStep();
         comp->setPropStr( m_valueProp, val );
-        circ->calcCircuitChanges();
         circ->addCompChange( comp->getUid(), m_valueProp, old );
+        if( comp->showProp() != m_valueProp )            // A typed value is shown from now on
+        {                                                // (saved: ShowProp is not empty)
+            comp->setPropStr("ShowProp", m_valueProp );
+            circ->addCompChange( comp->getUid(), "ShowProp", oldShow );
+        }
+        circ->calcCircuitChanges();
         circ->endCircuitBatch();
         circ->setChanged();
         qDebug() << "[kbd] value" << val << "->" << m_valueProp << "on" << m_valueUid;
@@ -795,6 +809,7 @@ void KeyboardController::selectionChanged()
         Component* c = singlePart();
         if( !c || c->getUid() != m_valueUid ) endValueEdit();
     }
+    if( m_cursorSet && !anyPartSelected() && m_cursor != snap( m_cursor ) ) m_cursor = snap( m_cursor );
     if( m_cursorSet ) updateCross( m_cursor );   // Shown only while no part is selected
     if( m_panMode && anyPartSelected() ) setPanMode( false );
     if( m_selPending ) return;
@@ -837,7 +852,7 @@ void KeyboardController::settleSelection()
         setPinTo( nullptr );
     }
     Component* b = singlePart();
-    if( b ) moveCursorTo( b->pos() );            // Whatever selects one part — Tab, a click,
+    if( b ) parkCursor( b->pos() );              // Whatever selects one part — Tab, a click,
     if( !b || b->getUid() == m_lastPart ) return;   // the CLI — parks the hidden cross on it
 
     Component* a = lastPart();
@@ -984,6 +999,24 @@ QPointF KeyboardController::cursorPos()
         m_cursorSet = true;
     }
     return m_cursor;
+}
+
+// The hidden cross follows a moved selection (arrows, a mouse drag, the rotation
+// alignment), so Esc shows it where the parts ended up. One part: its position, snapped;
+// several: shifted as they are, snapped only when shown (no drift from 4 px drag steps).
+// The view never scrolls for the hidden cross: that made a mouse drag run away
+void KeyboardController::selectionMoved( QPointF delta )
+{
+    if( Component* comp = singlePart() ) parkCursor( comp->pos() );
+    else                                 parkCursor( cursorPos()+delta, false );
+}
+
+void KeyboardController::parkCursor( QPointF scenePos, bool snapIt )
+{
+    QPointF old = cursorPos();
+    m_cursor = snapIt ? snap( scenePos ) : scenePos;
+    updateCross( old );
+    updateCross( m_cursor );
 }
 
 void KeyboardController::moveCursorTo( QPointF scenePos )

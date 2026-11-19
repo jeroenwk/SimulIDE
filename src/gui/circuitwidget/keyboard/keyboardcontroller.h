@@ -56,6 +56,7 @@ class KeyboardController
         bool pointerHidden() { return m_pointerHidden; }
 
         void moveCursorTo( QPointF scenePos );   // Snapped; scrolls the view to keep it visible
+        void selectionMoved( QPointF delta );    // Circuit::moveSelection: the hidden cross follows
 
         void paint( QPainter* painter );         // From Circuit::drawForeground
 
@@ -121,6 +122,7 @@ class KeyboardController
         void zoomAround( double factor );        // Keeps the cross (or the view centre) in place
         bool anyPartSelected();
         void updateCross( QPointF p );
+        void parkCursor( QPointF scenePos, bool snapIt = true );   // The hidden cross: no scrolling
         QRectF crossRect( QPointF p );
 
         QPointF m_cursor;
@@ -149,6 +151,7 @@ class KeyboardController
         QString m_valueUid;
         QString m_valueProp;
         QString m_valueBuf;
+        QString m_valueOldText;                 // The value label before the edit
 
         QString m_leavePin;                     // The pin Enter left from (D17), and the
         QPointF m_leavePos;                     // cross spot beyond it: placement continues there

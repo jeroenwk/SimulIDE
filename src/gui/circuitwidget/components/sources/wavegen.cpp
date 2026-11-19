@@ -105,8 +105,6 @@ WaveGen::WaveGen( QString type, QString id )
                              , this, &WaveGen::outImp, &WaveGen::setOutImp )
     },0} );
 
-    setShowProp("Freq");      // Its typed value (K7); shown in its value label
-    setPropStr("Freq", "1");
     setWaveType("Sine");
 }
 WaveGen::~WaveGen()

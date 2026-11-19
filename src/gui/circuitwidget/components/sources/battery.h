@@ -17,6 +17,10 @@ class Battery : public Comp2Pin, public eResistor
         Battery( QString type, QString id );
         ~Battery();
 
+        // K7: typed values set the Voltage (not shown by default: an empty ShowProp is
+        // not saved, so a shown default would show up on every older circuit)
+        QString valueProperty() override { return "Voltage"; }
+
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 

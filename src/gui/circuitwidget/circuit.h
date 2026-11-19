@@ -118,6 +118,10 @@ class Circuit : public QGraphicsScene
         static QList<Connector*> netWires( Connector* first );  // The net's wires, through junctions
         static int backwards( QString side, QPoint d );         // A leg against the way a pin faces
         static QStringList routePoints( QPoint a, QPoint b, QList<QPoint> via, bool startVertical );
+        static bool routeStartsVertical( Pin* sp, Pin* ep );    // Where the one corner turns
+        // Where a junction for a wired pin goes (segment + point); ownWire false: on another
+        // wire of its net (its own is too short). nullptr: no wire, or none long enough
+        static ConnectorLine* junctionLine( Pin* pin, QPoint* at, bool* ownWire = nullptr );
 
         void addNode( Node* node );
         void addComponent( Component* comp );
@@ -146,6 +150,9 @@ class Circuit : public QGraphicsScene
         void remPin( QString pinId ) { m_pinMap.remove( pinId ); }
         Pin* pinById( QString pinId ) { return m_pinMap.value( pinId ); }
         bool loading() { return m_loading; }
+        int  undoIndex() { return m_undoIndex; }
+        bool restoring() { return m_undo || m_redo; }     // Undo / redo is setting properties
+        void joinUndoSteps( int index );     // The steps saved after index become one
         void updatePin( ePin* epin, QString oldId, QString newId );
 
         QString getSeqNumber( QString name );

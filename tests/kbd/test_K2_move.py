@@ -109,6 +109,16 @@ def test(sim):
     sim.cli("ui", "type", "cmd+z")
     sim.check("drag: cmd+z restores R1", pos(sim, "R1")[0], 300, absolute=0)
 
+    # A drag that is not a multiple of 8 px: the hidden cross stays on the part (no
+    # drift from 4 px steps), and the view does not scroll after the hidden cross,
+    # which made the part run away from the mouse
+    s = sim.cli("ui", "drag", "300,300", "400,352")
+    p = pos(sim, "R1")
+    sim.check("odd drag: R1 lands under the mouse", int(abs(p[0]-400) <= 8 and abs(p[1]-352) <= 8), 1,
+              absolute=0, note=str(p))
+    sim.check("odd drag: the cross stays at R1", int(abs(s["cursor"][0]-p[0]) <= 4 and abs(s["cursor"][1]-p[1]) <= 4), 1,
+              absolute=0, note="%s vs %s" % (s["cursor"], p))
+
     # Registry
     sc = sim.cli("kbd", "shortcuts")
     sim.check("registry: Arrows move the selection",

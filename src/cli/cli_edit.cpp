@@ -240,9 +240,6 @@ QStringList modelFirst( QStringList keys )
     return first + rest;
 }
 
-// A straight wire segment long enough to split with a junction on the 8 px grid
-bool splittable( ConnectorLine* line ) { return Circuit::splittable( line ); }
-
 // Every wire of the net a pin's wire belongs to, following junction nodes (no simulation needed)
 QList<Connector*> netWires( Connector* first ) { return Circuit::netWires( first ); }
 
@@ -251,33 +248,10 @@ QList<Connector*> netWires( Connector* first ) { return Circuit::netWires( first
 // same net whose middle is nearest to the pin.
 ConnectorLine* lineAt( Pin* pin, QPoint& point )
 {
-    Connector* con = pin->connector();
-    QList<ConnectorLine*>* lines = con->lineList();
-    QList<ConnectorLine*> order;
-    if( con->startPin() == pin ) for( int i=0; i<lines->size(); ++i )   order.append( lines->at( i ) );
-    else                         for( int i=lines->size()-1; i>=0; --i ) order.append( lines->at( i ) );
-
-    for( ConnectorLine* line : order )
-    {
-        if( !splittable( line ) ) continue;
-        point = toCompGrid( QPointF( ( line->p1()+line->p2() )/2 ) ).toPoint(); // On the 8 px grid
-        return line;
-    }
-    QPoint at = CliRefs::pinPos( pin );
-    QList<Connector*> net = netWires( con );
-    ConnectorLine* best = nullptr;
-    int bestDist = INT_MAX;
-    for( Connector* w : net )
-    {
-        if( w == con ) continue;
-        for( ConnectorLine* line : *w->lineList() )
-        {
-            if( !splittable( line ) ) continue;
-            QPoint mid = toCompGrid( QPointF( ( line->p1()+line->p2() )/2 ) ).toPoint();
-            int d = ( mid-at ).manhattanLength();
-            if( d < bestDist ){ bestDist = d; best = line; point = mid; }
-        }
-    }
+    bool own = true;
+    ConnectorLine* best = Circuit::junctionLine( pin, &point, &own );
+    if( best && own ) return best;
+    QList<Connector*> net = netWires( pin->connector() );
     qDebug() << "[CLI] wire add: junction near" << CliRefs::pinRef( pin ) << "net of" << net.size()
              << "wire(s), nearest splittable segment" << ( best ? QString("%1,%2").arg( point.x() ).arg( point.y() ) : QString("none") );
     if( best )
@@ -402,9 +376,6 @@ void layoutWarnings( Connector* con )
     list.sort();
     for( QString n : list ) CliApi::self()->addMessage( n+" (use --via to route around)" );
 }
-
-// 1 when a leg from a pin going d runs against the way the pin faces (back into its part)
-int backwards( QString side, QPoint d ) { return Circuit::backwards( side, d ); }
 
 // Wire path from a to b through the --via points (Circuit::routePoints does the legs).
 // Every leg is horizontal or vertical
@@ -714,24 +685,13 @@ void CliApi::registerEdit()
 
         if( con && con->startPin() && con->endPin() )
         {
-            QPoint a = con->startPin()->scenePos().toPoint();
-            QPoint b = con->endPin()->scenePos().toPoint();
             Pin* sp = con->startPin();
             Pin* ep = con->endPin();
-            QString side  = dynamic_cast<Node*>( sp->component() ) ? "" : CliRefs::pinSide( sp );
-            QString eside = dynamic_cast<Node*>( ep->component() ) ? "" : CliRefs::pinSide( ep );
-            bool vertical = side == "up" || side == "down";
-            // One corner, two ways to turn: the start pin's axis first, unless that leaves the
-            // start pin backwards or enters the end pin from behind, through its own part
-            // (a tunnel facing away from its target: create-circuit #313)
-            if( c.opt("via").isEmpty() && a.x() != b.x() && a.y() != b.y() )
-            {
-                auto wrong = [&]( bool vert ){
-                    QPoint k = vert ? QPoint( a.x(), b.y() ) : QPoint( b.x(), a.y() );
-                    return backwards( side, k-a ) + backwards( eside, k-b );
-                };
-                if( wrong( !vertical ) < wrong( vertical ) ) vertical = !vertical;
-            }
+            QPoint a = sp->scenePos().toPoint();
+            QPoint b = ep->scenePos().toPoint();
+            QString side = dynamic_cast<Node*>( sp->component() ) ? "" : sp->side();
+            bool vertical = c.opt("via").isEmpty() ? Circuit::routeStartsVertical( sp, ep )   // As "_" does
+                                                   : side == "up" || side == "down";
             con->setPointList( routePoints( a, b, c.opt("via"), vertical ) );
         }
         if( !con || !circ->conList()->contains( con ) ) throw CliError("wire could not be created");

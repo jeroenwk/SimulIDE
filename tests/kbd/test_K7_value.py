@@ -79,8 +79,29 @@ def test(sim):
     sim.cli("ui", "click", "100,100")
     sim.cli("ui", "type", "y")
     uid = placed(sim)
-    sim.cli("ui", "type", "9", "enter")
+    # Its value is not shown by default (an empty ShowProp is not saved: a shown
+    # default would appear on every older circuit); typing it shows it, one undo step
+    def vlabel():
+        for l in sim.cli("comp", "get", uid).get("labels", []):
+            if l["kind"] == "value":
+                return l["text"]
+        return None
+    sim.check("battery: value not shown by default", int(vlabel() is None), 1, absolute=0, note=str(vlabel()))
+    sim.cli("ui", "type", "9")
+    sim.check("battery: label shows the buffer while typing", int((vlabel() or "").startswith("9")), 1,
+              absolute=0, note=str(vlabel()))
+    sim.cli("ui", "type", "enter")
     sim.check("battery 9 V", int(prop(sim, uid, "Voltage") == "9 V"), 1, absolute=0, note=prop(sim, uid, "Voltage"))
+    sim.check("battery: typed value now shown", int(vlabel() == "9 V"), 1, absolute=0, note=str(vlabel()))
+    sim.cli("ui", "type", "cmd+z")
+    sim.check("battery: cmd+z restores value and hidden label",
+              int(prop(sim, uid, "Voltage") == "5 V" and vlabel() is None), 1, absolute=0,
+              note="%s %s" % (prop(sim, uid, "Voltage"), vlabel()))
+    sim.cli("select", uid)
+    sim.cli("ui", "type", "7", "esc")
+    sim.check("battery: Esc hides the label again", int(vlabel() is None), 1, absolute=0, note=str(vlabel()))
+    sim.cli("ui", "type", "esc")
+    sim.cli("ui", "type", "cmd+shift+z")
     sim.cli("ui", "type", "x")
     uid = placed(sim)
     sim.cli("ui", "type", "-", "5", "enter")
@@ -147,6 +168,13 @@ def test(sim):
     sim.check("tab: edit off", int("valueEdit" not in s), 1, absolute=0)
     sim.check("tab: next part selected", int(s["selection"] == [r2]), 1, absolute=0, note=str(s["selection"]))
     sim.check("tab: old value", int(prop(sim, r1, "Resistance") == "100 Ω"), 1, absolute=0, note=prop(sim, r1, "Resistance"))
+    # Arrows revert too (spec §4.1), then move the part
+    sim.cli("select", r1)
+    before = sim.cli("comp", "get", r1)["pos"]
+    s = sim.cli("ui", "type", "5", "6", "Right")
+    sim.check("arrow: edit off", int("valueEdit" not in s), 1, absolute=0)
+    sim.check("arrow: old value", int(prop(sim, r1, "Resistance") == "100 Ω"), 1, absolute=0, note=prop(sim, r1, "Resistance"))
+    sim.check("arrow: part moved", sim.cli("comp", "get", r1)["pos"][0], before[0]+64, absolute=0)
 
     # Enter commits as one undo step
     sim.cli("select", r1)

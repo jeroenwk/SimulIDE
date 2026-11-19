@@ -404,8 +404,13 @@ Validate
   the others (meters, scope, ground, switches, semiconductors) none → value
   keys do nothing. Checked findings: the zener's breakdown voltage is its
   `Model` enum (BZX… strings), not a number, so a zener takes no typed value;
-  battery, fixed voltage and wave gen had no shown value, and now show one
-  (`setShowProp`: Voltage, Voltage, Freq) so the typed buffer is visible.
+  battery, fixed voltage and wave gen have no shown value: they override
+  `valueProperty()` (Voltage, Voltage, Freq) instead of getting a default
+  `ShowProp` — an empty `ShowProp` is not saved, so a shown default would show
+  up on every older circuit and could never be hidden for good (review of
+  #86). While a value is typed the value label is shown even when hidden;
+  Enter also turns it on (`ShowProp` = the typed property, same undo step),
+  a revert hides it again.
   The default rule is the shown property when it is a double/int property
   (`Component::valueProperty`), so other parts with a numeric shown value
   (resistor DIP, varistor, rail, current source, voltage regulator) take
@@ -502,19 +507,27 @@ Validate
 
 Decisions (user, 2026-11-18):
 - **D1** opamp `u`, UJT `q`.
+
 - **D2** pinTo = nearest pin; generalised to the auto pin rule (§4.3) so that
   chains work in both directions.
+  
 - **D3** unselecting keeps the last part (only deleting it or a new/opened
   circuit forgets it).
+  
 - **D4** selected pin shown on every part, slightly more contrast when unselected.
+
 - **D5** `=` toggles parts ↔ network mode; Tab walks wires, dots and corners
   nearest first; only whole wires can be deleted; arrows move dots and corners,
   not wires.
+  
 - **D6** `-` is numeric; wiring is `_`.
+
 - **D7** switch keys: one capital A–Z; other old values inert, cleared when the
   properties are opened; the field has a description.
+  
 - **D8** a value is never empty: back to the value before editing, then
   Backspace deletes.
+  
 - **D9** Mac AZERTY keyboard.
 
 - **D11** (K1 rev) The keyboard cursor is independent of the mouse: centred at
@@ -523,15 +536,21 @@ Decisions (user, 2026-11-18):
   selected. Whatever selects a single part — Tab, a mouse click, the CLI —
   parks the hidden cross at that part's centre, and it follows a moved
   selection (arrow moves, mouse drags and the rotation alignment shift move
-  it along); Esc re-reads the part's position before unselecting, so the
+  it along: `KeyboardController::selectionMoved`, which never scrolls the
+  view — scrolling after the hidden cross made a mouse drag run away — and
+  re-reads a single part's position instead of adding 4 px drag steps, which
+  drifted on the 8 px cross grid); Esc re-reads the part's position before unselecting, so the
   cross is shown where the part is even when it moved without the selection
   (a library drop's ghost placement).
+  
 - **D12** (K1 rev) Enter puts the cross a big step right of the part it unselects
   (not of the old cross position). *Replaced by D16 for parts with pins; still
   the rule for parts without pins.*
+  
 - **D13** (K1 rev) Placing a part with a part selected puts the new part (and the
   cross) a big step right of the selected part. *Replaced by D17 when the
   selected part has a selected pin; still the rule without pins.*
+  
 - **D16** (K4 rev) Enter leaves a part towards its **selected pin**: the cross
   goes a big step (64 px) beyond that pin's tip, in the pin's direction. This
   applies everywhere Enter leaves a part — plain Enter, and Enter after a
@@ -540,6 +559,7 @@ Decisions (user, 2026-11-18):
   pin's (the dot product, exact for the four directions); ties → the one
   pointing more downwards; still tied → the nearest to the selected pin. No
   other pin: as Enter.
+  
 - **D17** (K5 rev) Placing a part with a part selected continues the chain: the
   new part's **first pin** (the part's pin 0: resistor lPin, BJT collector,
   op amp inNinv, fixed voltage outnod) points back at the selected pin of the
@@ -551,6 +571,7 @@ Decisions (user, 2026-11-18):
   nothing selected, a placement continues from that pin while the cross is
   still at the spot beyond it (a cross moved elsewhere: the part is centred
   at the cross, unrotated).
+  
 - **D18** (K4/K5 rev) The chain keeps flowing: the new part's **selected pin**
   is the one nearest to the outgoing pin it was placed at (there is none: the
   §4.3 pairing), and pinFrom is that outgoing pin. After `_` wires a pin of
@@ -558,19 +579,33 @@ Decisions (user, 2026-11-18):
   opposite** to the wired one (D16's rule), so the next Enter or placement
   continues out the other side — and pinFrom / pinTo are **cleared**: a made
   wire's pins are no longer the wiring pair, so nothing stays highlighted.
+  
 - **D19** (K4 rev) Rotating a selected part (`Cmd+R`/`Cmd+Shift+R`) with an
   outgoing pin (pinFrom) on **another** part also moves it: its pin closest to
   the outgoing pin is brought onto that pin's row or column (the smaller
   offset is eliminated; the shape is irrelevant — any pin can land off the
   line), so a straight wire stays possible. pinFrom on the rotated part
-  itself, or none: the plain rotation. The move is one undo step, wires
-  following.
+  itself, or none: the plain rotation. The rotation and the move are one
+  undo step (`Circuit::joinUndoSteps`), wires following.
+  
 - **D14** (K1 rev) `h` starts pan mode (pointer: cross with arrows; arrows pan;
   any other key, a selection or a mouse press ends it). `h` is not a part shortcut.
+  
 - **D15** (K1 rev) `Cmd+=`/`Cmd++` zoom in, `Cmd+-` out, `Cmd+0` 100 %, cross kept
   in place.
+  
 - **D10** Mac AZERTY number row: while a single part with a numeric value is
   selected (or in EditValue), the number-row keys count as digits with or without
   Shift, matched by physical key (macOS `nativeVirtualKey` = `kVK_ANSI_0…9`, the
   number row on every layout). Their unshifted characters (`& é " ' ( § è ! ç à`)
   are used by no other shortcut.
+  
+  
+
+# 7. Next
+
+- Multiple part selection by shift arrow starting on empty canvas drawing a rectangle over parts
+- Bug: starting up, canvas doesn't have the cross visible when i hover the mouse over the canvas. It becomes visible by zoom or click.
+- 'w' for wire instead of shift-_,  wavegen becomes 'n'
+- Configurable shortcuts for components in part settings
+- 

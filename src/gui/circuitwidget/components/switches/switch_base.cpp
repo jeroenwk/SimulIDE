@@ -163,7 +163,8 @@ void SwitchBase::setNClose( bool nc )
 void SwitchBase::setKey( QString key )
 {
     if( key.size()>1 ) key = key.left( 1 );
-    if( !Circuit::self()->loading() )      // Typed (dialog, CLI): a letter becomes capital, anything else none
+    Circuit* circ = Circuit::self();       // Typed (dialog, CLI): a letter becomes capital, anything else
+    if( !circ->loading() && !circ->restoring() )   // none. Undo restores a legacy key as it was
     {
         key = key.toUpper();
         if( !key.isEmpty() && !validKey( key ) ) key = "";

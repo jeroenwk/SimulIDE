@@ -191,11 +191,25 @@ def test(sim):
     r1 = sim.cli("kbd", "state")["lastPart"]
     sim.cli("ui", "type", "t")
     bjt = sim.cli("kbd", "state")["lastPart"]
+    placed = sim.cli("comp", "get", bjt)
     sim.cli("ui", "type", "cmd+r")
     pins = sim.cli("comp", "get", bjt)["pins"]
     sim.check("rotated: a pin on the outgoing pin's row",
               int(any(p["pos"][1] == 100 and p["pos"][0] > 116 for p in pins)), 1, absolute=0,
               note=str([(p["id"], p["pos"]) for p in pins]))
+    # The rotation and its alignment shift are one undo step: one cmd+z restores both
+    rotated = sim.cli("comp", "get", bjt)
+    sim.cli("ui", "type", "cmd+z")
+    g = sim.cli("comp", "get", bjt)
+    sim.check("rotate+align: one cmd+z restores rotation and place",
+              int(g["pos"] == placed["pos"] and g.get("rotation") == placed.get("rotation")), 1, absolute=0,
+              note="%s %s" % (g["pos"], g.get("rotation")))
+    sim.cli("ui", "type", "cmd+shift+z")
+    g = sim.cli("comp", "get", bjt)
+    sim.check("rotate+align: redo puts it back rotated and aligned",
+              int(g["pos"] == rotated["pos"] and g.get("rotation") == rotated.get("rotation")), 1, absolute=0,
+              note="%s %s" % (g["pos"], g.get("rotation")))
+    sim.cli("select", bjt)
     pos = sim.cli("comp", "get", r1)["pos"]
     sim.cli("select", r1)
     sim.cli("ui", "type", "cmd+>")                # pinFrom onto R1's own pin

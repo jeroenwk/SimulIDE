@@ -16,6 +16,10 @@ class WaveGen : public ClockBase
         WaveGen( QString type, QString id );
         ~WaveGen();
 
+        // K7: typed values set the Freq (not shown by default: an empty ShowProp is
+        // not saved, so a shown default would show up on every older circuit)
+        QString valueProperty() override { return "Freq"; }
+
         enum waveType_t {
             Sine = 0,
             Saw,

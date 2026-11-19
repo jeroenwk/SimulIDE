@@ -67,9 +67,6 @@ FixedVolt::FixedVolt( QString type, QString id )
                                , this, &FixedVolt::volt, &FixedVolt::setVolt )
     }, 0} );
 
-    setShowProp("Voltage");     // Its typed value (K7); shown in its value label
-    setPropStr("Voltage", "5");
-
     addPropGroup( { "Hidden", {
 new BoolProp<FixedVolt>( "Out", "","", this, &FixedVolt::out, &FixedVolt::setOut ),
     }, groupHidden} );
