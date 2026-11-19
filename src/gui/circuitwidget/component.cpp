@@ -13,6 +13,7 @@
 #include <QGraphicsProxyWidget>
 
 #include "component.h"
+#include "keytext.h"
 #include "keyboardcontroller.h"
 #include "theme.h"
 #include "label.h"
@@ -410,13 +411,13 @@ void Component::contextMenu( QGraphicsSceneContextMenuEvent* event, QMenu* menu 
     }
     m_eventpoint = mapToScene( toGrid(event->pos()) );
 
-    QAction* copyAction = menu->addAction(QIcon(":/copy.svg"),tr("Copy")+"\tCtrl+C");
+    QAction* copyAction = menu->addAction(QIcon(":/copy.svg"),tr("Copy")+"\t"+KeyText::native("Ctrl+C"));
     QObject::connect( copyAction, &QAction::triggered, [=](){ slotCopy(); } );
 
-    QAction* cutAction = menu->addAction(QIcon(":/cut.svg"),tr("Cut")+"\tCtrl+X");
+    QAction* cutAction = menu->addAction(QIcon(":/cut.svg"),tr("Cut")+"\t"+KeyText::native("Ctrl+X"));
     QObject::connect( cutAction, &QAction::triggered, [=](){ slotCut(); } );
 
-    QAction* removeAction = menu->addAction( QIcon( ":/remove.svg"),tr("Remove")+"\tDel" );
+    QAction* removeAction = menu->addAction( QIcon( ":/remove.svg"),tr("Remove")+"\t"+KeyText::native("Del") );
     QObject::connect( removeAction, &QAction::triggered, [=](){ slotRemove(); } );
 
     /*QAction* groupAction = menu->addAction( QIcon( ":/group.png"),tr("Group") );
@@ -426,19 +427,19 @@ void Component::contextMenu( QGraphicsSceneContextMenuEvent* event, QMenu* menu 
     QObject::connect( propertiesAction, &QAction::triggered, [=](){ slotProperties(); } );
     menu->addSeparator();
 
-    QAction* rotateCWAction = menu->addAction( QIcon( ":/rotatecw.svg"),tr("Rotate CW")+"\tCtrl+R" );
+    QAction* rotateCWAction = menu->addAction( QIcon( ":/rotatecw.svg"),tr("Rotate CW")+"\t"+KeyText::native("Ctrl+R") );
     QObject::connect( rotateCWAction, &QAction::triggered, [=](){ rotateCW(); } );
 
-    QAction* rotateCCWAction = menu->addAction(QIcon( ":/rotateccw.svg"),tr("Rotate CCW")+"\tCtrl+Shift+R" );
+    QAction* rotateCCWAction = menu->addAction(QIcon( ":/rotateccw.svg"),tr("Rotate CCW")+"\t"+KeyText::native("Ctrl+Shift+R") );
     QObject::connect( rotateCCWAction, &QAction::triggered, [=](){ rotateCCW(); } );
 
     QAction* rotateHalfAction = menu->addAction(QIcon(":/rotate180.svg"),tr("Rotate 180") );
     QObject::connect( rotateHalfAction, &QAction::triggered, [=](){ rotateHalf(); } );
     
-    QAction* H_flipAction = menu->addAction(QIcon(":/hflip.svg"),tr("Horizontal Flip")+"\tCtrl+L" );
+    QAction* H_flipAction = menu->addAction(QIcon(":/hflip.svg"),tr("Horizontal Flip")+"\t"+KeyText::native("Ctrl+L") );
     QObject::connect( H_flipAction, &QAction::triggered, [=](){ slotH_flip(); } );
     
-    QAction* V_flipAction = menu->addAction(QIcon(":/vflip.svg"),tr("Vertical Flip")+"\tCtrl+Shift+L" );
+    QAction* V_flipAction = menu->addAction(QIcon(":/vflip.svg"),tr("Vertical Flip")+"\t"+KeyText::native("Ctrl+Shift+L") );
     QObject::connect( V_flipAction, &QAction::triggered, [=](){ slotV_flip(); } );
 
     menu->exec(event->screenPos());

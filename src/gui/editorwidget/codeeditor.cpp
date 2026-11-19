@@ -9,6 +9,7 @@
 #include <QDebug>
 
 #include "codeeditor.h"
+#include "keytext.h"
 #include "outpaneltext.h"
 #include "comproperty.h"
 #include "highlighter.h"
@@ -499,25 +500,25 @@ void CodeEditor::contextMenuEvent( QContextMenuEvent* event )
 {
     QMenu menu;
 
-    QAction* undoAction = menu.addAction(QIcon(":/undo.svg"),tr("Undo")+"\tCtrl+Z");
+    QAction* undoAction = menu.addAction(QIcon(":/undo.svg"),tr("Undo")+"\t"+KeyText::native("Ctrl+Z"));
     connect( undoAction, &QAction::triggered,
               this, &CodeEditor::undo, Qt::UniqueConnection );
 
-    QAction* redoAction = menu.addAction(QIcon(":/redo.svg"),tr("Redo")+"\tCtrl+Y");
+    QAction* redoAction = menu.addAction(QIcon(":/redo.svg"),tr("Redo")+"\t"+KeyText::native("Ctrl+Y"));
     connect( redoAction, &QAction::triggered,
               this, &CodeEditor::redo, Qt::UniqueConnection );
 
     menu.addSeparator();
 
-    QAction* cutAction = menu.addAction(QIcon(":/cut.svg"),tr("Cut")+"\tCtrl+X");
+    QAction* cutAction = menu.addAction(QIcon(":/cut.svg"),tr("Cut")+"\t"+KeyText::native("Ctrl+X"));
     connect( cutAction, &QAction::triggered,
                   this, &CodeEditor::cut, Qt::UniqueConnection );
 
-    QAction* copyAction = menu.addAction(QIcon(":/copy.svg"),tr("Copy")+"\tCtrl+C");
+    QAction* copyAction = menu.addAction(QIcon(":/copy.svg"),tr("Copy")+"\t"+KeyText::native("Ctrl+C"));
     connect( copyAction, &QAction::triggered,
                    this, &CodeEditor::copy, Qt::UniqueConnection );
 
-    QAction* pasteAction = menu.addAction(QIcon(":/paste.svg"),tr("Paste")+"\tCtrl+V");
+    QAction* pasteAction = menu.addAction(QIcon(":/paste.svg"),tr("Paste")+"\t"+KeyText::native("Ctrl+V"));
     connect( pasteAction, &QAction::triggered,
                     this, &CodeEditor::paste, Qt::UniqueConnection );
 
@@ -529,7 +530,7 @@ void CodeEditor::contextMenuEvent( QContextMenuEvent* event )
 
     menu.addSeparator();
 
-    QAction* reloadAction = menu.addAction(QIcon(":/reload.svg"), tr("Reload Document")+"\tCtrl+R");
+    QAction* reloadAction = menu.addAction(QIcon(":/reload.svg"), tr("Reload Document")+"\t"+KeyText::native("Ctrl+R"));
     connect( reloadAction, &QAction::triggered,
              EditorWindow::self(), &EditorWindow::reload, Qt::UniqueConnection );
 

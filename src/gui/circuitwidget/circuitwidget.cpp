@@ -26,6 +26,7 @@
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include "circuitwidget.h"
+#include "keytext.h"
 #include "instrumentview.h"
 #include "exportdialog.h"
 #include "editorwindow.h"
@@ -206,33 +207,31 @@ void CircuitWidget::createActions()
                  this,              &CircuitWidget::openRecentFile, Qt::UniqueConnection );
     }
 
-    newCircAct = new QAction( QIcon(":/new.svg"), tr("New C&ircuit\tCtrl+N"), this);
+    newCircAct = new QAction( QIcon(":/new.svg"), tr("New Circuit"), this);
     newCircAct->setStatusTip( tr("Create a new Circuit"));
     connect( newCircAct, &QAction::triggered,
                    this, &CircuitWidget::newCircuit, Qt::UniqueConnection );
 
-    openCircAct = new QAction( QIcon(":/open.svg"), tr("&Open Circuit\tCtrl+O"), this);
+    openCircAct = new QAction( QIcon(":/open.svg"), tr("Open Circuit"), this);
     openCircAct->setStatusTip( tr("Open an existing Circuit"));
     connect( openCircAct, &QAction::triggered,
                     this, &CircuitWidget::openCirc, Qt::UniqueConnection );
 
-    saveCircAct = new QAction( QIcon(":/save.svg"), tr("&Save Circuit\tCtrl+S"), this);
+    saveCircAct = new QAction( QIcon(":/save.svg"), tr("Save Circuit"), this);
     saveCircAct->setStatusTip( tr("Save the Circuit to disk"));
     connect( saveCircAct, &QAction::triggered,
                     this, QOverload<>::of(&CircuitWidget::saveCirc), Qt::UniqueConnection );
 
-    saveCircAsAct = new QAction( QIcon(":/saveas.svg"),tr("Save Circuit &As...\tCtrl+Shift+S"), this);
+    saveCircAsAct = new QAction( QIcon(":/saveas.svg"),tr("Save Circuit As..."), this);
     saveCircAsAct->setStatusTip( tr("Save the Circuit under a new name"));
     connect( saveCircAsAct, &QAction::triggered,
                       this, &CircuitWidget::saveCircAs, Qt::UniqueConnection );
 
-    QString undoKey = QKeySequence( QKeySequence::Undo ).toString( QKeySequence::NativeText );
-    QString redoKey = QKeySequence( QKeySequence::Redo ).toString( QKeySequence::NativeText );
-    undoAct = new QAction( QIcon(":/undo.svg"), tr("Undo")+" ("+undoKey+")", this );
+    undoAct = new QAction( QIcon(":/undo.svg"), tr("Undo"), this );
     undoAct->setStatusTip( tr("Undo the last change to the circuit") );
     connect( undoAct, &QAction::triggered, this, [](){ Circuit::self()->undo(); } );
 
-    redoAct = new QAction( QIcon(":/redo.svg"), tr("Redo")+" ("+redoKey+")", this );
+    redoAct = new QAction( QIcon(":/redo.svg"), tr("Redo"), this );
     redoAct->setStatusTip( tr("Redo the last undone change") );
     connect( redoAct, &QAction::triggered, this, [](){ Circuit::self()->redo(); } );
 
@@ -326,6 +325,31 @@ void CircuitWidget::createActions()
     aboutQtAct->setStatusTip(tr("About Qt"));
     connect( aboutQtAct, &QAction::triggered,
                    qApp, &QApplication::aboutQt, Qt::UniqueConnection );
+
+    // Toolbar keys. The tooltip shows each one as this platform writes it (⌘, on macOS,
+    // Ctrl+, elsewhere). File and edit keys and the zoom keys are read on the canvas
+    // (Circuit::keyPressEvent, KeyboardController::zoomKey), so the code editor keeps
+    // its own Ctrl+N, Ctrl+S ...; the others are window shortcuts (QAction)
+    KeyText::tipWithKey( newCircAct,    "Ctrl+N" );
+    KeyText::tipWithKey( openCircAct,   "Ctrl+O" );
+    KeyText::tipWithKey( saveCircAct,   "Ctrl+S" );
+    KeyText::tipWithKey( saveCircAsAct, "Ctrl+Shift+S" );
+    KeyText::tipWithKey( undoAct,       "Ctrl+Z" );
+    KeyText::tipWithKey( redoAct,       "Ctrl+Shift+Z" );
+    KeyText::tipWithKey( zoomFitAct,    "Ctrl+Alt+0" );  // ⌥⌘0
+    KeyText::tipWithKey( zoomSelAct,    "Ctrl+Meta+0" ); // ⌃⌘0
+    KeyText::tipWithKey( zoomOneAct,    "Ctrl+0" );
+    const QList<QPair<QAction*, QString>> keys{
+        { settAppAct,     "Ctrl+," }, { exportAct,      "Ctrl+P" },
+        { powerCircAct,   "F5" },     { pauseSimAct,    "F6" },
+        { currentFlowAct, "F7" },     { capChargeAct,   "F8" },
+        { partStatusAct,  "F9" },     { instrumentsAct, "F10" },
+        { noiseOnAct,     "F12" } };  // F11 is Show Desktop on macOS
+    for( auto& k : keys )
+    {
+        k.first->setShortcut( QKeySequence( k.second, QKeySequence::PortableText ) );
+        KeyText::tipWithKey( k.first, k.second );
+    }
 }
 
 void CircuitWidget::createToolBars()

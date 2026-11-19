@@ -19,9 +19,19 @@
 #include "clirefs.h"
 #include "component.h"
 #include "pin.h"
+#include "circuitwidget.h"
+#include <QToolBar>
+#include <QAction>
 
 // The controller's state plus its pins as CLI refs: pinFrom, pinTo, and for one selected
 // part its selected pin (selectedPin, selectedPinManual) and its pins clockwise
+// Qt's own test hook (QTest uses it): a key event goes through the shortcut map first.
+// True when a shortcut took it
+QT_BEGIN_NAMESPACE
+Q_GUI_EXPORT bool qt_sendShortcutOverrideEvent( QObject* o, ulong timestamp, int k, Qt::KeyboardModifiers mods,
+                                                const QString& text, bool autorep, ushort count );
+QT_END_NAMESPACE
+
 static QJsonObject kbdState()
 {
     KeyboardController* k = KeyboardController::self();
@@ -124,7 +134,10 @@ static void parseKey( QString tok, int& key, Qt::KeyboardModifiers& mods, QStrin
     if( tok.size() > 1 )
     {
         QString n = tok.toLower();
-        if( !named.contains( n ) ) throw CliError("unknown key: "+tok+" (a character, or Left Right Up Down Tab Backtab Enter Esc Backspace Delete Space Home End)");
+        bool fOk = false;
+        int f = n.startsWith('f') ? n.mid( 1 ).toInt( &fOk ) : 0;
+        if( fOk && f >= 1 && f <= 12 ){ key = Qt::Key_F1+f-1; text = ""; return; }  // F1 … F12
+        if( !named.contains( n ) ) throw CliError("unknown key: "+tok+" (a character, or Left Right Up Down Tab Backtab Enter Esc Backspace Delete Space Home End F1…F12)");
         key  = named.value( n ).first;
         text = named.value( n ).second;
         if( key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down )
@@ -165,12 +178,13 @@ void CliApi::registerKbd()
     add("ui type", "ui type <key> [key ...] [--layout us|de|fr]",
         "Type keys on the canvas as real key events (press + release each), as the keyboard does. "
         "A key is a character (r, 2, <, _, é) or a name (Left Right Up Down Tab Enter Esc Backspace "
-        "Delete Space Home End), with modifiers joined by +: shift+Left, cmd+z, cmd+shift+<. "
+        "Delete Space Home End F1…F12), with modifiers joined by +: shift+Left, cmd+z, cmd+shift+<. "
         "An uppercase letter implies shift. The AZERTY number row without Shift is typed by its "
         "characters (& é \" ' ( è ç à): each is its physical digit key with that text. "
         "--layout us|de|fr: printable keys as macOS sends them on a US QWERTY, German QWERTZ or "
         "French AZERTY keyboard (Shift where that layout needs it, the physical key code): "
-        "e.g. = is Shift+0 with de, digits need Shift with fr. Gives the canvas focus first.",
+        "e.g. = is Shift+0 with de, digits need Shift with fr. Gives the canvas focus first. A key "
+        "bound to a toolbar button (F5, cmd+, ...) triggers it, as a real key does.",
         []( CliCtx& c ) -> QJsonValue
     {
         if( c.pos.isEmpty() ) throw CliError("missing keys");
@@ -185,8 +199,11 @@ void CliApi::registerKbd()
 
         v->setFocus( Qt::OtherFocusReason );
         if( CliApi::self()->headless() ) KeyboardController::self()->setFocused( true ); // No active window offscreen
+        if( !QApplication::activeWindow() ) QApplication::setActiveWindow( v->window() );   // Window shortcuts need one
         for( const K& k : keys )
         {
+            // First as a shortcut, as Qt does with a real key (the toolbar keys: F5, Cmd+, ...)
+            if( qt_sendShortcutOverrideEvent( v, 0, k.key, k.mods, k.text, false, 1 ) ) continue;
             QKeyEvent press( QEvent::KeyPress, k.key, k.mods, 0, k.vk, 0, k.text );
             QApplication::sendEvent( v, &press );
             QKeyEvent release( QEvent::KeyRelease, k.key, k.mods, 0, k.vk, 0, k.text );
@@ -240,6 +257,28 @@ void CliApi::registerKbd()
         QMouseEvent move( QEvent::MouseMove, vp, v->viewport()->mapToGlobal( vp ), Qt::NoButton, Qt::NoButton, Qt::NoModifier );
         QApplication::sendEvent( v->viewport(), &move );
         return kbdState();
+    });
+
+    add("ui toolbar", "ui toolbar",
+        "The circuit toolbar's buttons: text, tooltip (with the key, as this platform writes it: "
+        "⌘, on macOS, Ctrl+, elsewhere), the key bound to it (native text, empty when the canvas "
+        "reads it instead), enabled, and checked for the toggles.",
+        []( CliCtx& ) -> QJsonValue
+    {
+        QJsonArray out;
+        CircuitWidget* w = CircuitWidget::self();
+        if( !w ) throw CliError("no circuit widget");
+        for( QToolBar* tb : w->findChildren<QToolBar*>() )
+            for( QAction* a : tb->actions() )
+            {
+                if( a->isSeparator() || a->text().isEmpty() ) continue;
+                QJsonObject o{ {"text", a->text()}, {"tooltip", a->toolTip()},
+                               {"shortcut", a->shortcut().toString( QKeySequence::NativeText )},
+                               {"enabled", a->isEnabled()} };
+                if( a->isCheckable() ) o["checked"] = a->isChecked();
+                out.append( o );
+            }
+        return out;
     });
 
     add("ui click", "ui click <x,y> [--cmd] | ui click <comp> [index]",

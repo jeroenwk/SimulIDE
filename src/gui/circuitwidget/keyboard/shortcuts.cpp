@@ -40,6 +40,18 @@ const QList<Shortcut>& Shortcuts::all()
         { "View", "Zoom in", "Cmd+= or Cmd++", "" },
         { "View", "Zoom out", "Cmd+-", "" },
         { "View", "Actual size (100 %)", "Cmd+0", "" },
+        // Toolbar keys (tooltips show them in the platform's notation)
+        { "View", "Zoom to fit the whole circuit", "Opt+Cmd+0", "" },
+        { "View", "Zoom to fit the selection", "Ctrl+Cmd+0", "Selection" },
+        { "View", "Show current flow (toggle)", "F7", "" },
+        { "View", "Show capacitor charge and inductor current (toggle)", "F8", "" },
+        { "View", "Show part states (toggle)", "F9", "" },
+        { "View", "Show instruments (toggle)", "F10", "" },
+        { "Simulation", "Start / stop the simulation", "F5", "" },
+        { "Simulation", "Pause / resume the simulation", "F6", "Simulation running" },
+        { "Simulation", "Transient noise (toggle)", "F12", "" },
+        { "File", "Export as image (PNG, SVG)", "Cmd+P", "" },
+        { "File", "Settings", "Cmd+,", "" },
         // K2: moving the selection
         { "Moving", "Move the selection a big step (64 px), wires follow", "Arrows", "Selection" },
         { "Moving", "Move the selection one grid step (8 px), wires follow", "Shift+Arrows", "Selection" },
