@@ -1,4 +1,4 @@
-<circuit version="1.1.0-SR2" rev="261119" stepSize="1000000" stepsPS="10000" NLsteps="100000" reaStep="1000000" animate="0" >
+<circuit version="1.1.0-SR2" rev="261116" stepSize="1000000" stepsPS="10000" NLsteps="100000" reaStep="1000000" animate="0" >
 <description>
 # Scherz &amp; Monk fig 8.42 — Overvoltage Protection (Crowbar) with op amp and SCR (book p. 660, PDF p. 689)
 
@@ -186,21 +186,21 @@ threshold, at the cost of a supply-powered comparator that dies with the rail it
 
 <item itemtype="Connector" uid="Connector-9" startpinid="Resistor-5-rPin" endpinid="Ground-13-Gnd" pointList="-48,-48,-48,-24" />
 
-<item itemtype="Connector" uid="Connector-12" startpinid="Resistor-7-lPin" endpinid="Node-18-0" pointList="-80,-48,-80,-96,-64,-96" bandColor="#7f4f8f00" bandWidth="6" />
+<item itemtype="Connector" uid="Connector-12" startpinid="Resistor-7-lPin" endpinid="Node-18-0" pointList="-80,-48,-80,-96,-64,-96" />
 
 <item itemtype="Connector" uid="Connector-14" startpinid="Resistor-5-lPin" endpinid="Node-19-1" pointList="-48,-80,-48,-96" />
 
-<item itemtype="Connector" uid="Connector-15" startpinid="Node-18-2" endpinid="Node-19-0" pointList="-64,-96,-48,-96" bandColor="#7f4f8f00" bandWidth="6" />
+<item itemtype="Connector" uid="Connector-15" startpinid="Node-18-2" endpinid="Node-19-0" pointList="-64,-96,-48,-96" />
 
 <item itemtype="Connector" uid="Connector-17" startpinid="Resistor-6-lPin" endpinid="Node-20-1" pointList="-16,-80,-16,-96" />
 
-<item itemtype="Connector" uid="Connector-18" startpinid="Node-19-2" endpinid="Node-20-0" pointList="-48,-96,-16,-96" bandColor="#7f4f8f00" bandWidth="6" />
+<item itemtype="Connector" uid="Connector-18" startpinid="Node-19-2" endpinid="Node-20-0" pointList="-48,-96,-16,-96" />
 
 <item itemtype="Connector" uid="Connector-20" startpinid="opAmp-2-powerPos" endpinid="Node-21-1" pointList="48,-48,48,-96" />
 
-<item itemtype="Connector" uid="Connector-21" startpinid="Node-20-2" endpinid="Node-21-0" pointList="-16,-96,48,-96" bandColor="#7f4f8f00" bandWidth="6" />
+<item itemtype="Connector" uid="Connector-21" startpinid="Node-20-2" endpinid="Node-21-0" pointList="-16,-96,48,-96" />
 
-<item itemtype="Connector" uid="Connector-22" startpinid="Node-21-2" endpinid="SCR-3-lPin" pointList="48,-96,112,-96,112,-48" bandColor="#7f4f8f00" bandWidth="6" />
+<item itemtype="Connector" uid="Connector-22" startpinid="Node-21-2" endpinid="SCR-3-lPin" pointList="48,-96,112,-96,112,-48" />
 
 <item itemtype="Connector" uid="Connector-24" startpinid="opAmp-2-inputInv" endpinid="Node-22-1" pointList="24,-40,-16,-40" />
 
@@ -228,7 +228,7 @@ threshold, at the cost of a supply-powered comparator that dies with the rail it
 
 <item itemtype="Connector" uid="Connector-39" startpinid="Node-26-2" endpinid="SCR-3-gPin" pointList="88,-32,96,-32,96,-8,104,-8,104,-16" />
 
-<item itemtype="Connector" uid="Connector-40" startpinid="Node-27-1" endpinid="Oscope-24-Pin2" pointList="-80,8,-64,8,-64,96,176,96,176,32,184,32" />
+<item itemtype="Connector" uid="Connector-40" startpinid="Node-27-1" endpinid="Oscope-24-Pin2" pointList="-80,8,-64,8,-64,32,-64,96,176,96,176,32,184,32" />
 
 <item itemtype="Connector" uid="Connector-41" startpinid="Resistor-7-rPin" endpinid="Node-27-0" pointList="-80,-16,-80,8" />
 
