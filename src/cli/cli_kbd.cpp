@@ -80,6 +80,17 @@ static void parseKey( QString tok, int& key, Qt::KeyboardModifiers& mods, QStrin
     }
     if( tok.isEmpty() ) throw CliError("empty key");
     QChar ch = tok.at( 0 );
+    // The AZERTY number row without Shift (D10): the physical digit keys with their
+    // AZERTY characters, as macOS reports them (key code by position, text by layout).
+    // "-" and "_" stay their own keys, which the editor also reads by text
+    static const QString azRow = "&é\"'(*è_çà";          // * = the '-' key, never typed
+    int az = azRow.indexOf( ch );
+    if( az >= 0 )
+    {
+        key  = ( az == 9 ) ? Qt::Key_0 : Qt::Key_1+az;
+        text = ( mods & ( Qt::ControlModifier | Qt::MetaModifier ) ) ? QString() : QString( ch );
+        return;
+    }
     if( ch.isLetter() && ch.isUpper() ) mods |= Qt::ShiftModifier;
     key  = ch.toUpper().unicode();                          // Qt key codes = Latin-1 upper case
     text = ( mods & ( Qt::ControlModifier | Qt::MetaModifier ) ) ? QString() : QString( ch );
@@ -91,7 +102,9 @@ void CliApi::registerKbd()
         "Type keys on the canvas as real key events (press + release each), as the keyboard does. "
         "A key is a character (r, 2, <, _, é) or a name (Left Right Up Down Tab Enter Esc Backspace "
         "Delete Space Home End), with modifiers joined by +: shift+Left, cmd+z, cmd+shift+<. "
-        "An uppercase letter implies shift. Gives the canvas focus first.",
+        "An uppercase letter implies shift. The AZERTY number row without Shift is typed by its "
+        "characters (& é \" ' ( è ç à): each is its physical digit key with that text. "
+        "Gives the canvas focus first.",
         []( CliCtx& c ) -> QJsonValue
     {
         if( c.pos.isEmpty() ) throw CliError("missing keys");

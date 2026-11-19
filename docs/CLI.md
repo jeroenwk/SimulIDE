@@ -414,7 +414,7 @@ the pause.
 | `ui set <comp> [index] on\|off` | Set a switch or toggle. Switch and DIP switch positions are saved with the circuit (Switch: hidden property `Toggled`, true when flipped away from its Normally Closed setting) |
 | `ui dial <comp> [index] <value\|N%>` | Potentiometers, variable sources, encoders, sliders |
 | `ui key <char> [down\|up\|tap]` | Keyboard key, for parts bound to a key |
-| `ui type <key> [key ...]` | Real key presses on the canvas, as typed: a character (`r`, `<`, `_`, `é`) or a name (`Left Right Up Down Tab Enter Esc Backspace Delete Space Home End`), modifiers joined with `+` (`shift+Left`, `cmd+z`). An uppercase letter implies Shift. Gives the canvas focus first; returns `kbd state` |
+| `ui type <key> [key ...]` | Real key presses on the canvas, as typed: a character (`r`, `<`, `_`, `é`) or a name (`Left Right Up Down Tab Enter Esc Backspace Delete Space Home End`), modifiers joined with `+` (`shift+Left`, `cmd+z`). An uppercase letter implies Shift. The AZERTY number row without Shift is typed by its characters (`& é " ' ( è ç à`): each is its physical digit key with that text. Gives the canvas focus first; returns `kbd state` |
 | `ui mouse <x,y>` | Move the mouse (no button) to a scene position over the canvas; returns `kbd state` |
 | `ui click <x,y>` | Left click at a scene position on the canvas, as the mouse does (on empty canvas: clears the selection, places the keyboard cursor); returns `kbd state` |
 | `ui focus canvas\|none` | Give the canvas keyboard focus or take it away |

@@ -725,6 +725,15 @@ void Component::setShowProp( QString prop )
     setShowVal( !(prop.isEmpty()) );
 }
 
+QString Component::valueProperty()
+{
+    ComProperty* p = m_propHash.value( m_showProperty );
+    if( !p ) return "";
+    QString t = p->type();
+    if( t == "double" || t == "int" || t == "uint" ) return m_showProperty;
+    return "";
+}
+
 void Component::moveSignal()
 {
     for( Pin* pin : m_signalPin ) pin->isMoved();
