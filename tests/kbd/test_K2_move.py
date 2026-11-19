@@ -33,28 +33,28 @@ def test(sim):
     sim.cli("wire", "add", "R1.rPin", "R2.lPin")
     sim.cli("ui", "click", "196,292")                 # empty canvas: cross at (196, 292)
 
-    # Nothing selected: the arrows move the cross (K1 rev), parts stay
+    # Nothing selected: the arrows move the cross (K1 rev; Cmd: 64 px, D23), parts stay
     sim.cli("select", "--none")
-    s = sim.cli("ui", "type", "Right")
+    s = sim.cli("ui", "type", "cmd+Right")
     sim.check("no selection: R1 stays", pos(sim, "R1")[0], 300, absolute=0)
     sim.check("no selection: the cross moves", s["cursor"][0], 260, absolute=0)
 
-    # One part: 64 px, Shift 8 px, wire follows, the (hidden) cross follows (K1 rev).
+    # One part: Cmd 64 px, arrows 8 px (D23), wire follows, the (hidden) cross follows (K1 rev).
     # Selecting R1 parked the cross at its centre (300,300)
     sim.cli("select", "R1")
-    s = sim.cli("ui", "type", "Right")
-    sim.check("Right: R1 x", pos(sim, "R1")[0], 364, absolute=0)
-    sim.check("Right: the cross follows", s["cursor"][0], 364, absolute=0)
-    s = sim.cli("ui", "type", "shift+Right", "shift+Down")
+    s = sim.cli("ui", "type", "cmd+Right")
+    sim.check("Cmd+Right: R1 x", pos(sim, "R1")[0], 364, absolute=0)
+    sim.check("Cmd+Right: the cross follows", s["cursor"][0], 364, absolute=0)
+    s = sim.cli("ui", "type", "Right", "Down")
     p = pos(sim, "R1")
-    sim.check("Shift+Right: R1 x", p[0], 372, absolute=0)
-    sim.check("Shift+Down: R1 y", p[1], 308, absolute=0)
-    sim.check("Shift moves: the cross follows", s["cursor"][1], 308, absolute=0)
+    sim.check("Right: R1 x", p[0], 372, absolute=0)
+    sim.check("Down: R1 y", p[1], 308, absolute=0)
+    sim.check("8 px moves: the cross follows", s["cursor"][1], 308, absolute=0)
     pts = wire(sim, "R1.rPin", "R2.lPin")
     sim.check("wire still on R1.rPin: x", pts[0] if pts else None, 388, absolute=0)
     sim.check("wire still on R1.rPin: y", pts[1] if pts else None, 308, absolute=0)
 
-    # The burst (Right, Shift+Right, Shift+Down, Left x2) is one undo step
+    # The burst (Cmd+Right, Right, Down, Left x2) is one undo step
     sim.cli("ui", "type", "Left", "Left")
     sim.cli("ui", "type", "cmd+z")
     p = pos(sim, "R1")
@@ -63,10 +63,10 @@ def test(sim):
 
     # Another edit in between starts a new undo step
     sim.cli("select", "R1")
-    sim.cli("ui", "type", "Right")                   # A: 300 -> 364
+    sim.cli("ui", "type", "cmd+Right")               # A: 300 -> 364
     sim.cli("comp", "move", "R1", "400,300")          # CLI edit
     sim.cli("select", "R1")
-    sim.cli("ui", "type", "Right")                   # B: 400 -> 464
+    sim.cli("ui", "type", "cmd+Right")               # B: 400 -> 464
     sim.check("after CLI move + Right", pos(sim, "R1")[0], 464, absolute=0)
     sim.cli("ui", "type", "cmd+z")
     sim.check("undo B only", pos(sim, "R1")[0], 400, absolute=0)
@@ -76,7 +76,7 @@ def test(sim):
     # Several parts move together
     sim.cli("select", "R1", "R2")
     r2 = pos(sim, "R2")[0]
-    sim.cli("ui", "type", "Down")
+    sim.cli("ui", "type", "cmd+Down")
     sim.check("two parts: R1 y", pos(sim, "R1")[1], 364, absolute=0)
     sim.check("two parts: R2 y", pos(sim, "R2")[1], 364, absolute=0)
     sim.check("two parts: R2 x unchanged", pos(sim, "R2")[0], r2, absolute=0)

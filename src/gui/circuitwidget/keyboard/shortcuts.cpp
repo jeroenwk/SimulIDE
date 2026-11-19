@@ -38,8 +38,10 @@ const QList<Shortcut>& Shortcuts::all()
         { "Parts", "Select the next / previous row of the component list, groups included (the canvas keeps the keys)", ": / /", "" },
         { "Switches", "Operate a switch or push button (its Key property, A–Z)", "Shift+its Key", "Simulation running" },
         // K1: keyboard cursor (revised: independent of the mouse)
-        { "Moving", "Move the keyboard cursor (yellow cross) a big step (64 px)", "Arrows", "Nothing selected" },
-        { "Moving", "Move the keyboard cursor one grid step (8 px)", "Shift+Arrows", "Nothing selected" },
+        { "Moving", "Move the keyboard cursor (yellow cross) one grid step (8 px)", "Arrows", "Nothing selected" },
+        { "Moving", "Move the keyboard cursor a big step (64 px)", "Cmd+Arrows", "Nothing selected" },
+        { "Selection", "Selection rectangle from the cross, 8 / 64 px steps: the parts it touches are selected; "
+                       "releasing Shift keeps them, Esc cancels", "Shift+Arrows / Cmd+Shift+Arrows", "Nothing selected" },
         { "Moving", "Place the keyboard cursor", "Click on empty canvas", "" },
         { "View", "Pan mode: the arrows (Shift: small steps) pan the canvas, until another key", "h", "" },
         { "View", "Zoom in", "Cmd+= or Cmd++", "" },
@@ -58,8 +60,8 @@ const QList<Shortcut>& Shortcuts::all()
         { "File", "Export as image (PNG, SVG)", "Cmd+P", "" },
         { "File", "Settings", "Cmd+,", "" },
         // K2: moving the selection
-        { "Moving", "Move the selection a big step (64 px), wires follow", "Arrows", "Selection" },
-        { "Moving", "Move the selection one grid step (8 px), wires follow", "Shift+Arrows", "Selection" },
+        { "Moving", "Move the selection one grid step (8 px), wires follow", "Arrows", "Selection" },
+        { "Moving", "Move the selection a big step (64 px), wires follow", "Cmd+Arrows", "Selection" },
         // K3: pins
         { "Pins & wiring", "Next pin clockwise (the pin to wire to)", ">", "One part selected" },
         { "Pins & wiring", "Previous pin (the pin to wire to)", "<", "One part selected" },
@@ -78,12 +80,12 @@ const QList<Shortcut>& Shortcuts::all()
         { "Wires", "Network mode: walk the wires, corners and dots of the selected pin", "=", "One part selected, its pin wired" },
         { "Wires", "Network mode from the dot, corner or wire nearest to the cross", "=", "Nothing selected" },
         { "Wires", "Next / previous wire, corner or dot (nearest along the wires first)", "Tab / Shift+Tab", "Network mode" },
-        { "Wires", "Move the selected dot or corner 64 / 8 px (the wire stays horizontal / vertical)", "Arrows / Shift+Arrows", "Network mode" },
+        { "Wires", "Move the selected dot or corner 8 / 64 px (the wire stays horizontal / vertical)", "Arrows / Cmd+Arrows", "Network mode" },
         { "Wires", "Delete the selected wire", "Backspace", "Network mode" },
         { "Wires", "Back to parts mode, the part selected (any other key too, then it acts)", "= or Esc", "Network mode" },
         // K9b: drawing a wire from a wire
         { "Wires", "Draw a new wire from the wire under the cross (a dot is added there)", "+", "Nothing selected" },
-        { "Wires", "Move the end of the wire being drawn (it follows horizontally / vertically)", "Arrows / Shift+Arrows", "Drawing a wire" },
+        { "Wires", "Move the end of the wire being drawn 8 / 64 px (it follows horizontally / vertically)", "Arrows / Cmd+Arrows", "Drawing a wire" },
         { "Wires", "Fix a corner at the cross", "=", "Drawing a wire" },
         { "Wires", "Remove the last fixed corner", "Backspace", "Drawing a wire" },
         { "Wires", "Connect to the pin or wire at the cross (8 px)", "Enter", "Drawing a wire" },

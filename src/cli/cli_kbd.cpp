@@ -129,6 +129,7 @@ static void parseKey( QString tok, int& key, Qt::KeyboardModifiers& mods, QStrin
         {"enter",  { Qt::Key_Return, "\r" }},{"return", { Qt::Key_Return, "\r" }},
         {"esc",    { Qt::Key_Escape, "\x1b" }}, {"escape", { Qt::Key_Escape, "\x1b" }},
         {"backspace", { Qt::Key_Backspace, "\b" }}, {"delete", { Qt::Key_Delete, "\x7f" }},
+        {"shift",  { Qt::Key_Shift, "" }},   // Alone: Shift pressed and released
         {"space",  { Qt::Key_Space, " " }},  {"home", { Qt::Key_Home, "" }}, {"end", { Qt::Key_End, "" }},
     };
     if( tok.size() > 1 )
@@ -137,7 +138,7 @@ static void parseKey( QString tok, int& key, Qt::KeyboardModifiers& mods, QStrin
         bool fOk = false;
         int f = n.startsWith('f') ? n.mid( 1 ).toInt( &fOk ) : 0;
         if( fOk && f >= 1 && f <= 12 ){ key = Qt::Key_F1+f-1; text = ""; return; }  // F1 … F12
-        if( !named.contains( n ) ) throw CliError("unknown key: "+tok+" (a character, or Left Right Up Down Tab Backtab Enter Esc Backspace Delete Space Home End F1…F12)");
+        if( !named.contains( n ) ) throw CliError("unknown key: "+tok+" (a character, or Left Right Up Down Tab Backtab Enter Esc Backspace Delete Space Home End Shift F1…F12)");
         key  = named.value( n ).first;
         text = named.value( n ).second;
         if( key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down )
@@ -178,7 +179,7 @@ void CliApi::registerKbd()
     add("ui type", "ui type <key> [key ...] [--layout us|de|fr]",
         "Type keys on the canvas as real key events (press + release each), as the keyboard does. "
         "A key is a character (r, 2, <, _, é) or a name (Left Right Up Down Tab Enter Esc Backspace "
-        "Delete Space Home End F1…F12), with modifiers joined by +: shift+Left, cmd+z, cmd+shift+<. "
+        "Delete Space Home End Shift F1…F12; Shift alone: pressed and released, it ends a selection rectangle), with modifiers joined by +: shift+Left, cmd+z, cmd+shift+<. "
         "An uppercase letter implies shift. The AZERTY number row without Shift is typed by its "
         "characters (& é \" ' ( è ç à): each is its physical digit key with that text. "
         "--layout us|de|fr: printable keys as macOS sends them on a US QWERTY, German QWERTZ or "

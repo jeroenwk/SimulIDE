@@ -128,7 +128,7 @@ def test(sim):
     # Moving a part re-pairs the auto pins: R1 moved to the right of R2
     sim.cli("select", "R2")                         # A = R1, B = R2, both auto
     sim.cli("select", "R1")                         # A = R2, B = R1
-    s = sim.cli("ui", "type", "Right", "Right", "Right", "Right", "Right")   # R1 to x = 420
+    s = sim.cli("ui", "type", "cmd+Right", "cmd+Right", "cmd+Right", "cmd+Right", "cmd+Right")   # R1 to x = 420
     sim.check("after the move: pinFrom R2.rPin", int(s["pinFrom"] == "R2.rPin"), 1, absolute=0, note=str(s["pinFrom"]))
     sim.check("after the move: pinTo R1.lPin", int(s["pinTo"] == "R1.lPin"), 1, absolute=0, note=str(s["pinTo"]))
 

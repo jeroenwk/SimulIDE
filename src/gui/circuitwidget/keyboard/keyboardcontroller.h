@@ -44,6 +44,7 @@ class KeyboardController
 
         // A key pressed on the canvas (text entry not active). true: handled, stop there
         bool keyPress( QKeyEvent* event );
+        void keyRelease( QKeyEvent* event );     // Shift released: the selection rectangle ends
 
         // The mouse moved over the canvas (viewport position): shows the pointer again
         void mouseMoved( QPoint viewPos );
@@ -178,6 +179,15 @@ class KeyboardController
 
         QString m_leavePin;                     // The pin Enter left from (D17), and the
         QPointF m_leavePos;                     // cross spot beyond it: placement continues there
+
+        // Selection rectangle (Shift+arrows from the cross, nothing selected): one corner
+        // where it started, the other the cross; the parts it touches are selected
+        bool    rectKey( QKeyEvent* event, Qt::KeyboardModifiers mods );
+        void    rectSelect();
+        void    endRect( bool keep );
+        bool    m_rect = false;
+        QPointF m_rectAnchor;
+        QRectF  m_rectShown;                    // Last painted (repaint)
 
         QPointer<QDialog> m_focusDialog;        // Properties dialog that returns focus to the canvas
 };

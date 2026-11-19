@@ -131,7 +131,7 @@ def test(sim):
     sim.cli("ui", "click", "100,100")
     sim.cli("ui", "type", "r")
     sim.cli("ui", "type", "enter")
-    sim.cli("ui", "type", "Right")                   # The cross moves away
+    sim.cli("ui", "type", "cmd+Right")               # The cross moves away (64 px, D23)
     s = sim.cli("ui", "type", "r")
     uid = s["selection"][0]
     r2 = sim.cli("comp", "get", uid)

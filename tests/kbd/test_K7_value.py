@@ -171,7 +171,7 @@ def test(sim):
     # Arrows revert too (spec §4.1), then move the part
     sim.cli("select", r1)
     before = sim.cli("comp", "get", r1)["pos"]
-    s = sim.cli("ui", "type", "5", "6", "Right")
+    s = sim.cli("ui", "type", "5", "6", "cmd+Right")
     sim.check("arrow: edit off", int("valueEdit" not in s), 1, absolute=0)
     sim.check("arrow: old value", int(prop(sim, r1, "Resistance") == "100 Ω"), 1, absolute=0, note=prop(sim, r1, "Resistance"))
     sim.check("arrow: part moved", sim.cli("comp", "get", r1)["pos"][0], before[0]+64, absolute=0)

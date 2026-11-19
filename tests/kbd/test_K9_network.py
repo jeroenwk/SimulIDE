@@ -76,7 +76,7 @@ def test(sim):
     # A wire: arrows do nothing
     s = sim.cli("ui", "type", "tab")                     # The first wire again
     w0 = wires(sim)
-    sim.cli("ui", "type", "Right", "shift+Down")
+    sim.cli("ui", "type", "cmd+Right", "Down")
     sim.check("wire: arrows do nothing", int(wires(sim) == w0), 1, absolute=0)
 
     # The dot: Shift+Right moves it 8 px, its wires follow; Backspace does nothing
@@ -101,7 +101,7 @@ def test(sim):
         s = sim.cli("ui", "type", "tab")
     c = step(s)
     old = wires(sim)[c["uid"]]["points"]
-    s = sim.cli("ui", "type", "Up", "shift+Up")
+    s = sim.cli("ui", "type", "cmd+Up", "Up")
     sim.check("corner: moved 72 px up", int(step(s)["kind"] == "corner" and step(s)["pos"] == [c["pos"][0], c["pos"][1] - 72]),
               1, absolute=0, note=str(step(s)))
     new = wires(sim)[c["uid"]]["points"]
