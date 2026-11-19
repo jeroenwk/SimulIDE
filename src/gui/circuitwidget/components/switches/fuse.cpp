@@ -402,8 +402,10 @@ void Fuse::voltChanged()
 
     double c1 = m_heat.c1();
     double room = 1-std::max( m_heat.theta(), m_heat.phi() )-m_S/c1;   // Upper bound of θ now
+    bool flushed = false;
     if( room < 0.05 || t-m_tFlush >= m_h ){
         flush( t );
+        flushed = true;
         room = 1-std::max( m_heat.theta(), m_heat.phi() );
     }
     if( m_heat.theta() >= 1-1e-9 ){ blow( t, true ); return; }
@@ -415,7 +417,35 @@ void Fuse::voltChanged()
         if( !eventTime || at < eventTime ) schedule( t, at );
         m_predU = m_u;
     }
-    updateState();
+    if( flushed ){
+        updateState();
+        planNext( t, false );
+    }
+    // A flush and a plan within τ1/50, even if no other change follows (a quiet circuit), and
+    // even with an event pending further away (the melting bound of an overload)
+    else if( !eventTime || eventTime > t+m_h ) schedule( t, t+m_h );
+}
+
+// The next event, if any: the exact melting time (from runEvent) and the next crossing of the
+// HOT / OK threshold at the present current. Only moves a pending event earlier: an early one
+// just plans again
+void Fuse::planNext( uint64_t t, bool melt )
+{
+    uint64_t next = 0;
+    auto consider = [&]( double s ){
+        if( s < 0 ) return;
+        uint64_t at = t+std::max( (uint64_t)1, (uint64_t)std::ceil( s*1e12 ) );
+        if( !next || at < next ) next = at;
+    };
+    if( melt && m_u > m_heat.meltU() ){
+        consider( m_heat.timeToMelt( m_u ) );
+        m_predU = m_u;
+    }
+    double thIn = m_heat.steadyTheta( m_in*m_in );
+    if( m_level <= 0 ) consider( m_heat.timeToLevel( m_u, thIn ) );
+    else               consider( m_heat.timeToLevel( m_u, 0.9*thIn ) );
+
+    if( next && ( !eventTime || next < eventTime ) ) schedule( t, next );
 }
 
 void Fuse::runEvent()
@@ -427,15 +457,8 @@ void Fuse::runEvent()
     flush( t );
     if( m_heat.theta() >= 1-1e-9 ){ blow( t, true ); return; }
 
-    if( m_u > m_heat.meltU() )            // Still overloaded: the exact melting time at this current
-    {
-        double tm = m_heat.timeToMelt( m_u );
-        if( tm >= 0 ){
-            schedule( t, t+std::max( (uint64_t)1, (uint64_t)std::ceil( tm*1e12 ) ) );
-            m_predU = m_u;
-        }
-    }
     updateState();
+    planNext( t, true );                  // Exact melting time if still overloaded, next state change
 }
 
 void Fuse::blow( uint64_t t, bool bySim )
@@ -459,15 +482,17 @@ void Fuse::blow( uint64_t t, bool bySim )
     m_repaint = true;
 }
 
-// OK (green) -> HOT (amber: above In, or the element at 80 % of melting) -> back below 95 % of In
-// and 75 %
+// OK (green) -> HOT (amber): from the heat only, never from the instantaneous current (a 1 A rms
+// sine peaks at 1.41 A, a switching load draws short pulses: the element doesn't notice). HOT once
+// the element is hotter than its rated current would keep it (θ of In steady: 1/(I_mf/In)², 0.25
+// for T, 0.39 for F), back to OK below 90 % of that. θ moves with τ1 (tens of ms): no chatter
 void Fuse::updateState()
 {
-    double in2 = m_in*m_in;
-    double th  = m_heat.theta();
+    double thIn = m_heat.steadyTheta( m_in*m_in );
+    double th   = m_heat.theta();
     int lvl = m_level < 0 ? 0 : m_level;
-    if( lvl == 0 ){ if( m_u > in2 || th >= 0.8 ) lvl = 1; }
-    else if( m_u < 0.9025*in2 && th < 0.75 ) lvl = 0;
+    if( lvl == 0 ){ if( th >= thIn ) lvl = 1; }
+    else if( th < 0.9*thIn ) lvl = 0;
 
     if( lvl == m_level ) return;
     m_level = lvl;

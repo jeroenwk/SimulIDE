@@ -151,8 +151,8 @@ with a `[INFERRED fuse_fit.py]` comment.
 
 | State | Level | When |
 |---|---|---|
-| `OK` | on (green) | θ < 0.8 and \|I\| ≤ Iₙ |
-| `HOT` | wait (amber) | θ ≥ 0.8, or \|I\| > Iₙ (with the usual hysteresis margin) |
+| `OK` | on (green) | θ below the steady heat of Iₙ (back from `HOT` below 90 % of it) |
+| `HOT` | wait (amber) | θ ≥ θss(Iₙ) = Iₙ²·(1/G1 + 1/G2): the element is hotter than its rated current would keep it (0.25 for T, 0.39 for F). From the heat only, never from the instantaneous current (§ 12) |
 | `BLOWN` | fault (red) | it blew; Messages: `F1 blew at 1.234 s (I = 4.1 A, I²t used 3.3 A²s)` |
 | `BLOWN, BROKE` | fault | the current at that moment exceeded `Breaking` (§ 5.4) |
 
@@ -371,6 +371,16 @@ Code: `src/simulator/elements/passive/e-fuseheat.{h,cpp}` (`FuseHeat`),
   table when `I2t` / `Vdrop` are 0. The breaking capacity preset is max(35 A, 10 × Iₙ).
 - **States:** `HOT` is reported from the change that caused it (a linear element's
   `voltChanged()` already runs on the converged solution), not through `stepSettled()`.
+- **`HOT` from the heat, not the current (2026-11-19):** the first version also turned `HOT`
+  on |I| > Iₙ, so a switching load flooded the Messages: led_driver `board_mains` draws ±1.9 A
+  pulses at 85 kHz through its T 1 A fuse (0.18 A rms) and F1 went OK → HOT → OK at every
+  pulse. The element follows I² with τ1 (tens of ms), so the state now follows θ only, with the
+  thresholds of § 5.1 and no chatter. In a quiet circuit nothing calls `voltChanged()`, so each
+  flush plans an event at the next threshold crossing at the present current
+  (`FuseHeat::timeToLevel`, bisection like `timeToMelt`), and a change that isn't flushed yet
+  schedules a flush within τ1/50, also when an event is already pending further away (an
+  overload's melting bound, ~32 ms ahead at 10 × Iₙ for T 1 A: `HOT` came only then, found by
+  the smoke test).
 - **Property changes during a run** hold the simulation only when it is running: `pauseSim()`
   does nothing on a paused simulation but `resumeSim()` would resume it, which would undo the
   user's pause.
@@ -381,7 +391,7 @@ Code: `src/simulator/elements/passive/e-fuseheat.{h,cpp}` (`FuseHeat`),
   current rose above the one the pending event was planned for; the event computes the exact
   melting time (`FuseHeat::timeToMelt`, bisection to 1e-12) and schedules it.
 
-### Tests (`tests/fuse/test_fuse.py`, 55 checks, all pass) [SIMULATED]
+### Tests (`tests/fuse/test_fuse.py`, 60 checks, all pass) [SIMULATED]
 
 | Check | Simulated | Expected |
 |---|---|---|
@@ -392,6 +402,7 @@ Code: `src/simulator/elements/passive/e-fuseheat.{h,cpp}` (`FuseHeat`),
 | 50 Hz square, 3 × Iₙ at 50 % | blows at 33.79 s | reference 33.79 s; 0.5 % duty never blows |
 | Cooling: 0.5 s at 3 × Iₙ, then 10 s quiet | 1.672 % | 1.672 % |
 | 50 Hz sine at 3 × Iₙ rms | 0.9166 s | sine reference 0.9165 s, DC at the same rms 0.9268 s |
+| States: 3 × Iₙ pulses at 10 % duty, 100 kHz (0.95 Iₙ rms); 1.2 × Iₙ steady; T 1 A at 10 × Iₙ | stay `OK`; `HOT` at 12.23 s; OK, HOT at 8.642 ms, BLOWN | no chatter; reference 12.23 s; reference 8.643 ms |
 | Replace while running, restart, KeepBlown, blown by hand, BROKE on a short, the 400 V note, resistor mode at 100 × Iₙ, save/load of every property, label `F500mA` | all as specified | |
 
 ### Performance (§ 6.5) — `specs/fuse/fuse_bench3.py`, headless, speed unlimited
@@ -407,6 +418,12 @@ against a **resistor** in the same place:
 | rect50 + ladder, 36 nodes (10 s) | +2 % | +2 % | ≤ +2 % (both read the same: noise, ±3 %) |
 | sw100k + ladder, 37 nodes (1 s) | 0 % | 0 % | ≤ +2 % |
 | quiet overload, F 1 A at 2.1 × Iₙ for 700 s | 0.177 s wall, blows at 600.033 s | (no fuse: 0.176 s) | ≤ 2 events |
+
+Rerun 2026-11-19 with `HOT` from the heat (best of 4 × 2; rect50 best of 6): quiet −3 %,
+rect50 +7 %, sw100k 0 %, rect50 + ladder −1 %, sw100k + ladder 0 %; quiet overload 0.179 s wall
+(no fuse 0.177 s), blows at 600.033 s. The rect50 change from +4 % is not the new code: main,
+measured the same day, reads +8 % (resistor 1.299 s, fuse 1.404 s), the branch +7 % (1.346 s,
+1.446 s); and without the τ1/50 fallback event the branch still reads 1.446 s.
 
 `FuseHeat::advance()` (two exponentials) takes 13 ns and runs at most every τ1/50 of simulated
 time outside an overload.
