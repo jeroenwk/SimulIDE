@@ -35,6 +35,12 @@ class ComponentSelector : public QTreeWidget
         void setShortCuts( QHash<QString, QString> s ) { m_shortCuts = s; }
         QHash<QString, QString> getShortCuts() { return m_shortCuts; }
 
+        // Keyboard input (K9e): the selected part (type, name as a drag from the list
+        // gives them; false: none), and stepping it to the next / previous part shown
+        // (categories skipped, its category opened, wrapping). The canvas keeps the focus
+        bool selectedPart( QString* type, QString* name );
+        QString stepPart( int dir );                     // The new part's name, "" if none
+
         // Keyboard input (K5): default single-key shortcuts (component name -> lowercase letter).
         // A user setting (Manage Components), even empty, replaces the default
  static const QHash<QString, QString>& defaultShortCuts();

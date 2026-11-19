@@ -11,6 +11,7 @@
 #include <QSettings>
 #include <QDebug>
 #include <QDrag>
+#include <QTreeWidgetItemIterator>
 #include <QMenu>
 
 #include "componentselector.h"
@@ -382,4 +383,41 @@ void ComponentSelector::search( QString filter )
             item = item->parent();
         }
     }
+}
+
+static bool isPartItem( QTreeWidgetItem* item )
+{ return item && !item->data( 0, Qt::UserRole ).toString().isEmpty(); }
+
+static bool shownItem( QTreeWidgetItem* item )   // Not hidden (Manage Components, search)
+{
+    for( QTreeWidgetItem* i = item; i; i = i->parent() ) if( i->isHidden() ) return false;
+    return true;
+}
+
+bool ComponentSelector::selectedPart( QString* type, QString* name )
+{
+    QTreeWidgetItem* item = currentItem();
+    if( !isPartItem( item ) || !shownItem( item ) ) return false;
+    *type = item->data( 0, Qt::UserRole ).toString();
+    *name = item->data( 0, Qt::WhatsThisRole ).toString();
+    return true;
+}
+
+QString ComponentSelector::stepPart( int dir )
+{
+    QList<QTreeWidgetItem*> parts;                   // Every part shown, in list order
+    QTreeWidgetItemIterator it( this );
+    for( ; *it; ++it ) if( isPartItem( *it ) && shownItem( *it ) ) parts.append( *it );
+    if( parts.isEmpty() ) return "";
+
+    int i = parts.indexOf( currentItem() );
+    int n = parts.size();
+    if( i < 0 ) i = ( dir > 0 ) ? 0 : n-1;           // None yet: the first / last
+    else        i = ( ( i+dir ) % n + n ) % n;
+    QTreeWidgetItem* item = parts.at( i );
+    if( item->parent() ) item->parent()->setExpanded( true );
+    setCurrentItem( item );
+    item->setSelected( true );
+    scrollToItem( item );
+    return item->data( 0, Qt::WhatsThisRole ).toString();
 }
