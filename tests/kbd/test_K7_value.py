@@ -106,7 +106,7 @@ def test(sim):
     uid = placed(sim)
     sim.cli("ui", "type", "-", "5", "enter")
     sim.check("fixed voltage -5 V", int(prop(sim, uid, "Voltage") == "-5 V"), 1, absolute=0, note=prop(sim, uid, "Voltage"))
-    sim.cli("ui", "type", "w")
+    sim.cli("ui", "type", "n")
     uid = placed(sim)
     sim.cli("ui", "type", "2", "k", "enter")
     sim.check("wavegen 2 kHz", int(prop(sim, uid, "Freq") == "2 kHz"), 1, absolute=0, note=prop(sim, uid, "Freq"))

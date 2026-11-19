@@ -91,7 +91,7 @@ class KeyboardController
         bool rotateKey( bool ccw );                // Cmd+R: rotate, then aligned to pinFrom (D19)
         bool partKey( QString letter );
         bool spaceKey();
-        bool wireKey();                             // _: wire pinFrom to pinTo (K8)
+        bool wireKey();                             // w: wire pinFrom to pinTo (K8)
         bool escKey();
         bool enterKey( bool opposite = false );     // Shift+Enter: leave by the opposite pin
         QPointF leavePos( Component* comp, bool opposite, Pin** used = nullptr );  // Where the cross goes (D16)

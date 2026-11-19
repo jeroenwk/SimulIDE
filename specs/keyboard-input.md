@@ -53,7 +53,7 @@ Corrections to the epic's assumptions:
 | C1 | `m` was assigned to both mosfet and opamp | **D1**: opamp = `u`, UJT = `q` |
 | C2 | **Shift+Arrow** = move the keyboard cursor *and* the small part step | Context: no selection → the arrows move the cursor (big) / Shift+arrows (small); selection → the arrows move it (big) / Shift+arrows (small). Panning is only in pan mode (D14) |
 | C3 | Value input uses `p n u m k M G` as multipliers, the same letters add parts | Only in *edit value* state (entered by a digit or `-`); there all multiplier letters are units and no part is added |
-| C4 | `-` was the wiring key and the minus sign of a value | **D6**: `-` is numeric (starts / continues a value, first char only). Wiring is **`_`** |
+| C4 | `-` was the wiring key and the minus sign of a value | **D6**: `-` is numeric (starts / continues a value, first char only). Wiring is **`_`**, later **`w`** (D20) |
 | C5 | Lowercase letters become part shortcuts, but existing circuits have switches with `Key="a"` etc. | **D7**: `Switch`/`Push` `Key` accepts **one capital A–Z** only, pressed as Shift+letter. Any other saved value is kept in the file but does nothing; opening the part's properties clears it. The Key field gets a description |
 | C6 | Tab / Shift+Tab are eaten by Qt's focus chain before any `keyPressEvent` | `CircuitView::event()` intercepts `Key_Tab` / `Key_Backtab` while the canvas has focus |
 | C7 | Esc has several meanings | Priority, first match wins: (1) wire being drawn by mouse → cancel it, (2) linking → stop, (3) value edit → revert, stay selected, (4) network mode → back to parts mode, the part selected, (5) unselect all |
@@ -94,7 +94,7 @@ from existing code, worth it on their own:
 
 1. `Circuit::moveSelection(QPointF delta)` out of `Component::mouseMoveEvent`
    (mouse drag and arrows share one move + undo path).
-2. `Circuit::connectPins(Pin*, Pin*)` out of the CLI `wire add` (CLI and `_`
+2. `Circuit::connectPins(Pin*, Pin*)` out of the CLI `wire add` (CLI and `w`
    share routing and dot insertion).
 
 Corner selection is the only new kind of selection (corners are not graphics
@@ -178,7 +178,7 @@ Parts mode:
 | digit, `-` | – | – | start EditValue (numeric value only) | append (`-` first only) |
 | `.` `,` | – | – | start EditValue (`0.`) | append once |
 | part letter | add part at cursor | add part | add part | multiplier (C3) |
-| `_` | wire pinFrom→pinTo | same | same | – |
+| `w` | wire pinFrom→pinTo | same | same | revert, then wire |
 | `=` | – | – | network mode (K9) | – |
 | Backspace / Delete | – | delete | delete | remove last char (C8) |
 | Shift+A–Z | switches (`Key`) | switches | switches | `M`, `G` only |
@@ -206,7 +206,7 @@ Ctrl/Cmd shortcuts are unchanged. Alt+char part shortcuts keep working.
   - both auto → the **nearest pair** of pins (one on A, one on B).
 
   The auto pins are shown as the parts' selected pins. Then `lastPart = B`.
-- Auto pins are recomputed when one of the two parts moves, and just before `_`.
+- Auto pins are recomputed when one of the two parts moves, and just before `w`.
 - Selecting several parts or nothing does not change pinFrom, pinTo or lastPart.
 
 So `r 1k Enter r 2k _ Enter r 3k _` builds R1.right–R2.left, R2.right–R3.left.
@@ -337,7 +337,7 @@ Validate
 *(epic: "add part to canvas")*
 
 - Default keys: o scope (Oscope), a ammeter, v voltmeter, f freq meter,
-  x fixed voltage (FixedVolt), y battery, w wave gen, g ground, b push button,
+  x fixed voltage (FixedVolt), y battery, n wave gen (was w, D20), g ground, b push button,
   s switch, r resistor, p potentiometer, e electrolytic, c capacitor,
   i inductor, d diode, z zener, m mosfet, j jfet, t BJT, q UJT, u opamp, l LED.
   Free lowercase letters: h, k, n.
@@ -384,7 +384,7 @@ Validate
   (= 4.7 k). Multipliers `p n u m k M G` (`M` mega, `m` milli); capitals type
   the small ones too (`K` = k, `U` = u), so a shifted keyboard works the same.
   Extra keys after a complete value are ignored. On AZERTY the unshifted 6 key
-  (`-`) is the minus and the unshifted 8 key (`_`, the wire key, K8) is never
+  (`-`) is the minus and the unshifted 8 key (`_`) is never
   a digit: the typed character decides before the physical key does.
 - The value label shows the buffer + unit with an edit marker (`200k▏Ω`, in
   `highlight`); the property is **not** changed until Enter. A buffer without a
@@ -426,10 +426,10 @@ Validate
 - [ ] Cmd+Z after Enter restores the previous value.
 - [ ] Digits with a scope selected do nothing.
 
-### K8 — Wiring with `_`
+### K8 — Wiring with `w` (was `_`, D20)
 *(epic: "wiring")*
 
-- `_`: connect pinFrom → pinTo with `Circuit::connectPins` (the CLI `wire add`
+- `w`: connect pinFrom → pinTo with `Circuit::connectPins` (the CLI `wire add`
   path: H/V route, dot inserted if a pin already has a wire). The new wire is
   not selected; the selection stays; pinFrom and pinTo are **cleared** (the
   wired pins lose their highlight and ring), and the selected part's selected
@@ -440,8 +440,8 @@ Validate
 
 Validate
 - [ ] `r 1 k Enter r 2 k _`: R1.right wired to R2.left.
-- [ ] Tab between a BJT and a resistor, `>` to the base, `_`: wire to the base.
-- [ ] Cmd+`>` then `>` on one opamp, `_`: wire between two of its pins.
+- [ ] Tab between a BJT and a resistor, `>` to the base, `w`: wire to the base.
+- [ ] Cmd+`>` then `>` on one opamp, `w`: wire between two of its pins.
 - [ ] A pin that already has a wire: a dot inserted on that wire.
 - [ ] Cmd+Z removes the wire.
 
@@ -520,7 +520,7 @@ Decisions (user, 2026-11-18):
   nearest first; only whole wires can be deleted; arrows move dots and corners,
   not wires.
   
-- **D6** `-` is numeric; wiring is `_`.
+- **D6** `-` is numeric; wiring is `_` (replaced by `w`, D20).
 
 - **D7** switch keys: one capital A–Z; other old values inert, cleared when the
   properties are opened; the field has a description.
@@ -574,7 +574,7 @@ Decisions (user, 2026-11-18):
   
 - **D18** (K4/K5 rev) The chain keeps flowing: the new part's **selected pin**
   is the one nearest to the outgoing pin it was placed at (there is none: the
-  §4.3 pairing), and pinFrom is that outgoing pin. After `_` wires a pin of
+  §4.3 pairing), and pinFrom is that outgoing pin. After `w` wires a pin of
   the selected part, that part's selected pin becomes the pin **most
   opposite** to the wired one (D16's rule), so the next Enter or placement
   continues out the other side — and pinFrom / pinTo are **cleared**: a made
@@ -588,6 +588,11 @@ Decisions (user, 2026-11-18):
   itself, or none: the plain rotation. The rotation and the move are one
   undo step (`Circuit::joinUndoSteps`), wires following.
   
+- **D20** (review, 2026-11-19) The wire key is **`w`**, not `_` (Shift on most
+  layouts, and an awkward reach in a chain `r 1 k Enter r 2 k w`). The wave
+  generator moves from `w` to **`n`**. `w`, like `h`, is reserved: Manage
+  Components refuses it as a part shortcut, and it is checked before the part
+  letters. During a value edit `w` reverts the edit, then wires.
 - **D14** (K1 rev) `h` starts pan mode (pointer: cross with arrows; arrows pan;
   any other key, a selection or a mouse press ends it). `h` is not a part shortcut.
   

@@ -13,6 +13,7 @@
 
 #include "mainwindow.h"
 #include "circuitwidget.h"
+#include "circuitview.h"
 #include "cliserver.h"
 #include "cliclient.h"
 
@@ -190,7 +191,13 @@ int main( int argc, char *argv[] )
         });
     }
 
-    if( !headless ) window.show();
+    if( !headless )
+    {
+        window.show();
+        QTimer::singleShot( 0, [](){               // The canvas starts with the keyboard: the
+            if( CircuitView* v = CircuitView::self() ) v->setFocus( Qt::OtherFocusReason ); // cursor
+        });                                        // cross shows and keys work at once
+    }
 
     return app.exec();
 }

@@ -18,7 +18,7 @@ from harness import run_test  # noqa: E402
 
 KEYS = {
     "o": "Oscope", "a": "Amperimeter", "v": "Voltimeter", "f": "FreqMeter", "x": "Fixed Voltage",
-    "y": "Battery", "w": "WaveGen", "g": "Ground", "b": "Push", "s": "Switch", "r": "Resistor",
+    "y": "Battery", "n": "WaveGen", "g": "Ground", "b": "Push", "s": "Switch", "r": "Resistor",
     "p": "Potentiometer", "e": "elCapacitor", "c": "Capacitor", "i": "Inductor", "d": "Diode",
     "z": "Zener", "m": "Mosfet", "j": "Jfet", "t": "BJT", "q": "UJT", "u": "opAmp", "l": "Led",
 }

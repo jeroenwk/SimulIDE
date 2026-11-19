@@ -145,13 +145,12 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     if( mods == Qt::ShiftModifier && ( key == Qt::Key_Return || key == Qt::Key_Enter ) )
         return enterKey( true );                         // Beyond the opposite pin (D16)
 
-    // A lowercase letter bound to a part (Manage Components; defaults r, c, ...): place it
-    QString t = event->text();
-    if( mods == Qt::NoModifier && t.size() == 1 && t[0] >= 'a' && t[0] <= 'z' && partKey( t ) ) return true;
-
-    // _ : wire pinFrom to pinTo (K8). Unshifted on AZERTY, shifted elsewhere: matched by text
+    // w : wire pinFrom to pinTo (K8, D20: reserved, never a part shortcut)
     QString text = event->text();
-    if( text == "_" && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return wireKey();
+    if( text == "w" && mods == Qt::NoModifier ) return wireKey();
+
+    // A lowercase letter bound to a part (Manage Components; defaults r, c, ...): place it
+    if( mods == Qt::NoModifier && text.size() == 1 && text[0] >= 'a' && text[0] <= 'z' && partKey( text ) ) return true;
 
     // < and > : next / previous pin of the selected part (Cmd: also the "from" pin).
     // The character decides (AZERTY: < unshifted, > with Shift); with Cmd macOS gives no text
@@ -406,7 +405,7 @@ bool KeyboardController::spaceKey()
     return true;
 }
 
-// _: wire pinFrom to pinTo (K8). The pins and the selection stay; the new wire is not
+// w: wire pinFrom to pinTo (K8). The pins and the selection stay; the new wire is not
 // selected. A line in Messages says why nothing was wired
 bool KeyboardController::wireKey()
 {
@@ -533,7 +532,7 @@ bool KeyboardController::enterKey( bool opposite )
 // The char a digit, - or . , key types ('\0': not a value key). D10: the AZERTY number
 // row counts as digits with or without Shift, matched by its physical key (kVK_ANSI_0…9,
 // the number row on every layout) — except "-" (the AZERTY 6 key), which is a minus,
-// and "_", the wire key (K8)
+// and "_" (the AZERTY 8 key unshifted), never a digit
 QChar KeyboardController::valueEntryChar( QKeyEvent* event, Qt::KeyboardModifiers mods )
 {
     if( !( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return '\0';
