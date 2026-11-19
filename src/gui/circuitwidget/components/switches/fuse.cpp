@@ -421,8 +421,10 @@ void Fuse::voltChanged()
         updateState();
         planNext( t, false );
     }
-    else if( !eventTime ) schedule( t, t+m_h );   // A flush and a plan within τ1/50, even if no
-}                                                 // other change follows (a quiet circuit)
+    // A flush and a plan within τ1/50, even if no other change follows (a quiet circuit), and
+    // even with an event pending further away (the melting bound of an overload)
+    else if( !eventTime || eventTime > t+m_h ) schedule( t, t+m_h );
+}
 
 // The next event, if any: the exact melting time (from runEvent) and the next crossing of the
 // HOT / OK threshold at the present current. Only moves a pending event earlier: an early one

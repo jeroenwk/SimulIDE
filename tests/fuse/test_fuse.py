@@ -216,6 +216,20 @@ def states(sim):
         h.step(1e-3, i * i); t += 1e-3
     got = parse_time(hist[-1].get("time", "")) if hist else None
     sim.check("1.2 In: HOT at (s)", got, t, tol=0.002, note="reference: θ reaches 0.25")
+    # 10 In: an overload, so an event is already pending at the adiabatic melting bound (~32 ms);
+    # HOT must still come when θ reaches 0.25 (~9 ms), not at that event (it did, smoke test)
+    build_dc(sim, 30, load_for(10, 30, "T"), "T")
+    sim.run("1ms")
+    i = abs(r(sim)["current"])
+    sim.run("100ms")
+    hist = sim.cli("status", "F1").get("history", [])
+    texts = [x.get("text") for x in hist]
+    flag(sim, "10 In: OK, HOT, BLOWN (%s)" % texts, texts == ["OK", "HOT", "BLOWN"])
+    h = Heat("T"); t = 0.0
+    while h.th < 0.25 and t < 1:
+        h.step(1e-6, i * i); t += 1e-6
+    got = parse_time(hist[1].get("time", "")) if len(hist) > 1 else None
+    sim.check("10 In: HOT at (s)", got, t, tol=0.002, note="reference: θ reaches 0.25")
 
 
 # ---- 7/8. Replace, restart, KeepBlown -------------------------------------------------------
