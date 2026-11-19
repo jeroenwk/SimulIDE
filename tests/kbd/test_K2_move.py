@@ -39,16 +39,17 @@ def test(sim):
     sim.check("no selection: R1 stays", pos(sim, "R1")[0], 300, absolute=0)
     sim.check("no selection: the cross moves", s["cursor"][0], 260, absolute=0)
 
-    # One part: 64 px, Shift 8 px, wire follows, the cross does not follow (K1 rev)
+    # One part: 64 px, Shift 8 px, wire follows, the (hidden) cross follows (K1 rev).
+    # Selecting R1 parked the cross at its centre (300,300)
     sim.cli("select", "R1")
     s = sim.cli("ui", "type", "Right")
     sim.check("Right: R1 x", pos(sim, "R1")[0], 364, absolute=0)
-    sim.check("Right: the cross does not follow", s["cursor"][0], 260, absolute=0)   # left at 260 by the first Right
+    sim.check("Right: the cross follows", s["cursor"][0], 364, absolute=0)
     s = sim.cli("ui", "type", "shift+Right", "shift+Down")
     p = pos(sim, "R1")
     sim.check("Shift+Right: R1 x", p[0], 372, absolute=0)
     sim.check("Shift+Down: R1 y", p[1], 308, absolute=0)
-    sim.check("Shift moves: the cross does not follow", s["cursor"][1], 292, absolute=0)
+    sim.check("Shift moves: the cross follows", s["cursor"][1], 308, absolute=0)
     pts = wire(sim, "R1.rPin", "R2.lPin")
     sim.check("wire still on R1.rPin: x", pts[0] if pts else None, 388, absolute=0)
     sim.check("wire still on R1.rPin: y", pts[1] if pts else None, 308, absolute=0)
@@ -93,6 +94,30 @@ def test(sim):
     moved = sum(1 for a, b in zip(sorted(before, key=lambda x: x["uid"]), sorted(after, key=lambda x: x["uid"]))
                 if a["points"] != b["points"])
     sim.check("dot moved: its wires changed", moved, len(before), absolute=0)
+
+    # A mouse drag moves the part the same way — and the (hidden) cross follows it
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "300,300")
+    sim.cli("select", "R1")                     # Parks the cross at R1's centre
+    s = sim.cli("kbd", "state")
+    sim.check("drag setup: cross parked", int(s["cursor"] == [300, 300]), 1, absolute=0,
+              note=str(s["cursor"]))
+    s = sim.cli("ui", "drag", "300,300", "364,300")
+    sim.check("drag: R1 moved with the mouse", pos(sim, "R1")[0], 364, absolute=0)
+    sim.check("drag: the cross follows", int(s["cursor"] == [364, 300]), 1, absolute=0,
+              note=str(s["cursor"]))
+    sim.cli("ui", "type", "cmd+z")
+    sim.check("drag: cmd+z restores R1", pos(sim, "R1")[0], 300, absolute=0)
+
+    # A drag that is not a multiple of 8 px: the hidden cross stays on the part (no
+    # drift from 4 px steps), and the view does not scroll after the hidden cross,
+    # which made the part run away from the mouse
+    s = sim.cli("ui", "drag", "300,300", "400,352")
+    p = pos(sim, "R1")
+    sim.check("odd drag: R1 lands under the mouse", int(abs(p[0]-400) <= 8 and abs(p[1]-352) <= 8), 1,
+              absolute=0, note=str(p))
+    sim.check("odd drag: the cross stays at R1", int(abs(s["cursor"][0]-p[0]) <= 4 and abs(s["cursor"][1]-p[1]) <= 4), 1,
+              absolute=0, note="%s vs %s" % (s["cursor"], p))
 
     # Registry
     sc = sim.cli("kbd", "shortcuts")

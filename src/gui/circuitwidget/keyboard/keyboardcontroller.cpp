@@ -30,6 +30,7 @@
 #include "node.h"
 #include "linker.h"
 #include "componentselector.h"
+#include "pinchain.h"
 #include "utils.h"
 
 KeyboardController* KeyboardController::self()
@@ -50,7 +51,6 @@ KeyboardController::KeyboardController()
     m_burstEdit     = -1;
     m_selPending    = false;
     m_circuit       = nullptr;
-    m_valueEdit     = false;
 }
 
 QPointF KeyboardController::snap( QPointF p )
@@ -61,10 +61,8 @@ QPointF KeyboardController::snap( QPointF p )
 void KeyboardController::reset()
 {
     m_panMode = false;
-    m_valueEdit = false;
-    m_valueUid.clear();
-    m_valueProp.clear();
-    m_valueBuf.clear();
+    m_value.reset();
+    m_leavePin.clear();
     showPointer();
     m_cursorSet  = false;
     m_arrowBurst = false;
@@ -102,24 +100,38 @@ bool KeyboardController::keyPress( QKeyEvent* event )
 
     hidePointer();              // Typing on the canvas: the pointer goes (pan mode shows its symbol)
 
-    if( arrow && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return arrowKey( event, mods );
+    if( zoomKey( event, mods ) ) return true;   // The view only: a value being typed stays
 
-    if( zoomKey( event, mods ) ) return true;
-
-    m_arrowBurst = false;       // Any other key ends a burst of arrow moves
-
-    // Typing the selected part's value (K7). While editing, value keys build the buffer;
-    // any other key reverts first and then does its normal action
-    if( m_valueEdit )
+    // Contexts, in order (spec §4.1): EditValue, network mode (K9), parts mode.
+    // EditValue (K7): value keys build the buffer; any other key (arrows and Cmd+R too)
+    // reverts first and then does its normal action
+    if( m_value.active() )
     {
-        if( valueKey( event, mods ) ) return true;
-        endValueEdit();
+        QString uid = m_value.uid();
+        ValueEditor::result_t r = m_value.key( event, mods );
+        if( r == ValueEditor::committed ){ leavePart( compByUid( uid ), false ); return true; }
+        if( r == ValueEditor::handled ) return true;
+        m_value.revert();
     }
     else
     {
-        QChar first = valueEntryChar( event, mods );           // A digit, - . , enters the edit
-        if( first != '\0' && startValueEdit( first ) ) return true;
+        QChar first = ValueEditor::entryChar( event, mods );   // A digit, - . , enters the edit
+        if( first != '\0' && m_value.start( singlePart(), first ) ) return true;
     }
+
+    // Network mode (K9) goes here: its keys, then return
+
+    // Parts mode
+
+    if( arrow && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return arrowKey( event, mods );
+
+    // Cmd+R / Cmd+Shift+R: rotate; with an outgoing pin (pinFrom) on another part, the
+    // rotated part is also moved so its closest pin shares that pin's row or column
+    if( key == Qt::Key_R && ( mods & Qt::ControlModifier )
+     && !( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) )
+        return rotateKey( mods & Qt::ShiftModifier );
+
+    m_arrowBurst = false;       // Any other key ends a burst of arrow moves
 
     if( panKey ){ setPanMode( true ); return true; }
 
@@ -134,14 +146,15 @@ bool KeyboardController::keyPress( QKeyEvent* event )
         if( key == Qt::Key_Return || key == Qt::Key_Enter ) return enterKey();
         if( key == Qt::Key_Space ) return spaceKey();
     }
+    if( mods == Qt::ShiftModifier && ( key == Qt::Key_Return || key == Qt::Key_Enter ) )
+        return enterKey( true );                         // Beyond the opposite pin (D16)
+
+    // w : wire pinFrom to pinTo (K8, D20: reserved, never a part shortcut)
+    QString text = event->text();
+    if( text == "w" && mods == Qt::NoModifier ) return wireKey();
 
     // A lowercase letter bound to a part (Manage Components; defaults r, c, ...): place it
-    QString t = event->text();
-    if( mods == Qt::NoModifier && t.size() == 1 && t[0] >= 'a' && t[0] <= 'z' && partKey( t ) ) return true;
-
-    // _ : wire pinFrom to pinTo (K8). Unshifted on AZERTY, shifted elsewhere: matched by text
-    QString text = event->text();
-    if( text == "_" && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return wireKey();
+    if( mods == Qt::NoModifier && text.size() == 1 && text[0] >= 'a' && text[0] <= 'z' && partKey( text ) ) return true;
 
     // < and > : next / previous pin of the selected part (Cmd: also the "from" pin).
     // The character decides (AZERTY: < unshifted, > with Shift); with Cmd macOS gives no text
@@ -219,6 +232,7 @@ void KeyboardController::selectPart( Component* comp )
     circ->clearSelection();
     comp->setSelected( true );
     settleSelection();                       // Now, not queued: the keys that follow see it
+                                             // (it parks the hidden cross at the part)
     if( CircuitView* v = CircuitView::self() ) v->ensureVisible( comp->sceneBoundingRect(), 32, 32 );
 }
 
@@ -249,6 +263,39 @@ bool KeyboardController::tabKey( int dir )
     return true;
 }
 
+// Cmd+R / Cmd+Shift+R: rotate the selected part. With an outgoing pin (pinFrom) on
+// another part, the rotated part is then moved so that its pin closest to that pin
+// shares its row or column (the smaller offset is eliminated), keeping a straight
+// wire possible (D19). The shape does not matter: any pin can end up off the line.
+bool KeyboardController::rotateKey( bool ccw )
+{
+    Component* comp = singlePart();
+    Pin* f = pinFrom();
+    if( !comp || !f || f->component() == comp ) return false;   // The plain rotation
+
+    Circuit* circ = Circuit::self();
+    int undoIndex = circ->undoIndex();       // The rotation and the shift: one undo step
+    if( ccw ) comp->rotateCCW();
+    else      comp->rotateCW();
+
+    Pin* near = PinChain::nearest( comp, f->scenePos() );   // The pin closest to the outgoing one
+    if( near )
+    {
+        QPointF d = near->scenePos()-f->scenePos();
+        QPointF move( 0, 0 );
+        if( qAbs( d.y() ) <= qAbs( d.x() ) ) move.ry() = -d.y();   // Side by side: one row
+        else                                 move.rx() = -d.x();   // Stacked: one column
+        if( !move.isNull() )
+        {
+            circ->moveSelection( move, true );                     // Wires follow, the cross
+            refreshAutoPins();                                     // moves along
+        }
+    }
+    circ->joinUndoSteps( undoIndex );
+    if( CircuitView* v = CircuitView::self() ) v->ensureVisible( comp->sceneBoundingRect(), 32, 32 );
+    return true;
+}
+
 bool KeyboardController::partKey( QString letter )
 {
     QHash<QString, QString> keys = ComponentSelector::self()->getShortCuts();
@@ -259,16 +306,38 @@ bool KeyboardController::partKey( QString letter )
     Component* comp = circ->createItem( name, name+"-"+circ->newSceneId() );
     if( !comp ) return false;
     QPointF at = cursorPos();
-    if( Component* sel = singlePart() )      // A part selected: a big step right of it (D12)
+    bool byPin = false;                      // Placed relative to a pin of the chain (D17)
+    Pin* fromPin = nullptr;
+    Component* sel = singlePart();
+    if( sel ) fromPin = sel->selectedPin();  // A part selected: continue from its pin
+    else if( !m_leavePin.isEmpty() && cursorPos() == m_leavePos )
+        fromPin = Circuit::self()->pinById( m_leavePin );  // The cross still where Enter left it
+    if( fromPin )
     {
-        at = sel->pos()+QPointF( bigStep, 0 );
-        moveCursorTo( at );
+        byPin = true;
+        QPointF dir = PinChain::dir( fromPin );   // The new part's first pin goes a big step
+        at = snap( fromPin->scenePos() + dir*bigStep );   // beyond the pin, facing it in a
+        PinChain::faceBack( comp, dir );                  // straight line
     }
+    else if( sel ) at = sel->pos()+QPointF( bigStep, 0 ); // No pins: the old rule (D12)
     comp->setPos( toGrid( at ) );
     circ->addComponent( comp );
+    if( byPin && !comp->getPins().empty() )              // The first pin exactly at its spot
+        comp->setPos( comp->pos() + ( at-comp->getPins().front()->scenePos() ) );
     circ->saveCompChange( comp->getUid(), COMP_STATE_NEW, "" );
-    qDebug() << "[kbd] key" << letter << "places" << name << "at" << comp->pos();
-    selectPart( comp );                      // Selected, pins paired with the last part
+    qDebug() << "[kbd] key" << letter << "places" << name << "at" << comp->pos()
+             << "rotation" << comp->rotation();
+    selectPart( comp );                      // Selected (the hidden cross goes with it, D13),
+                                             // pins paired with the last part
+    if( fromPin )                            // Its selected pin: the one nearest to the
+    {                                        // outgoing pin (D18), pinFrom that pin
+        if( Pin* near = PinChain::nearest( comp, fromPin->scenePos() ) )
+        {
+            comp->setSelectedPin( near, false );
+            setPinFrom( fromPin );
+            setPinTo( near );
+        }
+    }
     return true;
 }
 
@@ -292,7 +361,7 @@ bool KeyboardController::spaceKey()
     return true;
 }
 
-// _: wire pinFrom to pinTo (K8). The pins and the selection stay; the new wire is not
+// w: wire pinFrom to pinTo (K8). The pins and the selection stay; the new wire is not
 // selected. A line in Messages says why nothing was wired
 bool KeyboardController::wireKey()
 {
@@ -327,6 +396,17 @@ bool KeyboardController::wireKey()
     }
     if( running && !Simulator::self()->isRunning() )
         say( "Keyboard: simulation stopped to wire" );
+    if( Component* comp = singlePart() )     // The wired part continues out its other
+    {                                        // side: its selected pin becomes the pin
+        Pin* wired = nullptr;                // most opposite to the wired one (D18)
+        if( f->component() == comp ) wired = f;
+        else if( t->component() == comp ) wired = t;
+        if( wired )
+            if( Pin* op = PinChain::opposite( comp, wired ) )
+                comp->setSelectedPin( op, false );
+    }
+    setPinFrom( nullptr );                   // The wire is made: the wired pins are no
+    setPinTo( nullptr );                     // longer the wiring pair, their marks go
     return true;
 }
 
@@ -335,211 +415,33 @@ bool KeyboardController::escKey()
     if( Linker::m_selecComp ) return false;  // Old behaviour: stop linking
     Circuit* circ = Circuit::self();
     if( circ->selectedItems().isEmpty() ) return false;
-    circ->clearSelection();                  // lastPart and the pins are kept (D3)
+    if( Component* comp = singlePart() )     // The cross is shown where the part is NOW,
+        moveCursorTo( comp->pos() );         // also when it moved without the selection
+    circ->clearSelection();                  // (a library drop): read at unselect time
     return true;
 }
 
-bool KeyboardController::enterKey()
+// Enter: unselect the part, the cross beyond its (opposite: most opposite) pin
+bool KeyboardController::enterKey( bool opposite )
 {
     Component* comp = singlePart();
     if( !comp ) return false;
+    leavePart( comp, opposite );
+    return true;
+}
+
+// Unselect a part (Enter, Shift+Enter, a committed value) and put the cross beyond its
+// pin (D16). The pin is remembered (D17): a part placed while the cross is still there
+// continues the chain, as with the part selected
+void KeyboardController::leavePart( Component* comp, bool opposite )
+{
+    if( !comp ) return;
+    Pin* pin = nullptr;
+    QPointF at = PinChain::leavePos( comp, opposite, bigStep, &pin );
     Circuit::self()->clearSelection();
-    moveCursorTo( comp->pos()+QPointF( bigStep, 0 ) );   // A big step right of the part (D11)
-    return true;
-}
-
-// The char a digit, - or . , key types ('\0': not a value key). D10: the AZERTY number
-// row counts as digits with or without Shift, matched by its physical key (kVK_ANSI_0…9,
-// the number row on every layout) — except "-" (the AZERTY 6 key), which is a minus,
-// and "_", the wire key (K8)
-QChar KeyboardController::valueEntryChar( QKeyEvent* event, Qt::KeyboardModifiers mods )
-{
-    if( !( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return '\0';
-    QString t = event->text();
-    if( t.size() == 1 )
-    {
-        if( t[0].isDigit() ) return t[0];
-        if( t[0] == '-' ) return '-';
-        if( t[0] == '.' || t[0] == ',' ) return '.';
-        if( t[0] == '_' ) return '\0';
-    }
-    int key = event->key();
-    if( key >= Qt::Key_0 && key <= Qt::Key_9 ) return QChar( '0'+key-Qt::Key_0 );  // é = Key_2
-#ifdef Q_OS_MACOS
-    quint32 vk = event->nativeVirtualKey();              // D10, as the zoom 0 key (K1 rev)
-    if     ( vk == 0x12 ) return '1';
-    else if( vk == 0x13 ) return '2';
-    else if( vk == 0x14 ) return '3';
-    else if( vk == 0x15 ) return '4';
-    else if( vk == 0x16 ) return '6';
-    else if( vk == 0x17 ) return '5';
-    else if( vk == 0x19 ) return '9';
-    else if( vk == 0x1A ) return '7';
-    else if( vk == 0x1C ) return '8';
-    else if( vk == 0x1D ) return '0';
-#endif
-    if( key == Qt::Key_Minus ) return '-';
-    if( key == Qt::Key_Period || key == Qt::Key_Comma ) return '.';
-    return '\0';
-}
-
-bool KeyboardController::startValueEdit( QChar first )
-{
-    Component* comp = singlePart();
-    if( !comp ) return false;
-    QString prop = comp->valueProperty();
-    if( prop.isEmpty() ) return false;                   // This part takes no typed value
-
-    m_valueEdit = true;
-    m_valueUid  = comp->getUid();
-    m_valueProp = prop;
-    m_valueBuf  = ( first == '.' ) ? "0." : QString( first );
-    qDebug() << "[kbd] value edit" << prop << "on" << m_valueUid;
-    updateValueLabel();
-    return true;
-}
-
-// A key while a value is typed. false: not a value key, the edit reverts and the key
-// does its normal action (Tab: next part, r: place a part, ...)
-bool KeyboardController::valueKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
-{
-    int key = event->key();
-    if( key == Qt::Key_Backspace && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) )
-    {
-        if( !m_valueBuf.isEmpty() ) m_valueBuf.chop(1);
-        if( m_valueBuf.isEmpty() ) endValueEdit();       // D8: no char left: the edit ends; the
-        else                       updateValueLabel();   // next Backspace deletes the part
-        return true;
-    }
-    if( mods == Qt::NoModifier )
-    {
-        if( key == Qt::Key_Escape ) { endValueEdit(); return true; }   // Revert, stay selected
-        if( key == Qt::Key_Return || key == Qt::Key_Enter ) { commitValue(); return true; }
-    }
-    QChar c = valueEntryChar( event, mods );
-    if( c != '\0' ){ valueChar( c ); return true; }
-    QString t = event->text();
-    if( t.size() == 1 && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) )
-    {   // Multipliers p n u m k M G (u = µ, M mega, m milli); capitals type the small
-        // ones too (K = k), so a shifted keyboard works the same
-        if( QString("pnumkMG").contains( t[0] ) )          { valueChar( t[0] );          return true; }
-        if( QString("PNUK").contains( t[0] ) )             { valueChar( t[0].toLower() ); return true; }
-    }
-    return false;
-}
-
-// The buffer's multiplier letter, '\0' when none is typed
-static QChar bufferMult( const QString& buf )
-{
-    for( QChar c : buf )
-        if( !c.isDigit() && c != '-' && c != '.' && c != ',' ) return c;
-    return '\0';
-}
-
-// One buffer char, per the grammar [-]digits[.digits][mult[digits]]. What does not
-// fit (a second dot, a second multiplier, a sign mid-value) is ignored
-void KeyboardController::valueChar( QChar c )
-{
-    bool hasMult = bufferMult( m_valueBuf ) != '\0';
-    bool hasDot  = m_valueBuf.contains( '.' );
-    int  digits  = 0;
-    for( QChar ch : m_valueBuf ) if( ch.isDigit() ) digits++;
-    if( c.isDigit() ) m_valueBuf.append( c );            // Digits always fit (4k7 too)
-    else if( c == '.' )            { if( !hasDot && !hasMult && digits > 0 ) m_valueBuf.append( c ); }
-    else if( c != '-' )            { if( !hasMult && digits > 0 ) m_valueBuf.append( c ); }
-    // c == '-': the sign is only the entry key; mid-edit it is ignored
-    updateValueLabel();
-}
-
-// The value label shows the buffer, an edit marker and the unit: 200k▏Ω, in highlight.
-// While no multiplier is typed the part's current one is shown (200▏kΩ): it does not
-// change unless the buffer types one
-void KeyboardController::updateValueLabel()
-{
-    Component* comp = compByUid( m_valueUid );
-    if( !comp ) return;
-    QString unit;
-    if( ComProperty* p = comp->property( m_valueProp ) )
-    {
-        unit = p->unit();
-        if( bufferMult( m_valueBuf ) != '\0'             // A typed multiplier replaces it:
-         && unit.size() > 1 && QString("pnµmkMGT").contains( unit.at(0) ) ) unit = unit.mid( 1 );
-        if( unit.startsWith("_") ) unit = unit.mid( 1 );                 // "_%": shown without the _
-    }
-    comp->valLabel()->setDefaultTextColor( Theme::highlight() );
-    comp->setValLabelText( m_valueBuf+QChar( 0x258F )+unit );
-}
-
-// Revert: the value from before the edit is shown again (the property was never changed)
-void KeyboardController::endValueEdit()
-{
-    if( !m_valueEdit ) return;
-    m_valueEdit = false;
-    Component* comp = compByUid( m_valueUid );
-    m_valueUid.clear();
-    m_valueBuf.clear();
-    if( !comp ) return;
-    comp->valLabel()->setDefaultTextColor( Theme::valLabel() );
-    if( ComProperty* p = comp->property( m_valueProp ) )
-        comp->setValLabelText( p->getValStr() );
-    m_valueProp.clear();
-}
-
-// The buffer as a value string the property takes: "200 kΩ", "4.7 µF", "100 nF";
-// digits after the multiplier are the fraction (4k7 = 4.7 k). A buffer without a
-// multiplier keeps the part's current unit (4.7 kΩ + 100 Enter = 100 kΩ): the
-// multiplier only changes when the buffer types one
-QString KeyboardController::valueString( Component* comp )
-{
-    ComProperty* p = comp->property( m_valueProp );
-    if( !p ) return "";
-    QString num = m_valueBuf;
-    QChar mult = bufferMult( m_valueBuf );
-    if( mult != '\0' )
-    {
-        int i = m_valueBuf.indexOf( mult );
-        num  = m_valueBuf.left( i );
-        QString tail = m_valueBuf.mid( i+1 );
-        if( !tail.isEmpty() ) num = num.contains('.') ? num+tail : num+"."+tail;
-    }
-    num.replace( ',', '.' );
-
-    QString unit = p->unit();
-    if( mult == '\0' )                                   // Keep the current multiplier
-        return num + ( unit.isEmpty() ? "" : " "+unit );
-    QString base = unit;
-    if( base.size() > 1 && QString("pnµmkMGT").contains( base.at(0) ) ) base = base.mid( 1 );
-    if( base.startsWith("_") || base.isEmpty() )         // No SI prefixes: the value itself
-        return QString::number( num.toDouble()*getMultiplier( QString( mult ) ), 'g', 15 )+" "+base;
-    return num+" "+( mult == 'u' ? QString("µ") : QString( mult ) )+base;
-}
-
-// Enter: set the property (one undo step), leave the edit, unselect, cursor right.
-// What the property refuses it clamps; the label shows what was set
-void KeyboardController::commitValue()
-{
-    Component* comp = compByUid( m_valueUid );
-    bool digits = false;
-    for( QChar ch : m_valueBuf ) if( ch.isDigit() ) digits = true;
-    if( comp && digits )
-    {
-        QString val = valueString( comp );
-        QString old = comp->getPropStr( m_valueProp );
-        Circuit* circ = Circuit::self();
-        circ->beginUndoStep();
-        comp->setPropStr( m_valueProp, val );
-        circ->calcCircuitChanges();
-        circ->addCompChange( comp->getUid(), m_valueProp, old );
-        circ->endCircuitBatch();
-        circ->setChanged();
-        qDebug() << "[kbd] value" << val << "->" << m_valueProp << "on" << m_valueUid;
-    }
-    endValueEdit();
-    if( comp )                                           // Then as Enter (K4)
-    {
-        Circuit::self()->clearSelection();
-        moveCursorTo( comp->pos()+QPointF( bigStep, 0 ) );
-    }
+    moveCursorTo( at );
+    m_leavePin = pin ? pin->pinId() : QString();
+    m_leavePos = cursorPos();
 }
 
 bool KeyboardController::anyPartSelected()
@@ -608,11 +510,12 @@ void KeyboardController::zoomAround( double factor )
 
 void KeyboardController::selectionChanged()
 {
-    if( m_valueEdit )                                    // The edit ends when its part is no
+    if( m_value.active() )                               // The edit ends when its part is no
     {                                                    // longer the single selection (K7)
         Component* c = singlePart();
-        if( !c || c->getUid() != m_valueUid ) endValueEdit();
+        if( !c || c->getUid() != m_value.uid() ) m_value.revert();
     }
+    if( m_cursorSet && !anyPartSelected() && m_cursor != snap( m_cursor ) ) m_cursor = snap( m_cursor );
     if( m_cursorSet ) updateCross( m_cursor );   // Shown only while no part is selected
     if( m_panMode && anyPartSelected() ) setPanMode( false );
     if( m_selPending ) return;
@@ -646,8 +549,17 @@ void KeyboardController::pairPins( Component* a, Component* b )
 void KeyboardController::settleSelection()
 {
     m_selPending = false;
+    // The wiring pair lives as long as both its pins: when a deleted part took one
+    // (deleting the selected part clears the selection, which lands here), the pair
+    // is gone and its marks go with it
+    if( ( !m_pinFrom.isEmpty() && !pinFrom() ) || ( !m_pinTo.isEmpty() && !pinTo() ) )
+    {
+        setPinFrom( nullptr );
+        setPinTo( nullptr );
+    }
     Component* b = singlePart();
-    if( !b || b->getUid() == m_lastPart ) return;
+    if( b ) parkCursor( b->pos() );              // Whatever selects one part — Tab, a click,
+    if( !b || b->getUid() == m_lastPart ) return;   // the CLI — parks the hidden cross on it
 
     Component* a = lastPart();
     if( a ){
@@ -745,12 +657,12 @@ bool KeyboardController::arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods 
 
     std::sort( sel.begin(), sel.end() );
     bool newStep = !m_arrowBurst || m_burstEdit != circ->editCount() || sel != m_burstSelection;
-    circ->moveSelection( d, newStep );
+    circ->moveSelection( d, newStep );         // Also moves the (hidden) cross along
     m_arrowBurst     = true;
     m_burstEdit      = circ->editCount();
     m_burstSelection = sel;
 
-    refreshAutoPins();                                      // (The cross stays where it is)
+    refreshAutoPins();
     if( CircuitView* v = CircuitView::self() ) v->ensureVisible( v->selectedRect(), 32, 32 );
     return true;
 }
@@ -764,7 +676,7 @@ void KeyboardController::mouseMoved( QPoint viewPos )
     showPointer();                          // The cross does not follow the mouse
 }
 
-void KeyboardController::mousePressed() { endValueEdit(); setPanMode( false ); }   // A click reverts (K7)
+void KeyboardController::mousePressed() { m_value.revert(); setPanMode( false ); }   // A click reverts (K7)
 
 void KeyboardController::clickedEmpty( QPointF scenePos )
 {
@@ -793,6 +705,24 @@ QPointF KeyboardController::cursorPos()
         m_cursorSet = true;
     }
     return m_cursor;
+}
+
+// The hidden cross follows a moved selection (arrows, a mouse drag, the rotation
+// alignment), so Esc shows it where the parts ended up. One part: its position, snapped;
+// several: shifted as they are, snapped only when shown (no drift from 4 px drag steps).
+// The view never scrolls for the hidden cross: that made a mouse drag run away
+void KeyboardController::selectionMoved( QPointF delta )
+{
+    if( Component* comp = singlePart() ) parkCursor( comp->pos() );
+    else                                 parkCursor( cursorPos()+delta, false );
+}
+
+void KeyboardController::parkCursor( QPointF scenePos, bool snapIt )
+{
+    QPointF old = cursorPos();
+    m_cursor = snapIt ? snap( scenePos ) : scenePos;
+    updateCross( old );
+    updateCross( m_cursor );
 }
 
 void KeyboardController::moveCursorTo( QPointF scenePos )
@@ -856,6 +786,7 @@ void KeyboardController::paint( QPainter* painter )
 
 QJsonObject KeyboardController::state()
 {
+    if( m_selPending ) settleSelection();     // First: a click's queued selection rule
     QJsonObject o;
     QPointF p = cursorPos();
     o["focused"]       = m_focused;
@@ -870,11 +801,8 @@ QJsonObject KeyboardController::state()
         for( Component* comp : *c->compList() )
             if( comp->isSelected() ) sel.append( comp->getUid() );
     o["selection"] = sel;
-    if( m_selPending ) settleSelection();
     Component* lp = lastPart();
     o["lastPart"] = lp ? QJsonValue( lp->getUid() ) : QJsonValue();
-    if( m_valueEdit )                                     // K7: the value being typed
-        o["valueEdit"] = QJsonObject{ {"part", m_valueUid}, {"property", m_valueProp},
-                                       {"buffer", m_valueBuf} };
+    if( m_value.active() ) o["valueEdit"] = m_value.state();   // K7: the value being typed
     return o;      // The CLI adds the pins (pinFrom, pinTo, selectedPin) as "R1.lPin" refs
 }

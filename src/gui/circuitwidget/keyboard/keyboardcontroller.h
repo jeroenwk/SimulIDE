@@ -19,6 +19,8 @@
 #include <QString>
 #include <QPointer>
 
+#include "valueeditor.h"
+
 class QKeyEvent;
 class QGraphicsItem;
 class QDialog;
@@ -56,6 +58,7 @@ class KeyboardController
         bool pointerHidden() { return m_pointerHidden; }
 
         void moveCursorTo( QPointF scenePos );   // Snapped; scrolls the view to keep it visible
+        void selectionMoved( QPointF delta );    // Circuit::moveSelection: the hidden cross follows
 
         void paint( QPainter* painter );         // From Circuit::drawForeground
 
@@ -87,21 +90,13 @@ class KeyboardController
         bool arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods );
         bool pinKey( int dir, bool from );
         bool tabKey( int dir );
+        bool rotateKey( bool ccw );                // Cmd+R: rotate, then aligned to pinFrom (D19)
         bool partKey( QString letter );
         bool spaceKey();
-        bool wireKey();                             // _: wire pinFrom to pinTo (K8)
+        bool wireKey();                             // w: wire pinFrom to pinTo (K8)
         bool escKey();
-        bool enterKey();
-
-        // Typing the selected part's value (K7): buffer [-]digits[.digits][mult[digits]]
-        QChar   valueEntryChar( QKeyEvent* event, Qt::KeyboardModifiers mods );  // '\0': not one
-        bool    valueKey( QKeyEvent* event, Qt::KeyboardModifiers mods );        // While editing
-        bool    startValueEdit( QChar first );
-        void    endValueEdit();                     // Revert: the label shows the value from before
-        void    commitValue();                      // Enter: set the property (one undo step)
-        void    valueChar( QChar c );               // One buffer char, per the grammar
-        void    updateValueLabel();                 // The label shows the buffer + unit (200k▏Ω)
-        QString valueString( Component* comp );     // The buffer as a property value ("200 kΩ")
+        bool enterKey( bool opposite = false );     // Shift+Enter: leave by the opposite pin
+        void leavePart( Component* comp, bool opposite );   // Unselect, cross beyond its pin (D16)
 
         void selectPart( Component* comp );
         Component* compByUid( QString uid );
@@ -118,6 +113,7 @@ class KeyboardController
         void zoomAround( double factor );        // Keeps the cross (or the view centre) in place
         bool anyPartSelected();
         void updateCross( QPointF p );
+        void parkCursor( QPointF scenePos, bool snapIt = true );   // The hidden cross: no scrolling
         QRectF crossRect( QPointF p );
 
         QPointF m_cursor;
@@ -142,10 +138,10 @@ class KeyboardController
         bool    m_selPending;                   // A settleSelection() is queued
         void*   m_circuit;                      // Circuit whose selectionChanged is connected
 
-        bool    m_valueEdit;                    // A value is being typed on the selected part
-        QString m_valueUid;
-        QString m_valueProp;
-        QString m_valueBuf;
+        ValueEditor m_value;                    // Typing the selected part's value (K7)
+
+        QString m_leavePin;                     // The pin Enter left from (D17), and the
+        QPointF m_leavePos;                     // cross spot beyond it: placement continues there
 
         QPointer<QDialog> m_focusDialog;        // Properties dialog that returns focus to the canvas
 };

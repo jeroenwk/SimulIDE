@@ -4,11 +4,12 @@ Expected values follow the spec as revised (D11, D14, D15): the cross starts cen
 view and does NOT follow the mouse; a plain left click on empty canvas places it (snap to the
 drawn grid, lines at 4 + 8k); arrows move it 64 px, Shift+arrows 8 px while nothing is
 selected; a key hides the mouse pointer, a mouse move shows it again; the cross shows only
-while the canvas has focus and no part is selected, and does not follow a moved selection;
+while the canvas has focus and no part is selected, and follows a moved selection;
 h starts pan mode (arrows pan, the cross stays, any other key ends it); Cmd+= zooms in,
 Cmd+- out, Cmd+0 back to 100 % keeping the cross in place. Nothing is simulated.
 """
 
+import math
 import os
 import sys
 
@@ -72,7 +73,10 @@ def test(sim):
     s = sim.cli("ui", "click", "200,200")
     sim.check("click on a part selects it", len(s["selection"]), 1, absolute=0)
     sim.check("part selected: cross hidden", int(s["cursorVisible"]), 0, absolute=0)
-    sim.check("click on a part: cross not moved", xy(s)[0], 188, absolute=0)
+    centre = sim.cli("comp", "get", "R1")["pos"]
+    snap = lambda v: 8*math.floor((v-4)/8+0.5)+4          # The cross grid: 4 + 8k
+    sim.check("click on a part: cross at its centre: x", xy(s)[0], snap(centre[0]), absolute=0)
+    sim.check("click on a part: cross at its centre: y", xy(s)[1], snap(centre[1]), absolute=0)
     s = sim.cli("ui", "click", "300,300")
     sim.check("click on empty: selection cleared", len(s["selection"]), 0, absolute=0)
     sim.check("no part selected: cross shown again", int(s["cursorVisible"]), 1, absolute=0)
@@ -85,11 +89,11 @@ def test(sim):
     sim.check("focus back: cross shown", int(s["cursorVisible"]), 1, absolute=0)
     sim.check("focus back: same place", xy(s)[0], 300, absolute=0)
 
-    # The cross does not follow a moved selection
+    # The (hidden) cross follows a moved selection: Esc shows it where the part ended
     sim.cli("select", "R1")
     s = sim.cli("ui", "type", "Right")
     sim.check("moved part: R1 at 264", sim.cli("comp", "get", "R1")["pos"][0], 264, absolute=0)
-    sim.check("moved part: cross does not follow", xy(s)[0], 300, absolute=0)
+    sim.check("moved part: cross follows", xy(s)[0], snap(centre[0])+64, absolute=0)
     sim.check("part selected: cross hidden while moving", int(s["cursorVisible"]), 0, absolute=0)
 
     # Existing shortcuts still reach the circuit

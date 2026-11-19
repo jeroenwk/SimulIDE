@@ -167,6 +167,56 @@ def test(sim):
     sim.check("unselected: pin kept as pinTo", int(unsel > 5), 1, absolute=0, note="%d px" % unsel)
     sim.cli("settings", "set", "colorTheme", "Classic")
 
+    # Deleting the selected part takes the wiring pair with it: the outgoing pin of
+    # the previously connected part is unset too (its ring goes)
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("ui", "click", "100,100")
+    sim.cli("ui", "type", "r")
+    sim.cli("ui", "type", "r")                    # pinFrom R1.rPin, pinTo R2.lPin
+    s = sim.cli("kbd", "state")
+    sim.check("the pair is set", int(bool(s["pinFrom"]) and bool(s["pinTo"])), 1, absolute=0,
+              note="%s -> %s" % (s["pinFrom"], s["pinTo"]))
+    sim.cli("ui", "type", "backspace")            # Delete the selected part (R2)
+    s = sim.cli("kbd", "state")
+    sim.check("delete: pinFrom unset", int(s["pinFrom"] is None), 1, absolute=0, note=str(s["pinFrom"]))
+    sim.check("delete: pinTo unset", int(s["pinTo"] is None), 1, absolute=0, note=str(s["pinTo"]))
+
+    # Rotating a selected part with pinFrom on another part moves it so its closest
+    # pin shares the outgoing pin's row or column (D19). A BJT after R1: after cmd+r
+    # one of its pins sits on R1.rPin's row (y=100); rotating R1 itself (pinFrom is
+    # its own pin) is the plain rotation, no move
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("ui", "click", "100,100")
+    sim.cli("ui", "type", "r")
+    r1 = sim.cli("kbd", "state")["lastPart"]
+    sim.cli("ui", "type", "t")
+    bjt = sim.cli("kbd", "state")["lastPart"]
+    placed = sim.cli("comp", "get", bjt)
+    sim.cli("ui", "type", "cmd+r")
+    pins = sim.cli("comp", "get", bjt)["pins"]
+    sim.check("rotated: a pin on the outgoing pin's row",
+              int(any(p["pos"][1] == 100 and p["pos"][0] > 116 for p in pins)), 1, absolute=0,
+              note=str([(p["id"], p["pos"]) for p in pins]))
+    # The rotation and its alignment shift are one undo step: one cmd+z restores both
+    rotated = sim.cli("comp", "get", bjt)
+    sim.cli("ui", "type", "cmd+z")
+    g = sim.cli("comp", "get", bjt)
+    sim.check("rotate+align: one cmd+z restores rotation and place",
+              int(g["pos"] == placed["pos"] and g.get("rotation") == placed.get("rotation")), 1, absolute=0,
+              note="%s %s" % (g["pos"], g.get("rotation")))
+    sim.cli("ui", "type", "cmd+shift+z")
+    g = sim.cli("comp", "get", bjt)
+    sim.check("rotate+align: redo puts it back rotated and aligned",
+              int(g["pos"] == rotated["pos"] and g.get("rotation") == rotated.get("rotation")), 1, absolute=0,
+              note="%s %s" % (g["pos"], g.get("rotation")))
+    sim.cli("select", bjt)
+    pos = sim.cli("comp", "get", r1)["pos"]
+    sim.cli("select", r1)
+    sim.cli("ui", "type", "cmd+>")                # pinFrom onto R1's own pin
+    sim.cli("ui", "type", "cmd+r")
+    sim.check("rotating the pinFrom part: not moved",
+              int(sim.cli("comp", "get", r1)["pos"] == pos), 1, absolute=0)
+
 
 if __name__ == "__main__":
     run_test(test)

@@ -255,7 +255,7 @@ const QHash<QString, QString>& ComponentSelector::defaultShortCuts()
 {
     static const QHash<QString, QString> keys = {
         {"Oscope", "o"},      {"Amperimeter", "a"},   {"Voltimeter", "v"}, {"FreqMeter", "f"},
-        {"Fixed Voltage", "x"}, {"Battery", "y"},     {"WaveGen", "w"},    {"Ground", "g"},
+        {"Fixed Voltage", "x"}, {"Battery", "y"},     {"WaveGen", "n"},    {"Ground", "g"},
         {"Push", "b"},        {"Switch", "s"},        {"Resistor", "r"},   {"Potentiometer", "p"},
         {"elCapacitor", "e"}, {"Capacitor", "c"},     {"Inductor", "i"},   {"Diode", "d"},
         {"Zener", "z"},       {"Mosfet", "m"},        {"Jfet", "j"},       {"BJT", "t"},

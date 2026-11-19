@@ -10,6 +10,12 @@
 #include <QNativeGestureEvent>
 #include <QScrollBar>
 #include <QDebug>
+#include <QApplication>
+#include <QLineEdit>
+#include <QTextEdit>
+#include <QPlainTextEdit>
+#include <QAbstractSpinBox>
+#include <QComboBox>
 
 #include "circuitview.h"
 #include "exportdialog.h"
@@ -239,6 +245,21 @@ void CircuitView::mouseMoveEvent( QMouseEvent* event )
     }
     QGraphicsView::mouseMoveEvent( event );
     KeyboardController::self()->mouseMoved( event->pos() );
+}
+
+// The mouse entering the canvas gives it the keyboard, so the cursor cross shows and
+// keys work without a click — unless text is being typed elsewhere (a property field,
+// the code editor, a search box) or another window is active (a dialog)
+void CircuitView::enterEvent( QEvent* event )
+{
+    QGraphicsView::enterEvent( event );
+    if( hasFocus() || QApplication::activeWindow() != window() ) return;
+    QWidget* f = QApplication::focusWidget();
+    QComboBox* combo = qobject_cast<QComboBox*>( f );
+    bool typing = qobject_cast<QLineEdit*>( f ) || qobject_cast<QTextEdit*>( f )
+               || qobject_cast<QPlainTextEdit*>( f ) || qobject_cast<QAbstractSpinBox*>( f )
+               || ( combo && combo->isEditable() );
+    if( !typing ) setFocus( Qt::MouseFocusReason );
 }
 
 void CircuitView::focusInEvent( QFocusEvent* event )

@@ -1,6 +1,6 @@
-"""K8 (specs/keyboard-input.md): wiring pinFrom to pinTo with _.
+"""K8 (specs/keyboard-input.md): wiring pinFrom to pinTo with w.
 
-Expected values follow the spec: _ connects the two remembered pins as the CLI wire
+Expected values follow the spec: w connects the two remembered pins as the CLI wire
 add does (H/V route, a dot inserted on a pin that already has a wire, one undo step);
 the new wire is not selected and the pins and the selection stay; nothing is wired
 (a note in Messages) when a pin is missing, both are the same pin, or they are already
@@ -40,17 +40,37 @@ def test(sim):
     sim.cli("ui", "type", "r")
     r2 = placed(sim)
     sim.cli("ui", "type", "2", "k", "enter")
-    s = sim.cli("ui", "type", "_")
-    sim.check("_: wired R1.rPin to R2.lPin", int(ends(sim) == [(r1+".rPin", r2+".lPin")]), 1, absolute=0,
+    s = sim.cli("ui", "type", "w")
+    sim.check("w: wired R1.rPin to R2.lPin", int(ends(sim) == [(r1+".rPin", r2+".lPin")]), 1, absolute=0,
               note=str(ends(sim)))
-    sim.check("_: pinFrom stays", int(s["pinFrom"] == r1+".rPin"), 1, absolute=0, note=str(s["pinFrom"]))
-    sim.check("_: pinTo stays", int(s["pinTo"] == r2+".lPin"), 1, absolute=0, note=str(s["pinTo"]))
-    sim.check("_: nothing gets selected", len(s["selection"]), 0, absolute=0)
+    sim.check("w: pinFrom cleared", int(s["pinFrom"] is None), 1, absolute=0, note=str(s["pinFrom"]))
+    sim.check("w: pinTo cleared", int(s["pinTo"] is None), 1, absolute=0, note=str(s["pinTo"]))
+    sim.check("w: nothing gets selected", len(s["selection"]), 0, absolute=0)
 
-    # _ again: already wired, a note says so
-    sim.cli("ui", "type", "_")
+    # _ again on the same pair: already wired, a note says so. The first _ cleared
+    # the pins; re-selecting R1 pairs R2's (flipped) pin with R1's — the same wire
+    sim.cli("select", r1)
+    sim.cli("ui", "type", "w")
     sim.check("already wired: still one wire", len(ends(sim)), 1, absolute=0)
     sim.check("already wired: note in Messages", int("already wired" in pane(sim)), 1, absolute=0)
+
+    # After _, the selected part continues out its other side: its selected pin
+    # becomes the pin most opposite to the wired one (D18). R2 selected, wired at
+    # its lPin (pointing back at R1): its selected pin becomes its rPin
+    sim.cli("circuit", "new", "--discard")
+    sim.cli("ui", "click", "100,100")
+    sim.cli("ui", "type", "r")
+    ra = placed(sim)
+    sim.cli("ui", "type", "r")
+    rb = placed(sim)                                  # Selected, its lPin facing R1 (D18)
+    s = sim.cli("kbd", "state")
+    sim.check("R2's selected pin is the wired lPin", int(s["selectedPin"] == rb+".lPin"), 1, absolute=0,
+              note=str(s.get("selectedPin")))
+    s = sim.cli("ui", "type", "w")
+    sim.check("_ wired R1.rPin to R2.lPin", int(ends(sim) == [(ra+".rPin", rb+".lPin")]), 1, absolute=0,
+              note=str(ends(sim)))
+    sim.check("w: the selected part continues out its other pin",
+              int(s["selectedPin"] == rb+".rPin"), 1, absolute=0, note=str(s.get("selectedPin")))
 
     # A pin that already has a wire: a junction dot is inserted on that wire
     sim.cli("ui", "click", "300,100")
@@ -63,7 +83,7 @@ def test(sim):
     sim.cli("select", r3)                              # pinTo = R3's nearest pin
     s = sim.cli("kbd", "state")
     sim.check("junction setup: pinFrom R1.rPin", int(s["pinFrom"] == r1+".rPin"), 1, absolute=0, note=str(s["pinFrom"]))
-    sim.cli("ui", "type", "_")
+    sim.cli("ui", "type", "w")
     wires = ends(sim)
     sim.check("a junction was inserted", int(any(e[0].split(".")[0].startswith("Node") or
                                                   e[1].split(".")[0].startswith("Node") for e in wires)), 1,
@@ -74,18 +94,20 @@ def test(sim):
     sim.check("cmd+z removes the wired junction", int(ends(sim) == [(r1+".rPin", r2+".lPin")]), 1, absolute=0,
               note=str(ends(sim)))
 
-    # A BJT: > to the base, _ wires to it
+    # A BJT: > to the base, _ wires to it. (Placed after R1, the BJT is rotated
+    # with its first pin, the collector, facing R1's pin — D17.)
     sim.cli("circuit", "new", "--discard")
     sim.cli("ui", "click", "100,100")
     sim.cli("ui", "type", "r")
     r1 = placed(sim)
     sim.cli("ui", "type", "t")
     bjt = placed(sim)
-    for _i in range(3):                                # collector, emiter, base
+    for _i in range(4):                                # Step until the base is selected
         s = sim.cli("ui", "type", ">")
+        if s.get("selectedPin") == bjt+".base": break
     sim.check("the base is the selected pin", int(s["selectedPin"] == bjt+".base"), 1, absolute=0,
               note=str(s.get("selectedPin")))
-    sim.cli("ui", "type", "_")
+    sim.cli("ui", "type", "w")
     sim.check("_ wires to the base", int(tuple(sorted((r1+".rPin", bjt+".base"))) in ends(sim)), 1, absolute=0,
               note=str(ends(sim)))
 
@@ -95,7 +117,7 @@ def test(sim):
     sim.cli("ui", "type", "u")
     op = placed(sim)
     sim.cli("ui", "type", ">", "cmd+>")
-    sim.cli("ui", "type", "_")
+    sim.cli("ui", "type", "w")
     wires = ends(sim)
     sim.check("opamp: wired two of its own pins", int(len(wires) == 1 and
               all(p.split(".")[0] == op for pair in wires for p in pair)), 1, absolute=0, note=str(wires))
@@ -107,7 +129,7 @@ def test(sim):
     r1 = placed(sim)
     sim.cli("ui", "type", "r")
     r2 = placed(sim)
-    sim.cli("ui", "type", "5", "_")
+    sim.cli("ui", "type", "5", "w")
     sim.check("_ mid-edit keeps the old value", int(sim.cli("comp", "get", r1, "Resistance")["properties"][0]["value"] == "100 Ω"), 1, absolute=0)
     sim.check("_ mid-edit wires anyway", int(ends(sim) == [(r1+".rPin", r2+".lPin")]), 1, absolute=0,
               note=str(ends(sim)))
@@ -123,7 +145,7 @@ def test(sim):
     r2 = placed(sim)
     sim.cli("ui", "type", "enter")                     # Unselect; the pins stay
     sim.cli("sim", "start")
-    sim.cli("ui", "type", "_")
+    sim.cli("ui", "type", "w")
     sim.check("sim stopped to wire", int(sim.cli("sim", "status")["state"] == "stopped"), 1, absolute=0)
     sim.check("wired while the sim was running", int(ends(sim) == [(r1+".rPin", r2+".lPin")]), 1, absolute=0,
               note=str(ends(sim)))
@@ -132,13 +154,13 @@ def test(sim):
     # No pins at all: a note, no wire
     sim.cli("circuit", "new", "--discard")
     sim.cli("ui", "focus", "canvas")
-    sim.cli("ui", "type", "_")
+    sim.cli("ui", "type", "w")
     sim.check("no pins: no wire", len(ends(sim)), 0, absolute=0)
     sim.check("no pins: note in Messages", int("nothing to wire" in pane(sim)), 1, absolute=0)
 
     # Registry
     sc = sim.cli("kbd", "shortcuts")
-    sim.check("registry: _ wires", int(any(r["keys"] == "_" and "pinFrom" in r["action"] for r in sc)), 1, absolute=0)
+    sim.check("registry: w wires", int(any(r["keys"] == "w" and "pinFrom" in r["action"] for r in sc)), 1, absolute=0)
 
 
 if __name__ == "__main__":

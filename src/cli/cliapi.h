@@ -146,7 +146,7 @@ namespace Cli
     // stop waiting (used when a script is stopped)
     int  runGeneration();
     void cancelRuns();
-};
+}
 
 // The component form of ui click, "click a part's button or toggle its switch"
 // (cli_measure.cpp; ui click in cli_kbd.cpp uses it for a name instead of x,y)

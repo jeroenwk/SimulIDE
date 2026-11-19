@@ -54,9 +54,6 @@ Battery::Battery( QString type, QString id )
         new DoubProp<Battery>("Resistance", tr("Resistance"),"mΩ"
                              , this, &Battery::res,  &Battery::setRes ),
     },0 } );
-
-    setShowProp("Voltage");   // Its typed value (K7); shown in its value label
-    setPropStr("Voltage", "5");
 }
 Battery::~Battery() {}
 

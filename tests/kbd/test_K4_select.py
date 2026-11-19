@@ -5,7 +5,8 @@ order (rows top to bottom, centres within 16 px are one row, then left to right)
 with nothing selected, the part nearest the keyboard cursor. When the selection becomes one
 part B, pinFrom = the pin of the last part A and pinTo = B's pin; auto pins are the nearest
 pair (a pin chosen with < > is kept, the other side takes its nearest pin). Esc unselects and
-keeps the last part; Enter unselects one part and moves the cursor 64 px right. Pin positions
+keeps the last part; Enter unselects one part and moves the cross a big step beyond its
+selected pin, in the pin's direction (Shift+Enter: beyond the most opposite pin). Pin positions
 of a resistor are its centre +-16 px (from `comp add`). Nothing is simulated.
 """
 
@@ -74,14 +75,45 @@ def test(sim):
     sim.check("Esc keeps the last part", int(s["lastPart"] == u["R4"]), 1, absolute=0)
     sim.check("Esc keeps pinTo", int(s["pinTo"] == "R4.lPin"), 1, absolute=0)
 
-    # Enter: unselect, the cross a big step right of the part (D12)
+    # Tab puts the (hidden) cross at the selected part's centre: Esc shows it there
+    sim.cli("ui", "type", "Tab")                     # Selects a part (reading order)
+    s = sim.cli("kbd", "state")
+    part = s["selection"][0]
+    centre = sim.cli("comp", "get", part)["pos"]
+    sim.check("tab: cross hidden at the part's centre: x", s["cursor"][0], centre[0], absolute=0)
+    sim.check("tab: cross hidden at the part's centre: y", s["cursor"][1], centre[1], absolute=0)
+    sim.check("tab: cross hidden while selected", int(s["cursorVisible"]), 0, absolute=0)
+    s = sim.cli("ui", "type", "Esc")
+    sim.check("esc: cross shown at that place", int(s["cursorVisible"] and s["cursor"] == centre), 1, absolute=0,
+              note=str(s["cursor"]))
+
+    # Esc re-reads the part's position: a part that moved without the selection
+    # (a library drop's ghost) leaves the cross where the part really is
+    sim.cli("ui", "type", "Tab")
+    part = sim.cli("kbd", "state")["selection"][0]
+    sim.cli("comp", "set", part, "Pos=400,300")       # Moves it outside moveSelection
+    at = sim.cli("comp", "get", part)["pos"]          # The cross parks on its own grid
+    snap = lambda v: 8*int((v-4)/8+0.5)+4             # (4 + 8k), like moveCursorTo
+    s = sim.cli("ui", "type", "Esc")
+    sim.check("esc: the cross where the part moved to", int(s["cursor"] == [snap(at[0]), snap(at[1])]), 1, absolute=0,
+              note=str(s["cursor"]))
+
+    # Enter: unselect, the cross a big step beyond the selected pin (D16). R1's
+    # selected pin is its rPin (116,100) pointing right
     sim.cli("select", "R1")
     s = sim.cli("ui", "type", "Enter")
     sim.check("Enter unselects", len(sel(s)), 0, absolute=0)
-    sim.check("Enter: cross right of R1: x", s["cursor"][0], 164, absolute=0)
-    sim.check("Enter: cross right of R1: y", s["cursor"][1], 100, absolute=0)
+    sim.check("Enter: cross beyond the pin: x", s["cursor"][0], 180, absolute=0)
+    sim.check("Enter: cross beyond the pin: y", s["cursor"][1], 100, absolute=0)
     s = sim.cli("ui", "type", "Enter")
-    sim.check("Enter with nothing selected: cross stays: x", s["cursor"][0], 164, absolute=0)
+    sim.check("Enter with nothing selected: cross stays: x", s["cursor"][0], 180, absolute=0)
+
+    # Shift+Enter: the same, beyond the most opposite pin (lPin at 84,100)
+    sim.cli("select", "R1")
+    s = sim.cli("ui", "type", "shift+Enter")
+    sim.check("Shift+Enter unselects", len(sel(s)), 0, absolute=0)
+    sim.check("Shift+Enter: cross beyond the opposite pin: x", s["cursor"][0], 20, absolute=0)
+    sim.check("Shift+Enter: cross beyond the opposite pin: y", s["cursor"][1], 100, absolute=0)
 
     # A click-like change (several parts, then one other): the rule sees only the final state
     sim.cli("select", "R2")                         # last part R2 (from R1)

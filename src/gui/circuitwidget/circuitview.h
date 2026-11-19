@@ -54,6 +54,7 @@ class CircuitView : public QGraphicsView
         void contextMenuEvent( QContextMenuEvent* event );
         bool viewportEvent( QEvent* event ) override;
         void focusInEvent( QFocusEvent* event ) override;
+        void enterEvent( QEvent* event ) override;      // Hover takes the keyboard (cursor cross)
         void focusOutEvent( QFocusEvent* event ) override;
 
         void zoomAtMouse( qreal f );
