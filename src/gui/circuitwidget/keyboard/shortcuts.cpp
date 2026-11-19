@@ -2,7 +2,12 @@
  *   Shortcut registry (specs/keyboard-input.md §3)                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <QKeySequence>
+#include <QRegularExpression>
+#include <QCoreApplication>
+
 #include "shortcuts.h"
+#include "componentselector.h"
 
 const QList<Shortcut>& Shortcuts::all()
 {
@@ -26,8 +31,8 @@ const QList<Shortcut>& Shortcuts::all()
         { "Selection", "Cancel the wire being drawn, stop linking", "Esc", "" },
         { "Parts", "Add the part bound to a letter at the keyboard cursor. A part selected (or the cross still where "
                    "Enter left it, beyond a pin): the new part's first pin faces that pin, a big step beyond it, in "
-                   "a straight line; the part is rotated to match", "its letter", "Set in Manage Components" },
-        { "Parts", "Add the part bound to a letter, at the mouse", "Alt+its letter", "Set in Manage Components" },
+                   "a straight line; the part is rotated to match", "its letter", "Set in the part's properties (Keyboard tab)" },
+        { "Parts", "Add the part bound to a letter, at the mouse", "Alt+its letter", "Set in the part's properties (Keyboard tab)" },
         { "Parts", "Add the part selected in the component list, at the cross (or continuing the chain, as a part letter); "
                    "on a group: expand / collapse it", "k", "" },
         { "Parts", "Select the next / previous row of the component list, groups included (the canvas keeps the keys)", ": / /", "" },
@@ -91,4 +96,70 @@ const QList<Shortcut>& Shortcuts::all()
                   "Esc or any other action reverts", "0-9  -  .  ,", "One part selected" },
     };
     return list;
+}
+
+// Each run of modifiers ("Cmd+Shift+") is written as Qt writes it on this platform
+// (a key sequence's native text, without its key). Cmd is Qt's Ctrl, Ctrl is Qt's
+// Meta (the Control key on macOS, the Windows key elsewhere). On macOS a word key
+// gets a space: "⇧ Tab", "⌥ its letter"; a character does not: "⌘Z"
+QString Shortcuts::shown( const QString& keys )
+{
+    static const QRegularExpression mods("((?:Cmd|Ctrl|Shift|Opt|Alt)\\+)+(?=\\S)");
+    QString out;
+    int last = 0;
+    QRegularExpressionMatchIterator it = mods.globalMatch( keys );
+    while( it.hasNext() )
+    {
+        QRegularExpressionMatch m = it.next();
+        out += keys.mid( last, m.capturedStart()-last );
+        int k = 0;
+        for( QString mod : m.captured( 0 ).split('+', QString::SkipEmptyParts ) )
+        {
+            if     ( mod == "Cmd" )   k |= Qt::CTRL;
+            else if( mod == "Ctrl" )  k |= Qt::META;
+            else if( mod == "Shift" ) k |= Qt::SHIFT;
+            else                      k |= Qt::ALT;   // Opt, Alt
+        }
+        QString prefix = QKeySequence( k | Qt::Key_A ).toString( QKeySequence::NativeText );
+        prefix.chop( 1 );                                // The A
+        last = m.capturedEnd();
+        int end = last;                                  // The key after it
+        while( end < keys.size() && !keys.at( end ).isSpace() ) end++;
+        bool word = end-last > 1 && keys.at( last ).isLetter();
+        if( word && !prefix.endsWith('+') ) prefix += ' ';
+        out += prefix;
+    }
+    out += keys.mid( last );
+    return out;
+}
+
+QStringList Shortcuts::categories()
+{
+    return { "File", "Edit", "View", "Simulation", "Selection", "Moving", "Pins & wiring",
+             "Wires", "Parts", "Part letters", "Switches" };
+}
+
+QList<Shortcut> Shortcuts::table()
+{
+    QList<Shortcut> rows;
+    for( const Shortcut& s : all() ) rows.append({ s.category, s.action, shown( s.keys ), s.context });
+
+    if( ComponentSelector* sel = ComponentSelector::self() )   // The part letters in effect
+    {
+        QHash<QString, QString> keys = sel->getShortCuts();
+        QStringList names = keys.keys();
+        std::sort( names.begin(), names.end(), [&keys]( const QString& a, const QString& b ){
+            return keys.value( a ) < keys.value( b ); } );
+        for( const QString& n : names )
+            if( !keys.value( n ).isEmpty() )
+                rows.append({ "Part letters", QCoreApplication::translate("Shortcuts", "Add %1").arg( sel->caption( n ) ),
+                              keys.value( n ), "" });
+    }
+    QStringList order = categories();
+    std::stable_sort( rows.begin(), rows.end(), [&order]( const Shortcut& a, const Shortcut& b ){
+        int ia = order.indexOf( a.category ), ib = order.indexOf( b.category );
+        if( ia < 0 ) ia = order.size();                  // Unknown: last, as found
+        if( ib < 0 ) ib = order.size();
+        return ia < ib; } );
+    return rows;
 }

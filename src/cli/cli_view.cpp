@@ -253,7 +253,7 @@ void CliApi::registerView()
         return QJsonObject{ {"lines", QJsonArray::fromStringList( lines )}, {"count", lines.size()} };
     });
 
-    add("view", "view fit|selected|reset|zoom <factor>|center <comp|x,y>|show <comp ...>|raise|settings [app|circuit|simulation|close]|props <comp> [--tab N|NAME] [--close]|export",
+    add("view", "view fit|selected|reset|zoom <factor>|center <comp|x,y>|show <comp ...>|raise|settings [app|circuit|simulation|shortcuts|close]|props <comp> [--tab N|NAME] [--close]|export",
         "Control what the circuit view shows: fit all, fit selection, 100%, zoom by a factor, center on a component "
         "or point, show (select + fit) components, bring the window to the front, open the Settings dialog, or open "
         "(or --close) a component's property dialog, on a tab given by number or name, or show the Export dialog "
@@ -294,9 +294,10 @@ void CliApi::registerView()
             if( tab == "close" ){
                 if( CircuitWidget::self()->appDialog() ) CircuitWidget::self()->appDialog()->close();
             }else{
-                int i = QStringList{"app","circuit","simulation"}.indexOf( tab );
-                if( i < 0 ) throw CliError("unknown settings tab: "+tab+" (app, circuit, simulation, close)");
+                int i = QStringList{"app","circuit","simulation","shortcuts"}.indexOf( tab );
+                if( i < 0 ) throw CliError("unknown settings tab: "+tab+" (app, circuit, simulation, shortcuts, close)");
                 CircuitWidget::self()->settApp();
+                if( i == 3 ) i = CircuitWidget::self()->appDialog()->shortcutsTab();
                 CircuitWidget::self()->appDialog()->showTab( i );
                 CircuitWidget::self()->appDialog()->raise();
             }

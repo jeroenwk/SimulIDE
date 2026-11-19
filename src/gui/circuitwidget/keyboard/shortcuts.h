@@ -24,6 +24,15 @@ class Shortcuts
 {
     public:
  static const QList<Shortcut>& all();
+
+        // Keys as this platform writes them: "Cmd+Shift+Z" -> "⇧⌘Z" on macOS,
+        // "Ctrl+Shift+Z" on Windows and Linux; "Ctrl+Cmd+0" -> "⌃⌘0" / "Ctrl+Meta+0" (D22)
+ static QString shown( const QString& keys );
+
+        // The list Settings > Shortcuts shows (K10): every row of all(), keys shown,
+        // plus the part letters in effect (defaults and user changes), by category
+ static QList<Shortcut> table();
+ static QStringList categories();     // In the order shown
 };
 
 #endif
