@@ -1315,7 +1315,7 @@ void Circuit::mouseReleaseEvent( QGraphicsSceneMouseEvent* event )
 
 void Circuit::mouseMoveEvent( QGraphicsSceneMouseEvent* event )
 {
-    if( m_conStarted )
+    if( m_conStarted && !KeyboardController::self()->drawing() )   // A keyboard wire follows the cross
     {
         event->accept();
         if( event->modifiers() & Qt::ShiftModifier) m_newConnector->m_freeLine = true;
@@ -1328,7 +1328,8 @@ bool Circuit::event( QEvent* event )
 {
     // QGraphicsScene uses Tab / Shift+Tab to move item focus before keyPressEvent sees them:
     // the keyboard controller gets them first (K4: next / previous part)
-    if( event->type() == QEvent::KeyPress && m_acceptKeys && !m_conStarted )
+    if( event->type() == QEvent::KeyPress && m_acceptKeys
+     && ( !m_conStarted || KeyboardController::self()->drawing() ) )
     {
         QKeyEvent* k = static_cast<QKeyEvent*>( event );
         if( ( k->key() == Qt::Key_Tab || k->key() == Qt::Key_Backtab )
@@ -1350,7 +1351,8 @@ void Circuit::keyPressEvent( QKeyEvent* event )
     }
     int key = event->key();
 
-    if( !m_conStarted && KeyboardController::self()->keyPress( event ) )
+    if( ( !m_conStarted || KeyboardController::self()->drawing() )   // K9b: its own wire
+     && KeyboardController::self()->keyPress( event ) )
     {
         event->accept();
         return;

@@ -60,6 +60,13 @@ const QList<Shortcut>& Shortcuts::all()
         { "Wires", "Move the selected dot or corner 64 / 8 px (the wire stays horizontal / vertical)", "Arrows / Shift+Arrows", "Network mode" },
         { "Wires", "Delete the selected wire", "Backspace", "Network mode" },
         { "Wires", "Back to parts mode, the part selected (any other key too, then it acts)", "= or Esc", "Network mode" },
+        // K9b: drawing a wire from a wire
+        { "Wires", "Draw a new wire from the wire under the cross (a dot is added there)", "+", "Nothing selected" },
+        { "Wires", "Move the end of the wire being drawn (it follows horizontally / vertically)", "Arrows / Shift+Arrows", "Drawing a wire" },
+        { "Wires", "Fix a corner at the cross", "=", "Drawing a wire" },
+        { "Wires", "Remove the last fixed corner", "Backspace", "Drawing a wire" },
+        { "Wires", "Connect to the pin or wire at the cross (8 px)", "Enter", "Drawing a wire" },
+        { "Wires", "Cancel the wire (and its dot)", "Esc", "Drawing a wire" },
         // K6: properties
         { "Edit", "Open the selected part's properties dialog (closing it returns to the canvas)", "Space", "One part selected" },
         // K7: typing a value

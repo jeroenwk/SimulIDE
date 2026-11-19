@@ -192,6 +192,7 @@ Parts mode:
 | part letter | add part at cursor | add part | add part | multiplier (C3) |
 | `w` | wire pinFrom→pinTo | same | same | revert, then wire |
 | `=` | – | – | network mode (K9) | – |
+| `+` | draw a wire from the wire under the cross (K9b) | – | – | – |
 | Backspace / Delete | – | delete | delete | remove last char (C8) |
 | Shift+A–Z | switches (`Key`) | switches | switches | `M`, `G` only |
 
@@ -203,6 +204,16 @@ Network mode (K9):
 | Arrows / Shift+Arrows | nothing | move it 64 / 8 px |
 | Backspace / Delete | delete the whole wire | nothing |
 | `=` / Esc | back to parts mode, the part selected | same |
+
+Drawing a wire (K9b):
+
+| Key | Action |
+|---|---|
+| Arrows / Shift+Arrows | move the cross (the wire's end) 64 / 8 px; the wire follows H/V |
+| `=` | fix a corner at the cross |
+| Backspace | remove the last fixed corner |
+| Enter | connect to the free pin or the wire within 8 px of the cross |
+| Esc (or a mouse press) | cancel: the wire, its dot and the split go |
 
 Ctrl/Cmd shortcuts are unchanged. Alt+char part shortcuts keep working.
 
@@ -508,6 +519,42 @@ Validate
 - [ ] `=` back to parts: R1 selected, its pin unchanged.
 - [ ] `=` on a pin without a wire: message, still parts mode.
 
+### K9b — Drawing a new wire from a wire
+*(user request 2026-11-19, after K9)*
+
+- `+` (Shift+`=` on AZERTY and QWERTY) with the cross shown (nothing selected)
+  and within 8 px of a straight wire segment: a **dot** goes on that wire at
+  the cross (a corner within 8 px is used instead, as a mouse click on a wire
+  does) and a **new wire starts there** — the mouse path (`connectToWire`), so
+  the split and the new wire are one undo step. No wire near, or within 8 px of
+  the wire's own end (a pin or a dot, where no dot can go): a message.
+- **Moving the cross traces the wire**: the arrows move the cross (not snapped
+  to the cross grid: the wire keeps the grid of the dot it started on) and the
+  wire follows as an H/V L from its last fixed point, its first leg turning off
+  the last segment (off the source wire at the start). A mouse move does not
+  reroute it.
+- `=` **forces a corner** at the cross: the route so far becomes fixed.
+  Backspace removes the last fixed corner (added: a cheap way back).
+- **Enter connects** when the cross is within 8 px of a **free pin** (taken
+  first; the last leg does not enter the pin from behind) or of a **wire** (a
+  dot there, as the start). Nothing near: a message, still drawing. The route is
+  set before the wire is closed, so redo restores it.
+- **Esc** or a mouse press cancels: the wire, its dot and the split are undone.
+- While drawing, all other keys are ignored (zoom works); the cross stays shown.
+- `kbd state` reports `drawing` (fixed points, the wire's current points).
+- Done (`feature/kbd-k9b`): `KeyboardController::plusKey` / `drawKey` /
+  `finishDraw`; `tests/kbd/test_K9b_draw.py`.
+
+Validate
+- [ ] Two parts wired; click under the wire, `+`: a dot on the wire, a new wire
+      starting there.
+- [ ] Arrows: the wire follows the cross, horizontal / vertical.
+- [ ] `=`, then more arrows: the corner stays; Backspace removes it.
+- [ ] Cross on a free pin, Enter: wired to it. Cross on another wire, Enter:
+      a dot there.
+- [ ] Cmd+Z removes the wire and both dots in one step.
+- [ ] Esc while drawing: the circuit as before.
+
 ### K10 — Shortcut list in Settings
 *(epic: "listing shortcuts")*
 
@@ -634,7 +681,7 @@ Decisions (user, 2026-11-18):
 # 7. Next
 
 - Multiple part selection by shift arrow starting on empty canvas drawing a rectangle over parts
-- Bug: starting up, canvas doesn't have the cross visible when i hover the mouse over the canvas. It becomes visible by zoom or click.
-- 'w' for wire instead of shift-_,  wavegen becomes 'n'
+- hitting wire mode '=' while no part is selected should select the nearest dot, or nearest corner or nearest wire
+- '+' should create a dot when cross is close to a wire. Enabling to create a wire from there. Then moving the cross will trace the wire.'=' will porce a new corner at that point. Hitting 'enter' when the endpoint of the wire is close to an other wire makes the connection.
 - Configurable shortcuts for components in part settings
 - 

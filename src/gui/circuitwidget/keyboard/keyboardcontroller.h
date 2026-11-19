@@ -56,6 +56,7 @@ class KeyboardController
         QPointF cursorPos();
         bool cursorVisible();                    // Canvas focused and no part selected
         bool panMode() { return m_panMode; }
+        bool drawing() { return m_drawing; }     // K9b: a wire is being drawn from a wire
         bool pointerHidden() { return m_pointerHidden; }
 
         void moveCursorTo( QPointF scenePos );   // Snapped; scrolls the view to keep it visible
@@ -109,6 +110,15 @@ class KeyboardController
         void markCorner( bool on );                 // Repaint the step mark's area
         void say( QString text );                   // A line in Messages
 
+        // Drawing a wire from a wire (K9b): + starts at a dot on the wire under the cross,
+        // the arrows trace it, = fixes a corner, Enter connects to a pin or wire near the cross
+        bool plusKey();
+        bool drawKey( QKeyEvent* event, Qt::KeyboardModifiers mods );
+        QList<QPoint> drawRoute( QPoint end, QString endSide );   // Fixed points + an H/V L to end
+        void updateDraw();                          // The wire follows the cross
+        void finishDraw();
+        void cancelDraw();
+
         void selectPart( Component* comp );
         Component* compByUid( QString uid );
         QList<Component*> readingOrder();
@@ -154,6 +164,11 @@ class KeyboardController
         bool        m_walkSelecting;            // The walk is changing the selection itself
         QString     m_burstWire;                // Corner moves of one wire: one undo step
         QRectF      m_stepMark;                 // Where the step's mark is drawn (repaint)
+
+        bool          m_drawing;                // K9b: drawing a wire from a wire
+        QList<QPoint> m_drawPts;                // Its fixed points: the start dot, forced corners
+        QList<int>    m_drawMarks;              // m_drawPts sizes before each =, for Backspace
+        bool          m_drawSrcVertical;        // The wire it started on was vertical
 
         QString m_leavePin;                     // The pin Enter left from (D17), and the
         QPointF m_leavePos;                     // cross spot beyond it: placement continues there

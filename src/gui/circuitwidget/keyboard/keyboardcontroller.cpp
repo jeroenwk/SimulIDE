@@ -53,6 +53,8 @@ KeyboardController::KeyboardController()
     m_selPending    = false;
     m_circuit       = nullptr;
     m_walkSelecting = false;
+    m_drawing       = false;
+    m_drawSrcVertical = false;
 }
 
 QPointF KeyboardController::snap( QPointF p )
@@ -65,6 +67,9 @@ void KeyboardController::reset()
     m_panMode = false;
     m_value.reset();
     m_walk.stop();
+    m_drawing = false;                   // The circuit (and its wire being drawn) is gone
+    m_drawPts.clear();
+    m_drawMarks.clear();
     m_leavePin.clear();
     showPointer();
     m_cursorSet  = false;
@@ -104,6 +109,8 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     hidePointer();              // Typing on the canvas: the pointer goes (pan mode shows its symbol)
 
     if( zoomKey( event, mods ) ) return true;   // The view only: a value being typed stays
+
+    if( m_drawing ) return drawKey( event, mods );   // K9b: every key goes to the wire being drawn
 
     // Contexts, in order (spec §4.1): EditValue, network mode (K9), parts mode.
     // EditValue (K7): value keys build the buffer; any other key (arrows and Cmd+R too)
@@ -151,6 +158,8 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     }
     if( event->text() == "=" && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) )
         return enterNetwork();
+    if( event->text() == "+" && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) )
+        return plusKey();                                // K9b: draw a wire from the wire here
     if( mods == Qt::NoModifier )
     {
         if( key == Qt::Key_Escape ) return escKey();
@@ -633,6 +642,217 @@ void KeyboardController::deleteWire()
     showStep();
 }
 
+// ----- Drawing a wire from a wire (K9b) ---------------------------------------
+
+// The straight wire segment nearest to p within 8 px (its pins' ends included in the
+// range), skipping the wire `skip`. *at: p brought onto the segment
+static ConnectorLine* lineNear( QPointF p, Connector* skip, QPoint* at )
+{
+    ConnectorLine* best = nullptr;
+    double bestD = 8.5;
+    for( Connector* con : *Circuit::self()->conList() )
+    {
+        if( con == skip ) continue;
+        for( ConnectorLine* l : *con->lineList() )
+        {
+            if( !l->isVisible() ) continue;
+            QPoint a = l->p1(), b = l->p2();
+            QPoint q;
+            if( a.y() == b.y() && a.x() != b.x() )       // Horizontal
+            {
+                if( p.x() < qMin( a.x(), b.x() ) || p.x() > qMax( a.x(), b.x() ) ) continue;
+                q = QPoint( qRound( p.x() ), a.y() );
+            }
+            else if( a.x() == b.x() && a.y() != b.y() )  // Vertical
+            {
+                if( p.y() < qMin( a.y(), b.y() ) || p.y() > qMax( a.y(), b.y() ) ) continue;
+                q = QPoint( a.x(), qRound( p.y() ) );
+            }
+            else continue;
+            double d = qAbs( q.x()-p.x() )+qAbs( q.y()-p.y() );
+            if( d < bestD ){ bestD = d; best = l; *at = q; }
+        }
+    }
+    return best;
+}
+
+// Where a dot goes on line for the point q, as ConnectorLine::connectToWire picks it:
+// a corner within 8 px, else q. false: within 8 px of the wire's own end (a pin or a
+// dot), where no dot can go
+static bool joinPoint( ConnectorLine* l, QPoint q, QPoint* at )
+{
+    QList<ConnectorLine*>* lines = l->connector()->lineList();
+    int i = lines->indexOf( l ), n = lines->size();
+    bool horiz = l->dy() == 0;
+    auto near = [&]( QPoint c ){ return horiz ? qAbs( q.x()-c.x() ) < 8 : qAbs( q.y()-c.y() ) < 8; };
+    if( near( l->p2() ) ){ if( i == n-1 ) return false; *at = l->p2(); return true; }
+    if( near( l->p1() ) ){ if( i == 0 )   return false; *at = l->p1(); return true; }
+    *at = q;
+    return true;
+}
+
+// +: a dot on the wire under the cross (within 8 px) and a new wire from it, drawn
+// with the arrows. One undo step with its end (Esc cancels both)
+bool KeyboardController::plusKey()
+{
+    if( !cursorVisible() )
+    {
+        say("Keyboard: + draws a wire from the wire under the cross — unselect first (Esc)");
+        return true;
+    }
+    QPoint q, at;
+    ConnectorLine* line = lineNear( cursorPos(), nullptr, &q );
+    if( !line ){ say("Keyboard: no wire under the cross (8 px) to draw from"); return true; }
+    if( !joinPoint( line, q, &at ) )
+    {
+        say("Keyboard: too close to the end of the wire for a dot — move the cross along it");
+        return true;
+    }
+    Circuit* circ = Circuit::self();
+    bool vertical = line->dx() == 0;
+    line->connectToWire( at );                           // A dot, a new wire started there
+    Connector* con = circ->getNewConnector();
+    if( !circ->is_constarted() || !con || !con->startPin() ) return true;
+
+    m_drawing = true;
+    m_drawSrcVertical = vertical;
+    QPoint start = con->startPin()->scenePos().toPoint();
+    m_drawPts = { start };
+    m_drawMarks.clear();
+    parkCursor( start, false );
+    qDebug() << "[kbd] drawing a wire from" << start;
+    updateDraw();
+    return true;
+}
+
+// The fixed points, then an H/V L to end: its first leg perpendicular to the last
+// segment (to the wire it started on); with endSide (a pin), the L that does not
+// enter the pin from behind
+QList<QPoint> KeyboardController::drawRoute( QPoint end, QString endSide )
+{
+    QList<QPoint> pts = m_drawPts;
+    QPoint a = pts.last();
+    if( end == a ) return pts;
+    if( a.x() != end.x() && a.y() != end.y() )
+    {
+        bool lastVertical = pts.size() >= 2 ? pts.at( pts.size()-2 ).x() == a.x() : m_drawSrcVertical;
+        bool vertical = !lastVertical;                   // First leg: turn off the last one
+        QPoint k = vertical ? QPoint( a.x(), end.y() ) : QPoint( end.x(), a.y() );
+        if( !endSide.isEmpty() && Circuit::backwards( endSide, k-end ) )
+            k = vertical ? QPoint( end.x(), a.y() ) : QPoint( a.x(), end.y() );
+        pts.append( k );
+    }
+    pts.append( end );
+    return pts;
+}
+
+void KeyboardController::updateDraw()
+{
+    Connector* con = Circuit::self()->getNewConnector();
+    if( !con ) return;
+    QList<QPoint> pts = drawRoute( cursorPos().toPoint(), "" );
+    if( pts.size() < 2 ) pts.append( pts.last() );
+    QStringList l;
+    for( QPoint p : pts ){ l.append( QString::number( p.x() ) ); l.append( QString::number( p.y() ) ); }
+    con->setPointList( l );
+}
+
+bool KeyboardController::drawKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
+{
+    int key = event->key();
+    bool plain = mods == Qt::NoModifier;
+    bool arrow = key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down;
+
+    if( arrow && ( plain || mods == Qt::ShiftModifier ) )   // The cross moves, the wire follows
+    {                                                       // (not snapped: it keeps the grid
+        QPointF dir;                                        // of the dot it started on)
+        if     ( key == Qt::Key_Left  ) dir = QPointF(-1, 0 );
+        else if( key == Qt::Key_Right ) dir = QPointF( 1, 0 );
+        else if( key == Qt::Key_Up    ) dir = QPointF( 0,-1 );
+        else                            dir = QPointF( 0, 1 );
+        parkCursor( cursorPos()+dir*( plain ? bigStep : smallStep ), false );
+        if( CircuitView* v = CircuitView::self() ) v->ensureVisible( crossRect( m_cursor ), 32, 32 );
+        updateDraw();
+        return true;
+    }
+    if( event->text() == "=" && ( plain || mods == Qt::ShiftModifier ) )   // A corner here
+    {
+        QList<QPoint> pts = drawRoute( cursorPos().toPoint(), "" );
+        if( pts.size() > m_drawPts.size() ){ m_drawMarks.append( m_drawPts.size() ); m_drawPts = pts; }
+        return true;
+    }
+    if( key == Qt::Key_Backspace && plain )                 // Undo the last =
+    {
+        if( !m_drawMarks.isEmpty() ){ while( m_drawPts.size() > m_drawMarks.last() ) m_drawPts.removeLast();
+                                      m_drawMarks.removeLast(); updateDraw(); }
+        return true;
+    }
+    if( ( key == Qt::Key_Return || key == Qt::Key_Enter ) && plain ){ finishDraw(); return true; }
+    if( key == Qt::Key_Escape && plain ){ cancelDraw(); return true; }
+    return true;                                            // Nothing else while drawing
+}
+
+// Enter: connect to a free pin within 8 px of the cross, else to a wire within 8 px
+// (a dot there). Nothing near: a message, still drawing
+void KeyboardController::finishDraw()
+{
+    Circuit* circ = Circuit::self();
+    Connector* con = circ->getNewConnector();
+    if( !con ) { m_drawing = false; return; }
+    QPointF c = cursorPos();
+
+    Pin* pin = nullptr;                                     // A free pin first
+    double best = 8.5;
+    for( Component* comp : *circ->compList() )
+    {
+        if( comp->itemType() == "Node" || !comp->isVisible() ) continue;
+        for( Pin* p : comp->getPins() )
+        {
+            if( !p || p->connector() || !p->isVisible() ) continue;
+            QPointF d = p->scenePos()-c;
+            double dd = qMax( qAbs( d.x() ), qAbs( d.y() ) );
+            if( dd < best ){ best = dd; pin = p; }
+        }
+    }
+    QPoint end;
+    ConnectorLine* line = nullptr;
+    if( pin ) end = pin->scenePos().toPoint();
+    else
+    {
+        QPoint q;
+        line = lineNear( c, con, &q );
+        if( !line || !joinPoint( line, q, &end ) )
+        {
+            say("Keyboard: nothing to connect to at the cross — move it onto a pin or a wire (Esc cancels)");
+            return;
+        }
+    }
+    if( end == m_drawPts.first() ){ say("Keyboard: the wire would end where it starts"); return; }
+
+    QList<QPoint> pts = drawRoute( end, pin ? pin->side() : QString() );
+    QStringList l;
+    for( QPoint p : pts ){ l.append( QString::number( p.x() ) ); l.append( QString::number( p.y() ) ); }
+    con->setPointList( l );                                 // The route first: it is saved with the step
+    m_drawing = false;
+    m_drawPts.clear();
+    m_drawMarks.clear();
+    if( pin ) circ->closeconnector( pin, true );
+    else      line->connectToWire( end );                   // Ends on a new dot there
+    parkCursor( end, false );
+    qDebug() << "[kbd] wire drawn to" << end << ( pin ? pin->pinId() : QString("a wire") );
+}
+
+void KeyboardController::cancelDraw()
+{
+    if( !m_drawing ) return;
+    m_drawing = false;
+    m_drawPts.clear();
+    m_drawMarks.clear();
+    Circuit::self()->deleteNewConnector();                  // The dot and the split go too
+    updateCross( m_cursor );
+    qDebug() << "[kbd] wire drawing cancelled";
+}
+
 bool KeyboardController::anyPartSelected()
 {
     Circuit* circ = Circuit::self();
@@ -646,7 +866,12 @@ bool KeyboardController::anyPartSelected()
     return false;
 }
 
-bool KeyboardController::cursorVisible() { return m_focused && !anyPartSelected() && !m_walk.active(); }
+bool KeyboardController::cursorVisible()
+{
+    if( !m_focused ) return false;
+    if( m_drawing ) return true;                         // K9b: the cross is the wire's end
+    return !anyPartSelected() && !m_walk.active();
+}
 
 void KeyboardController::setPanMode( bool on )
 {
@@ -869,6 +1094,7 @@ void KeyboardController::mouseMoved( QPoint viewPos )
 void KeyboardController::mousePressed()
 {
     m_value.revert();                                    // A click reverts (K7)
+    if( m_drawing ) cancelDraw();                        // and cancels a wire being drawn (K9b)
     setPanMode( false );
     if( m_walk.active() ) leaveNetwork( false );         // and ends network mode (K9)
 }   // A click reverts (K7)
@@ -1027,6 +1253,20 @@ QJsonObject KeyboardController::state()
     Component* lp = lastPart();
     o["lastPart"] = lp ? QJsonValue( lp->getUid() ) : QJsonValue();
     if( m_value.active() ) o["valueEdit"] = m_value.state();   // K7: the value being typed
+    if( m_drawing )                                       // K9b: the wire being drawn
+    {
+        QJsonArray fixed;
+        for( QPoint p : m_drawPts ) fixed.append( QJsonArray{ p.x(), p.y() } );
+        QJsonObject d{ {"fixed", fixed} };
+        if( Connector* con = Circuit::self()->getNewConnector() )
+        {
+            d["wire"] = con->getUid();
+            QJsonArray pts;
+            for( QString v : con->pointList() ) pts.append( v.toInt() );
+            d["points"] = pts;
+        }
+        o["drawing"] = d;
+    }
     if( m_walk.active() )                                 // K9: the walk, its step and what
     {                                                     // is highlighted in the scene
         QJsonObject n = m_walk.state();
