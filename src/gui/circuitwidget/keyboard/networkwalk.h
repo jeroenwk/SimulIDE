@@ -16,6 +16,7 @@
 
 #include <QList>
 #include <QPoint>
+#include <QPointF>
 #include <QString>
 #include <QStringList>
 #include <QJsonObject>
@@ -41,10 +42,13 @@ class NetworkWalk
  static QList<Step> build( Pin* pin );         // The ordered steps (empty: no wire)
 
         bool start( Pin* pin );                // false: the pin has no wire
+        bool startFrom( const Step& seed );    // K9c: from a wire, corner or dot (no part)
+ static QList<Step> buildFrom( const Step& seed );
+ static bool nearestItem( QPointF p, Step* out );   // The dot, corner or wire nearest p
         void stop();
         bool active() { return m_active; }
 
-        QString pinId()   { return m_pinId; }  // The pin the walk started from
+        QString pinId()   { return m_pinId; }  // The pin the walk started from ("": a seed)
         QString partUid() { return m_partUid; }
 
         int  size()  { return m_steps.size(); }
@@ -56,8 +60,8 @@ class NetworkWalk
         // nearest to pos (any kind if none). false: no step left (or the pin is gone)
         bool rebuild( QPoint pos, kind_t kind );
 
-        Connector* wire( const Step& s );      // nullptr: gone
-        Node*      dot( const Step& s );
+ static Connector* wire( const Step& s );      // nullptr: gone
+ static Node*      dot( const Step& s );
         QStringList cornerMoved( const Step& s, QPoint delta );   // The wire's new point list
 
         QJsonObject state();                   // CLI kbd state
@@ -68,6 +72,7 @@ class NetworkWalk
         bool         m_active;
         QString      m_pinId;
         QString      m_partUid;
+        Step         m_seed;                   // K9c: what the walk started from, without a pin
         QList<Step>  m_steps;
         int          m_index;
 };

@@ -5,6 +5,7 @@
 #include <QJsonArray>
 #include <QHash>
 #include <algorithm>
+#include <QtMath>
 
 #include "networkwalk.h"
 #include "circuit.h"
@@ -17,6 +18,7 @@ NetworkWalk::NetworkWalk()
 {
     m_active = false;
     m_index  = 0;
+    m_seed   = Step{ stepWire, QString(), -1, QPoint(), 0 };
 }
 
 QString NetworkWalk::kindName( kind_t k )
@@ -35,17 +37,31 @@ static double segLen( QPoint a, QPoint b ) { return qAbs( b.x()-a.x() ) + qAbs( 
 static bool isDot( Pin* p ) { return p && p->component() && p->component()->itemType() == "Node"; }
 
 // Dijkstra over the wires: a wire is entered at one end with a path length, its corners
-// and its far end follow along its points; a dot at the far end passes the walk on to
-// its other wires, a part's pin ends it. Each wire counts once, from its nearest end
-QList<NetworkWalk::Step> NetworkWalk::build( Pin* pin )
-{
-    QList<Step> steps;
-    if( !pin || !pin->connector() ) return steps;
+// and its far end follow along its points; a dot passes the walk on to its other wires,
+// a part's pin ends it. Each wire counts once, from its nearest end. Seeds: wires entered
+// at a pin or dot (queue), dots reached at a length (dotSeeds)
+struct Entry { Connector* con; Pin* from; double len; };
 
-    struct Entry { Connector* con; Pin* from; double len; };
-    QList<Entry> queue{ { pin->connector(), pin, 0 } };
+static QList<NetworkWalk::Step> walkFrom( QList<Entry> queue, QList<QPair<Node*, double>> dotSeeds )
+{
+    typedef NetworkWalk::Step Step;
+    QList<Step> steps;
     QHash<Connector*, bool> done;
     QHash<Node*, bool> dots;
+
+    auto expandDot = [&]( Node* node, double len ){
+        if( dots.value( node ) ) return;
+        dots[ node ] = true;
+        steps.append( { NetworkWalk::stepDot, node->getUid(), -1,
+                        node->getPin( 0 )->scenePos().toPoint(), len } );
+        for( int p=0; p<3; ++p )
+        {
+            Pin* np = node->getPin( p );
+            Connector* c = np ? np->connector() : nullptr;
+            if( c && !done.value( c ) ) queue.append( { c, np, len } );
+        }
+    };
+    for( auto& d : dotSeeds ) expandDot( d.first, d.second );
 
     while( !queue.isEmpty() )
     {
@@ -61,7 +77,7 @@ QList<NetworkWalk::Step> NetworkWalk::build( Pin* pin )
         Pin* far = reversed ? e.con->startPin() : e.con->endPin();
 
         QPoint entry = reversed ? pts.last() : pts.first();
-        steps.append( { stepWire, e.con->getUid(), -1, entry, e.len } );
+        steps.append( { NetworkWalk::stepWire, e.con->getUid(), -1, entry, e.len } );
 
         double len = e.len;
         int n = pts.size();
@@ -70,32 +86,97 @@ QList<NetworkWalk::Step> NetworkWalk::build( Pin* pin )
             int i = reversed ? n-1-k : k;                // Point index in the point list
             int prev = reversed ? i+1 : i-1;
             len += segLen( pts[prev], pts[i] );
-            if( k < n-1 ) steps.append( { stepCorner, e.con->getUid(), i, pts[i], len } );
+            if( k < n-1 ) steps.append( { NetworkWalk::stepCorner, e.con->getUid(), i, pts[i], len } );
         }
-        if( !isDot( far ) ) continue;                    // A part's pin: the walk ends there
-
-        Node* node = static_cast<Node*>( far->component() );
-        if( !dots.value( node ) )
-        {
-            dots[ node ] = true;
-            steps.append( { stepDot, node->getUid(), -1, far->scenePos().toPoint(), len } );
-        }
-        for( int p=0; p<3; ++p )
-        {
-            Pin* np = node->getPin( p );
-            Connector* c = np ? np->connector() : nullptr;
-            if( c && !done.value( c ) ) queue.append( { c, np, len } );
-        }
-    }
+        if( isDot( far ) ) expandDot( static_cast<Node*>( far->component() ), len );
+    }                                                    // A part's pin: the walk ends there
     std::stable_sort( steps.begin(), steps.end(), []( const Step& a, const Step& b ){
         if( a.len != b.len ) return a.len < b.len;
-        auto rank = []( kind_t k ){ return k == stepDot ? 0 : k == stepWire ? 1 : 2; };
+        auto rank = []( NetworkWalk::kind_t k ){ return k == NetworkWalk::stepDot ? 0 : k == NetworkWalk::stepWire ? 1 : 2; };
         if( a.kind != b.kind ) return rank( a.kind ) < rank( b.kind );   // A dot before the
                                                                          // wires leaving it
         if( a.pos.y() != b.pos.y() ) return a.pos.y() < b.pos.y();
         return a.pos.x() < b.pos.x();
     });
     return steps;
+}
+
+QList<NetworkWalk::Step> NetworkWalk::build( Pin* pin )
+{
+    if( !pin || !pin->connector() ) return QList<Step>();
+    return walkFrom( { { pin->connector(), pin, 0 } }, {} );
+}
+
+// From a wire, corner or dot (K9c): lengths from the dot, or from the wire's start
+QList<NetworkWalk::Step> NetworkWalk::buildFrom( const Step& seed )
+{
+    if( seed.kind == stepDot )
+    {
+        Node* node = dot( seed );
+        return node ? walkFrom( {}, { { node, 0 } } ) : QList<Step>();
+    }
+    Connector* con = wire( seed );
+    if( !con || !con->startPin() ) return QList<Step>();
+    QList<QPair<Node*, double>> dotSeeds;
+    if( isDot( con->startPin() ) ) dotSeeds.append( { static_cast<Node*>( con->startPin()->component() ), 0 } );
+    return walkFrom( { { con, con->startPin(), 0 } }, dotSeeds );
+}
+
+// The wire, corner or dot nearest to p: by distance, a dot preferred to a corner and a
+// corner to a wire when about as near (a dot or corner next to p beats the wire it is
+// on, which is always at least as near). false: no wire in the circuit
+bool NetworkWalk::nearestItem( QPointF p, Step* out )
+{
+    double best = 1e300;
+    auto offer = [&]( kind_t kind, QString uid, int index, QPoint pos, double d ){
+        double score = d + ( kind == stepDot ? 0 : kind == stepCorner ? 4 : 8 );
+        if( score < best ){ best = score; *out = { kind, uid, index, pos, 0 }; }
+    };
+    for( Node* n : *Circuit::self()->nodeList() )
+    {
+        if( !n->isVisible() ) continue;
+        QPointF d = n->getPin( 0 )->scenePos()-p;
+        offer( stepDot, n->getUid(), -1, n->getPin( 0 )->scenePos().toPoint(), qSqrt( QPointF::dotProduct( d, d ) ) );
+    }
+    for( Connector* c : *Circuit::self()->conList() )
+    {
+        if( !c->endPin() ) continue;                     // A wire being drawn
+        QList<QPoint> pts = points( c );
+        for( int i=0; i+1<pts.size(); ++i )
+        {
+            QPointF a = pts[i], b = pts[i+1];            // Distance to the segment
+            QPointF ab = b-a;
+            double l2 = QPointF::dotProduct( ab, ab );
+            double t = l2 > 0 ? qBound( 0.0, QPointF::dotProduct( p-a, ab )/l2, 1.0 ) : 0;
+            QPointF q = a+ab*t, d = q-p;
+            offer( stepWire, c->getUid(), -1, q.toPoint(), qSqrt( QPointF::dotProduct( d, d ) ) );
+            if( i > 0 )
+            {
+                QPointF dc = a-p;
+                offer( stepCorner, c->getUid(), i, pts[i], qSqrt( QPointF::dotProduct( dc, dc ) ) );
+            }
+        }
+    }
+    return best < 1e300;
+}
+
+bool NetworkWalk::startFrom( const Step& seed )
+{
+    QList<Step> steps = buildFrom( seed );
+    if( steps.isEmpty() ) return false;
+    m_steps   = steps;
+    m_pinId.clear();
+    m_partUid.clear();
+    m_seed    = seed;
+    m_index   = 0;
+    for( int i=0; i<steps.size(); ++i )                  // The seed itself selected
+    {
+        const Step& s = steps[i];
+        if( s.kind == seed.kind && s.uid == seed.uid && ( s.kind != stepCorner || s.index == seed.index ) )
+        { m_index = i; break; }
+    }
+    m_active  = true;
+    return true;
 }
 
 bool NetworkWalk::start( Pin* pin )
@@ -105,6 +186,7 @@ bool NetworkWalk::start( Pin* pin )
     m_steps   = steps;
     m_index   = 0;                                       // The pin's own wire
     m_pinId   = pin->pinId();
+    m_seed    = Step{ stepWire, QString(), -1, QPoint(), 0 };
     m_partUid = pin->component() ? pin->component()->getUid() : QString();
     m_active  = true;
     return true;
@@ -127,7 +209,14 @@ void NetworkWalk::stepBy( int dir )
 
 bool NetworkWalk::rebuild( QPoint pos, kind_t kind )
 {
-    QList<Step> steps = build( Circuit::self()->pinById( m_pinId ) );
+    QList<Step> steps;
+    if( !m_pinId.isEmpty() ) steps = build( Circuit::self()->pinById( m_pinId ) );
+    else                                                 // From a seed (K9c): the same one, or
+    {                                                    // when it is gone the item nearest pos
+        if( !( m_seed.kind == stepDot ? (bool)dot( m_seed ) : (bool)wire( m_seed ) ) )
+            if( !nearestItem( pos, &m_seed ) ) m_seed.uid.clear();
+        if( !m_seed.uid.isEmpty() ) steps = buildFrom( m_seed );
+    }
     m_steps = steps;
     m_index = 0;
     if( steps.isEmpty() ) return false;

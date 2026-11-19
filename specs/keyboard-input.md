@@ -191,7 +191,7 @@ Parts mode:
 | `.` `,` | – | – | start EditValue (`0.`) | append once |
 | part letter | add part at cursor | add part | add part | multiplier (C3) |
 | `w` | wire pinFrom→pinTo | same | same | revert, then wire |
-| `=` | – | – | network mode (K9) | – |
+| `=` | network mode from the dot, corner or wire nearest the cross (K9c) | – | network mode (K9) | – |
 | `+` | draw a wire from the wire under the cross (K9b) | – | – | – |
 | Backspace / Delete | – | delete | delete | remove last char (C8) |
 | Shift+A–Z | switches (`Key`) | switches | switches | `M`, `G` only |
@@ -555,6 +555,29 @@ Validate
 - [ ] Cmd+Z removes the wire and both dots in one step.
 - [ ] Esc while drawing: the circuit as before.
 
+### K9c — Network mode with nothing selected
+*(user request 2026-11-19, after K9b)*
+
+- `=` with nothing selected: network mode from the **dot, corner or wire nearest
+  to the cross**. A wire is always at least as near as the dots and corners on
+  it, so the choice is by distance with a preference: a dot counts 0 px extra,
+  a corner 4, a wire 8 — a dot or corner next to the cross beats the wire it is
+  on, a wire under the cross beats a dot further along it. No wire in the
+  circuit: a message.
+- The walk is the whole net of that item (never through a part); path lengths
+  from the dot, or from the wire's start for a wire or corner; the item itself
+  is selected first. `NetworkWalk::nearestItem`, `startFrom`, `buildFrom`.
+- `=` / Esc: back to parts mode with nothing selected and the cross shown at
+  the step that was selected. Deleting the wire it started from: the walk
+  goes on from the item nearest to it (anywhere), or back to parts mode when
+  the circuit has no wire left.
+- `kbd state` `network.pin` is "" for such a walk.
+
+Validate
+- [ ] Nothing selected, cross next to a dot, `=`: the dot selected; Tab walks.
+- [ ] Next to a corner: the corner; on the middle of a wire: the wire.
+- [ ] Esc: nothing selected, the cross at the item.
+
 ### K10 — Shortcut list in Settings
 *(epic: "listing shortcuts")*
 
@@ -682,6 +705,5 @@ Decisions (user, 2026-11-18):
 
 - Multiple part selection by shift arrow starting on empty canvas drawing a rectangle over parts
 - hitting wire mode '=' while no part is selected should select the nearest dot, or nearest corner or nearest wire
-- '+' should create a dot when cross is close to a wire. Enabling to create a wire from there. Then moving the cross will trace the wire.'=' will porce a new corner at that point. Hitting 'enter' when the endpoint of the wire is close to an other wire makes the connection.
 - Configurable shortcuts for components in part settings
 - 
