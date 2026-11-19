@@ -112,6 +112,14 @@ bool KeyboardController::keyPress( QKeyEvent* event )
 
     if( zoomKey( event, mods ) ) return true;   // The view only: a value being typed stays
 
+    if( m_rect )                                         // The selection rectangle: Shift+arrows
+    {                                                    // grow it; any other key ends it (Esc:
+        if( rectKey( event, mods ) ) return true;        // cancelled), then acts
+        bool esc = key == Qt::Key_Escape;
+        endRect( !esc );
+        if( esc ) return true;
+    }
+
     if( m_drawing ) return drawKey( event, mods );   // K9b: every key goes to the wire being drawn
 
     // Contexts, in order (spec §4.1): EditValue, network mode (K9), parts mode.
@@ -141,7 +149,17 @@ bool KeyboardController::keyPress( QKeyEvent* event )
 
     // Parts mode
 
-    if( arrow && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return arrowKey( event, mods );
+    if( arrow && !( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) )   // Plain, Shift, Cmd, Cmd+Shift
+    {
+        if( ( mods & Qt::ShiftModifier ) && !m_panMode && Circuit::self()->selectedItems().isEmpty() )
+        {
+            m_rect = true;                               // Shift+arrows from the cross: a rectangle
+            m_rectAnchor = cursorPos();
+            qDebug() << "[kbd] selection rectangle from" << m_rectAnchor;
+            return rectKey( event, mods );
+        }
+        return arrowKey( event, mods );
+    }
 
     // Cmd+R / Cmd+Shift+R: rotate; with an outgoing pin (pinFrom) on another part, the
     // rotated part is also moved so its closest pin shares that pin's row or column
@@ -633,7 +651,7 @@ bool KeyboardController::networkKey( QKeyEvent* event, Qt::KeyboardModifiers mod
         showStep();
         return true;
     }
-    if( arrow && ( plain || mods == Qt::ShiftModifier ) )
+    if( arrow && !( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) )   // Plain, Cmd, (Shift)
     {
         if( m_panMode ) return arrowKey( event, mods );
         NetworkWalk::Step s = m_walk.current();
@@ -643,7 +661,7 @@ bool KeyboardController::networkKey( QKeyEvent* event, Qt::KeyboardModifiers mod
         else if( key == Qt::Key_Right ) dir = QPointF( 1, 0 );
         else if( key == Qt::Key_Up    ) dir = QPointF( 0,-1 );
         else                            dir = QPointF( 0, 1 );
-        QPointF d = dir*( plain ? bigStep : smallStep );
+        QPointF d = dir*( ( mods & Qt::ControlModifier ) ? bigStep : smallStep );   // 8 / 64 px (D23)
         if( s.kind == NetworkWalk::stepCorner ) moveCorner( d );
         else                                                        // A dot: as a drag, wires follow
         {
@@ -836,14 +854,14 @@ bool KeyboardController::drawKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
     bool plain = mods == Qt::NoModifier;
     bool arrow = key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down;
 
-    if( arrow && ( plain || mods == Qt::ShiftModifier ) )   // The cross moves, the wire follows
-    {                                                       // (not snapped: it keeps the grid
+    if( arrow && !( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) )   // The cross moves 8 px
+    {                                                       // (Cmd: 64), the wire follows (not snapped: it keeps the grid
         QPointF dir;                                        // of the dot it started on)
         if     ( key == Qt::Key_Left  ) dir = QPointF(-1, 0 );
         else if( key == Qt::Key_Right ) dir = QPointF( 1, 0 );
         else if( key == Qt::Key_Up    ) dir = QPointF( 0,-1 );
         else                            dir = QPointF( 0, 1 );
-        parkCursor( cursorPos()+dir*( plain ? bigStep : smallStep ), false );
+        parkCursor( cursorPos()+dir*( ( mods & Qt::ControlModifier ) ? bigStep : smallStep ), false );
         if( CircuitView* v = CircuitView::self() ) v->ensureVisible( crossRect( m_cursor ), 32, 32 );
         updateDraw();
         return true;
@@ -943,6 +961,7 @@ bool KeyboardController::cursorVisible()
 {
     if( !m_focused ) return false;
     if( m_drawing ) return true;                         // K9b: the cross is the wire's end
+    if( m_rect ) return true;                            // The rectangle's moving corner
     return !anyPartSelected() && !m_walk.active();
 }
 
@@ -1054,7 +1073,7 @@ void KeyboardController::settleSelection()
         setPinTo( nullptr );
     }
     Component* b = singlePart();
-    if( b ) parkCursor( b->pos() );              // Whatever selects one part — Tab, a click,
+    if( b && !m_rect ) parkCursor( b->pos() );   // Whatever selects one part — Tab, a click,
     if( !b || b->getUid() == m_lastPart ) return;   // the CLI — parks the hidden cross on it
 
     Component* a = lastPart();
@@ -1120,8 +1139,9 @@ KeyboardController::pinLook_t KeyboardController::pinLook( Pin* pin, bool* ring 
     return comp->isSelected() ? lookHighlight : lookAccent;
 }
 
-// Arrows (Shift: small step): pan mode (h): pan the canvas. Nothing selected: move the cross.
-// A selection: move it 64 px, Shift: 8 px, with the wires attached, as a mouse drag does
+// Pan mode (h): the arrows pan the canvas (Shift: small steps). Otherwise the arrows move
+// 8 px, Cmd+arrows 64 px (D23): the cross when nothing is selected, else the selection
+// with the wires attached, as a mouse drag does (Shift changes nothing there)
 bool KeyboardController::arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
 {
     int key = event->key();
@@ -1131,7 +1151,8 @@ bool KeyboardController::arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods 
     else if( key == Qt::Key_Up    ) dir = QPointF( 0,-1 );
     else                            dir = QPointF( 0, 1 );
 
-    int step = ( mods == Qt::ShiftModifier ) ? smallStep : bigStep;
+    int step = ( mods & Qt::ShiftModifier ) ? smallStep : bigStep;      // Pan mode
+    if( !m_panMode ) step = ( mods & Qt::ControlModifier ) ? bigStep : smallStep;
     Circuit* circ = Circuit::self();
     if( m_panMode )                                         // Scroll the view (screen pixels)
     {
@@ -1175,6 +1196,7 @@ void KeyboardController::mouseMoved( QPoint viewPos )
 void KeyboardController::mousePressed()
 {
     m_value.revert();                                    // A click reverts (K7)
+    if( m_rect ) endRect( true );                        // and ends a selection rectangle
     if( m_drawing ) cancelDraw();                        // and cancels a wire being drawn (K9b)
     setPanMode( false );
     if( m_walk.active() ) leaveNetwork( false );         // and ends network mode (K9)
@@ -1192,7 +1214,7 @@ void KeyboardController::setFocused( bool focused )
 {
     if( focused == m_focused ) return;
     m_focused = focused;
-    if( !focused ){ m_panMode = false; showPointer(); }
+    if( !focused ){ m_panMode = false; showPointer(); if( m_rect ) endRect( true ); }
     applyPointer();
     if( m_cursorSet ) updateCross( m_cursor );
     qDebug() << "[kbd] canvas focus" << focused;
@@ -1303,6 +1325,16 @@ void KeyboardController::paint( QPainter* painter )
         }
         painter->restore();
     }
+    if( m_rect )                                         // The selection rectangle, dashed
+    {
+        painter->save();
+        QPen pen( Theme::highlight(), 1, Qt::DashLine );
+        pen.setCosmetic( true );
+        painter->setPen( pen );
+        painter->setBrush( Qt::NoBrush );
+        painter->drawRect( QRectF( m_rectAnchor, cursorPos() ).normalized() );
+        painter->restore();
+    }
     if( !cursorVisible() ) return;
 
     QPointF p = cursorPos();
@@ -1324,6 +1356,10 @@ QJsonObject KeyboardController::state()
     o["cursorVisible"] = cursorVisible();
     o["pointerHidden"] = m_pointerHidden;
     o["panMode"]       = m_panMode;
+    if( m_rect ){
+        QRectF r = QRectF( m_rectAnchor, cursorPos() ).normalized();
+        o["rect"] = QJsonArray{ r.x(), r.y(), r.width(), r.height() };
+    }
     if( CircuitView* v = CircuitView::self() ) o["zoom"] = v->transform().m11();
 
     QJsonArray sel;
@@ -1373,4 +1409,65 @@ QJsonObject KeyboardController::state()
         o["network"] = n;
     }
     return o;      // The CLI adds the pins (pinFrom, pinTo, selectedPin) as "R1.lPin" refs
+}
+
+// D23: Shift+arrows from the cross (nothing selected) draw a selection rectangle, as a
+// mouse drag on empty canvas does: one corner stays where it started, the cross is the
+// other (8 px steps, Cmd: 64 px). Every part it touches is selected while it grows.
+// Releasing Shift (or any other key, a click) ends it, the parts staying selected; Esc
+// cancels it (nothing selected, the cross where it is)
+bool KeyboardController::rectKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
+{
+    int key = event->key();
+    bool arrow = key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down;
+    if( !arrow || !( mods & Qt::ShiftModifier ) || ( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) ) return false;
+    QPointF dir;
+    if     ( key == Qt::Key_Left  ) dir = QPointF(-1, 0 );
+    else if( key == Qt::Key_Right ) dir = QPointF( 1, 0 );
+    else if( key == Qt::Key_Up    ) dir = QPointF( 0,-1 );
+    else                            dir = QPointF( 0, 1 );
+    moveCursorTo( cursorPos()+dir*( ( mods & Qt::ControlModifier ) ? bigStep : smallStep ) );
+    rectSelect();
+    return true;
+}
+
+void KeyboardController::rectSelect()
+{
+    Circuit* circ = Circuit::self();
+    if( !circ ) return;
+    QRectF r = QRectF( m_rectAnchor, cursorPos() ).normalized();
+    QSet<Component*> in;
+    if( r.width() > 0 || r.height() > 0 )
+        for( QGraphicsItem* it : circ->items( r, Qt::IntersectsItemShape ) )
+        {
+            Component* c = dynamic_cast<Component*>( it );
+            if( c && c->itemType() != "Node" && c->isVisible() && !c->parentItem() ) in.insert( c );
+        }
+    for( Component* c : *circ->compList() )             // Parts only: wires follow when moved
+        if( c->isSelected() != in.contains( c ) ) c->setSelected( in.contains( c ) );
+    for( QGraphicsItem* it : circ->selectedItems() )     // Nothing else (a wire, a dot)
+        if( !dynamic_cast<Component*>( it ) || static_cast<Component*>( it )->itemType() == "Node" )
+            it->setSelected( false );
+
+    QRectF shown = r.adjusted( -2, -2, 2, 2 );           // Repaint the old and new outline
+    circ->update( m_rectShown.united( shown ) );
+    m_rectShown = shown;
+}
+
+void KeyboardController::endRect( bool keep )
+{
+    if( !m_rect ) return;
+    m_rect = false;
+    Circuit* circ = Circuit::self();
+    if( circ ) circ->update( m_rectShown );
+    m_rectShown = QRectF();
+    if( !keep && circ ) circ->clearSelection();
+    if( circ ) updateCross( cursorPos() );
+    qDebug() << "[kbd] selection rectangle" << ( keep ? "done" : "cancelled" )
+             << ( circ ? circ->selectedItems().size() : 0 ) << "items";
+}
+
+void KeyboardController::keyRelease( QKeyEvent* event )
+{
+    if( m_rect && event->key() == Qt::Key_Shift ) endRect( true );
 }

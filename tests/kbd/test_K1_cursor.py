@@ -37,12 +37,12 @@ def test(sim):
     sim.check("click places the cross: x", xy(s)[0], 100, absolute=0)
     sim.check("click places the cross: y", xy(s)[1], 52, absolute=0)
 
-    # Arrows move it (nothing selected): 64 px, Shift 8 px; a key hides the pointer
-    s = sim.cli("ui", "type", "Right")
-    sim.check("Right: +64", xy(s)[0], 164, absolute=0)
+    # Arrows move it (nothing selected): Cmd 64 px, plain 8 px (D23); a key hides the pointer
+    s = sim.cli("ui", "type", "cmd+Right")
+    sim.check("Cmd+Right: +64", xy(s)[0], 164, absolute=0)
     sim.check("key: pointer hidden", int(s["pointerHidden"]), 1, absolute=0)
-    s = sim.cli("ui", "type", "shift+Right", "shift+Right", "shift+Right")
-    sim.check("Shift+Right x3: +24", xy(s)[0], 188, absolute=0)
+    s = sim.cli("ui", "type", "Right", "Right", "Right")
+    sim.check("Right x3: +24", xy(s)[0], 188, absolute=0)
     s = sim.cli("ui", "mouse", "0,0")
     sim.check("mouse move: pointer shown", int(s["pointerHidden"]), 0, absolute=0)
     sim.check("mouse move: cross still there", xy(s)[0], 188, absolute=0)
@@ -91,7 +91,7 @@ def test(sim):
 
     # The (hidden) cross follows a moved selection: Esc shows it where the part ended
     sim.cli("select", "R1")
-    s = sim.cli("ui", "type", "Right")
+    s = sim.cli("ui", "type", "cmd+Right")
     sim.check("moved part: R1 at 264", sim.cli("comp", "get", "R1")["pos"][0], 264, absolute=0)
     sim.check("moved part: cross follows", xy(s)[0], snap(centre[0])+64, absolute=0)
     sim.check("part selected: cross hidden while moving", int(s["cursorVisible"]), 0, absolute=0)

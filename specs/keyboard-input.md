@@ -175,8 +175,9 @@ Parts mode:
 
 | Key | Nothing selected | Part(s) selected | Single part selected | EditValue |
 |---|---|---|---|---|
-| Arrows | move the cross 64 px | move 64 px | move 64 px | – |
-| Shift+Arrows | move the cross 8 px | move 8 px | move 8 px | – |
+| Arrows | move the cross 8 px (D23) | move 8 px | move 8 px | – |
+| Cmd+Arrows | move the cross 64 px | move 64 px | move 64 px | – |
+| Shift+Arrows / Cmd+Shift+Arrows | selection rectangle from the cross, 8 / 64 px steps (K11) | move 8 / 64 px | move 8 / 64 px | – |
 | `h` | pan mode: the arrows (Shift: small) pan, any other key / selection / mouse press ends it | same | same | – |
 | `Cmd+=` / `Cmd++` | zoom in (the cross or view centre kept in place) | same | same | – |
 | `Cmd+-` | zoom out | same | same | – |
@@ -202,7 +203,7 @@ Network mode (K9):
 | Key | Wire selected | Dot or corner selected |
 |---|---|---|
 | Tab / Shift+Tab | next / previous step of the walk | same |
-| Arrows / Shift+Arrows | nothing | move it 64 / 8 px |
+| Arrows / Cmd+Arrows | nothing | move it 8 / 64 px (D23) |
 | Backspace / Delete | delete the whole wire | nothing |
 | `=` / Esc | back to parts mode, the part selected | same |
 
@@ -210,7 +211,7 @@ Drawing a wire (K9b):
 
 | Key | Action |
 |---|---|
-| Arrows / Shift+Arrows | move the cross (the wire's end) 64 / 8 px; the wire follows H/V |
+| Arrows / Cmd+Arrows | move the cross (the wire's end) 8 / 64 px (D23); the wire follows H/V |
 | `=` | fix a corner at the cross |
 | Backspace | remove the last fixed corner |
 | Enter | connect to the free pin or the wire within 8 px of the cross |
@@ -269,7 +270,7 @@ them). All checks on the Mac AZERTY keyboard.
 
 - While the canvas has focus and **no part is selected**, a cross (11×11 px,
   1.5 px, `Theme::highlight()`) sits on an 8 px grid point: at start-up in the
-  middle of the view, moved with the arrows (64 px, Shift 8 px) when nothing is
+  middle of the view, moved with the arrows (8 px; Cmd 64 px, D23) when nothing is
   selected, or **placed by a plain left click on empty canvas** (D11). A click on
   a part, a wire or a rubber-band drag does not move it.
 - The cross does **not** follow the mouse. Any key (not a lone modifier) hides
@@ -293,7 +294,7 @@ Validate
 - [ ] At start-up the cross is in the middle of the canvas, dark and light theme.
 - [ ] The cross does not follow the mouse; a click on empty canvas places it,
       snapped to the grid.
-- [ ] Arrows move it 64 px, Shift+arrows 8 px; the view scrolls along.
+- [ ] Arrows move it 8 px, Cmd+arrows 64 px (D23); the view scrolls along.
 - [ ] A key hides the pointer; moving the mouse shows it again.
 - [ ] Select a part (click, Tab): the cross disappears, parked at the part's
       centre. Unselect: shown there.
@@ -308,13 +309,14 @@ Validate
 *(epic: "moving parts")*
 
 - Nothing selected: the arrows move the cross (K1 rev). Selection (parts, dots, wire segments,
-  as a mouse drag would move them): arrows 64 px, Shift+arrows 8 px.
+  as a mouse drag would move them): arrows 8 px, Cmd+arrows 64 px (D23; was 64 px,
+  Shift 8 px).
 - Wires follow exactly as in a mouse drag; the cursor follows (C9); auto-scroll.
 - Refactor: `Circuit::moveSelection(delta)`, used by `Component::mouseMoveEvent`.
 
 Validate
 - [ ] No selection: arrows pan.
-- [ ] One resistor selected: Right moves it 64 px, Shift+Right 8 px, wires follow.
+- [ ] One resistor selected: Right moves it 8 px, Cmd+Right 64 px, wires follow.
 - [ ] Several parts + a dot selected move together.
 - [ ] Cmd+Z after 5 arrow presses undoes all 5 at once.
 - [ ] Mouse drag still works and undoes as before.
@@ -491,7 +493,7 @@ Validate
   Backspace/Delete deletes the whole wire (one undo step); the walk is rebuilt
   and the selection goes to the nearest remaining step, or back to parts mode if
   none is left.
-- A selected **dot**: arrows move it 64 / 8 px, its wires reroute as in a drag.
+- A selected **dot**: arrows move it 8 px, Cmd+arrows 64 px (D23), its wires reroute as in a drag.
   Backspace does nothing.
 - A selected **corner** (new, drawn by the controller as a small square in
   `highlight`): arrows move it; the two segments meeting there move with it so
@@ -713,6 +715,33 @@ Validate
 - [ ] ⌥⌘à/0 zooms to fit, ⌃⌘à/0 to the selection, ⌘à/0 to 100 %.
 - [ ] Right click a part: Copy ⌘C, Rotate CW ⌘R … (no "Ctrl").
 
+### K11 — Selection rectangle with Shift+arrows
+
+The keyboard's rubber band: as a mouse drag on empty canvas selects the parts it
+touches, Shift+arrows from the cross draw a rectangle.
+
+- Nothing selected, Shift+arrows (8 px steps) or Cmd+Shift+arrows (64 px) start a
+  rectangle at the cross; the cross is its moving corner, shown, and the outline is
+  dashed in the highlight colour.
+- While it grows or shrinks, every part it touches is selected (the part's shape,
+  as the mouse); parts only — wires and dots are not, and follow when the parts move.
+- Releasing Shift ends it, the parts staying selected (the cross hides, as with any
+  selection; the arrows then move them). Any other key ends it the same way and then
+  acts; a click too. Esc cancels it: nothing selected, the cross at the corner.
+- With a part selected, Shift+arrows move the selection as the arrows do (no rectangle).
+- To free Shift+arrows (D23) the cross's steps changed: arrows 8 px, Cmd+arrows 64 px
+  (also while drawing a wire, K9b). Moving a selection, a dot or a corner follows
+  the same steps (arrows 8 px, Cmd+arrows 64 px).
+- CLI: `ui type shift+Right ... shift` (`shift` alone: Shift released); `kbd state`
+  gives `rect` [x, y, w, h] while one is drawn. `tests/kbd/test_rect_select.py`.
+
+Validate
+- [ ] Nothing selected: arrows move the cross 8 px, Cmd+arrows 64 px.
+- [ ] Hold Shift, arrows: a dashed rectangle grows from the cross; parts turn selected as
+      it reaches them, and unselected when it shrinks off them.
+- [ ] Release Shift: they stay selected; arrows move them all, wires following.
+- [ ] Esc while holding Shift: nothing selected.
+
 ### K10 — Shortcut list in Settings
 *(epic: "listing shortcuts")*
 
@@ -867,6 +896,9 @@ Decisions (user, 2026-11-18):
   `KeyText::native` / `KeyText::tipWithKey` (`src/gui/keytext.h`). No hand-written
   "Ctrl+" in a visible text.
 
+- **D23** (user, 2026-11-19) The cross, a selection, a dot or a corner move 8 px with
+  the arrows and 64 px with Cmd+arrows; Shift+arrows (Cmd+Shift: 64 px steps) draw a selection rectangle from it
+  (K11). Pan mode stays on `h`.
+
 # 7. Next
 
-- Multiple part selection by shift arrow starting on empty canvas drawing a rectangle over parts

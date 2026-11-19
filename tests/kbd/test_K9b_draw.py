@@ -47,8 +47,8 @@ def test(sim):
     sim.check("+: the cross is shown at the dot", int(s["cursorVisible"] and s["cursor"] == [196, 100]), 1,
               absolute=0, note=str(s["cursor"]))
 
-    # The arrows trace the wire: it leaves the horizontal wire vertically, then turns
-    s = sim.cli("ui", "type", "Down", "Down", "Right", "shift+Right", "shift+Right", "shift+Right")
+    # The arrows (Cmd: 64 px, plain: 8 px, D23) trace the wire: it leaves the horizontal wire vertically, then turns
+    s = sim.cli("ui", "type", "cmd+Down", "cmd+Down", "cmd+Right", "Right", "Right", "Right")
     pts = s["drawing"]["points"]
     sim.check("trace: the cross at R2.lPin", int(s["cursor"] == [284, 228]), 1, absolute=0, note=str(s["cursor"]))
     sim.check("trace: H/V, down first", int(hv(pts) and pts[:6] == [196, 100, 196, 228, 284, 228]), 1,
@@ -76,11 +76,11 @@ def test(sim):
 
     # = fixes a corner; Backspace removes it again
     build(sim)
-    sim.cli("ui", "type", "+", "Down", "Right")
+    sim.cli("ui", "type", "+", "cmd+Down", "cmd+Right")
     s = sim.cli("ui", "type", "=")
     sim.check("=: the corner fixed", int(s["drawing"]["fixed"] == [[196, 100], [196, 164], [260, 164]]), 1,
               absolute=0, note=str(s["drawing"]["fixed"]))
-    s = sim.cli("ui", "type", "Down", "Down")
+    s = sim.cli("ui", "type", "cmd+Down", "cmd+Down")
     pts = s["drawing"]["points"]
     sim.check("=: the route goes through it", int(pts[:6] == [196, 100, 196, 164, 260, 164] and hv(pts)), 1,
               absolute=0, note=str(pts))
@@ -89,7 +89,7 @@ def test(sim):
               note=str(s["drawing"]["fixed"]))
 
     # Enter with nothing near: a message, still drawing
-    s = sim.cli("ui", "type", "Left", "Left", "Left", "Left", "enter")
+    s = sim.cli("ui", "type", "cmd+Left", "cmd+Left", "cmd+Left", "cmd+Left", "enter")
     sim.check("enter, nothing near: still drawing", int("drawing" in s), 1, absolute=0)
     sim.check("enter, nothing near: message", int("nothing to connect" in str(sim.cli("messages"))), 1, absolute=0)
 
@@ -104,7 +104,7 @@ def test(sim):
     sim.cli("comp", "add", "Resistor", "--label", "R5", "--at", "300,356")
     sim.cli("wire", "add", "R4.rPin", "R5.lPin")
     sim.cli("ui", "click", "196,108")
-    s = sim.cli("ui", "type", "+", "Down", "Down", "Down", "Down", "enter")
+    s = sim.cli("ui", "type", "+", "cmd+Down", "cmd+Down", "cmd+Down", "cmd+Down", "enter")
     sim.check("wire end: done", int("drawing" not in s), 1, absolute=0)
     ws = wires(sim)
     sim.check("wire end: both wires split by a dot (5 wires)", len(ws), 5, absolute=0, note=str(ws))
@@ -114,7 +114,7 @@ def test(sim):
 
     # A mouse press cancels too
     build(sim)
-    sim.cli("ui", "type", "+", "Down")
+    sim.cli("ui", "type", "+", "cmd+Down")
     s = sim.cli("ui", "click", "500,500")
     sim.check("click: drawing cancelled", int("drawing" not in s), 1, absolute=0)
     sim.check("click: the circuit as before", len(wires(sim)), 1, absolute=0)

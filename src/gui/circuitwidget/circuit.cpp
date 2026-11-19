@@ -1468,6 +1468,7 @@ void Circuit::keyPressEvent( QKeyEvent* event )
 
 void Circuit::keyReleaseEvent( QKeyEvent* event )
 {
+    KeyboardController::self()->keyRelease( event );     // Shift up: a selection rectangle ends
     if( !event->isAutoRepeat()
      && !( event->modifiers() & Qt::ControlModifier ) )  // Deliver Key events ( switches )
     {
