@@ -598,6 +598,28 @@ check "...sets PNP"             '[p for p in r["result"]["properties"] if p["nam
 check "edit Gain -> Custom"     'r["ok"]'                                  -- comp set Q1 Gain=300
 check "...model Custom"         '[p for p in r["result"]["properties"] if p["name"]=="Model"][0]["value"]=="Custom"' -- comp get Q1
 
+echo "Fuse"
+# specs/fuse.md: T 1 A at 10 In (30 V into 3 Ohm) melts at 35.7 ms (two-stage heat model, the
+# full checks are in tests/fuse/test_fuse.py); Blown=false replaces it while running
+check "new circuit"             'r["ok"]'                                  -- circuit new --discard
+cli comp add Battery --at 0,0 --label B1 Voltage=30 >/dev/null
+cli comp add Fuse --at 64,-48 --label F1 >/dev/null
+cli comp add Resistor --at 128,0 --rot 90 --label RL Resistance=2.939 >/dev/null
+cli comp add Ground --at 0,80 --label G >/dev/null
+for w in "B1.rPin F1.lPin" "F1.rPin RL.lPin" "RL.rPin G.Gnd" "B1.lPin G.Gnd"; do cli wire add $w >/dev/null 2>&1; done
+check "label T1A"               '[l["text"] for l in r["result"]["labels"] if l["kind"]=="value"]==["T1A"]' -- comp get F1
+check "run 30 ms"               'r["ok"]'                                  -- sim run --for 30ms
+check "...10 A, HOT, not blown" 'abs(r["result"]["current"]+10) < 0.05 and r["result"]["state"]=="HOT" and not r["result"]["blown"]' -- read F1
+check "run 10 ms more"          'r["ok"]'                                  -- sim run --for 10ms
+check "...blown at 35.7 ms"     'r["result"]["blown"] and abs(r["result"]["blown_at"]-0.0357) < 0.0002 and r["result"]["current"]==0' -- read F1
+check "replace while running"   'r["ok"]'                                  -- comp set F1 Blown=false
+check "...conducts again"       'r["ok"]'                                  -- sim run --for 1ms
+check "...10 A"                 'abs(r["result"]["current"]+10) < 0.05 and not r["result"]["blown"]' -- read F1
+check "resistor mode"           'r["ok"]'                                  -- comp set F1 Model=Resistor
+check "...never blows"          'r["ok"]'                                  -- sim run --for 100ms
+check "...still 10 A, no state" 'abs(r["result"]["current"]+10) < 0.05 and "blown" not in r["result"]' -- read F1
+check "stop"                    'r["ok"]'                                  -- sim stop
+
 echo "Quit"
 check "quit"                    'r["ok"]'                                  -- quit --discard
 wait "$PID"
