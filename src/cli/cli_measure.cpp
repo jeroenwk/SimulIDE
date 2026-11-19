@@ -36,6 +36,7 @@
 #include "varistor.h"
 #include "diode.h"
 #include "lamp.h"
+#include "fuse.h"
 #include "bjt.h"
 #include "mosfet.h"
 #include "jfet.h"
@@ -157,6 +158,26 @@ QJsonObject readComp( Component* comp )
                 o["temperature"] = num( lamp->temperature() );
                 o["radiated"]    = num( lamp->radiated() );
     }   }   }
+    else if( Fuse* fu = dynamic_cast<Fuse*>( comp ) )     // specs/fuse.md § 5.1
+    {
+        std::vector<Pin*> pins = comp->getPins();
+        if( pins[0]->isConnected() && pins[1]->isConnected() )
+        {
+            double v = pins[0]->getVoltage() - pins[1]->getVoltage();
+            double i = fu->blown() && !fu->resistorMode() ? 0 : v/fu->resistance();
+            o["voltage"] = num( v );
+            o["current"] = num( i );
+            o["power"]   = num( v*i );
+        }
+        o["model"] = fu->resistorMode() ? "Resistor" : "Fuse";
+        o["resistance"] = num( fu->resistance() );
+        if( !fu->resistorMode() ){
+            o["heat"]     = num( 100*fu->heatNow() );       // % of melting
+            o["i2t"]      = num( fu->i2tSum() );            // A²s since the start
+            o["i2t_melt"] = num( fu->i2tUsed() );
+            o["blown"]    = fu->blown();
+            o["blown_at"] = fu->blownAt() >= 0 ? QJsonValue( num( fu->blownAt() ) ) : QJsonValue();
+    }   }
     else if( Varistor* va = dynamic_cast<Varistor*>( comp ) )
     {
         std::vector<Pin*> pins = comp->getPins();

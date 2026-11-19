@@ -89,6 +89,7 @@
 #include "rail.h"
 #include "rectangle.h"
 #include "relay.h"
+#include "fuse.h"
 #include "resistor.h"
 #include "resistordip.h"
 #include "rtd.h"
@@ -166,6 +167,7 @@ void ItemLibrary::loadItems()
     addItem( Switch::libraryItem() );
     addItem( SwitchDip::libraryItem() );
     addItem( Relay::libraryItem() );
+    addItem( Fuse::libraryItem() );
     addItem( KeyPad::libraryItem() );
     // Passive
     addItem( new LibraryItem( QObject::tr("Passive"), "", "","Passive", NULL ) );
