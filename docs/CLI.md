@@ -439,7 +439,7 @@ Keyboard-driven editing (`specs/keyboard-input.md`). Tests: `tests/kbd/run.sh`.
 
 | Command | |
 |---|---|
-| `kbd state` | Focus, keyboard cursor (the cross, scene x,y on the grid lines at 4 + 8k), whether the cross is shown (focus and no part selected), the mouse pointer hidden, `panMode`, `zoom` (view scale), selected parts, the pins to wire (`pinFrom`, `pinTo`); with one part selected its `selectedPin` (`selectedPinManual`: chosen with `<` `>`, else auto) and `pinsClockwise` |
+| `kbd state` | Focus, keyboard cursor (the cross, scene x,y on the grid lines at 4 + 8k), whether the cross is shown (focus and no part selected), the mouse pointer hidden, `panMode`, `zoom` (view scale), selected parts, the pins to wire (`pinFrom`, `pinTo`); with one part selected its `selectedPin` (`selectedPinManual`: chosen with `<` `>`, else auto) and `pinsClockwise`; while a value is typed `valueEdit` (part, property, buffer); in network mode (`=`) `network`: the `pin` walked from, the `walk` (its steps in order: `wire <uid>`, `corner <uid>#<point index>`, `dot <uid>`), the current `step` (kind, uid, pos, path length) and the `selectedWires` / `selectedDots` highlighted |
 | `kbd shortcuts` | Every shortcut of the circuit editor: category, action, keys, context |
 
 Headless, the window is never active, so `ui type` and `ui focus` set the canvas focus

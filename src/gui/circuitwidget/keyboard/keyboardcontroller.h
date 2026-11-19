@@ -20,6 +20,7 @@
 #include <QPointer>
 
 #include "valueeditor.h"
+#include "networkwalk.h"
 
 class QKeyEvent;
 class QGraphicsItem;
@@ -98,6 +99,16 @@ class KeyboardController
         bool enterKey( bool opposite = false );     // Shift+Enter: leave by the opposite pin
         void leavePart( Component* comp, bool opposite );   // Unselect, cross beyond its pin (D16)
 
+        // Network mode (K9): walking the wires, corners and dots of the selected pin
+        bool enterNetwork();                        // =: false = not for us (no single part)
+        void leaveNetwork( bool reselect );         // Back to parts mode (the part selected again)
+        bool networkKey( QKeyEvent* event, Qt::KeyboardModifiers mods );   // false: not a walk key
+        void showStep();                            // Select / mark the current step, scroll to it
+        void moveCorner( QPointF delta );
+        void deleteWire();
+        void markCorner( bool on );                 // Repaint the step mark's area
+        void say( QString text );                   // A line in Messages
+
         void selectPart( Component* comp );
         Component* compByUid( QString uid );
         QList<Component*> readingOrder();
@@ -139,6 +150,10 @@ class KeyboardController
         void*   m_circuit;                      // Circuit whose selectionChanged is connected
 
         ValueEditor m_value;                    // Typing the selected part's value (K7)
+        NetworkWalk m_walk;                     // Network mode (K9)
+        bool        m_walkSelecting;            // The walk is changing the selection itself
+        QString     m_burstWire;                // Corner moves of one wire: one undo step
+        QRectF      m_stepMark;                 // Where the step's mark is drawn (repaint)
 
         QString m_leavePin;                     // The pin Enter left from (D17), and the
         QPointF m_leavePos;                     // cross spot beyond it: placement continues there

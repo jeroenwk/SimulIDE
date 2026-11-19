@@ -467,7 +467,9 @@ Validate
   along wires and through dots, never through a part (other parts' pins end it;
   a tunnel is a part). Each step has a path length from the pin along the wires
   (wire: its start; corner, dot: their position). Steps sorted by that length;
-  ties: wire, corner, dot, then scene position. The first step (length 0) is the
+  ties: dot, wire, corner (*a dot before the wires leaving it*, as the
+  validation below walks — the first draft said wire, corner, dot), then
+  scene position. The first step (length 0) is the
   pin's wire.
 - Tab / Shift+Tab: next / previous step, wrapping; the item is scrolled into view.
 - A selected **wire**: all its segments highlighted. Arrows do nothing.
@@ -484,6 +486,16 @@ Validate
 - After a move the walk is rebuilt (corners may merge); the selection stays on
   the moved item.
 - `=` or Esc: back to parts mode, the part (and its pin) selected again.
+- **Any other key** ends network mode as Esc does, then acts in parts mode
+  (Cmd+Z, a part letter, ...): the walk is never used stale. `h` pans and keeps
+  the walk. A mouse press or a selection made otherwise ends it (no reselect).
+- The step is drawn by the controller in `highlight`: the wire traced, a ring
+  round a dot, a small square on a corner (the scene's own selection grey was
+  too faint to read as highlighted). Wire and dot are also selected in the
+  scene.
+- Done (`feature/kbd-k9`): `NetworkWalk` (`keyboard/networkwalk.{h,cpp}`),
+  steps kept by uid (+ corner index) and rebuilt after every move or delete;
+  `tests/kbd/test_K9_network.py`.
 - Mouse wire handling is unchanged (Ctrl+click, right click → Remove).
 
 Validate
