@@ -6,6 +6,8 @@
 #ifndef CONNECTOR_H
 #define CONNECTOR_H
 
+#include <QColor>
+
 #include "compbase.h"
 
 class ConnectorLine;
@@ -23,6 +25,21 @@ class Connector : public CompBase
         void setPointList( QStringList pl );
 
         void dummySetter( QString ) {;}
+
+        // Wire colours (specs/wire-colors.md): the line colour (invalid: the theme's),
+        // a translucent band behind the wire (invalid: none) and its width (0: default)
+        static constexpr double defaultBandWidth = 6;
+        QColor lineColor() { return m_lineColor; }
+        QColor bandColor() { return m_bandColor; }
+        double bandWidth() { return m_bandWidth > 0 ? m_bandWidth : defaultBandWidth; }
+        bool   hasStyle()  { return m_lineColor.isValid() || m_bandColor.isValid(); }
+        QString colorStr();
+        void    setColorStr( QString c );
+        QString bandColorStr();
+        void    setBandColorStr( QString c );
+        QString bandWidthStr();
+        void    setBandWidthStr( QString w );
+        void    copyStyle( Connector* from );   // Split and merged wires keep their colours
 
         QString startPinId();
         QString endPinId();
@@ -87,6 +104,10 @@ class Connector : public CompBase
         Pin*    m_endPin;
 
         QStringList  m_pointList;
+
+        QColor m_lineColor;
+        QColor m_bandColor;
+        double m_bandWidth = 0;
 
         QList<ConnectorLine*> m_conLineList;
 };

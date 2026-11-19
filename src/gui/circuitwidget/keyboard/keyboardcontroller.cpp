@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <QDebug>
 #include <QTimer>
+#include <QSet>
 #include <QGraphicsItem>
 #include <QScrollBar>
 #include <QCursor>
@@ -19,6 +20,7 @@
 #include "label.h"
 
 #include "keyboardcontroller.h"
+#include "wirestyledialog.h"
 #include "circuitview.h"
 #include "circuit.h"
 #include "circuitwidget.h"
@@ -420,7 +422,25 @@ bool KeyboardController::placePart( QString type, QString name )
 bool KeyboardController::spaceKey()
 {
     Component* comp = singlePart();
-    if( !comp ) return false;                 // Nothing, several parts, or a junction: nothing
+    if( !comp )                               // Only wire segments selected (rubber band): their
+    {                                         // colours (specs/wire-colors.md)
+        QList<Connector*> wires;
+        for( QGraphicsItem* item : Circuit::self()->selectedItems() )
+        {
+            if( item->type() == QGraphicsItem::UserType+2 )
+            {
+                Connector* con = qgraphicsitem_cast<ConnectorLine*>( item )->connector();
+                if( !wires.contains( con ) ) wires.append( con );
+            }
+            else if( Component* c = qgraphicsitem_cast<Component*>( item ) )
+            {
+                if( c->itemType() != "Node" ) return false;   // A part too: nothing
+            }
+        }
+        if( wires.isEmpty() ) return false;   // Nothing, several parts, or a junction: nothing
+        editWireStyle( wires );
+        return true;
+    }
     comp->openProperties();               // Public slotProperties (also clears legacy switch keys)
     if( PropDialog* d = comp->propDialog() )
     {
@@ -566,6 +586,7 @@ void KeyboardController::leaveNetwork( bool reselect )
     QPoint at = m_walk.size() ? m_walk.current().pos : cursorPos().toPoint();
     markCorner( false );
     m_walk.stop();
+    if( !m_marked.isEmpty() ){ m_marked.clear(); Circuit::self()->update(); }
     m_arrowBurst = false;
     m_walkSelecting = true;
     Circuit::self()->clearSelection();
@@ -614,7 +635,12 @@ void KeyboardController::showStep( bool scroll )
     {
         if( Node* node = m_walk.dot( s ) ) node->setSelected( true );
     }
+    pruneMarks();
+    for( QString uid : m_marked )                        // Marked wires stay selected
+        if( Connector* con = NetworkWalk::wire( NetworkWalk::Step{ NetworkWalk::stepWire, uid, -1, QPoint(), 0 } ) )
+            con->setSelected( true );
     m_walkSelecting = false;
+    if( !m_marked.isEmpty() ) circ->update();            // Marks and the dashed step
     markCorner( true );
     if( scroll )
         if( CircuitView* v = CircuitView::self() ) v->ensureVisible( show, 32, 32 );
@@ -624,11 +650,25 @@ void KeyboardController::walkFromMouse( int kind, QString uid, int index, QPoint
 {
     m_value.revert();
     if( m_drawing ) cancelDraw();
-    if( m_walk.active() ) leaveNetwork( false );
+    QStringList marks;
+    if( m_walk.active() )
+    {
+        if( kind == NetworkWalk::stepWire )              // Several wires (specs/wire-colors.md):
+        {                                                // the current wire is marked first,
+            marks = m_marked;                            // then the clicked one toggles
+            NetworkWalk::Step cur = m_walk.current();
+            if( marks.isEmpty() && cur.kind == NetworkWalk::stepWire ) marks.append( cur.uid );
+            if( marks.contains( uid ) ) marks.removeAll( uid );
+            else                        marks.append( uid );
+        }
+        else marks = m_marked;                           // A corner or dot: the marks stay
+        leaveNetwork( false );
+    }
     NetworkWalk::Step seed{ (NetworkWalk::kind_t)kind, uid, index, pos, 0 };
     if( !m_walk.startFrom( seed ) ) return;
     qDebug() << "[kbd] network mode from a click on the" << NetworkWalk::kindName( seed.kind ) << uid;
     m_arrowBurst = false;
+    m_marked = marks;
     showStep( false );
     if( CircuitView* v = CircuitView::self() ) v->setFocus( Qt::MouseFocusReason );   // Keys work at once
 }
@@ -676,10 +716,150 @@ bool KeyboardController::networkKey( QKeyEvent* event, Qt::KeyboardModifiers mod
     }
     if( ( key == Qt::Key_Backspace || key == Qt::Key_Delete ) && plain )
     {
-        if( m_walk.current().kind == NetworkWalk::stepWire ) deleteWire();
+        if( !m_marked.isEmpty() || m_walk.current().kind == NetworkWalk::stepWire ) deleteWire();
         return true;                                    // Dots and corners: nothing
     }
+    // Several wires (specs/wire-colors.md): Enter marks, * the net, Space the colours
+    if( ( key == Qt::Key_Return || key == Qt::Key_Enter ) && plain )
+    {
+        NetworkWalk::Step s = m_walk.current();
+        if( s.kind != NetworkWalk::stepWire ){ say("Keyboard: Enter marks wires — this is a "+NetworkWalk::kindName( s.kind ) ); return true; }
+        toggleMark( s.uid );
+        return true;
+    }
+    if( text == "*" && ( plain || mods == Qt::ShiftModifier ) ) return markNet();
+    if( key == Qt::Key_Space && plain )
+    {
+        QList<Connector*> wires = wireSelection();
+        if( wires.isEmpty() ) say("Keyboard: no wire selected — Tab to a wire or mark some with Enter");
+        else editWireStyle( wires );
+        return true;
+    }
     return false;
+}
+
+// ----- Several wires (specs/wire-colors.md) -----------------------------------
+
+void KeyboardController::toggleMark( QString uid )
+{
+    if( m_marked.contains( uid ) ) m_marked.removeAll( uid );
+    else                           m_marked.append( uid );
+    qDebug() << "[kbd] marked wires" << m_marked;
+    showStep( false );
+    Circuit::self()->update();
+}
+
+// The walk's wires without instrument leads (specs/wire-colors.md, W5): a wire on a
+// scope's, meter's or probe's input (Connector::leadPin, through tunnels too), and
+// every wire of a branch that only leads to instruments: a dot whose wires are all
+// leads but one makes that one a lead too (two scope channels joined, then to the net).
+// A net of leads only: all its wires
+static QStringList netWires( NetworkWalk& walk )
+{
+    QList<Connector*> wires;
+    for( QString uid : walk.wireUids() )
+        if( Connector* con = NetworkWalk::wire( NetworkWalk::Step{ NetworkWalk::stepWire, uid, -1, QPoint(), 0 } ) )
+            wires.append( con );
+    QSet<Connector*> leads;
+    for( Connector* con : wires ) if( con->leadPin() ) leads.insert( con );
+
+    for( bool changed = !leads.isEmpty(); changed; )
+    {
+        changed = false;
+        for( Connector* con : wires )
+            for( Pin* end : { con->startPin(), con->endPin() } )
+            {
+                Node* dot = end ? dynamic_cast<Node*>( end->component() ) : nullptr;
+                if( !dot ) continue;
+                QList<Connector*> others;
+                for( Pin* p : dot->getPins() )
+                    if( p && p->connector() && !leads.contains( p->connector() ) ) others.append( p->connector() );
+                if( others.size() == 1 && !leads.contains( others.first() ) )
+                {
+                    leads.insert( others.first() );
+                    changed = true;
+                }
+            }
+    }
+    QStringList uids;
+    for( Connector* con : wires ) if( !leads.contains( con ) ) uids.append( con->getUid() );
+    if( uids.isEmpty() ) for( Connector* con : wires ) uids.append( con->getUid() );
+    return uids;
+}
+
+bool KeyboardController::markNet()
+{
+    QStringList net = netWires( m_walk );
+    bool all = !net.isEmpty();
+    for( QString uid : net ) if( !m_marked.contains( uid ) ){ all = false; break; }
+    if( all ) for( QString uid : net ) m_marked.removeAll( uid );
+    else      for( QString uid : net ) if( !m_marked.contains( uid ) ) m_marked.append( uid );
+    qDebug() << "[kbd] net" << ( all ? "unmarked:" : "marked:" ) << m_marked.size() << "wires marked";
+    showStep( false );
+    Circuit::self()->update();
+    return true;
+}
+
+void KeyboardController::pruneMarks()
+{
+    QStringList keep;
+    for( QString uid : m_marked )
+        if( NetworkWalk::wire( NetworkWalk::Step{ NetworkWalk::stepWire, uid, -1, QPoint(), 0 } ) ) keep.append( uid );
+    m_marked = keep;
+}
+
+void KeyboardController::netFromMouse( QString uid )
+{
+    if( !m_walk.active() || m_walk.wireUids().indexOf( uid ) < 0 ) return;   // The press started it
+    for( QString w : netWires( m_walk ) ) if( !m_marked.contains( w ) ) m_marked.append( w );
+    qDebug() << "[kbd] net of" << uid << "marked:" << m_marked.size() << "wires";
+    showStep( false );
+    Circuit::self()->update();
+}
+
+QList<Connector*> KeyboardController::wireSelection()
+{
+    QList<Connector*> wires;
+    if( !m_walk.active() ) return wires;
+    pruneMarks();
+    if( m_marked.isEmpty() )
+    {
+        if( m_walk.size() )
+            if( Connector* con = m_walk.wire( m_walk.current() ) )
+                if( m_walk.current().kind == NetworkWalk::stepWire ) wires.append( con );
+        return wires;
+    }
+    for( QString uid : m_marked )
+        if( Connector* con = NetworkWalk::wire( NetworkWalk::Step{ NetworkWalk::stepWire, uid, -1, QPoint(), 0 } ) )
+            wires.append( con );
+    return wires;
+}
+
+// The dialog shows the wires as they will look: no selection grey, no highlight
+void KeyboardController::editWireStyle( QList<Connector*> wires )
+{
+    if( wires.isEmpty() ) return;
+    Circuit* circ = Circuit::self();
+    QList<QGraphicsItem*> selected = circ->selectedItems();
+    m_styling = true;
+    m_walkSelecting = true;
+    circ->clearSelection();
+    m_walkSelecting = false;
+    circ->update();
+    WireStyleDialog::edit( wires, CircuitView::self() );
+    m_styling = false;
+    m_walkSelecting = true;
+    for( QGraphicsItem* item : selected ) if( item->scene() == circ ) item->setSelected( true );
+    m_walkSelecting = false;
+    circ->update();
+    if( CircuitView* v = CircuitView::self() ) v->setFocus( Qt::OtherFocusReason );
+}
+
+void KeyboardController::wireStyleFromMenu( Connector* clicked )
+{
+    QList<Connector*> wires = wireSelection();
+    if( !wires.contains( clicked ) ) wires = { clicked };
+    editWireStyle( wires );
 }
 
 // A corner moves with its two segments, the wire staying H/V; a burst of arrow
@@ -713,16 +893,17 @@ void KeyboardController::moveCorner( QPointF delta )
 void KeyboardController::deleteWire()
 {
     NetworkWalk::Step s = m_walk.current();
-    Connector* con = m_walk.wire( s );
-    if( !con ) return;
+    QList<Connector*> wires = wireSelection();          // The marked wires, or the current one
+    if( wires.isEmpty() ) return;
     Circuit* circ = Circuit::self();
     m_walkSelecting = true;
     circ->clearSelection();
-    con->setSelected( true );
-    circ->removeItems();
+    for( Connector* con : wires ) con->setSelected( true );
+    circ->removeItems();                                 // One undo step
     m_walkSelecting = false;
     m_arrowBurst = false;
-    qDebug() << "[kbd] deleted wire" << s.uid;
+    m_marked.clear();
+    qDebug() << "[kbd] deleted" << wires.size() << "wire(s), current" << s.uid;
     if( !m_walk.rebuild( s.pos, NetworkWalk::stepWire ) )
     {
         say( m_walk.pinId().isEmpty() ? "Keyboard: no wire left — back to parts mode"
@@ -1193,14 +1374,14 @@ void KeyboardController::mouseMoved( QPoint viewPos )
     showPointer();                          // The cross does not follow the mouse
 }
 
-void KeyboardController::mousePressed()
+void KeyboardController::mousePressed( bool keepWalk )
 {
     m_value.revert();                                    // A click reverts (K7)
     if( m_rect ) endRect( true );                        // and ends a selection rectangle
     if( m_drawing ) cancelDraw();                        // and cancels a wire being drawn (K9b)
     setPanMode( false );
-    if( m_walk.active() ) leaveNetwork( false );         // and ends network mode (K9)
-}   // A click reverts (K7)
+    if( m_walk.active() && !keepWalk ) leaveNetwork( false );   // and ends network mode (K9);
+}   // Cmd+click, right click: walkFromMouse(), the menu or the selection change decides
 
 void KeyboardController::clickedEmpty( QPointF scenePos )
 {
@@ -1298,24 +1479,37 @@ void KeyboardController::paint( QPainter* painter )
     CircuitView* v = CircuitView::self();
     if( !v || painter->device() != v->viewport() ) return;  // Not in exports and captures of the circuit
 
-    if( m_walk.active() && m_walk.size() )               // The walk's step (K9), in highlight:
+    if( m_walk.active() && m_walk.size() && !m_styling ) // The walk's step (K9), in highlight:
     {                                                    // a wire traced, a ring round a dot,
         NetworkWalk::Step s = m_walk.current();          // a small square on a corner
         painter->save();
         painter->setRenderHint( QPainter::Antialiasing, true );
-        painter->setPen( QPen( Theme::highlight(), 2.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin ) );
+        QPen solid( Theme::highlight(), 2.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin );
+        painter->setPen( solid );
         painter->setBrush( Qt::NoBrush );
+        auto trace = []( Connector* con ){
+            QPolygonF poly;
+            for( ConnectorLine* l : *con->lineList() )
+            {
+                if( poly.isEmpty() ) poly << l->p1();
+                poly << l->p2();
+            }
+            return poly;
+        };
+        for( QString uid : m_marked )                    // Marked wires (specs/wire-colors.md)
+            if( Connector* con = NetworkWalk::wire( NetworkWalk::Step{ NetworkWalk::stepWire, uid, -1, QPoint(), 0 } ) )
+                painter->drawPolyline( trace( con ) );
         if( s.kind == NetworkWalk::stepWire )
         {
             if( Connector* con = m_walk.wire( s ) )
             {
-                QPolygonF poly;
-                for( ConnectorLine* l : *con->lineList() )
+                if( !m_marked.isEmpty() )                // With marks: the current one dashed
                 {
-                    if( poly.isEmpty() ) poly << l->p1();
-                    poly << l->p2();
+                    QPen dash( Theme::highlight(), 1.2, Qt::DashLine, Qt::FlatCap, Qt::RoundJoin );
+                    dash.setDashPattern( { 3, 2 } );
+                    painter->setPen( m_marked.contains( s.uid ) ? QPen( Theme::canvas(), 1.0, Qt::DashLine ) : dash );
                 }
-                painter->drawPolyline( poly );
+                painter->drawPolyline( trace( con ) );
             }
         }
         else if( s.kind == NetworkWalk::stepDot ) painter->drawEllipse( QPointF( s.pos ), 5, 5 );
@@ -1405,6 +1599,7 @@ QJsonObject KeyboardController::state()
                 if( c->itemType() == "Node" ) dots.append( c->getUid() );
         }
         n["selectedWires"] = wires;
+        n["marked"] = QJsonArray::fromStringList( m_marked );
         n["selectedDots"]  = dots;
         o["network"] = n;
     }

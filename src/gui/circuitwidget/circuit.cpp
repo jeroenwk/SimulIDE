@@ -309,6 +309,7 @@ void Circuit::loadStrDoc( QString &doc )
                 Pin* endpin   = NULL;
                 QString startpinid, endpinid;
                 QStringList pointList;
+                QList<QPair<QString,QString>> conStyle;
 
                 QString name;
                 QStringRef val;
@@ -320,6 +321,8 @@ void Circuit::loadStrDoc( QString &doc )
                     if     ( name == "startpinid") startpinid = val.toString();
                     else if( name == "endpinid"  ) endpinid   = val.toString();
                     else if( name == "pointList" ) pointList  = val.toString().split(",");
+                    else if( name == "color" || name == "bandColor" || name == "bandWidth" )
+                        conStyle.append( qMakePair( name, val.toString() ) );   // specs/wire-colors.md
                     //else if( name == "uid"       ) uid        = val.toString();
                 }
                 if( m_pasting )
@@ -356,6 +359,7 @@ void Circuit::loadStrDoc( QString &doc )
                     if( newUid.isEmpty() ) newUid = "connector-"+newConnectorId();
                     Connector* con = new Connector( type, newUid, startpin, endpin );
                     con->setPointList( pointList );
+                    for( auto& st : conStyle ) con->setPropStr( st.first, st.second );
                     conList.append( con );
                     m_newComp = con;
                     if( !rev ){
@@ -1516,15 +1520,76 @@ void Circuit::drawBackground( QPainter*  painter, const QRectF &rect )
     painter->drawRect( m_scenerect );
     painter->setPen( Theme::grid() );
 
-    if( m_hideGrid ) return;
-
     // Lines at 4 + 8k, only in the exposed part (keeps SVG exports small)
     QRectF r = rect.intersected( m_scenerect );
-    if( r.isEmpty() ) return;
-    int x0 = 8*qFloor( ( r.left()-4 )/8 )+4, x1 = qCeil( r.right() );
-    int y0 = 8*qFloor( ( r.top() -4 )/8 )+4, y1 = qCeil( r.bottom() );
-    for( int x=x0; x<=x1; x+=8 ) painter->drawLine( QLineF( x, r.top(), x, r.bottom() ) );
-    for( int y=y0; y<=y1; y+=8 ) painter->drawLine( QLineF( r.left(), y, r.right(), y ) );
+    if( !m_hideGrid && !r.isEmpty() )
+    {
+        int x0 = 8*qFloor( ( r.left()-4 )/8 )+4, x1 = qCeil( r.right() );
+        int y0 = 8*qFloor( ( r.top() -4 )/8 )+4, y1 = qCeil( r.bottom() );
+        for( int x=x0; x<=x1; x+=8 ) painter->drawLine( QLineF( x, r.top(), x, r.bottom() ) );
+        for( int y=y0; y<=y1; y+=8 ) painter->drawLine( QLineF( r.left(), y, r.right(), y ) );
+    }
+    drawBands( painter );
+}
+
+// ----- Wire bands (specs/wire-colors.md) -------------------------------------
+
+// The polyline of each shown wire with a band, grouped by colour and width: each
+// group is one path stroked once, so the opacity does not add up where segments
+// or the wires of a net overlap (corners, dots)
+static QMap<QPair<QRgb,double>, QPainterPath> bandPaths( QList<Connector*>& conns )
+{
+    QMap<QPair<QRgb,double>, QPainterPath> groups;
+    for( Connector* con : conns )
+    {
+        if( !con->bandColor().isValid() ) continue;
+        QList<ConnectorLine*>* lines = con->lineList();
+        if( lines->isEmpty() || !lines->first()->isVisible() ) continue;
+        QPainterPath& path = groups[ qMakePair( con->bandColor().rgba(), con->bandWidth() ) ];
+        path.moveTo( lines->first()->p1() );
+        for( ConnectorLine* l : *lines ) path.lineTo( l->p2() );
+    }
+    return groups;
+}
+
+void Circuit::drawBands( QPainter* painter )
+{
+    auto groups = bandPaths( m_connList );
+    if( groups.isEmpty() ) return;
+    painter->save();
+    painter->setRenderHint( QPainter::Antialiasing, true );
+    painter->setBrush( Qt::NoBrush );
+    for( auto it = groups.begin(); it != groups.end(); ++it )
+    {
+        QColor color = QColor::fromRgba( it.key().first );
+        painter->setPen( QPen( color, it.key().second, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin ) );
+        painter->drawPath( it.value() );
+    }
+    painter->restore();
+}
+
+QRectF Circuit::bandsRect()
+{
+    QRectF rect;
+    auto groups = bandPaths( m_connList );
+    for( auto it = groups.begin(); it != groups.end(); ++it )
+    {
+        double h = it.key().second/2+1;
+        rect |= it.value().boundingRect().adjusted( -h, -h, h, h );
+    }
+    return rect;
+}
+
+void Circuit::bandsChanged()
+{
+    if( m_bandsPending ) return;
+    m_bandsPending = true;
+    QTimer::singleShot( 0, this, [this](){   // Once, after the edit: where they were and are
+        m_bandsPending = false;
+        QRectF now = bandsRect();
+        update( m_bandsRect | now );
+        m_bandsRect = now;
+    });
 }
 
 void Circuit::moveSelection( QPointF delta, bool newStep )

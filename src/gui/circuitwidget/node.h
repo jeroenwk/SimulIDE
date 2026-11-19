@@ -28,6 +28,8 @@ class Node : public Component
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
 
+        QColor dotColor();                         // specs/wire-colors.md
+
     protected:
         void contextMenuEvent( QGraphicsSceneContextMenuEvent* ) override {;}
 

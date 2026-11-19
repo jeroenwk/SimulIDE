@@ -13,6 +13,7 @@
 #include "simulator.h"
 #include "circuit.h"
 #include "pin.h"
+#include "component.h"
 #include "e-node.h"
 #include "utils.h"
 
@@ -40,11 +41,57 @@ new StrProp<Connector>( "uid"       ,"","", this, &Connector::getUid,     &Conne
 new StrProp<Connector>( "startpinid","","", this, &Connector::startPinId, &Connector::dummySetter ),
 new StrProp<Connector>( "endpinid"  ,"","", this, &Connector::endPinId,   &Connector::dummySetter ),
 new StrProp<Connector>( "pointList" ,"","", this, &Connector::pListStr,   &Connector::setPointListStr ),
+new StrProp<Connector>( "color"     ,"","", this, &Connector::colorStr,     &Connector::setColorStr ),
+new StrProp<Connector>( "bandColor" ,"","", this, &Connector::bandColorStr, &Connector::setBandColorStr ),
+new StrProp<Connector>( "bandWidth" ,"","", this, &Connector::bandWidthStr, &Connector::setBandWidthStr ),
     }, 0} );
 }
 Connector::~Connector()
 {
     Circuit::self()->compMap()->remove( m_id );
+    if( m_bandColor.isValid() ) Circuit::self()->bandsChanged();
+}
+
+// ----- Wire colours (specs/wire-colors.md) -----------------------------------
+
+QString Connector::colorStr() { return m_lineColor.isValid() ? m_lineColor.name() : ""; }
+
+void Connector::setColorStr( QString c )
+{
+    QColor color( c.trimmed() );
+    if( !c.trimmed().isEmpty() && !color.isValid() ) qWarning() << "[wires]" << m_id << "unknown colour" << c;
+    m_lineColor = color.isValid() ? QColor( color.rgb() ) : QColor();   // Opaque
+    for( ConnectorLine* line : m_conLineList ) line->update();
+    for( Pin* pin : { m_startPin, m_endPin } )                          // Junction dots take it
+        if( pin && pin->component() ) pin->component()->update();
+}
+
+QString Connector::bandColorStr() { return m_bandColor.isValid() ? m_bandColor.name( QColor::HexArgb ) : ""; }
+
+void Connector::setBandColorStr( QString c )
+{
+    QColor color( c.trimmed() );
+    if( !c.trimmed().isEmpty() && !color.isValid() ) qWarning() << "[wires]" << m_id << "unknown band colour" << c;
+    bool had = m_bandColor.isValid();
+    m_bandColor = color.isValid() ? color : QColor();
+    if( had || m_bandColor.isValid() ) Circuit::self()->bandsChanged();
+}
+
+QString Connector::bandWidthStr() { return m_bandWidth > 0 ? QString::number( m_bandWidth ) : ""; }
+
+void Connector::setBandWidthStr( QString w )
+{
+    double v = w.trimmed().toDouble();
+    m_bandWidth = ( v > 0 ) ? qBound( 1.0, v, 100.0 ) : 0;
+    if( m_bandColor.isValid() ) Circuit::self()->bandsChanged();
+}
+
+void Connector::copyStyle( Connector* from )
+{
+    if( !from || !from->hasStyle() ) return;
+    setColorStr( from->colorStr() );
+    setBandWidthStr( from->bandWidthStr() );
+    setBandColorStr( from->bandColorStr() );
 }
 
 void Connector::remNullLines()      // Remove lines with leght = 0 or aligned
@@ -320,7 +367,10 @@ void Connector::setSelected(  bool selected )
 { for( ConnectorLine* line : m_conLineList ) line->setSelected( selected ); }
 
 void Connector::setVisib(  bool vis )
-{ for( ConnectorLine* line : m_conLineList ) line->setVisible( vis ); }
+{
+    for( ConnectorLine* line : m_conLineList ) line->setVisible( vis );
+    if( m_bandColor.isValid() ) Circuit::self()->bandsChanged();
+}
 
 void Connector::remove()
 {
@@ -375,6 +425,8 @@ void Connector::splitCon( int index, Pin* pin0, Pin* pin2 )
     }
     con1->closeCon( m_endPin );    // Close con1 first please
     con0->closeCon( pin0 );        // con0
+    con0->copyStyle( this );       // Both halves keep the wire's colours
+    con1->copyStyle( this );
 
     m_startPin = nullptr;
     m_endPin   = nullptr;

@@ -39,6 +39,11 @@ class Circuit : public QGraphicsScene
         void setDrawGrid( bool draw );
         void setGridShown( bool show ) { m_hideGrid = !show; }   // Not saved (image export)
 
+        // Wire bands (specs/wire-colors.md), drawn in the background below every item:
+        // bandsChanged() after a band or a banded wire changes (repaints soon, once)
+        void   bandsChanged();
+        QRectF bandsRect();               // Where bands are drawn (exports add it)
+
         bool animate() { return m_animate; }
         // Charge display reference voltage (V), 0 = auto (largest source voltage)
         double chargeScale() { return m_chargeScale; }
@@ -216,6 +221,9 @@ class Circuit : public QGraphicsScene
         bool m_loading;
         bool m_conStarted;
         bool m_hideGrid;
+        bool   m_bandsPending = false;
+        QRectF m_bandsRect;               // Last repainted band area
+        void   drawBands( QPainter* painter );
 
         bool m_compRemoved;
         bool m_animate;

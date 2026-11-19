@@ -81,7 +81,11 @@ const QList<Shortcut>& Shortcuts::all()
         { "Wires", "Network mode from the dot, corner or wire nearest to the cross", "=", "Nothing selected" },
         { "Wires", "Next / previous wire, corner or dot (nearest along the wires first)", "Tab / Shift+Tab", "Network mode" },
         { "Wires", "Move the selected dot or corner 8 / 64 px (the wire stays horizontal / vertical)", "Arrows / Cmd+Arrows", "Network mode" },
-        { "Wires", "Delete the selected wire", "Backspace", "Network mode" },
+        { "Wires", "Delete the marked wires, or the selected wire", "Backspace", "Network mode" },
+        { "Wires", "Mark / unmark the selected wire (several wires)", "Enter", "Network mode" },
+        { "Wires", "Mark every wire of the net (not instrument leads); again: unmark them", "*", "Network mode" },
+        { "Wires", "Wire colours: line, band, opacity, width (marked wires, or the selected one)", "Space", "Network mode" },
+        { "Wires", "Wire colours of the wire segments selected by a rubber band", "Space", "Only wires selected" },
         { "Wires", "Back to parts mode, the part selected (any other key too, then it acts)", "= or Esc", "Network mode" },
         // K9b: drawing a wire from a wire
         { "Wires", "Draw a new wire from the wire under the cross (a dot is added there)", "+", "Nothing selected" },

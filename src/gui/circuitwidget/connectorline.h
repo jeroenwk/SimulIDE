@@ -56,6 +56,7 @@ class ConnectorLine : public QGraphicsItem
         void mousePressEvent( QGraphicsSceneMouseEvent* event );
         void mouseMoveEvent( QGraphicsSceneMouseEvent* event );
         void mouseReleaseEvent( QGraphicsSceneMouseEvent* event );
+        void mouseDoubleClickEvent( QGraphicsSceneMouseEvent* event );
 
         void contextMenuEvent( QGraphicsSceneContextMenuEvent* event );
         
@@ -69,6 +70,7 @@ class ConnectorLine : public QGraphicsItem
 
     private:
         void paintFlow( QPainter* p );   // Current flow dots
+        void bandMoved();                // specs/wire-colors.md
 
         int myIndex();
         int m_p1X;

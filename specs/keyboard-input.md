@@ -204,7 +204,10 @@ Network mode (K9):
 |---|---|---|
 | Tab / Shift+Tab | next / previous step of the walk | same |
 | Arrows / Cmd+Arrows | nothing | move it 8 / 64 px (D23) |
-| Backspace / Delete | delete the whole wire | nothing |
+| Backspace / Delete | delete the whole wire (the marked wires, if any) | the marked wires, if any |
+| Enter | mark / unmark it (K12) | message |
+| `*` | mark the walk's net; all marked: unmark (K12) | same |
+| Space | wire colours dialog: marked wires, else this one (K12) | marked wires, if any |
 | `=` / Esc | back to parts mode, the part selected | same |
 
 Drawing a wire (K9b):
@@ -741,6 +744,16 @@ Validate
       it reaches them, and unselected when it shrinks off them.
 - [ ] Release Shift: they stay selected; arrows move them all, wires following.
 - [ ] Esc while holding Shift: nothing selected.
+
+### K12 — Several wires and wire colours
+*(user request 2026-11-19; own spec: [wire-colors.md](wire-colors.md))*
+
+- Network mode marks wires: Enter the current one, `*` the walk's net; Cmd+click
+  toggles a wire, Cmd+double-click marks its net. Space opens the colours dialog
+  (line colour, band colour, opacity, width) for the marked wires; Backspace deletes
+  them. The marks go when network mode ends. A mouse Cmd+click no longer ends
+  network mode on the press (`KeyboardController::mousePressed( cmdClick )`).
+- Tests: `tests/kbd/test_wire_colors.py`.
 
 ### K10 — Shortcut list in Settings
 *(epic: "listing shortcuts")*

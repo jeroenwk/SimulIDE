@@ -271,6 +271,9 @@ QJsonObject wireJson( Connector* con )
     QJsonArray pts;
     for( QString s : con->pointList() ) pts.append( s.toInt() );
     o["points"] = pts;
+    if( con->lineColor().isValid() ) o["color"]     = con->colorStr();      // specs/wire-colors.md
+    if( con->bandColor().isValid() ) o["bandColor"] = con->bandColorStr();
+    if( !con->bandWidthStr().isEmpty() ) o["bandWidth"] = con->bandWidth();
     return o;
 }
 

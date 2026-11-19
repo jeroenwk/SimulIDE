@@ -48,12 +48,22 @@ class KeyboardController
 
         // The mouse moved over the canvas (viewport position): shows the pointer again
         void mouseMoved( QPoint viewPos );
-        void mousePressed();                     // Any button: ends pan mode
+        void mousePressed( bool keepWalk = false );   // Any button: ends pan mode
         void clickedEmpty( QPointF scenePos );   // Left click (no drag) on empty canvas: the cross goes there
 
         // Cmd+click on a wire, corner or dot (K9d): network mode with that item selected,
         // highlighted as when walked to with the keyboard. kind: NetworkWalk::kind_t
         void walkFromMouse( int kind, QString uid, int index, QPoint pos );
+
+        // Several wires (specs/wire-colors.md): Cmd+click toggles a wire in the marked
+        // wires of network mode, Cmd+double-click marks its net
+        void netFromMouse( QString uid );
+        // The marked wires, or the current wire when none is marked (network mode)
+        QList<Connector*> wireSelection();
+        // The colours dialog for these wires; a right click on `clicked`: the marked
+        // wires if it is one of them, else that wire alone
+        void editWireStyle( QList<Connector*> wires );
+        void wireStyleFromMenu( Connector* clicked );
 
         void setFocused( bool focused );    // Canvas got / lost keyboard focus
         bool focused() { return m_focused; }
@@ -114,6 +124,9 @@ class KeyboardController
         void showStep( bool scroll = true );        // Select / mark the current step, scroll to it
         void moveCorner( QPointF delta );
         void deleteWire();
+        void toggleMark( QString uid );             // specs/wire-colors.md
+        bool markNet();                             // *: the walk's wires, or none if all were
+        void pruneMarks();                          // Marks of wires that are gone
         void markCorner( bool on );                 // Repaint the step mark's area
         void say( QString text );                   // A line in Messages
 
@@ -171,6 +184,8 @@ class KeyboardController
         bool        m_walkSelecting;            // The walk is changing the selection itself
         QString     m_burstWire;                // Corner moves of one wire: one undo step
         QRectF      m_stepMark;                 // Where the step's mark is drawn (repaint)
+        QStringList m_marked;                   // Marked wires (uids), specs/wire-colors.md
+        bool        m_styling = false;          // The colours dialog is open: no highlight
 
         bool          m_drawing;                // K9b: drawing a wire from a wire
         QList<QPoint> m_drawPts;                // Its fixed points: the start dot, forced corners

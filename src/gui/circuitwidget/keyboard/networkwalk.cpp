@@ -201,6 +201,13 @@ void NetworkWalk::stop()
 
 NetworkWalk::Step NetworkWalk::current() { return m_steps.at( m_index ); }
 
+QStringList NetworkWalk::wireUids()
+{
+    QStringList uids;
+    for( const Step& s : m_steps ) if( s.kind == stepWire && !uids.contains( s.uid ) ) uids.append( s.uid );
+    return uids;
+}
+
 void NetworkWalk::stepBy( int dir )
 {
     int n = m_steps.size();

@@ -282,10 +282,11 @@ void CliApi::registerKbd()
         return out;
     });
 
-    add("ui click", "ui click <x,y> [--cmd] | ui click <comp> [index]",
+    add("ui click", "ui click <x,y> [--cmd] [--double] | ui click <comp> [index]",
         "Left click (press and release) at a scene position on the canvas, as the mouse does: "
         "on empty canvas it clears the selection and places the keyboard cursor there; --cmd holds Cmd "
-        "(Ctrl elsewhere): on a wire, corner or dot it starts network mode there. With a component "
+        "(Ctrl elsewhere): on a wire, corner or dot it starts network mode there; in network mode, on a "
+        "wire it marks or unmarks it (with --double: marks its net, specs/wire-colors.md). With a component "
         "name instead of x,y: click that part's button or toggle its switch. The view scrolls to show "
         "the point first.",
         []( CliCtx& c ) -> QJsonValue
@@ -305,6 +306,13 @@ void CliApi::registerKbd()
         QApplication::sendEvent( v->viewport(), &press );
         QMouseEvent release( QEvent::MouseButtonRelease, vp, gp, Qt::LeftButton, Qt::NoButton, mods );
         QApplication::sendEvent( v->viewport(), &release );
+        if( c.flag("double") )                   // A double click: Qt's sequence after the first click
+        {
+            QMouseEvent dbl( QEvent::MouseButtonDblClick, vp, gp, Qt::LeftButton, Qt::LeftButton, mods );
+            QApplication::sendEvent( v->viewport(), &dbl );
+            QMouseEvent release2( QEvent::MouseButtonRelease, vp, gp, Qt::LeftButton, Qt::NoButton, mods );
+            QApplication::sendEvent( v->viewport(), &release2 );
+        }
         return kbdState();
     });
 
