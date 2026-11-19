@@ -442,7 +442,7 @@ Keyboard-driven editing (`specs/keyboard-input.md`). Tests: `tests/kbd/run.sh`.
 |---|---|
 | `kbd partkey <part> [<letter>\|none] [--replace]` | A part's keyboard shortcut (the letter that places that kind of part at the cross), as its properties dialog sets it: `<part>` is a component on the canvas or a name in the component list. Without a letter: show it (`key`, `default`, `caption`). A letter another part has needs `--replace` (that part then has none); `h` `w` `k` and non-letters are refused; `none` clears. Saved, except on a headless server (in memory only) |
 | `kbd state` | Focus, keyboard cursor (the cross, scene x,y on the grid lines at 4 + 8k), whether the cross is shown (focus and no part selected), the mouse pointer hidden, `panMode`, `zoom` (view scale), selected parts, the pins to wire (`pinFrom`, `pinTo`); with one part selected its `selectedPin` (`selectedPinManual`: chosen with `<` `>`, else auto) and `pinsClockwise`; while a value is typed `valueEdit` (part, property, buffer); in network mode (`=`) `network`: the `pin` walked from, the `walk` (its steps in order: `wire <uid>`, `corner <uid>#<point index>`, `dot <uid>`), the current `step` (kind, uid, pos, path length) and the `selectedWires` / `selectedDots` highlighted; while a wire is drawn from a wire (`+`) `drawing`: its `fixed` points, the `wire` uid and its current `points` |
-| `kbd shortcuts` | Every shortcut of the circuit editor: category, action, keys, context |
+| `kbd shortcuts [--table]` | Every shortcut of the circuit editor: category, action, keys (macOS words: `Cmd+Shift+Z`), context. `--table`: the rows of Settings > Shortcuts (K10): keys as this platform writes them (`⇧⌘Z` on macOS, `Ctrl+Shift+Z` elsewhere), plus the part letters in effect (category `Part letters`), in category order |
 
 Headless, the window is never active, so `ui type` and `ui focus` set the canvas focus
 of the keyboard state directly. The cross is drawn on the view only: `capture window view`
@@ -465,7 +465,7 @@ look at the window and point at parts.
 | `view zoom <factor>` / `view center <comp\|x,y>` | Zoom by a factor, or center on a part or point |
 | `view show <comp ...>` | Select the parts and zoom to them |
 | `view raise` | Bring the window to the front |
-| `view settings [app\|circuit\|simulation\|close]` | Open the Settings dialog on a tab, or close it |
+| `view settings [app\|circuit\|simulation\|shortcuts\|close]` | Open the Settings dialog on a tab (`shortcuts`: the keyboard shortcut list, K10), or close it |
 | `view props <comp> [--tab N\|NAME] [--close]` | Open a component's property dialog (on a tab, by number or name), or close it |
 | `view export` | Show the Export dialog without blocking (the toolbar's Export button opens it modally) |
 

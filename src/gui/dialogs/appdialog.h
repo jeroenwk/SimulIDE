@@ -30,6 +30,7 @@ class AppDialog : public QDialog, private Ui::AppDialog
     public:
         void showTab( int i ) { tabList->setCurrentIndex( i ); }   // CLI: view settings
         void refreshColors() { if( m_themeBox ) updateColorButtons(); } // Theme changed elsewhere
+        int  shortcutsTab() { return tabList->indexOf( m_keysPage ); }  // K10
     protected:
         void showEvent( QShowEvent* e ) override;   // Re-read values changed while hidden
     public slots:
@@ -74,6 +75,12 @@ class AppDialog : public QDialog, private Ui::AppDialog
 
     private slots:
         void on_fontName_currentFontChanged( const QFont &f );
+
+    private:
+        void buildShortcuts();                       // K10: the Shortcuts tab
+        void fillShortcuts();                        // Its rows, read again on each show
+        QWidget*     m_keysPage = nullptr;
+        class QTableWidget* m_keysTree = nullptr;
 
     private:
         void syncCharge();

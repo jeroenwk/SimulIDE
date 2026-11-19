@@ -716,19 +716,29 @@ Validate
 ### K10 — Shortcut list in Settings
 *(epic: "listing shortcuts")*
 
-- New tab **Shortcuts** in `AppDialog`: read-only, scrollable table grouped by
-  category (File, Edit, View, Selection, Moving, Pins & wiring, Values, Network,
-  Parts, Switches). Columns: Action, Key (⌘ ⇧ ⌥ symbols on macOS).
-- Built from the `Shortcuts` registry + the part shortcuts in effect (defaults
-  and user overrides) — nothing hand-typed.
-- Text at the top: part shortcuts are set in the component list → right click →
-  *Manage Components* → Shortcut column (one lowercase letter); capital letters
-  are reserved for the `Key` of switches and push buttons (Shift+letter).
+- Tab **Shortcuts** in `AppDialog` (Settings), the last one: read-only,
+  scrollable table, one shaded heading row per category (File, Edit, View,
+  Simulation, Selection, Moving, Pins & wiring, Wires, Parts, Part letters,
+  Switches). Columns: Action (wrapped), Keys, When (the registry's context).
+- Keys as the platform writes them (D22): ⌘ ⇧ ⌥ ⌃ on macOS (`⇧⌘Z`; a word key
+  gets a space: `⇧ Tab`, `⌥ its letter`), Ctrl+ Shift+ Alt+ Meta+ elsewhere.
+  The registry keeps the macOS words (`Cmd+Shift+Z`); `Shortcuts::shown`
+  converts them, modifier by modifier, through Qt's native text.
+- Built from the `Shortcuts` registry + the part letters in effect (defaults and
+  user changes), category *Part letters*, sorted a–z — nothing hand-typed
+  (`Shortcuts::table`, also `kbd shortcuts --table`). Read again each time the
+  dialog shows, so a letter changed in a part's properties appears.
+- Text at the top: click on the canvas first; a part's letter is set in its
+  properties, Keyboard tab; capital letters are kept for the `Key` of switches
+  and push buttons (Shift+letter).
+- A `QTableWidget`, not a tree: a tree view does not wrap long actions (its row
+  heights ignore the column width); the rows are sized again when a column is.
+- CLI: `view settings shortcuts` opens it; `tests/kbd/test_K10_list.py`.
 
 Validate
 - [ ] Every key of §4.2 and every Cmd shortcut appears once, in its category.
-- [ ] Change a part shortcut in Manage Components → the list shows it next time.
-- [ ] Scrolls on a small window; readable in dark and light theme.
+- [ ] Change a part shortcut (its properties, Keyboard tab) → the list shows it next time.
+- [ ] Scrolls on a small window; long actions wrap; readable in dark and light theme.
 
 ---
 

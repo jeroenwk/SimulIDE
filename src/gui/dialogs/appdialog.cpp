@@ -27,6 +27,9 @@
 #include "simulator.h"
 #include "circuit.h"
 #include "circuitwidget.h"
+#include "shortcuts.h"
+#include <QTableWidget>
+#include <QHeaderView>
 
 AppDialog::AppDialog( QWidget* parent )
          : QDialog( parent )
@@ -115,6 +118,8 @@ AppDialog::AppDialog( QWidget* parent )
     mainLayout->removeWidget( helpText );
     //helpText->setText( help );
 
+    buildShortcuts();
+
     tabList->setMinimumHeight( 0 );   // The .ui's fixed 300 px hid the pages' real minimum: widgets got squeezed
     on_tabList_currentChanged( tabList->currentIndex() );   // Size by the first tab shown
 }
@@ -139,7 +144,9 @@ void AppDialog::on_tabList_currentChanged( int tab )
     // adjustSize(): it caps at 2/3 of the screen; nor sizeHint(): it counts every page
     QWidget* cur = tabList->widget( tab );
     int extra = qMax( 0, cur->sizeHint().height()-cur->minimumSizeHint().height() );
-    resize( width(), minimumHeight()+extra );
+    if( cur == m_keysPage )                  // A long list: room for it, the rest scrolls
+         resize( qMax( width(), int( 720*m_scale ) ), qMax( minimumHeight(), int( 560*m_scale ) ) );
+    else resize( width(), minimumHeight()+extra );
     QWidget* page = cur;
     qDebug() << "[Settings] tab" << tab << "min height" << minimumHeight() << "size" << size()
              << "page min" << page->minimumSizeHint() << "page layout min" << ( page->layout() ? page->layout()->minimumSize() : QSize() )
@@ -157,6 +164,7 @@ void AppDialog::updtHelp()
             case 1: tabStr = "circuit";    break;
             case 2: tabStr = "simulation"; break;
         }
+        if( tabStr.isEmpty() ){ m_showHelp = false; helpText->setVisible( false ); mainLayout->removeWidget( helpText ); return; }
         helpText->setText( MainWindow::self()->getHelp( tabStr) );
     }
     else mainLayout->removeWidget( helpText );
@@ -291,7 +299,85 @@ void AppDialog::showEvent( QShowEvent* e )
     animate->setChecked( Circuit::self()->animate() );
     refreshColors();
     syncNoise();
+    fillShortcuts();                         // Part letters may have changed
     QDialog::showEvent( e );
+}
+
+// K10: every keyboard shortcut, read-only, from the registry (Shortcuts::table) and
+// the part letters in effect. Keys as this platform writes them (⌘ on macOS)
+void AppDialog::buildShortcuts()
+{
+    m_keysPage = new QWidget();
+    QVBoxLayout* l = new QVBoxLayout( m_keysPage );
+    QLabel* intro = new QLabel( tr("The keys of the circuit editor (click on the canvas first). "
+        "A part's letter is set in its properties, Keyboard tab. "
+        "Capital letters are kept for the Key of switches and push buttons (Shift+letter)."), m_keysPage );
+    intro->setWordWrap( true );
+    l->addWidget( intro );
+
+    m_keysTree = new QTableWidget( m_keysPage );
+    m_keysTree->setObjectName("shortcutList");
+    m_keysTree->setColumnCount( 3 );
+    m_keysTree->setHorizontalHeaderLabels({ tr("Action"), tr("Keys"), tr("When") });
+    m_keysTree->verticalHeader()->setVisible( false );
+    m_keysTree->setShowGrid( false );
+    m_keysTree->setSelectionMode( QAbstractItemView::NoSelection );
+    m_keysTree->setEditTriggers( QAbstractItemView::NoEditTriggers );
+    m_keysTree->setFocusPolicy( Qt::NoFocus );
+    m_keysTree->setWordWrap( true );
+    m_keysTree->setTextElideMode( Qt::ElideNone );
+    m_keysTree->setVerticalScrollMode( QAbstractItemView::ScrollPerPixel );
+    QHeaderView* h = m_keysTree->horizontalHeader();
+    h->setDefaultAlignment( Qt::AlignLeft );
+    h->setSectionResizeMode( 0, QHeaderView::Stretch );
+    h->setSectionResizeMode( 1, QHeaderView::ResizeToContents );
+    h->setSectionResizeMode( 2, QHeaderView::Interactive );
+    h->resizeSection( 2, 170*m_scale );
+    m_keysTree->setMinimumHeight( 200*m_scale );
+    // Wrapped rows get their height from the column width: again whenever it changes
+    connect( h, &QHeaderView::sectionResized, m_keysTree, [this](){
+        QMetaObject::invokeMethod( m_keysTree, "resizeRowsToContents", Qt::QueuedConnection ); } );
+    l->addWidget( m_keysTree, 1 );
+
+    tabList->addTab( m_keysPage, tr("Shortcuts") );
+    fillShortcuts();
+}
+
+void AppDialog::fillShortcuts()
+{
+    if( !m_keysTree ) return;
+    QList<Shortcut> rows = Shortcuts::table();
+    QFont bold = m_keysTree->font();
+    bold.setBold( true );
+    m_keysTree->clearSpans();
+    m_keysTree->setRowCount( 0 );
+    QString cat;
+    auto cell = [this]( int r, int c, QString text ){
+        QTableWidgetItem* it = new QTableWidgetItem( text );
+        it->setFlags( Qt::ItemIsEnabled );
+        it->setTextAlignment( Qt::AlignLeft | Qt::AlignTop );
+        m_keysTree->setItem( r, c, it );
+        return it;
+    };
+    for( const Shortcut& s : rows )
+    {
+        int r = m_keysTree->rowCount();
+        if( s.category != cat )                          // The category's heading row
+        {
+            cat = s.category;
+            m_keysTree->insertRow( r );
+            QTableWidgetItem* it = cell( r, 0, cat );
+            it->setFont( bold );
+            it->setBackground( m_keysTree->palette().color( QPalette::Button ) );  // Light and dark themes
+            m_keysTree->setSpan( r, 0, 1, 3 );
+            r++;
+        }
+        m_keysTree->insertRow( r );
+        cell( r, 0, s.action );
+        cell( r, 1, s.keys );
+        cell( r, 2, s.context );
+    }
+    m_keysTree->resizeRowsToContents();
 }
 
 void AppDialog::buildNoise()

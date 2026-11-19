@@ -360,12 +360,15 @@ void CliApi::registerKbd()
         return kbdState();
     });
 
-    add("kbd shortcuts", "kbd shortcuts",
-        "Every keyboard shortcut of the circuit editor: category, action, keys, context.",
-        []( CliCtx& ) -> QJsonValue
+    add("kbd shortcuts", "kbd shortcuts [--table]",
+        "Every keyboard shortcut of the circuit editor: category, action, keys, context. Keys are "
+        "written as on macOS (Cmd+Shift+Z). --table: the rows Settings > Shortcuts shows (K10): keys "
+        "as this platform writes them (⇧⌘Z on macOS, Ctrl+Shift+Z elsewhere), the part letters in "
+        "effect added (category Part letters), in category order.",
+        []( CliCtx& c ) -> QJsonValue
     {
         QJsonArray list;
-        for( const Shortcut& s : Shortcuts::all() )
+        for( const Shortcut& s : c.has("table") ? Shortcuts::table() : Shortcuts::all() )
             list.append( QJsonObject{ {"category", s.category}, {"action", s.action},
                                       {"keys", s.keys}, {"context", s.context} } );
         return list;

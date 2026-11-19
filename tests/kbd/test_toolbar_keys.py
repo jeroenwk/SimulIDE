@@ -28,7 +28,7 @@ KEYS = {
     "Undo":                      "⌘Z" if MAC else "Ctrl+Z",
     "Redo":                      "⇧⌘Z" if MAC else "Ctrl+Shift+Z",
     "Zoom to fit":               "⌥⌘0" if MAC else "Ctrl+Alt+0",
-    "Zoom to selected":          "⌃⌘0" if MAC else "Ctrl+Meta+0",
+    "Zoom to selected":          "⌃⌘0" if MAC else "Meta+Ctrl+0",  # Non-macOS order: untested
     "Zoom to Scale 1":           "⌘0" if MAC else "Ctrl+0",
     "Start Simulation":          "F5",
     "Pause Simulation":          "F6",
