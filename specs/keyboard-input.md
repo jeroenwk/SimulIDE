@@ -139,6 +139,18 @@ CircuitView (QGraphicsView)          Circuit (QGraphicsScene)
   `routePoints`); K9's network walk builds on `netWires`.
 - **`NetworkWalk`** (K9): builds the ordered list of wires, dots and corners
   reachable from a pin, without crossing parts.
+- **Modules in `src/gui/circuitwidget/keyboard/`** (split before K9, review of
+  #83–#88): `KeyboardController` keeps the state that spans contexts (cursor,
+  focus, pointer, pan, selection rule, pinFrom/pinTo, the chain's leave pin) and
+  dispatches `keyPress` by context in the §4.1 order — EditValue, network mode,
+  parts mode. `ValueEditor` (K7) owns the typed value: its grammar, the label
+  while typing and the commit (one undo step); `key()` answers *notMine /
+  handled / committed* and the controller reverts or leaves the part.
+  `PinChain` is the pin geometry of chains (D16–D19: pin direction, nearest and
+  most opposite pin, facing placement, leave position), pure functions on scene
+  positions. K9 adds `NetworkWalk` the same way: a class owning the walk and
+  its index, its keys tried at the "network mode" slot of `keyPress`, painting
+  the corner marker through `KeyboardController::paint`.
 - **Pin painting**: `Pin::paint` asks the controller for its role
   (`none / selected / from / to`) and draws with `Theme::highlight()` or
   `Theme::pinAccent()`.

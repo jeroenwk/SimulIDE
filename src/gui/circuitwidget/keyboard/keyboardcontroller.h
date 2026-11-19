@@ -19,6 +19,8 @@
 #include <QString>
 #include <QPointer>
 
+#include "valueeditor.h"
+
 class QKeyEvent;
 class QGraphicsItem;
 class QDialog;
@@ -94,18 +96,7 @@ class KeyboardController
         bool wireKey();                             // w: wire pinFrom to pinTo (K8)
         bool escKey();
         bool enterKey( bool opposite = false );     // Shift+Enter: leave by the opposite pin
-        QPointF leavePos( Component* comp, bool opposite, Pin** used = nullptr );  // Where the cross goes (D16)
-        Pin* oppositePin( Component* comp, Pin* sel );       // Most opposite visible pin, or nullptr
-
-        // Typing the selected part's value (K7): buffer [-]digits[.digits][mult[digits]]
-        QChar   valueEntryChar( QKeyEvent* event, Qt::KeyboardModifiers mods );  // '\0': not one
-        bool    valueKey( QKeyEvent* event, Qt::KeyboardModifiers mods );        // While editing
-        bool    startValueEdit( QChar first );
-        void    endValueEdit();                     // Revert: the label shows the value from before
-        void    commitValue();                      // Enter: set the property (one undo step)
-        void    valueChar( QChar c );               // One buffer char, per the grammar
-        void    updateValueLabel();                 // The label shows the buffer + unit (200k▏Ω)
-        QString valueString( Component* comp );     // The buffer as a property value ("200 kΩ")
+        void leavePart( Component* comp, bool opposite );   // Unselect, cross beyond its pin (D16)
 
         void selectPart( Component* comp );
         Component* compByUid( QString uid );
@@ -147,11 +138,7 @@ class KeyboardController
         bool    m_selPending;                   // A settleSelection() is queued
         void*   m_circuit;                      // Circuit whose selectionChanged is connected
 
-        bool    m_valueEdit;                    // A value is being typed on the selected part
-        QString m_valueUid;
-        QString m_valueProp;
-        QString m_valueBuf;
-        QString m_valueOldText;                 // The value label before the edit
+        ValueEditor m_value;                    // Typing the selected part's value (K7)
 
         QString m_leavePin;                     // The pin Enter left from (D17), and the
         QPointF m_leavePos;                     // cross spot beyond it: placement continues there
