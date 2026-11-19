@@ -48,6 +48,8 @@ const QList<Shortcut>& Shortcuts::all()
         { "Selection", "Select the previous part", "Shift+Tab", "" },
         { "Selection", "Unselect all", "Esc", "Selection" },
         { "Selection", "Unselect the part, put the cursor a big step right of it", "Enter", "One part selected" },
+        // K6: properties
+        { "Edit", "Open the selected part's properties dialog (closing it returns to the canvas)", "Space", "One part selected" },
     };
     return list;
 }

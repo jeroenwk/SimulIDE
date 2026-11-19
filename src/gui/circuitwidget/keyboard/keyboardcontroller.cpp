@@ -13,6 +13,8 @@
 #include <QGraphicsItem>
 #include <QScrollBar>
 #include <QCursor>
+#include <QDialog>
+#include "propdialog.h"
 
 #include "keyboardcontroller.h"
 #include "circuitview.h"
@@ -107,6 +109,7 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     {
         if( key == Qt::Key_Escape ) return escKey();
         if( key == Qt::Key_Return || key == Qt::Key_Enter ) return enterKey();
+        if( key == Qt::Key_Space ) return spaceKey();
     }
 
     // A lowercase letter bound to a part (Manage Components; defaults r, c, ...): place it
@@ -240,6 +243,26 @@ bool KeyboardController::partKey( QString letter )
     circ->saveCompChange( comp->getUid(), COMP_STATE_NEW, "" );
     qDebug() << "[kbd] key" << letter << "places" << name << "at" << comp->pos();
     selectPart( comp );                      // Selected, pins paired with the last part
+    return true;
+}
+
+// Space: open the selected part's properties; closing the dialog gives the canvas
+// focus back (also with Esc: the dialog takes the key itself and rejects)
+bool KeyboardController::spaceKey()
+{
+    Component* comp = singlePart();
+    if( !comp ) return false;                 // Nothing, several parts, or a junction: nothing
+    comp->openProperties();               // Public slotProperties (also clears legacy switch keys)
+    if( PropDialog* d = comp->propDialog() )
+    {
+        if( m_focusDialog != d )              // Once per dialog: it is reused while the part lives
+        {
+            m_focusDialog = d;
+            QObject::connect( d, &QDialog::finished, d, [](){
+                if( CircuitView* v = CircuitView::self() ) v->setFocus( Qt::OtherFocusReason );
+            });
+        }
+    }
     return true;
 }
 
