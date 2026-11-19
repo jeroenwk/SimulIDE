@@ -76,11 +76,13 @@ def test(sim):
 
         # : and / step the component list, with a resistor selected (QWERTZ /: Shift+7)
         sim.cli("select", "R1")
-        a = typ(sim, lay, ":").get("libraryPart")
+        row = lambda st: st.get("libraryPart") or st.get("libraryGroup")  # noqa: E731
+        a = row(typ(sim, lay, ":"))
         s = typ(sim, lay, ":")
+        moved = row(s) != a
         s = typ(sim, lay, "/")
-        sim.check(lay + ": / steps the list back", int(s.get("libraryPart") == a and "valueEdit" not in s), 1,
-                  absolute=0, note=str({k: s.get(k) for k in ("libraryPart", "valueEdit")}))
+        sim.check(lay + ": : and / step the list", int(moved and row(s) == a and "valueEdit" not in s), 1,
+                  absolute=0, note=str({k: s.get(k) for k in ("libraryPart", "libraryGroup", "valueEdit")}))
 
         # + draws from the wire under the cross; Esc cancels
         sim.cli("ui", "click", "196,108")

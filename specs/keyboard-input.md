@@ -611,17 +611,59 @@ Validate
   Nothing selected in the list: a message. `k` is reserved like `h` and `w`
   (Manage Components refuses it); during a value edit it is still the kilo
   multiplier.
-- `:` selects the **next** part in the list, `/` the **previous** one
-  (`ComponentSelector::stepPart`): parts only (categories skipped), parts hidden
-  in Manage Components or by the search box skipped, the category opened and
-  the part scrolled into view, wrapping at both ends. The canvas keeps the
-  keyboard. On AZERTY `:` and `/` are one key (`/` with Shift), like `<` `>`.
-- `kbd state` reports `libraryPart` (type, name).
+- `:` selects the **next row** of the list, `/` the **previous** one
+  (`ComponentSelector::stepPart`), as the list shows them: **group rows
+  included**, and a collapsed group is **not opened** — its parts are not
+  shown, so they are skipped (user review 2026-11-19; the first version skipped
+  groups and opened them). Rows hidden in Manage Components or by the search box
+  are skipped; the row is scrolled into view; wrapping at both ends. The canvas
+  keeps the keyboard. On AZERTY `:` and `/` are one key (`/` with Shift).
+- `k` on a **group** row expands or collapses it; on a part row it places the
+  part.
+- `kbd state` reports `libraryPart` (type, name), or `libraryGroup` (name,
+  expanded) on a group row.
+- A headless server no longer saves the window, splitters and group states on
+  quit (`MainWindow::closeEvent`): it shares the user's settings, and its
+  offscreen window and test toggles are not the user's.
+- The list scrolls so the selected part is always in view
+  (`ComponentSelector::showItem`): `scrollToItem` left it below the visible
+  rows while stepping down (the scroll bar did not move, user report
+  2026-11-19), so the scroll bar is stepped until the row fits.
 
 Validate
-- [ ] `:` `:` `/`: the list selection moves down, down, up; typing goes on on
-      the canvas.
-- [ ] `k`: that part at the cross. With a part selected: placed in the chain.
+- [ ] `:` `:` `/`: the list selection moves down, down, up, over group rows
+      too; a collapsed group stays closed; typing goes on on the canvas.
+- [ ] `k` on a group: it opens / closes. On a part: that part at the cross;
+      with a part selected: placed in the chain.
+
+### K9f — A part's shortcut in its properties
+*(user request 2026-11-19, before K10)*
+
+- The properties dialog of a part that is in the component list has a last
+  tab, **Keyboard** (seldom used: kept out of the way of the common fields),
+  with a **Shortcut** field: the letter that places that **kind** of part
+  at the cross (shortcuts are per kind, as in Manage Components), its default
+  shown beside it. Typing a letter replaces it (a capital becomes its lowercase
+  letter: capitals are switch keys); emptying it leaves the part without one.
+- Only **a–z**; **h w k** are reserved (pan, wire, component-list part) and
+  refused with the reason, as in Manage Components (one shared check,
+  `ComponentSelector::keyRefusal`).
+- A letter **another part already has**: a dialog *“r” is already the shortcut
+  of Resistor*, explaining that the letter will place this part and Resistor
+  will have none, with **Replace** and **Cancel** (default). Replace saves both (the other part's letter saved empty, so its
+  default does not come back after a restart).
+- Saved in the user's component settings (`compList.ini`, as Manage
+  Components). The dialog is reused, so the field is re-read when it shows.
+- CLI `kbd partkey <part> [<letter>|none] [--replace]` drives the same code;
+  on a headless server it changes the shortcuts in memory only (a headless
+  server shares the user's settings).
+
+Validate
+- [ ] Open a capacitor's properties, Keyboard tab: Shortcut c, default c.
+- [ ] Type r: the dialog names Resistor; Cancel keeps c; Replace gives r to
+      the capacitor and leaves the resistor without one.
+- [ ] h, w, k or a digit: refused with the reason.
+- [ ] Restart: the changes are kept.
 
 ### K10 — Shortcut list in Settings
 *(epic: "listing shortcuts")*
@@ -764,4 +806,20 @@ Decisions (user, 2026-11-18):
 # 7. Next
 
 - Multiple part selection by shift arrow starting on empty canvas drawing a rectangle over parts
-- Configurable shortcuts for components in part settings
+- Add shortcuts for toolbar items. Each toolbar item should show its shortcut in its hover help text. Before to implement, propose me the shortcuts for each toolbar button. Double check this proposal:
+  - `⌘ + , open settings`
+  - `⌘ + p export `
+  - option+ ⌘ + à/0 zoom to fit 
+  - ctrl+ ⌘ + à/0 zoom to selected 
+  - `⌘ + B`
+  - `⌘ + D`
+  - `⌘ + E`
+  - `⌘ + G`
+  - `⌘ + I`
+  - `⌘ + J`
+  - `⌘ + K`
+  - `⌘ + L`
+  - `⌘ + R`
+  - `⌘ + T`
+  - `⌘ + U`
+  - `⌘ + Y`

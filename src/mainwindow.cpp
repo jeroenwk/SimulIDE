@@ -133,8 +133,8 @@ void MainWindow::closeEvent( QCloseEvent *event )
         else m_settings->setValue("lastCircuit", lastCirc );
     }
 
-    writeSettings();
-    event->accept();
+    if( !m_headless ) writeSettings();   // Headless instances share the settings: their offscreen
+    event->accept();                     // window, splitters and list groups are not the user's
 }
 
 bool MainWindow::reopenLast() { return m_settings->value("reopenLast", true ).toBool(); }

@@ -96,18 +96,8 @@ void manCompDialog::slotItemChanged( QTableWidgetItem* item )
     else{                  // Shortcut: one lowercase letter, not used by another part
         QString text = item->text();
         QString key  = text.left( 1 );
-        QString why;
-        if( key == "h" )
-            why = tr("h is the pan key of the keyboard input (h, then the arrows pan the canvas).");
-        else if( key == "w" )
-            why = tr("w is the wire key of the keyboard input (it wires the two chosen pins).");
-        else if( key == "k" )
-            why = tr("k is the keyboard input's key for the part selected in the component list.");
-        else if( !key.isEmpty() && !( key[0] >= 'a' && key[0] <= 'z' ) )
-            why = tr("A part shortcut is one lowercase letter a–z.\n"
-                     "Capital letters are the keys of switches and push buttons; "
-                     "digits and - = < > . , are used by the keyboard input.");
-        else if( !key.isEmpty() )
+        QString why = ComponentSelector::keyRefusal( key );   // Shared with the part's properties
+        if( why.isEmpty() && !key.isEmpty() )
             for( int row=0; row<table->rowCount(); row++ )
             {
                 QTableWidgetItem* other = table->item( row, 1 );

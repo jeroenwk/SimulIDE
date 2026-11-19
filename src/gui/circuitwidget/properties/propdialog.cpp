@@ -8,6 +8,10 @@
 #include <QDebug>
 
 #include <QTabBar>
+#include <QLineEdit>
+#include <QLabel>
+#include <QMessageBox>
+#include <QPushButton>
 
 #include "propdialog.h"
 #include "appfonts.h"
@@ -26,6 +30,7 @@
 #include "uitheme.h"
 
 #include "comproperty.h"
+#include "componentselector.h"
 
 PropDialog::PropDialog( QWidget* parent, QString help )
           : QDialog( parent )
@@ -133,6 +138,7 @@ void PropDialog::setComponent( CompBase* comp, bool isComp )
             }
             tabList->addTab( groupWidget, group.name );
     }   }
+    if( isComp ) addShortcutRow( comp );                      // Last tab: Keyboard (K9f)
     if( tabList->count() == 0 ) tabList->setVisible( false ); // Hide tab widget if empty
 }
 
@@ -199,8 +205,10 @@ void PropDialog::adjustWidgets()
     {
         int count = 0;
         for( int i=0; i<widget->layout()->count(); ++i )
-            if( !widget->layout()->itemAt(i)->widget()->isHidden() )
-                count++;
+        {
+            QWidget* w = widget->layout()->itemAt(i)->widget();   // A layout or spacer: none
+            if( w && !w->isHidden() ) count++;
+        }
 
         // 24 px per row was sized for Ubuntu; a taller font (Inter) may need more: take the
         // rows' minimum height when it is larger, so nothing is squeezed. Not their size
@@ -237,6 +245,8 @@ bool PropDialog::event( QEvent* e )
     QEvent::Type t = e->type();
     if( t == QEvent::WindowDeactivate || t == QEvent::Hide || t == QEvent::Close )
         commitEdit();
+    if( t == QEvent::Show && m_shortcutBox )             // The dialog is reused: the shortcut
+        m_shortcutBox->setText( ComponentSelector::self()->getShortCuts().value( m_shortcutName ) );  // may have changed
     return QDialog::event( e );
 }
 
@@ -255,3 +265,93 @@ void PropDialog::setUndoable( QString prop, QString val ) // Set a property as o
     m_component->setPropStr( prop, val );
     Circuit::self()->saveCompChange( m_component->getUid(), prop, old );
 }
+
+// ----- The part's keyboard shortcut (K9f, specs/keyboard-input.md) ----------------
+
+// A last tab, Keyboard (seldom used: out of the way of the common fields): the letter
+// that places this kind of part at the keyboard cross. Only for parts in the list
+void PropDialog::addShortcutRow( CompBase* comp )
+{
+    ComponentSelector* sel = ComponentSelector::self();
+    Component* c = dynamic_cast<Component*>( comp );
+    m_shortcutName = ( sel && c ) ? sel->libraryName( c ) : QString();
+    if( m_shortcutName.isEmpty() ) return;               // Not in the component list
+
+    QWidget* tab = new QWidget( tabList );                 // Widgets only, as the other tabs
+    tab->setObjectName("Keyboard");                      // (adjustWidgets counts them)
+    QVBoxLayout* col = new QVBoxLayout( tab );
+    col->setSpacing( 6 );
+    QWidget* rowWidget = new QWidget( tab );
+    QHBoxLayout* row = new QHBoxLayout( rowWidget );
+    row->setContentsMargins( 0, 0, 0, 0 );
+    QLabel* label = new QLabel( tr("Shortcut:"), tab );
+    m_shortcutBox = new QLineEdit( tab );
+    m_shortcutBox->setFixedWidth( 34*m_scale );
+    m_shortcutBox->setAlignment( Qt::AlignCenter );
+    m_shortcutBox->setObjectName("shortcutBox");
+    m_shortcutHint = new QLabel( tab );
+    m_shortcutHint->setEnabled( false );                 // Dimmed, like a hint
+    QFont f = m_shortcutHint->font();
+    f.setPointSizeF( f.pointSizeF()*0.85 );
+    m_shortcutHint->setFont( f );
+    row->addWidget( label );
+    row->addWidget( m_shortcutBox );
+    row->addWidget( m_shortcutHint, 1 );
+    col->addWidget( rowWidget );
+    QLabel* about = new QLabel( tr("The key that places this kind of part at the keyboard cursor "
+                                   "(one for all parts of this kind)."), tab );
+    about->setWordWrap( true );
+    about->setEnabled( false );
+    about->setFont( f );
+    col->addWidget( about );
+    tabList->addTab( tab, tr("Keyboard") );
+
+    m_shortcutBox->setText( sel->getShortCuts().value( m_shortcutName ) );
+    updateShortcutHint();
+    connect( m_shortcutBox, &QLineEdit::textEdited, this, [this]( QString t ){ shortcutEdited( t ); } );
+}
+
+void PropDialog::updateShortcutHint()
+{
+    QString def = ComponentSelector::defaultShortCuts().value( m_shortcutName );
+    m_shortcutHint->setText( tr("a–z (h w k reserved)")
+                           + ( def.isEmpty() ? QString() : tr(", default %1").arg( def ) ) );
+}
+
+// The last letter typed replaces the shortcut; empty clears it. A letter another part
+// has: a dialog naming that part, Replace (it loses the letter) or Cancel
+void PropDialog::shortcutEdited( QString text )
+{
+    ComponentSelector* sel = ComponentSelector::self();
+    QString cur = sel->getShortCuts().value( m_shortcutName );
+    QString key = text.right( 1 ).toLower();             // Capitals are switch keys: lowercase
+    auto revert = [&](){ m_shortcutBox->setText( cur ); };
+
+    if( key == cur ){ m_shortcutBox->setText( cur ); return; }
+    QString why = ComponentSelector::keyRefusal( key );
+    if( !why.isEmpty() )
+    {
+        QMessageBox::warning( this, tr("Shortcut"), why );
+        revert();
+        return;
+    }
+    QString owner = sel->shortcutOwner( key, m_shortcutName );
+    if( !owner.isEmpty() )
+    {
+        QString ownerCap = sel->caption( owner );
+        QString myCap    = sel->caption( m_shortcutName );
+        QMessageBox box( QMessageBox::Question, tr("Shortcut already used"),
+            tr("“%1” is already the shortcut of %2.").arg( key, ownerCap ), QMessageBox::NoButton, this );
+        box.setInformativeText( tr("Replace: “%1” will place a %2, and %3 will have no shortcut "
+                                   "(give it one in its properties or in Manage Components).")
+                                .arg( key, myCap, ownerCap ) );
+        QPushButton* replace = box.addButton( tr("Replace"), QMessageBox::AcceptRole );
+        box.addButton( QMessageBox::Cancel );
+        box.setDefaultButton( QMessageBox::Cancel );
+        box.exec();
+        if( box.clickedButton() != replace ){ revert(); return; }
+    }
+    sel->setShortcut( m_shortcutName, key );
+    m_shortcutBox->setText( key );
+}
+

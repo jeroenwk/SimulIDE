@@ -13,8 +13,13 @@
 #include <QDrag>
 #include <QTreeWidgetItemIterator>
 #include <QMenu>
+#include <QScrollBar>
+#include <QPointer>
+#include <QTimer>
 
 #include "componentselector.h"
+#include "component.h"
+#include "chip.h"
 #include "mainwindow.h"
 #include "uitheme.h"
 
@@ -403,21 +408,137 @@ bool ComponentSelector::selectedPart( QString* type, QString* name )
     return true;
 }
 
+QString ComponentSelector::selectedGroup( bool* expanded )
+{
+    QTreeWidgetItem* item = currentItem();
+    if( !item || isPartItem( item ) || !shownItem( item ) ) return "";
+    if( expanded ) *expanded = item->isExpanded();
+    return item->text( 0 ).trimmed();
+}
+
+bool ComponentSelector::toggleSelectedGroup()
+{
+    QTreeWidgetItem* item = currentItem();
+    if( !item || isPartItem( item ) || !shownItem( item ) ) return false;
+    item->setExpanded( !item->isExpanded() );
+    showItem( item );
+    return true;
+}
+
+// The next / previous row the list shows, parts and groups alike: a collapsed group is
+// not opened (its parts are not shown, so they are skipped). Wraps; none yet: the first /
+// last row. The canvas keeps the keyboard
 QString ComponentSelector::stepPart( int dir )
 {
-    QList<QTreeWidgetItem*> parts;                   // Every part shown, in list order
+    QList<QTreeWidgetItem*> rows;                    // Every row shown, in list order
     QTreeWidgetItemIterator it( this );
-    for( ; *it; ++it ) if( isPartItem( *it ) && shownItem( *it ) ) parts.append( *it );
-    if( parts.isEmpty() ) return "";
+    for( ; *it; ++it )
+    {
+        QTreeWidgetItem* i = *it;
+        if( !shownItem( i ) ) continue;
+        bool open = true;                            // Inside a collapsed group: not shown
+        for( QTreeWidgetItem* p = i->parent(); p; p = p->parent() ) if( !p->isExpanded() ) open = false;
+        if( open ) rows.append( i );
+    }
+    if( rows.isEmpty() ) return "";
 
-    int i = parts.indexOf( currentItem() );
-    int n = parts.size();
-    if( i < 0 ) i = ( dir > 0 ) ? 0 : n-1;           // None yet: the first / last
+    int i = rows.indexOf( currentItem() );
+    int n = rows.size();
+    if( i < 0 ) i = ( dir > 0 ) ? 0 : n-1;
     else        i = ( ( i+dir ) % n + n ) % n;
-    QTreeWidgetItem* item = parts.at( i );
-    if( item->parent() ) item->parent()->setExpanded( true );
+    QTreeWidgetItem* item = rows.at( i );
     setCurrentItem( item );
     item->setSelected( true );
-    scrollToItem( item );
-    return item->data( 0, Qt::WhatsThisRole ).toString();
+    showItem( item );
+    return item->text( 0 ).trimmed();
 }
+
+// Scrolls the list until item's row is inside it. scrollToItem() left it below the
+// visible rows while stepping with : (the scroll bar did not move); the scroll bar is
+// stepped by hand instead, one row (or a few pixels) at a time, until the row fits
+void ComponentSelector::showItem( QTreeWidgetItem* item )
+{
+    scrollToItem( item );
+    QScrollBar* sb = verticalScrollBar();
+    int h = viewport()->height();
+    for( int guard=0; guard<1000; ++guard )
+    {
+        QRect r = visualItemRect( item );
+        if     ( r.bottom() > h && sb->value() < sb->maximum() ) sb->setValue( sb->value()+1 );
+        else if( r.top() < 0    && sb->value() > sb->minimum() ) sb->setValue( sb->value()-1 );
+        else break;
+    }
+}
+
+// ----- Part shortcuts (K9f) ---------------------------------------------------
+
+QString ComponentSelector::keyRefusal( QString key )
+{
+    if( key.isEmpty() ) return "";
+    if( key.size() != 1 || key[0] < 'a' || key[0] > 'z' )
+        return tr("A part shortcut is one lowercase letter a–z.\n"
+                  "Capital letters are the keys of switches and push buttons; "
+                  "digits and - = + < > : / . , are used by the keyboard input.");
+    if( key == "h" ) return tr("h is the pan key of the keyboard input (h, then the arrows pan the canvas).");
+    if( key == "w" ) return tr("w is the wire key of the keyboard input (it wires the two chosen pins).");
+    if( key == "k" ) return tr("k is the keyboard input's key for the part selected in the component list.");
+    return "";
+}
+
+QString ComponentSelector::libraryName( Component* comp )
+{
+    if( !comp || comp->isHidden() || comp->itemType() == "Node" ) return "";
+    QString name = comp->itemType();
+    if( name == "Subcircuit" || name == "MCU" )          // Listed by their device name
+        if( Chip* chip = dynamic_cast<Chip*>( comp ) ) name = chip->name();
+    return isListed( name ) ? name : QString();
+}
+
+bool ComponentSelector::isListed( QString name )
+{
+    QTreeWidgetItemIterator it( this );
+    for( ; *it; ++it )
+        if( isPartItem( *it ) && (*it)->data( 0, Qt::WhatsThisRole ).toString() == name ) return true;
+    return false;
+}
+
+QString ComponentSelector::caption( QString name )
+{
+    QTreeWidgetItemIterator it( this );
+    for( ; *it; ++it )
+        if( isPartItem( *it ) && (*it)->data( 0, Qt::WhatsThisRole ).toString() == name )
+            return (*it)->text( 0 ).trimmed();
+    return name;
+}
+
+QString ComponentSelector::shortcutOwner( QString key, QString except )
+{
+    if( key.isEmpty() ) return "";
+    for( auto it = m_shortCuts.constBegin(); it != m_shortCuts.constEnd(); ++it )
+        if( it.value() == key && it.key() != except ) return it.key();
+    return "";
+}
+
+// Saved even when empty, so a cleared default stays cleared (as Manage Components does)
+static void saveShortcut( QString name, QString key )
+{
+    QSettings* cs = MainWindow::self()->compSettings();
+    if( key == ComponentSelector::defaultShortCuts().value( name ) ) cs->remove( name+"/shortcut" );
+    else                                                             cs->setValue( name+"/shortcut", key );
+}
+
+// save false: in memory only (a headless CLI server shares the user's settings)
+void ComponentSelector::setShortcut( QString name, QString key, bool save )
+{
+    QString owner = shortcutOwner( key, name );
+    if( !owner.isEmpty() )                               // Replaced: the owner loses it
+    {
+        m_shortCuts.remove( owner );
+        if( save ) saveShortcut( owner, "" );
+    }
+    if( key.isEmpty() ) m_shortCuts.remove( name );
+    else                m_shortCuts[ name ] = key;
+    if( save ) saveShortcut( name, key );
+    qDebug() << "[kbd] part shortcut" << name << "=" << key << ( owner.isEmpty() ? "" : "taken from "+owner );
+}
+
