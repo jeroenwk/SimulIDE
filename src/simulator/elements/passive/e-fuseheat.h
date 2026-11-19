@@ -35,7 +35,11 @@ class FuseHeat
 
         // Seconds until θ reaches 1 at constant u from the present state: 0 if already there,
         // -1 if never (u <= meltU: θ stays below max(θ, φ, θss) < 1)
-        double timeToMelt( double u ) const;
+        double timeToMelt( double u ) const { return timeToLevel( u, 1 ); }
+
+        // Seconds until θ crosses `level` at constant u (up if below it, down if above): 0 if
+        // already on the far side... -1 if it never gets there (θss on the same side)
+        double timeToLevel( double u, double level ) const;
 
     private:
         void coeffs( double u, double& c0, double& c1 ) const;

@@ -63,21 +63,26 @@ double FuseHeat::thetaAfter( double dt, double u ) const
     return u*m_kss + c0*std::exp( m_l[0]*dt ) + c1*std::exp( m_l[1]*dt );
 }
 
-double FuseHeat::timeToMelt( double u ) const
+double FuseHeat::timeToLevel( double u, double level ) const
 {
-    if( m_th >= 1 ) return 0;
-    if( u*m_kss <= 1 ) return -1;
+    double thss = u*m_kss;
+    bool up = m_th < level;
+    if( up  && thss <= level ) return -1;
+    if( !up && thss >= level ) return -1;
 
     double c0, c1;
     coeffs( u, c0, c1 );
-    double thss = u*m_kss;
-    auto th = [&]( double t ){ return thss + c0*std::exp( m_l[0]*t ) + c1*std::exp( m_l[1]*t ); };
-
-    // Lower bound: no heat lost, from the hotter of element and body
-    double lo = 0;
-    double hi = ( 1-std::max( m_th, m_ph ) )*m_C1/u;
-    if( hi < 1e-15 ) hi = 1e-15;
-    while( th( hi ) < 1 )             // θ - θss is a sum of two exponentials: one crossing
+    auto beyond = [&]( double t ){
+        double th = thss + c0*std::exp( m_l[0]*t ) + c1*std::exp( m_l[1]*t );
+        return up ? th >= level : th <= level;
+    };
+    double lo = 0, hi;
+    if( up ){                         // Lower bound: no heat lost, from the hotter of element and body
+        hi = ( level-std::max( m_th, m_ph ) )*m_C1/u;
+        if( hi < 1e-15 ) hi = 1e-15;
+    }
+    else hi = 1e-6*tau1();
+    while( !beyond( hi ) )            // θ - θss is a sum of two exponentials: one crossing
     {
         lo = hi; hi *= 2;
         if( hi > 1e12 ) return -1;
@@ -86,8 +91,8 @@ double FuseHeat::timeToMelt( double u ) const
     {
         if( hi-lo <= 1e-12*hi || hi-lo < 1e-15 ) break;
         double mid = 0.5*( lo+hi );
-        if( th( mid ) < 1 ) lo = mid;
-        else                hi = mid;
+        if( beyond( mid ) ) hi = mid;
+        else                lo = mid;
     }
     return hi;
 }

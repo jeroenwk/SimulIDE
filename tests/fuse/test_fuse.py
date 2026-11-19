@@ -34,6 +34,12 @@ def secs(t):
     return "%.9fs" % t
 
 
+def parse_time(txt):
+    """'12.234 s', '35.7 ms', '4 µs' (status history) -> seconds."""
+    num, unit = txt.split()[:2]
+    return float(num) * {"s": 1, "ms": 1e-3, "µs": 1e-6, "us": 1e-6, "ns": 1e-9, "ps": 1e-12}[unit]
+
+
 def r(sim, comp="F1"):
     return sim.read(comp)
 
@@ -186,6 +192,32 @@ def ac(sim):
     sim.check("AC blow time against DC at the same rms (s)", st.get("blown_at"), dc, tol=0.05)
 
 
+# ---- 5b. States from the heat, not the instantaneous current ---------------------------------
+def states(sim):
+    # 100 kHz pulses of 3 In at 10 % duty: rms 0.95 In, like a switching load's input current.
+    # HOT must not follow the pulses (it did: OK <-> HOT at 85 kHz in led_driver board_mains)
+    wave = ["Wave_Type=Square", "Freq=100kHz", "Semi_Ampli=15", "Mid_Volt=15", "Duty=10"]
+    build_dc(sim, 30, load_for(3, 30, "T"), "T", source=wave)
+    sim.run("2s")
+    hist = sim.cli("status", "F1").get("history", [])
+    flag(sim, "3 In pulses at 10 %% (0.95 In rms): only OK (%d changes)" % len(hist),
+         [h.get("text") for h in hist] == ["OK"])
+    # 1.2 In steady, a quiet circuit: θ rises past the heat of In (T: 0.25, steady 0.36) slowly,
+    # with the body, and the state must change at that time with no other change in the circuit
+    build_dc(sim, 30, load_for(1.2, 30, "T"), "T")
+    sim.run("1ms")
+    i = abs(r(sim)["current"])
+    sim.run("20s")
+    hist = sim.cli("status", "F1").get("history", [])
+    flag(sim, "1.2 In steady: OK then HOT, once", [h.get("text") for h in hist] == ["OK", "HOT"])
+    h = Heat("T")
+    h = Heat("T"); t = 0.0
+    while h.th < 0.25 and t < 30:
+        h.step(1e-3, i * i); t += 1e-3
+    got = parse_time(hist[-1].get("time", "")) if hist else None
+    sim.check("1.2 In: HOT at (s)", got, t, tol=0.002, note="reference: θ reaches 0.25")
+
+
 # ---- 7/8. Replace, restart, KeepBlown -------------------------------------------------------
 def replace(sim):
     build_dc(sim, 30, load_for(10, 30, "T"), "T")
@@ -256,7 +288,7 @@ def saveload(sim):
 
 def test(sim):
     for name, fn in (("gates", gates), ("pulse", pulse), ("inrush", inrush), ("train", train),
-                     ("cooling", cooling), ("ac", ac), ("replace", replace), ("ratings", ratings),
+                     ("cooling", cooling), ("states", states), ("ac", ac), ("replace", replace), ("ratings", ratings),
                      ("resistor", resistor), ("saveload", saveload)):
         if want(name):
             sim.log("== %s" % name)

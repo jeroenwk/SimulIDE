@@ -86,6 +86,7 @@ class Fuse : public Comp2Pin, public eResistor
         void flush( uint64_t t );
         void blow( uint64_t t, bool bySim );
         void schedule( uint64_t t, uint64_t at );
+        void planNext( uint64_t t, bool melt );
         void updateState();
         void updateLabel();
 
