@@ -416,6 +416,7 @@ the pause.
 | `ui key <char> [down\|up\|tap]` | Keyboard key, for parts bound to a key |
 | `ui type <key> [key ...]` | Real key presses on the canvas, as typed: a character (`r`, `<`, `_`, `é`) or a name (`Left Right Up Down Tab Enter Esc Backspace Delete Space Home End`), modifiers joined with `+` (`shift+Left`, `cmd+z`). An uppercase letter implies Shift. Gives the canvas focus first; returns `kbd state` |
 | `ui mouse <x,y>` | Move the mouse (no button) to a scene position over the canvas; returns `kbd state` |
+| `ui click <x,y>` | Left click at a scene position on the canvas, as the mouse does (on empty canvas: clears the selection, places the keyboard cursor); returns `kbd state` |
 | `ui focus canvas\|none` | Give the canvas keyboard focus or take it away |
 
 These commands work on any part with on-screen controls, including push
@@ -437,7 +438,7 @@ Keyboard-driven editing (`specs/keyboard-input.md`). Tests: `tests/kbd/run.sh`.
 
 | Command | |
 |---|---|
-| `kbd state` | Focus, keyboard cursor (the cross, scene x,y on the grid lines at 4 + 8k), whether the cross is shown and the mouse pointer hidden, selected parts, the pins to wire (`pinFrom`, `pinTo`); with one part selected its `selectedPin` (`selectedPinManual`: chosen with `<` `>`, else auto) and `pinsClockwise` |
+| `kbd state` | Focus, keyboard cursor (the cross, scene x,y on the grid lines at 4 + 8k), whether the cross is shown (focus and no part selected), the mouse pointer hidden, `panMode`, `zoom` (view scale), selected parts, the pins to wire (`pinFrom`, `pinTo`); with one part selected its `selectedPin` (`selectedPinManual`: chosen with `<` `>`, else auto) and `pinsClockwise` |
 | `kbd shortcuts` | Every shortcut of the circuit editor: category, action, keys, context |
 
 Headless, the window is never active, so `ui type` and `ui focus` set the canvas focus

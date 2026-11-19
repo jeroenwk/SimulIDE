@@ -40,14 +40,17 @@ class KeyboardController
         // A key pressed on the canvas (text entry not active). true: handled, stop there
         bool keyPress( QKeyEvent* event );
 
-        // The mouse moved over the canvas (viewport position, scene position)
-        void mouseMoved( QPoint viewPos, QPointF scenePos );
+        // The mouse moved over the canvas (viewport position): shows the pointer again
+        void mouseMoved( QPoint viewPos );
+        void mousePressed();                     // Any button: ends pan mode
+        void clickedEmpty( QPointF scenePos );   // Left click (no drag) on empty canvas: the cross goes there
 
         void setFocused( bool focused );    // Canvas got / lost keyboard focus
         bool focused() { return m_focused; }
 
         QPointF cursorPos();
-        bool cursorVisible() { return m_focused; }
+        bool cursorVisible();                    // Canvas focused and no part selected
+        bool panMode() { return m_panMode; }
         bool pointerHidden() { return m_pointerHidden; }
 
         void moveCursorTo( QPointF scenePos );   // Snapped; scrolls the view to keep it visible
@@ -94,6 +97,11 @@ class KeyboardController
 
         void hidePointer();
         void showPointer();
+        void applyPointer();                     // Override cursor: pan symbol, blank or none
+        void setPanMode( bool on );
+        bool zoomKey( QKeyEvent* event, Qt::KeyboardModifiers mods );
+        void zoomAround( double factor );        // Keeps the cross (or the view centre) in place
+        bool anyPartSelected();
         void updateCross( QPointF p );
         QRectF crossRect( QPointF p );
 
@@ -101,6 +109,8 @@ class KeyboardController
         bool    m_cursorSet;
         bool    m_focused;
         bool    m_pointerHidden;
+        bool    m_panMode;                      // h: arrows pan the canvas until another key
+        int     m_override;                     // Qt::CursorShape set as override, -1: none
         QPoint  m_lastMousePos;
         bool    m_lastMouseSet;
 

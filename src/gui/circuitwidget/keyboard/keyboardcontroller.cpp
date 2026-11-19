@@ -11,6 +11,8 @@
 #include <QDebug>
 #include <QTimer>
 #include <QGraphicsItem>
+#include <QScrollBar>
+#include <QCursor>
 
 #include "keyboardcontroller.h"
 #include "circuitview.h"
@@ -34,6 +36,8 @@ KeyboardController::KeyboardController()
     m_cursorSet     = false;
     m_focused       = false;
     m_pointerHidden = false;
+    m_panMode       = false;
+    m_override      = -1;
     m_lastMouseSet  = false;
     m_arrowBurst    = false;
     m_burstEdit     = -1;
@@ -48,6 +52,7 @@ QPointF KeyboardController::snap( QPointF p )
 
 void KeyboardController::reset()
 {
+    m_panMode = false;
     showPointer();
     m_cursorSet  = false;
     m_arrowBurst = false;
@@ -76,13 +81,20 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     int key = event->key();
     if( isModifierKey( key ) ) return false;
 
-    hidePointer();              // Typing on the canvas: the cross stays, the pointer goes
-
     // macOS sends arrow keys with the keypad modifier
     Qt::KeyboardModifiers mods = event->modifiers() & ~Qt::KeypadModifier;
 
     bool arrow = key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down;
+    bool panKey = mods == Qt::NoModifier && event->text() == "h";
+    if( m_panMode && !arrow && !panKey ) setPanMode( false );   // Any other key ends pan mode
+
+    hidePointer();              // Typing on the canvas: the pointer goes (pan mode shows its symbol)
+
     if( arrow && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) ) return arrowKey( event, mods );
+
+    if( panKey ){ setPanMode( true ); return true; }
+
+    if( zoomKey( event, mods ) ) return true;
 
     m_arrowBurst = false;       // Any other key ends a burst of arrow moves
 
@@ -217,7 +229,13 @@ bool KeyboardController::partKey( QString letter )
     Circuit* circ = Circuit::self();
     Component* comp = circ->createItem( name, name+"-"+circ->newSceneId() );
     if( !comp ) return false;
-    comp->setPos( toGrid( cursorPos() ) );
+    QPointF at = cursorPos();
+    if( Component* sel = singlePart() )      // A part selected: a big step right of it (D12)
+    {
+        at = sel->pos()+QPointF( bigStep, 0 );
+        moveCursorTo( at );
+    }
+    comp->setPos( toGrid( at ) );
     circ->addComponent( comp );
     circ->saveCompChange( comp->getUid(), COMP_STATE_NEW, "" );
     qDebug() << "[kbd] key" << letter << "places" << name << "at" << comp->pos();
@@ -236,14 +254,81 @@ bool KeyboardController::escKey()
 
 bool KeyboardController::enterKey()
 {
-    if( !singlePart() ) return false;
+    Component* comp = singlePart();
+    if( !comp ) return false;
     Circuit::self()->clearSelection();
-    moveCursorTo( cursorPos()+QPointF( bigStep, 0 ) );
+    moveCursorTo( comp->pos()+QPointF( bigStep, 0 ) );   // A big step right of the part (D11)
     return true;
+}
+
+bool KeyboardController::anyPartSelected()
+{
+    Circuit* circ = Circuit::self();
+    if( !circ ) return false;
+    for( QGraphicsItem* item : circ->selectedItems() )
+    {
+        if( item->type() != QGraphicsItem::UserType+1 ) continue;
+        Component* c = qgraphicsitem_cast<Component*>( item );
+        if( c && c->itemType() != "Node" ) return true;
+    }
+    return false;
+}
+
+bool KeyboardController::cursorVisible() { return m_focused && !anyPartSelected(); }
+
+void KeyboardController::setPanMode( bool on )
+{
+    if( on == m_panMode ) return;
+    m_panMode = on;
+    applyPointer();
+    qDebug() << "[kbd] pan mode" << on;
+}
+
+// Cmd + / Cmd = : zoom in, Cmd - : zoom out, Cmd 0 : 100 %. On AZERTY 0 needs Shift:
+// Cmd 0 is also matched by its physical key (number row)
+bool KeyboardController::zoomKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
+{
+    if( !( mods & Qt::ControlModifier ) || ( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) ) return false;
+    int key = event->key();
+    if( key == Qt::Key_Plus || key == Qt::Key_Equal ){ zoomAround( 1.25 );     return true; }
+    if( key == Qt::Key_Minus )                       { zoomAround( 1/1.25 );   return true; }
+#ifdef Q_OS_MACOS
+    bool zero = key == Qt::Key_0 || event->nativeVirtualKey() == 0x1D;   // kVK_ANSI_0
+#else
+    bool zero = key == Qt::Key_0;
+#endif
+    if( zero && !( mods & ~( Qt::ControlModifier | Qt::ShiftModifier ) ) )
+    {
+        CircuitView* v = CircuitView::self();
+        if( !v ) return true;
+        QPointF c = cursorVisible() ? cursorPos() : v->mapToScene( v->viewport()->rect().center() );
+        v->zoomOne();
+        v->centerOn( c );
+        return true;
+    }
+    return false;
+}
+
+void KeyboardController::zoomAround( double factor )
+{
+    CircuitView* v = CircuitView::self();
+    if( !v ) return;
+    QPointF anchor = cursorVisible() ? cursorPos() : v->mapToScene( v->viewport()->rect().center() );
+    QPoint before = v->mapFromScene( anchor );
+    QGraphicsView::ViewportAnchor old = v->transformationAnchor();
+    v->setTransformationAnchor( QGraphicsView::NoAnchor );
+    v->zoomBy( factor );
+    v->setTransformationAnchor( old );
+    QPoint after = v->mapFromScene( anchor );        // Scroll so the anchor stays where it was
+    QPoint d = after-before;
+    v->horizontalScrollBar()->setValue( v->horizontalScrollBar()->value()+d.x() );
+    v->verticalScrollBar()->setValue( v->verticalScrollBar()->value()+d.y() );
 }
 
 void KeyboardController::selectionChanged()
 {
+    if( m_cursorSet ) updateCross( m_cursor );   // Shown only while no part is selected
+    if( m_panMode && anyPartSelected() ) setPanMode( false );
     if( m_selPending ) return;
     m_selPending = true;
     QTimer::singleShot( 0, [](){ KeyboardController::self()->settleSelection(); } );
@@ -341,7 +426,7 @@ KeyboardController::pinLook_t KeyboardController::pinLook( Pin* pin, bool* ring 
     return comp->isSelected() ? lookHighlight : lookAccent;
 }
 
-// Arrows: nothing selected: pan (left to the view), Shift: move the cursor.
+// Arrows (Shift: small step): pan mode (h): pan the canvas. Nothing selected: move the cross.
 // A selection: move it 64 px, Shift: 8 px, with the wires attached, as a mouse drag does
 bool KeyboardController::arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
 {
@@ -352,16 +437,25 @@ bool KeyboardController::arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods 
     else if( key == Qt::Key_Up    ) dir = QPointF( 0,-1 );
     else                            dir = QPointF( 0, 1 );
 
+    int step = ( mods == Qt::ShiftModifier ) ? smallStep : bigStep;
     Circuit* circ = Circuit::self();
+    if( m_panMode )                                         // Scroll the view (screen pixels)
+    {
+        m_arrowBurst = false;
+        if( CircuitView* v = CircuitView::self() ){
+            v->horizontalScrollBar()->setValue( v->horizontalScrollBar()->value()+dir.x()*step );
+            v->verticalScrollBar()->setValue(   v->verticalScrollBar()->value()  +dir.y()*step );
+        }
+        return true;
+    }
     QList<QGraphicsItem*> sel = circ->selectedItems();
     if( sel.isEmpty() )
     {
         m_arrowBurst = false;
-        if( mods != Qt::ShiftModifier ) return false;      // Pan
-        moveCursorTo( cursorPos()+dir*smallStep );
+        moveCursorTo( cursorPos()+dir*step );
         return true;
     }
-    QPointF d = dir*( mods == Qt::ShiftModifier ? smallStep : bigStep );
+    QPointF d = dir*step;
 
     std::sort( sel.begin(), sel.end() );
     bool newStep = !m_arrowBurst || m_burstEdit != circ->editCount() || sel != m_burstSelection;
@@ -370,35 +464,36 @@ bool KeyboardController::arrowKey( QKeyEvent* event, Qt::KeyboardModifiers mods 
     m_burstEdit      = circ->editCount();
     m_burstSelection = sel;
 
-    moveCursorTo( cursorPos()+d );                          // The cursor follows the selection
-    refreshAutoPins();
+    refreshAutoPins();                                      // (The cross stays where it is)
     if( CircuitView* v = CircuitView::self() ) v->ensureVisible( v->selectedRect(), 32, 32 );
     return true;
 }
 
-void KeyboardController::mouseMoved( QPoint viewPos, QPointF scenePos )
+void KeyboardController::mouseMoved( QPoint viewPos )
 {
     // Ignore "moves" to the same place (sent when the pointer is hidden or shown)
     if( m_lastMouseSet && viewPos == m_lastMousePos ) return;
     m_lastMousePos = viewPos;
     m_lastMouseSet = true;
+    showPointer();                          // The cross does not follow the mouse
+}
 
-    showPointer();
-    QPointF p = snap( scenePos );
-    if( m_cursorSet && p == m_cursor ) return;
-    QPointF old = m_cursor;
-    bool wasSet = m_cursorSet;
-    m_cursor    = p;
-    m_cursorSet = true;
-    if( wasSet ) updateCross( old );
-    updateCross( p );
+void KeyboardController::mousePressed() { setPanMode( false ); }
+
+void KeyboardController::clickedEmpty( QPointF scenePos )
+{
+    QPointF old = cursorPos();
+    m_cursor = snap( scenePos );
+    updateCross( old );
+    updateCross( m_cursor );
 }
 
 void KeyboardController::setFocused( bool focused )
 {
     if( focused == m_focused ) return;
     m_focused = focused;
-    if( !focused ) showPointer();
+    if( !focused ){ m_panMode = false; showPointer(); }
+    applyPointer();
     if( m_cursorSet ) updateCross( m_cursor );
     qDebug() << "[kbd] canvas focus" << focused;
 }
@@ -427,14 +522,25 @@ void KeyboardController::hidePointer()
 {
     if( m_pointerHidden ) return;
     m_pointerHidden = true;
-    QGuiApplication::setOverrideCursor( Qt::BlankCursor );
+    applyPointer();
 }
 
 void KeyboardController::showPointer()
 {
     if( !m_pointerHidden ) return;
     m_pointerHidden = false;
-    QGuiApplication::restoreOverrideCursor();
+    applyPointer();
+}
+
+void KeyboardController::applyPointer()
+{
+    int want = -1;
+    if     ( m_panMode && m_focused ) want = Qt::SizeAllCursor;   // Pan: a cross with arrows
+    else if( m_pointerHidden )        want = Qt::BlankCursor;
+    if( want == m_override ) return;
+    if( m_override >= 0 ) QGuiApplication::restoreOverrideCursor();
+    if( want >= 0 )       QGuiApplication::setOverrideCursor( QCursor( (Qt::CursorShape)want ) );
+    m_override = want;
 }
 
 QRectF KeyboardController::crossRect( QPointF p )
@@ -449,7 +555,7 @@ void KeyboardController::updateCross( QPointF p )
 
 void KeyboardController::paint( QPainter* painter )
 {
-    if( !m_focused ) return;
+    if( !cursorVisible() ) return;
     CircuitView* v = CircuitView::self();
     if( !v || painter->device() != v->viewport() ) return;  // Not in exports and captures of the circuit
 
@@ -470,6 +576,8 @@ QJsonObject KeyboardController::state()
     o["cursor"]        = QJsonArray{ p.x(), p.y() };
     o["cursorVisible"] = cursorVisible();
     o["pointerHidden"] = m_pointerHidden;
+    o["panMode"]       = m_panMode;
+    if( CircuitView* v = CircuitView::self() ) o["zoom"] = v->transform().m11();
 
     QJsonArray sel;
     if( Circuit* c = Circuit::self() )

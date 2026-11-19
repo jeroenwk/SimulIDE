@@ -24,12 +24,17 @@ const QList<Shortcut>& Shortcuts::all()
         { "Edit", "Flip vertically",        "Cmd+Shift+L", "Selection" },
         { "Selection", "Select all",        "Cmd+A",       "" },
         { "Selection", "Cancel the wire being drawn, stop linking", "Esc", "" },
-        { "Parts", "Add the part bound to a letter, at the keyboard cursor, selected", "its letter", "Set in Manage Components" },
+        { "Parts", "Add the part bound to a letter at the keyboard cursor (a part selected: a big step right of it), selected", "its letter", "Set in Manage Components" },
         { "Parts", "Add the part bound to a letter, at the mouse", "Alt+its letter", "Set in Manage Components" },
         { "Switches", "Operate a switch or push button (its Key property, A–Z)", "Shift+its Key", "Simulation running" },
-        // K1: keyboard cursor
-        { "View",   "Pan the canvas",         "Arrows",       "Nothing selected" },
-        { "Moving", "Move the keyboard cursor (yellow cross) one grid step", "Shift+Arrows", "Nothing selected" },
+        // K1: keyboard cursor (revised: independent of the mouse)
+        { "Moving", "Move the keyboard cursor (yellow cross) a big step (64 px)", "Arrows", "Nothing selected" },
+        { "Moving", "Move the keyboard cursor one grid step (8 px)", "Shift+Arrows", "Nothing selected" },
+        { "Moving", "Place the keyboard cursor", "Click on empty canvas", "" },
+        { "View", "Pan mode: the arrows (Shift: small steps) pan the canvas, until another key", "h", "" },
+        { "View", "Zoom in", "Cmd+= or Cmd++", "" },
+        { "View", "Zoom out", "Cmd+-", "" },
+        { "View", "Actual size (100 %)", "Cmd+0", "" },
         // K2: moving the selection
         { "Moving", "Move the selection a big step (64 px), wires follow", "Arrows", "Selection" },
         { "Moving", "Move the selection one grid step (8 px), wires follow", "Shift+Arrows", "Selection" },
@@ -42,7 +47,7 @@ const QList<Shortcut>& Shortcuts::all()
         { "Selection", "Select the next part (reading order); the nearest to the cursor when none is", "Tab", "" },
         { "Selection", "Select the previous part", "Shift+Tab", "" },
         { "Selection", "Unselect all", "Esc", "Selection" },
-        { "Selection", "Unselect the part, move the cursor a big step right", "Enter", "One part selected" },
+        { "Selection", "Unselect the part, put the cursor a big step right of it", "Enter", "One part selected" },
     };
     return list;
 }

@@ -30,8 +30,8 @@ def test(sim):
         sim.cli("comp", "add", "Resistor", "--label", label, "--at", at)
     u = {l: uid(sim, l) for l in ("R1", "R2", "R3", "R4")}
 
-    # Nothing selected: Tab takes the part nearest the cursor
-    sim.cli("ui", "mouse", "120,290")
+    # Nothing selected: Tab takes the part nearest the cross (a click places it)
+    sim.cli("ui", "click", "120,290")
     s = sim.cli("ui", "type", "Tab")
     sim.check("Tab, nothing selected: nearest (R3)", int(sel(s) == [u["R3"]]), 1, absolute=0, note=str(sel(s)))
 
@@ -74,14 +74,14 @@ def test(sim):
     sim.check("Esc keeps the last part", int(s["lastPart"] == u["R4"]), 1, absolute=0)
     sim.check("Esc keeps pinTo", int(s["pinTo"] == "R4.lPin"), 1, absolute=0)
 
-    # Enter: unselect, cursor 64 px right
+    # Enter: unselect, the cross a big step right of the part (D12)
     sim.cli("select", "R1")
-    x0 = sim.cli("kbd", "state")["cursor"][0]
     s = sim.cli("ui", "type", "Enter")
     sim.check("Enter unselects", len(sel(s)), 0, absolute=0)
-    sim.check("Enter: cursor 64 px right", s["cursor"][0], x0 + 64, absolute=0)
+    sim.check("Enter: cross right of R1: x", s["cursor"][0], 164, absolute=0)
+    sim.check("Enter: cross right of R1: y", s["cursor"][1], 100, absolute=0)
     s = sim.cli("ui", "type", "Enter")
-    sim.check("Enter with nothing selected: cursor stays", s["cursor"][0], x0 + 64, absolute=0)
+    sim.check("Enter with nothing selected: cross stays: x", s["cursor"][0], 164, absolute=0)
 
     # A click-like change (several parts, then one other): the rule sees only the final state
     sim.cli("select", "R2")                         # last part R2 (from R1)

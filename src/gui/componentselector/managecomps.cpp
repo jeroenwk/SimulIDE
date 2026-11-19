@@ -97,7 +97,9 @@ void manCompDialog::slotItemChanged( QTableWidgetItem* item )
         QString text = item->text();
         QString key  = text.left( 1 );
         QString why;
-        if( !key.isEmpty() && !( key[0] >= 'a' && key[0] <= 'z' ) )
+        if( key == "h" )
+            why = tr("h is the pan key of the keyboard input (h, then the arrows pan the canvas).");
+        else if( !key.isEmpty() && !( key[0] >= 'a' && key[0] <= 'z' ) )
             why = tr("A part shortcut is one lowercase letter a–z.\n"
                      "Capital letters are the keys of switches and push buttons; "
                      "digits and - _ = < > . , are used by the keyboard input.");
