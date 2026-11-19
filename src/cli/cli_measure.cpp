@@ -188,7 +188,9 @@ QJsonObject readComp( Component* comp )
             o["voltage"] = num( v );
             o["current"] = num( i );
             o["power"]   = num( v*i );
-    }   }
+        }
+        o["alpha"] = num( va->alpha() );            // Power-law exponent from the datasheet points
+    }
     else if( Diode* d = dynamic_cast<Diode*>( comp ) )   // Voltage across and current, anode to cathode (create-circuit #224)
     {
         std::vector<Pin*> pins = comp->getPins();
