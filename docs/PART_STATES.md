@@ -77,6 +77,7 @@ Example (Duncan Fig. 49.5, 100 mV in, full speed) [SIMULATED]:
 | 555 | HIGH (green) / LOW (grey, discharging) / RESET (amber, reset pin < 0.7 V) | its flip-flop, reported in `runEvent()` when the output changes (10 ns after the comparators): an exact event time, no settled hook needed | done (step 5) |
 | Relay | ENERGISED (green) / RELEASED (grey) | the coil: above IOn until below IOff. Whether that closes or opens the contacts depends on Normally Closed | done (step 5) |
 | Analog mux | CH n (green) / DISABLED (grey) | address and enable, reported in `runEvent()` at the switch-over | done (step 5); only CH 0 checked, because its pins are outside the component's pin list, so the CLI can't wire them (an old limitation) |
+| Varistor | IDLE (grey) / CLAMPING (amber) / OVER (red) | its current: CLAMPING from 1 mA (the varistor voltage) until below 0.5 mA; OVER above `MaxCurrent` (8/20 µs peak rating, 1200 A default) until below 90 % of it. Reported in `stepSettled()`, requested on every `voltChanged()` so a slow ramp is seen too | done (2026-11-19), Show State on; `tests/regress/test_varistor_powerlaw.py` |
 
 Checked on 2026-11-04 [SIMULATED], 50 Hz AC through a resistor, gate driven from 5 V through 100 Ω:
 - **SCR:** ON 0.2–10 ms and 20.2–30 ms, OFF in the negative half-cycles.
