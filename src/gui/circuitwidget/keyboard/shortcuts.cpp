@@ -54,6 +54,12 @@ const QList<Shortcut>& Shortcuts::all()
         { "Selection", "Unselect the part; the cursor goes a big step beyond its selected pin, "
                        "in the pin's direction (a part without pins: right of its centre)", "Enter", "One part selected" },
         { "Selection", "As Enter, but beyond the most opposite pin of the part", "Shift+Enter", "One part selected" },
+        // K9: network mode
+        { "Wires", "Network mode: walk the wires, corners and dots of the selected pin", "=", "One part selected, its pin wired" },
+        { "Wires", "Next / previous wire, corner or dot (nearest along the wires first)", "Tab / Shift+Tab", "Network mode" },
+        { "Wires", "Move the selected dot or corner 64 / 8 px (the wire stays horizontal / vertical)", "Arrows / Shift+Arrows", "Network mode" },
+        { "Wires", "Delete the selected wire", "Backspace", "Network mode" },
+        { "Wires", "Back to parts mode, the part selected (any other key too, then it acts)", "= or Esc", "Network mode" },
         // K6: properties
         { "Edit", "Open the selected part's properties dialog (closing it returns to the canvas)", "Space", "One part selected" },
         // K7: typing a value

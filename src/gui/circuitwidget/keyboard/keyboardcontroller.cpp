@@ -31,6 +31,7 @@
 #include "linker.h"
 #include "componentselector.h"
 #include "pinchain.h"
+#include "connectorline.h"
 #include "utils.h"
 
 KeyboardController* KeyboardController::self()
@@ -51,6 +52,7 @@ KeyboardController::KeyboardController()
     m_burstEdit     = -1;
     m_selPending    = false;
     m_circuit       = nullptr;
+    m_walkSelecting = false;
 }
 
 QPointF KeyboardController::snap( QPointF p )
@@ -62,6 +64,7 @@ void KeyboardController::reset()
 {
     m_panMode = false;
     m_value.reset();
+    m_walk.stop();
     m_leavePin.clear();
     showPointer();
     m_cursorSet  = false;
@@ -119,7 +122,13 @@ bool KeyboardController::keyPress( QKeyEvent* event )
         if( first != '\0' && m_value.start( singlePart(), first ) ) return true;
     }
 
-    // Network mode (K9) goes here: its keys, then return
+    // Network mode (K9): the walk's keys; any other key ends it (as Esc), then acts in
+    // parts mode
+    if( m_walk.active() )
+    {
+        if( networkKey( event, mods ) ) return true;
+        leaveNetwork( true );
+    }
 
     // Parts mode
 
@@ -140,6 +149,8 @@ bool KeyboardController::keyPress( QKeyEvent* event )
         if( key == Qt::Key_Backtab || ( key == Qt::Key_Tab && mods == Qt::ShiftModifier ) ) return tabKey(-1 );
         if( key == Qt::Key_Tab ) return tabKey( 1 );
     }
+    if( event->text() == "=" && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) )
+        return enterNetwork();
     if( mods == Qt::NoModifier )
     {
         if( key == Qt::Key_Escape ) return escKey();
@@ -444,6 +455,184 @@ void KeyboardController::leavePart( Component* comp, bool opposite )
     m_leavePos = cursorPos();
 }
 
+// ----- Network mode (K9) -----------------------------------------------------
+
+void KeyboardController::say( QString text )
+{
+    if( CircuitWidget* w = CircuitWidget::self() ) w->eventMessage( text, 0 );
+}
+
+// =: walk the network of the selected part's selected pin. No wire: a message, parts mode
+bool KeyboardController::enterNetwork()
+{
+    Component* comp = singlePart();
+    if( !comp ) return false;
+    Pin* pin = comp->selectedPin();
+    if( !pin ){ say("Keyboard: "+comp->getUid()+" has no pin to walk from"); return true; }
+    if( !m_walk.start( pin ) )
+    {
+        say("Keyboard: "+pin->pinId()+" has no wire — nothing to walk (choose a wired pin with > or <)");
+        return true;
+    }
+    qDebug() << "[kbd] network mode from" << pin->pinId() << m_walk.size() << "steps";
+    m_arrowBurst = false;
+    showStep();
+    return true;
+}
+
+void KeyboardController::leaveNetwork( bool reselect )
+{
+    if( !m_walk.active() ) return;
+    QString uid = m_walk.partUid();
+    markCorner( false );
+    m_walk.stop();
+    m_arrowBurst = false;
+    m_walkSelecting = true;
+    Circuit::self()->clearSelection();
+    m_walkSelecting = false;
+    qDebug() << "[kbd] parts mode";
+    if( reselect )
+        if( Component* comp = compByUid( uid ) ) selectPart( comp );   // Its pin unchanged
+}
+
+// Repaints where the step's mark was (on: and where it is now)
+void KeyboardController::markCorner( bool on )
+{
+    Circuit* circ = Circuit::self();
+    circ->update( m_stepMark );                          // Where it was
+    m_stepMark = QRectF();
+    if( !on || !m_walk.active() || !m_walk.size() ) return;
+    NetworkWalk::Step s = m_walk.current();
+    m_stepMark = QRectF( s.pos.x()-8, s.pos.y()-8, 16, 16 );
+    if( Connector* con = m_walk.wire( s ) )
+        if( s.kind == NetworkWalk::stepWire )
+            for( ConnectorLine* l : *con->lineList() ) m_stepMark |= l->sceneBoundingRect().adjusted(-4,-4,4,4);
+    circ->update( m_stepMark );
+}
+
+void KeyboardController::showStep()
+{
+    Circuit* circ = Circuit::self();
+    NetworkWalk::Step s = m_walk.current();
+    m_walkSelecting = true;
+    circ->clearSelection();
+    QRectF show( s.pos.x()-8, s.pos.y()-8, 16, 16 );
+    if( s.kind == NetworkWalk::stepWire )
+    {
+        if( Connector* con = m_walk.wire( s ) )
+        {
+            con->setSelected( true );                    // All its segments highlighted
+            for( ConnectorLine* l : *con->lineList() ) show |= l->sceneBoundingRect();
+        }
+    }
+    else if( s.kind == NetworkWalk::stepDot )
+    {
+        if( Node* node = m_walk.dot( s ) ) node->setSelected( true );
+    }
+    m_walkSelecting = false;
+    markCorner( true );
+    if( CircuitView* v = CircuitView::self() ) v->ensureVisible( show, 32, 32 );
+}
+
+bool KeyboardController::networkKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
+{
+    int key = event->key();
+    QString text = event->text();
+    bool plain = mods == Qt::NoModifier;
+    bool arrow = key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down;
+
+    if( text == "=" && ( plain || mods == Qt::ShiftModifier ) ){ leaveNetwork( true ); return true; }
+    if( key == Qt::Key_Escape && plain ){ leaveNetwork( true ); return true; }
+    if( text == "h" && plain ){ setPanMode( true ); return true; }   // Panning keeps the walk
+
+    if( key == Qt::Key_Backtab || ( key == Qt::Key_Tab && ( plain || mods == Qt::ShiftModifier ) ) )
+    {
+        m_arrowBurst = false;
+        m_walk.stepBy( ( key == Qt::Key_Tab && plain ) ? 1 : -1 );
+        showStep();
+        return true;
+    }
+    if( arrow && ( plain || mods == Qt::ShiftModifier ) )
+    {
+        if( m_panMode ) return arrowKey( event, mods );
+        NetworkWalk::Step s = m_walk.current();
+        if( s.kind == NetworkWalk::stepWire ) return true;          // Arrows do nothing on a wire
+        QPointF dir;
+        if     ( key == Qt::Key_Left  ) dir = QPointF(-1, 0 );
+        else if( key == Qt::Key_Right ) dir = QPointF( 1, 0 );
+        else if( key == Qt::Key_Up    ) dir = QPointF( 0,-1 );
+        else                            dir = QPointF( 0, 1 );
+        QPointF d = dir*( plain ? bigStep : smallStep );
+        if( s.kind == NetworkWalk::stepCorner ) moveCorner( d );
+        else                                                        // A dot: as a drag, wires follow
+        {
+            m_burstWire.clear();
+            arrowKey( event, mods );
+            Node* node = m_walk.dot( s );
+            QPoint at = node ? node->getPin( 0 )->scenePos().toPoint() : s.pos;
+            if( !m_walk.rebuild( at, NetworkWalk::stepDot ) ){ leaveNetwork( true ); return true; }
+            showStep();
+        }
+        return true;
+    }
+    if( ( key == Qt::Key_Backspace || key == Qt::Key_Delete ) && plain )
+    {
+        if( m_walk.current().kind == NetworkWalk::stepWire ) deleteWire();
+        return true;                                    // Dots and corners: nothing
+    }
+    return false;
+}
+
+// A corner moves with its two segments, the wire staying H/V; a burst of arrow
+// presses on the same wire is one undo step (as a mouse drag of a segment)
+void KeyboardController::moveCorner( QPointF delta )
+{
+    NetworkWalk::Step s = m_walk.current();
+    Connector* con = m_walk.wire( s );
+    QStringList pl = m_walk.cornerMoved( s, delta.toPoint() );
+    if( !con || pl.isEmpty() ) return;
+
+    Circuit* circ = Circuit::self();
+    bool newStep = !m_arrowBurst || m_burstEdit != circ->editCount() || m_burstWire != s.uid;
+    if( newStep ) circ->saveCompChange( s.uid, "pointList", con->pointList().join(",") );
+    markCorner( false );
+    con->setPointList( pl );
+    circ->setChanged();
+    m_arrowBurst = true;
+    m_burstEdit  = circ->editCount();
+    m_burstWire  = s.uid;
+    m_burstSelection.clear();
+
+    QPoint at = s.pos+delta.toPoint();
+    if( !m_walk.rebuild( at, NetworkWalk::stepCorner ) ){ leaveNetwork( true ); return; }
+    showStep();
+}
+
+// Backspace on a wire: delete it (one undo step; a dot left with two wires is
+// dissolved, as the mouse Remove does). The walk is rebuilt and goes to the nearest
+// remaining step, or back to parts mode when none is left
+void KeyboardController::deleteWire()
+{
+    NetworkWalk::Step s = m_walk.current();
+    Connector* con = m_walk.wire( s );
+    if( !con ) return;
+    Circuit* circ = Circuit::self();
+    m_walkSelecting = true;
+    circ->clearSelection();
+    con->setSelected( true );
+    circ->removeItems();
+    m_walkSelecting = false;
+    m_arrowBurst = false;
+    qDebug() << "[kbd] deleted wire" << s.uid;
+    if( !m_walk.rebuild( s.pos, NetworkWalk::stepWire ) )
+    {
+        say("Keyboard: no wire left on the pin — back to parts mode");
+        leaveNetwork( true );
+        return;
+    }
+    showStep();
+}
+
 bool KeyboardController::anyPartSelected()
 {
     Circuit* circ = Circuit::self();
@@ -457,7 +646,7 @@ bool KeyboardController::anyPartSelected()
     return false;
 }
 
-bool KeyboardController::cursorVisible() { return m_focused && !anyPartSelected(); }
+bool KeyboardController::cursorVisible() { return m_focused && !anyPartSelected() && !m_walk.active(); }
 
 void KeyboardController::setPanMode( bool on )
 {
@@ -510,6 +699,7 @@ void KeyboardController::zoomAround( double factor )
 
 void KeyboardController::selectionChanged()
 {
+    if( m_walk.active() && !m_walkSelecting ) leaveNetwork( false );  // Selected by other means
     if( m_value.active() )                               // The edit ends when its part is no
     {                                                    // longer the single selection (K7)
         Component* c = singlePart();
@@ -676,7 +866,12 @@ void KeyboardController::mouseMoved( QPoint viewPos )
     showPointer();                          // The cross does not follow the mouse
 }
 
-void KeyboardController::mousePressed() { m_value.revert(); setPanMode( false ); }   // A click reverts (K7)
+void KeyboardController::mousePressed()
+{
+    m_value.revert();                                    // A click reverts (K7)
+    setPanMode( false );
+    if( m_walk.active() ) leaveNetwork( false );         // and ends network mode (K9)
+}   // A click reverts (K7)
 
 void KeyboardController::clickedEmpty( QPointF scenePos )
 {
@@ -771,9 +966,37 @@ void KeyboardController::updateCross( QPointF p )
 
 void KeyboardController::paint( QPainter* painter )
 {
-    if( !cursorVisible() ) return;
     CircuitView* v = CircuitView::self();
     if( !v || painter->device() != v->viewport() ) return;  // Not in exports and captures of the circuit
+
+    if( m_walk.active() && m_walk.size() )               // The walk's step (K9), in highlight:
+    {                                                    // a wire traced, a ring round a dot,
+        NetworkWalk::Step s = m_walk.current();          // a small square on a corner
+        painter->save();
+        painter->setRenderHint( QPainter::Antialiasing, true );
+        painter->setPen( QPen( Theme::highlight(), 2.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin ) );
+        painter->setBrush( Qt::NoBrush );
+        if( s.kind == NetworkWalk::stepWire )
+        {
+            if( Connector* con = m_walk.wire( s ) )
+            {
+                QPolygonF poly;
+                for( ConnectorLine* l : *con->lineList() )
+                {
+                    if( poly.isEmpty() ) poly << l->p1();
+                    poly << l->p2();
+                }
+                painter->drawPolyline( poly );
+            }
+        }
+        else if( s.kind == NetworkWalk::stepDot ) painter->drawEllipse( QPointF( s.pos ), 5, 5 );
+        else{
+            painter->setPen( QPen( Theme::highlight(), 1.5 ) );
+            painter->drawRect( QRectF( s.pos.x()-3.5, s.pos.y()-3.5, 7, 7 ) );
+        }
+        painter->restore();
+    }
+    if( !cursorVisible() ) return;
 
     QPointF p = cursorPos();
     painter->save();
@@ -804,5 +1027,23 @@ QJsonObject KeyboardController::state()
     Component* lp = lastPart();
     o["lastPart"] = lp ? QJsonValue( lp->getUid() ) : QJsonValue();
     if( m_value.active() ) o["valueEdit"] = m_value.state();   // K7: the value being typed
+    if( m_walk.active() )                                 // K9: the walk, its step and what
+    {                                                     // is highlighted in the scene
+        QJsonObject n = m_walk.state();
+        QJsonArray wires, dots;
+        for( QGraphicsItem* item : Circuit::self()->selectedItems() )
+        {
+            if( item->type() == QGraphicsItem::UserType+2 )
+            {
+                QString uid = qgraphicsitem_cast<ConnectorLine*>( item )->connector()->getUid();
+                if( !wires.contains( uid ) ) wires.append( uid );
+            }
+            else if( Component* c = qgraphicsitem_cast<Component*>( item ) )
+                if( c->itemType() == "Node" ) dots.append( c->getUid() );
+        }
+        n["selectedWires"] = wires;
+        n["selectedDots"]  = dots;
+        o["network"] = n;
+    }
     return o;      // The CLI adds the pins (pinFrom, pinTo, selectedPin) as "R1.lPin" refs
 }

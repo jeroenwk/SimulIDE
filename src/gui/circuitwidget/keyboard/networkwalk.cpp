@@ -1,0 +1,228 @@
+/***************************************************************************
+ *   Keyboard input: walking the wire network of a pin (K9)                *
+ ***( see copyright.txt file at root folder )*******************************/
+
+#include <QJsonArray>
+#include <QHash>
+#include <algorithm>
+
+#include "networkwalk.h"
+#include "circuit.h"
+#include "connector.h"
+#include "component.h"
+#include "node.h"
+#include "pin.h"
+
+NetworkWalk::NetworkWalk()
+{
+    m_active = false;
+    m_index  = 0;
+}
+
+QString NetworkWalk::kindName( kind_t k )
+{ return k == stepWire ? "wire" : k == stepCorner ? "corner" : "dot"; }
+
+static QList<QPoint> points( Connector* con )
+{
+    QStringList l = con->pointList();
+    QList<QPoint> pts;
+    for( int i=0; i+1<l.size(); i+=2 ) pts.append( QPoint( l[i].toInt(), l[i+1].toInt() ) );
+    return pts;
+}
+
+static double segLen( QPoint a, QPoint b ) { return qAbs( b.x()-a.x() ) + qAbs( b.y()-a.y() ); }
+
+static bool isDot( Pin* p ) { return p && p->component() && p->component()->itemType() == "Node"; }
+
+// Dijkstra over the wires: a wire is entered at one end with a path length, its corners
+// and its far end follow along its points; a dot at the far end passes the walk on to
+// its other wires, a part's pin ends it. Each wire counts once, from its nearest end
+QList<NetworkWalk::Step> NetworkWalk::build( Pin* pin )
+{
+    QList<Step> steps;
+    if( !pin || !pin->connector() ) return steps;
+
+    struct Entry { Connector* con; Pin* from; double len; };
+    QList<Entry> queue{ { pin->connector(), pin, 0 } };
+    QHash<Connector*, bool> done;
+    QHash<Node*, bool> dots;
+
+    while( !queue.isEmpty() )
+    {
+        int best = 0;                                    // The nearest entry first
+        for( int i=1; i<queue.size(); ++i ) if( queue[i].len < queue[best].len ) best = i;
+        Entry e = queue.takeAt( best );
+        if( done.value( e.con ) ) continue;
+        done[ e.con ] = true;
+
+        QList<QPoint> pts = points( e.con );
+        if( pts.size() < 2 ) continue;
+        bool reversed = e.con->startPin() != e.from;     // Entered at its end pin
+        Pin* far = reversed ? e.con->startPin() : e.con->endPin();
+
+        QPoint entry = reversed ? pts.last() : pts.first();
+        steps.append( { stepWire, e.con->getUid(), -1, entry, e.len } );
+
+        double len = e.len;
+        int n = pts.size();
+        for( int k=1; k<n; ++k )                         // Along the wire from its entry
+        {
+            int i = reversed ? n-1-k : k;                // Point index in the point list
+            int prev = reversed ? i+1 : i-1;
+            len += segLen( pts[prev], pts[i] );
+            if( k < n-1 ) steps.append( { stepCorner, e.con->getUid(), i, pts[i], len } );
+        }
+        if( !isDot( far ) ) continue;                    // A part's pin: the walk ends there
+
+        Node* node = static_cast<Node*>( far->component() );
+        if( !dots.value( node ) )
+        {
+            dots[ node ] = true;
+            steps.append( { stepDot, node->getUid(), -1, far->scenePos().toPoint(), len } );
+        }
+        for( int p=0; p<3; ++p )
+        {
+            Pin* np = node->getPin( p );
+            Connector* c = np ? np->connector() : nullptr;
+            if( c && !done.value( c ) ) queue.append( { c, np, len } );
+        }
+    }
+    std::stable_sort( steps.begin(), steps.end(), []( const Step& a, const Step& b ){
+        if( a.len != b.len ) return a.len < b.len;
+        auto rank = []( kind_t k ){ return k == stepDot ? 0 : k == stepWire ? 1 : 2; };
+        if( a.kind != b.kind ) return rank( a.kind ) < rank( b.kind );   // A dot before the
+                                                                         // wires leaving it
+        if( a.pos.y() != b.pos.y() ) return a.pos.y() < b.pos.y();
+        return a.pos.x() < b.pos.x();
+    });
+    return steps;
+}
+
+bool NetworkWalk::start( Pin* pin )
+{
+    QList<Step> steps = build( pin );
+    if( steps.isEmpty() ) return false;
+    m_steps   = steps;
+    m_index   = 0;                                       // The pin's own wire
+    m_pinId   = pin->pinId();
+    m_partUid = pin->component() ? pin->component()->getUid() : QString();
+    m_active  = true;
+    return true;
+}
+
+void NetworkWalk::stop()
+{
+    m_active = false;
+    m_steps.clear();
+    m_index = 0;
+}
+
+NetworkWalk::Step NetworkWalk::current() { return m_steps.at( m_index ); }
+
+void NetworkWalk::stepBy( int dir )
+{
+    int n = m_steps.size();
+    if( n ) m_index = ( ( m_index+dir ) % n + n ) % n;
+}
+
+bool NetworkWalk::rebuild( QPoint pos, kind_t kind )
+{
+    QList<Step> steps = build( Circuit::self()->pinById( m_pinId ) );
+    m_steps = steps;
+    m_index = 0;
+    if( steps.isEmpty() ) return false;
+
+    int best = -1;
+    double bestD = 1e300;
+    for( int pass=0; pass<2 && best < 0; ++pass )        // Same kind first, then any
+        for( int i=0; i<steps.size(); ++i )
+        {
+            if( pass == 0 && steps[i].kind != kind ) continue;
+            double d = segLen( steps[i].pos, pos );
+            if( d < bestD ){ bestD = d; best = i; }
+        }
+    m_index = best;
+    return true;
+}
+
+Connector* NetworkWalk::wire( const Step& s )
+{
+    if( s.kind == stepDot ) return nullptr;
+    for( Connector* c : *Circuit::self()->conList() ) if( c->getUid() == s.uid ) return c;
+    return nullptr;
+}
+
+Node* NetworkWalk::dot( const Step& s )
+{
+    if( s.kind != stepDot ) return nullptr;
+    for( Node* n : *Circuit::self()->nodeList() ) if( n->getUid() == s.uid ) return n;
+    return nullptr;
+}
+
+// The corner moves by delta; its two segments move with it so the wire stays H/V:
+// the neighbour point shares the moved coordinate. A neighbour that is the wire's end
+// (a pin or a dot) cannot move: a point is added there, as the mouse segment drag does.
+// Points that coincide or line up are merged afterwards
+QStringList NetworkWalk::cornerMoved( const Step& s, QPoint delta )
+{
+    Connector* con = wire( s );
+    if( !con || s.kind != stepCorner ) return QStringList();
+    QList<QPoint> pts = points( con );
+    int k = s.index;
+    if( k <= 0 || k >= pts.size()-1 ) return QStringList();
+
+    QPoint old = pts[k];
+    QPoint now = old+delta;
+    auto follow = [&]( int nb, int& k ){                 // Keep segment (nb, k) straight
+        QPoint q = pts[nb];
+        bool horizontal = q.y() == old.y() && q.x() != old.x();
+        bool vertical   = q.x() == old.x() && q.y() != old.y();
+        if( !horizontal && !vertical ) return;           // Diagonal or null: just the corner
+        if( nb == 0 || nb == pts.size()-1 )              // An end: a new point next to it
+        {
+            int at = ( nb == 0 ) ? 1 : nb;
+            pts.insert( at, q );
+            if( nb == 0 ) k++;
+            nb = ( nb == 0 ) ? 1 : nb;
+        }
+        if( horizontal ) pts[nb].ry() = now.y();
+        else             pts[nb].rx() = now.x();
+    };
+    follow( k-1, k );
+    follow( k+1, k );
+    pts[k] = now;
+
+    for( int i=1; i<pts.size(); )                        // Merge coinciding points
+    {
+        if( pts[i] == pts[i-1] && i != 0 && pts.size() > 2 ) pts.removeAt( i == pts.size()-1 ? i-1 : i );
+        else ++i;
+    }
+    for( int i=1; i+1<pts.size(); )                      // and points on a straight line
+    {
+        QPoint a = pts[i-1], b = pts[i], c = pts[i+1];
+        bool line = ( a.x() == b.x() && b.x() == c.x() ) || ( a.y() == b.y() && b.y() == c.y() );
+        if( line ) pts.removeAt( i );
+        else ++i;
+    }
+    QStringList out;
+    for( QPoint p : pts ){ out.append( QString::number( p.x() ) ); out.append( QString::number( p.y() ) ); }
+    return out;
+}
+
+QJsonObject NetworkWalk::state()
+{
+    QJsonObject o{ {"pin", m_pinId}, {"steps", m_steps.size()}, {"index", m_index} };
+    if( m_index < m_steps.size() )
+    {
+        Step s = m_steps.at( m_index );
+        QJsonObject st{ {"kind", kindName( s.kind )}, {"uid", s.uid},
+                        {"pos", QJsonArray{ s.pos.x(), s.pos.y() }}, {"len", s.len} };
+        if( s.kind == stepCorner ) st["index"] = s.index;
+        o["step"] = st;
+    }
+    QJsonArray all;
+    for( const Step& s : m_steps )
+        all.append( kindName( s.kind )+" "+s.uid+( s.kind == stepCorner ? "#"+QString::number( s.index ) : "" ) );
+    o["walk"] = all;
+    return o;
+}
