@@ -742,13 +742,26 @@ Decisions (user, 2026-11-18):
   selected (or in EditValue), the number-row keys count as digits with or without
   Shift, matched by physical key (macOS `nativeVirtualKey` = `kVK_ANSI_0…9`, the
   number row on every layout). Their unshifted characters (`& é " ' ( § è ! ç à`)
-  are used by no other shortcut.
+  are used by no other shortcut. *Revised by D21: "with Shift" only where Shift
+  types the digit.*
+- **D21** (2026-11-19) **Other layouts than AZERTY.** Every command matches the
+  character typed (`<` `>` `=` `+` `:` `/` `-` `.` `,` letters), so it follows the
+  user's layout: `<` is Shift+`,` on US QWERTY, its own key on QWERTZ and AZERTY;
+  `=` is Shift+0 on QWERTZ; `/` is Shift+7 on QWERTZ, Shift+`:` on AZERTY. Cmd
+  combinations use Qt's key code, which macOS derives from the character with
+  Shift (`Cmd+>` = Cmd+Shift+`.` on US). Digits: a digit character is a digit on
+  any layout; the number row also counts **by position only without Shift**
+  (AZERTY's `& é " …`). D10's "with Shift" stole the shifted symbols of QWERTY /
+  QWERTZ: with a resistor selected, QWERTZ `=` (Shift+0) started typing "0"
+  instead of network mode, and `/` (Shift+7) typed "7". The position comes from
+  `PhysicalKeys::numberRowDigit` (macOS virtual key codes; Windows scan codes
+  0x02–0x0B and X11 key codes 10–19 added, untested), also used by Cmd+0. CLI
+  `ui type --layout us|de|fr` types as macOS sends those layouts;
+  `tests/kbd/test_layouts.py` runs the commands on all three.
   
   
 
 # 7. Next
 
 - Multiple part selection by shift arrow starting on empty canvas drawing a rectangle over parts
-- Support other keyboarss than azerty
 - Configurable shortcuts for components in part settings
-- pressing 'k' on the canvas should add the selected part in the left pane at cross position. pressing ':' should select the part under the selected part in the left pane while keeping the focus on the canvas. '/' should select the part above it.

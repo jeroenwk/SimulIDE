@@ -32,6 +32,7 @@
 #include "componentselector.h"
 #include "subcircuit.h"
 #include "pinchain.h"
+#include "physicalkeys.h"
 #include "connectorline.h"
 #include "utils.h"
 
@@ -959,11 +960,7 @@ bool KeyboardController::zoomKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
     int key = event->key();
     if( key == Qt::Key_Plus || key == Qt::Key_Equal ){ zoomAround( 1.25 );     return true; }
     if( key == Qt::Key_Minus )                       { zoomAround( 1/1.25 );   return true; }
-#ifdef Q_OS_MACOS
-    bool zero = key == Qt::Key_0 || event->nativeVirtualKey() == 0x1D;   // kVK_ANSI_0
-#else
-    bool zero = key == Qt::Key_0;
-#endif
+    bool zero = key == Qt::Key_0 || PhysicalKeys::numberRowDigit( event ) == 0;  // AZERTY: Cmd+à
     if( zero && !( mods & ~( Qt::ControlModifier | Qt::ShiftModifier ) ) )
     {
         CircuitView* v = CircuitView::self();
