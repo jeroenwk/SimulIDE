@@ -54,6 +54,7 @@ class NetworkWalk
         int  size()  { return m_steps.size(); }
         int  index() { return m_index; }
         Step current();                        // Only while active and not empty
+        QStringList wireUids();                // The wires of the walk (its net), in walk order
         void stepBy( int dir );                // Next / previous, wrapping
 
         // After an edit: rebuild from the pin, the selection on the step of that kind

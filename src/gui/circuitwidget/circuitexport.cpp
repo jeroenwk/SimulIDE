@@ -30,6 +30,7 @@ QRectF drawnRect( Circuit* circ )
         QRectF r = item->sceneBoundingRect();
         if( r.isValid() ) rect |= r;
     }
+    rect |= circ->bandsRect();                                     // Wire bands stick out
     if( rect.isEmpty() ) rect = QRectF( -200, -150, 400, 300 );   // Empty circuit: the origin
     return rect;
 }

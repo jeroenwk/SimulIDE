@@ -135,6 +135,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `wire add <pinA\|@x,y> <pinB\|@x,y> [--via x,y,...]` | Connect two pins, or a pin and a point on a wire (a new junction there). A pin that already has a wire gets a junction on its net. The route goes through the `--via` points and is always horizontal/vertical |
 | `wire list` | Wires and the pins they join |
 | `wire remove <wire> ...` | Remove wires. Prints the removed uids and any merged wires |
+| `wire style <wire> ... [--color C\|none] [--band C\|none] [--opacity 0..100] [--width W\|default]` | Wire colours ([specs/wire-colors.md](../specs/wire-colors.md)): line colour, and a translucent band behind the wire (default 6 px, 50 %). One undo step; without options prints them. `wire list` shows `color`, `bandColor`, `bandWidth` when set |
 | `wire current [wire ...]` | Current through wires (A), signed from the `from` pin to the `to` pin. Works paused. `flag` marks shared (`approximate`) or non-conserving (`inconsistent`) results |
 
 - `comp move`, `comp rotate` and `comp flip` also print the new pin positions.
@@ -418,7 +419,7 @@ the pause.
 | `ui toolbar` | The circuit toolbar's buttons: `text`, `tooltip` (with the key in this platform's notation: `⌘,` on macOS, `Ctrl+,` elsewhere), `shortcut` (the key bound to it, native text; empty when the canvas reads the key), `enabled`, `checked` (toggles) |
 | `ui mouse <x,y>` | Move the mouse (no button) to a scene position over the canvas; returns `kbd state` |
 | `ui drag <x1,y1> <x2,y2>` | Drag with the left mouse button between two scene positions (press, moves in 8 px steps, release); returns `kbd state` |
-| `ui click <x,y> [--cmd]` | Left click at a scene position on the canvas, as the mouse does (on empty canvas: clears the selection, places the keyboard cursor; `--cmd` holds Cmd: on a wire, corner or dot it starts network mode there); returns `kbd state` |
+| `ui click <x,y> [--cmd] [--double]` | Left click at a scene position on the canvas, as the mouse does (on empty canvas: clears the selection, places the keyboard cursor; `--cmd` holds Cmd: on a wire, corner or dot it starts network mode there, and in network mode marks / unmarks a wire; `--double` adds a double click: with `--cmd` on a wire, its net is marked); returns `kbd state` |
 | `ui focus canvas\|none` | Give the canvas keyboard focus or take it away |
 
 These commands work on any part with on-screen controls, including push
@@ -441,7 +442,7 @@ Keyboard-driven editing (`specs/keyboard-input.md`). Tests: `tests/kbd/run.sh`.
 | Command | |
 |---|---|
 | `kbd partkey <part> [<letter>\|none] [--replace]` | A part's keyboard shortcut (the letter that places that kind of part at the cross), as its properties dialog sets it: `<part>` is a component on the canvas or a name in the component list. Without a letter: show it (`key`, `default`, `caption`). A letter another part has needs `--replace` (that part then has none); `h` `w` `k` and non-letters are refused; `none` clears. Saved, except on a headless server (in memory only) |
-| `kbd state` | Focus, keyboard cursor (the cross, scene x,y on the grid lines at 4 + 8k), whether the cross is shown (focus and no part selected), the mouse pointer hidden, `panMode`, `zoom` (view scale), selected parts, the pins to wire (`pinFrom`, `pinTo`); with one part selected its `selectedPin` (`selectedPinManual`: chosen with `<` `>`, else auto) and `pinsClockwise`; while a value is typed `valueEdit` (part, property, buffer); in network mode (`=`) `network`: the `pin` walked from, the `walk` (its steps in order: `wire <uid>`, `corner <uid>#<point index>`, `dot <uid>`), the current `step` (kind, uid, pos, path length) and the `selectedWires` / `selectedDots` highlighted; while a wire is drawn from a wire (`+`) `drawing`: its `fixed` points, the `wire` uid and its current `points` |
+| `kbd state` | Focus, keyboard cursor (the cross, scene x,y on the grid lines at 4 + 8k), whether the cross is shown (focus and no part selected), the mouse pointer hidden, `panMode`, `zoom` (view scale), selected parts, the pins to wire (`pinFrom`, `pinTo`); with one part selected its `selectedPin` (`selectedPinManual`: chosen with `<` `>`, else auto) and `pinsClockwise`; while a value is typed `valueEdit` (part, property, buffer); in network mode (`=`) `network`: the `pin` walked from, the `walk` (its steps in order: `wire <uid>`, `corner <uid>#<point index>`, `dot <uid>`), the current `step` (kind, uid, pos, path length), the `selectedWires` / `selectedDots` highlighted and the `marked` wires (specs/wire-colors.md); while a wire is drawn from a wire (`+`) `drawing`: its `fixed` points, the `wire` uid and its current `points` |
 | `kbd shortcuts [--table]` | Every shortcut of the circuit editor: category, action, keys (macOS words: `Cmd+Shift+Z`), context. `--table`: the rows of Settings > Shortcuts (K10): keys as this platform writes them (`⇧⌘Z` on macOS, `Ctrl+Shift+Z` elsewhere), plus the part letters in effect (category `Part letters`), in category order |
 
 Headless, the window is never active, so `ui type` and `ui focus` set the canvas focus

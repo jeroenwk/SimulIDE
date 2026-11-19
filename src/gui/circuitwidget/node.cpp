@@ -131,6 +131,7 @@ void Node::joinConns( int c0, int c1 )
             return false;
         };
         if( this->isSelected() || selected( con0 ) || selected( con1 ) ) con->setSelected( true );
+        con->copyStyle( con0->hasStyle() ? con0 : con1 );   // The merged wire keeps a colour
     }
     con0->setStartPin( NULL );
     con0->setEndPin( NULL );
@@ -149,6 +150,22 @@ void Node::setHidden( bool hid, bool , bool )
     this->setVisible( !hid );
 }
 
+// The line colour shared by at least two of the dot's wires (a coloured path runs
+// through it, specs/wire-colors.md), else the theme's wire colour
+QColor Node::dotColor()
+{
+    QList<QRgb> colors;
+    for( Pin* pin : m_pin )
+    {
+        Connector* con = pin ? pin->connector() : nullptr;
+        if( !con || !con->lineColor().isValid() ) continue;
+        QRgb c = con->lineColor().rgb();
+        if( colors.contains( c ) ) return QColor( c );
+        colors.append( c );
+    }
+    return Theme::wire();
+}
+
 void Node::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
     if( m_hidden ) return;
@@ -165,8 +182,9 @@ void Node::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* 
     //p->drawRect( boundingRect() );
 
     Component::paint( p, option, widget );
-    p->setBrush( Theme::wire() );                      // Junction dots match the wires
-    p->setPen( QPen( Theme::wire(), 1.5 ) );
+    QColor color = dotColor();                         // Junction dots match the wires
+    p->setBrush( color );
+    p->setPen( QPen( color, 1.5 ) );
 
     if( m_isBus ) p->drawEllipse( QPointF(0,0), 1.8, 1.8  );
     else          p->drawEllipse( QPointF(0,0), 1.4, 1.4 );

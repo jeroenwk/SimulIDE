@@ -19,6 +19,7 @@
 #include "circuit.h"
 #include "component.h"
 #include "connector.h"
+#include "wirestyledialog.h"
 #include "connectorline.h"
 #include "node.h"
 #include "pin.h"
@@ -729,6 +730,68 @@ void CliApi::registerEdit()
         QJsonObject o{ {"removed", removed } };
         if( !created.isEmpty() ) o["merged"] = created;
         return o;
+    });
+
+    add("wire style", "wire style <wire> [wire ...] [--color C|none] [--band C|none] [--opacity 0..100] [--width W|default]",
+        "Wire colours (specs/wire-colors.md): the line colour and a translucent band behind the wire, "
+        "of the given width (default 6 px). C: #rrggbb, #aarrggbb or a colour name; --opacity sets the "
+        "band's alpha in % (default 50 for a new band without alpha). One undo step for all the wires. "
+        "Without options: prints them.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        if( c.pos.isEmpty() ) throw CliError("missing wire");
+        QList<Connector*> cons;
+        for( QString ref : c.pos ) cons.append( CliRefs::wire( ref ) );
+
+        auto color = []( QString v, QString what ) -> QColor {
+            QColor col( v.trimmed() );
+            if( !col.isValid() ) throw CliError("invalid "+what+": "+v);
+            return col;
+        };
+        QMap<QString,QString> props;
+        if( c.has("color") )
+        {
+            QString v = c.opt("color");
+            props["color"] = v == "none" ? "" : QColor( color( v, "colour" ).rgb() ).name();
+        }
+        if( c.has("band") || c.has("opacity") )
+        {
+            QString v = c.opt("band");
+            if( v == "none" ) props["bandColor"] = "";
+            else{
+                QColor col = c.has("band") ? color( v, "band colour" ) : cons.first()->bandColor();
+                if( !col.isValid() ) col = QColor( 120, 100, 160 );   // --opacity alone, no band yet
+                bool hasAlpha = c.has("band") && v.startsWith('#') && v.length() == 9;
+                if( c.has("opacity") )
+                {
+                    double pct = Cli::parseNum( c.opt("opacity"), "opacity");
+                    if( pct < 0 || pct > 100 ) throw CliError("opacity must be 0..100");
+                    col.setAlpha( qRound( pct*255/100.0 ) );
+                }
+                else if( !hasAlpha ) col.setAlpha( qRound( 50*255/100.0 ) );
+                props["bandColor"] = col.name( QColor::HexArgb );
+            }
+        }
+        if( c.has("width") )
+        {
+            QString v = c.opt("width");
+            if( v == "default" ) props["bandWidth"] = "";
+            else{
+                double w = Cli::parseNum( v, "width");
+                if( w < 1 || w > 100 ) throw CliError("width must be 1..100 px");
+                props["bandWidth"] = QString::number( w );
+            }
+        }
+        if( !props.isEmpty() ) WireStyleDialog::apply( cons, props );
+
+        QJsonArray rows;
+        for( Connector* con : cons )
+        {
+            QJsonObject o = CliRefs::wireJson( con );
+            o.remove("points");
+            rows.append( o );
+        }
+        return rows;
     });
 
     //--- Undo / redo ---------------------------------------------------------

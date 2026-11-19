@@ -194,7 +194,11 @@ void CircuitView::dragLeaveEvent( QDragLeaveEvent* event )
 void CircuitView::mousePressEvent( QMouseEvent* event )
 {
     m_waitForDragStart = false;
-    KeyboardController::self()->mousePressed();
+    // Cmd+click (no Shift) keeps network mode: on a wire it marks it; a right click too:
+    // a wire's Colours… takes the marked wires (specs/wire-colors.md)
+    KeyboardController::self()->mousePressed( ( event->button() == Qt::LeftButton
+                                             && event->modifiers() == Qt::ControlModifier )
+                                           || event->button() == Qt::RightButton );
     m_kbdPressPos   = event->pos();
     m_kbdPressEmpty = event->button() == Qt::LeftButton && event->modifiers() == Qt::NoModifier
                    && !itemAt( event->pos() ) && !m_circuit->is_constarted();

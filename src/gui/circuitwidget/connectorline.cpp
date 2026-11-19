@@ -66,6 +66,7 @@ QRectF ConnectorLine::boundingRect() const
 void ConnectorLine::sSetP1( QPoint point )
 {
     prepareGeometryChange();
+    bandMoved();
     m_p1X = point.x();
     m_p1Y = point.y();
     updatePos();
@@ -74,6 +75,7 @@ void ConnectorLine::sSetP1( QPoint point )
 void ConnectorLine::sSetP2( QPoint point )
 {
     prepareGeometryChange();
+    bandMoved();
     m_p2X = point.x();
     m_p2Y = point.y();
     updatePos();
@@ -85,6 +87,7 @@ void ConnectorLine::moveSimple( QPointF delta )
     bool deltaV  = fabs( delta.y() )> 0;
     
     prepareGeometryChange();
+    bandMoved();
 
     m_p1X = m_p1X + delta.x();
     m_p1Y = m_p1Y + delta.y();
@@ -118,6 +121,12 @@ void ConnectorLine::moveSimple( QPointF delta )
     updatePos();
 }
 
+// A wire with a band: the band (drawn by the circuit's background) is redrawn too
+void ConnectorLine::bandMoved()
+{
+    if( m_pConnector && m_pConnector->bandColor().isValid() ) Circuit::self()->bandsChanged();
+}
+
 bool ConnectorLine::isDiagonal() { return ( fabs(m_p2X - m_p1X)>0 && fabs(m_p2Y - m_p1Y)>0 ); }
 
 void ConnectorLine::move( QPointF delta )
@@ -125,6 +134,7 @@ void ConnectorLine::move( QPointF delta )
     if( Circuit::self()->pasting() )
     {
         prepareGeometryChange();
+        bandMoved();
         m_p1Y = m_p1Y + delta.y();
         m_p2Y = m_p2Y + delta.y();
         m_p1X = m_p1X + delta.x();
@@ -146,6 +156,7 @@ void ConnectorLine::move( QPointF delta )
 void ConnectorLine::moveLine( QPoint delta )
 {
     prepareGeometryChange();
+    bandMoved();
 
     if( dx() != 0 ){
        m_p1Y = m_p1Y + delta.y();
@@ -216,6 +227,19 @@ void ConnectorLine::mousePressEvent( QGraphicsSceneMouseEvent* event )
            if( connectToWire( point1 ) ) event->accept();
            else                          event->ignore();
 }   }   }
+
+// Cmd+double-click: the press before it started network mode on this wire (or toggled
+// it); the double click marks the wire's whole net (specs/wire-colors.md)
+void ConnectorLine::mouseDoubleClickEvent( QGraphicsSceneMouseEvent* event )
+{
+    if( event->button() == Qt::LeftButton && event->modifiers() == Qt::ControlModifier )
+    {
+        event->accept();
+        KeyboardController::self()->netFromMouse( m_pConnector->getUid() );
+        return;
+    }
+    mousePressEvent( event );                         // As QGraphicsItem does
+}
 
 bool ConnectorLine::connectToWire( QPoint point1 )
 {
@@ -322,6 +346,10 @@ void ConnectorLine::contextMenuEvent( QGraphicsSceneContextMenuEvent* event )
        QAction* removeAction = menu.addAction( tr("Remove") );
        QObject::connect( removeAction, &QAction::triggered, [=](){ remove(); } );
 
+       Connector* con = m_pConnector;                 // specs/wire-colors.md
+       QAction* styleAction = menu.addAction( tr("Colours…") );
+       QObject::connect( styleAction, &QAction::triggered, [con](){ KeyboardController::self()->wireStyleFromMenu( con ); } );
+
        menu.exec(event->screenPos());
 }   }
 
@@ -371,7 +399,10 @@ void ConnectorLine::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
     if( leadPin ) lead = leadPin->wireColor();
     if( lead.isValid() ) lead = Theme::lead( lead );
 
+    QColor custom = m_pConnector->lineColor();   // The user's colour wins (specs/wire-colors.md)
+
     if( isSelected() ) color = QColor( Qt::darkGray );
+    else if( custom.isValid() ) color = custom;
     else if( m_isBus ) color =  Qt::darkGreen;
     else if( lead.isValid() ) color = lead;
     else if( Circuit::self()->animate() )
@@ -387,7 +418,7 @@ void ConnectorLine::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
     //p->drawPath( shape() );
     
     if( m_isBus ) pen.setWidth( 3 );
-    else if( lead.isValid() && !isSelected() ) pen.setWidthF( 2.4 ); // Leads a bit thicker, like test leads
+    else if( lead.isValid() && !isSelected() && !custom.isValid() ) pen.setWidthF( 2.4 ); // Leads a bit thicker, like test leads
 
     p->setPen( pen );
     p->drawLine( 0, 0, dx(), dy());

@@ -1,0 +1,31 @@
+<circuit version="1.1.0-SR2" rev="261119" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="Resistor" CircId="Resistor-1" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="100,96" rotation="0" hflip="1" vflip="1" label="R15" idLabPos="-16,-24" labelrot="0" valLabPos="-11,8.5" valLabRot="0" labelAuto="true" Resistance="100 Ω" Cp="0 pF" />
+
+<item itemtype="Resistor" CircId="Resistor-2" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="100,224" rotation="0" hflip="1" vflip="1" label="R13" idLabPos="-16,-24" labelrot="0" valLabPos="-11,8.5" valLabRot="0" labelAuto="true" Resistance="100 Ω" Cp="0 pF" />
+
+<item itemtype="Capacitor" CircId="Capacitor-3" mainComp="false" ShowProp="Capacitance" Show_id="false" Show_Val="true" Pos="220,224" rotation="0" hflip="1" vflip="1" label="C3" idLabPos="-16,-24" labelrot="0" valLabPos="-10,12" valLabRot="0" labelAuto="true" Capacitance="10 µF" Resistance="1 µΩ" InitVolt="0 V" MaxVolt="0 V" ChargeScale="0 V" LogCharge="false" ReaStep="0 ns" />
+
+<item itemtype="Resistor" CircId="Resistor-4" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="260,40" rotation="0" hflip="1" vflip="1" label="R14" idLabPos="-16,-24" labelrot="0" valLabPos="-11,8.5" valLabRot="0" labelAuto="true" Resistance="100 Ω" Cp="0 pF" />
+
+<item itemtype="Ground" CircId="Ground-5" mainComp="false" Show_id="false" Show_Val="false" Pos="160,320" rotation="0" hflip="1" vflip="1" label="GND" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Node" CircId="Node-6" mainComp="false" Pos="104,96" />
+
+<item itemtype="Node" CircId="Node-7" mainComp="false" Pos="176,224" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="Capacitor-3-lPin" endpinid="Node-6-1" pointList="204,224,104,224,104,96" bandColor="#668070a0" bandWidth="12" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Resistor-1-rPin" endpinid="Node-6-0" pointList="116,96,104,96" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="Node-6-2" endpinid="Resistor-2-lPin" pointList="104,96,84,96,84,224" bandColor="#668070a0" bandWidth="12" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Ground-5-Gnd" endpinid="Node-7-1" pointList="160,304,160,224,176,224" bandColor="#998070a0" bandWidth="8" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="Resistor-2-rPin" endpinid="Node-7-0" pointList="116,224,176,224" bandColor="#998070a0" bandWidth="8" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Node-7-2" endpinid="Capacitor-3-rPin" pointList="176,224,236,224" bandColor="#998070a0" bandWidth="8" />
+
+<item itemtype="Connector" uid="Connector-9" startpinid="Resistor-1-lPin" endpinid="Resistor-4-lPin" pointList="84,96,84,40,244,40" color="#6fcf97" />
+
+</circuit>
