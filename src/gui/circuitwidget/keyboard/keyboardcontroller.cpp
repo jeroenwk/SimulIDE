@@ -954,12 +954,24 @@ void KeyboardController::setPanMode( bool on )
     qDebug() << "[kbd] pan mode" << on;
 }
 
-// Cmd + / Cmd = : zoom in, Cmd - : zoom out, Cmd 0 : 100 %. On AZERTY 0 needs Shift:
-// Cmd 0 is also matched by its physical key (number row)
+// Cmd + / Cmd = : zoom in, Cmd - : zoom out, Cmd 0 : 100 %, Opt Cmd 0 : zoom to fit,
+// Ctrl Cmd 0 : zoom to the selection (the toolbar's zoom buttons). On AZERTY 0 needs
+// Shift and Option changes the character: 0 is also matched by its physical key
 bool KeyboardController::zoomKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
 {
-    if( !( mods & Qt::ControlModifier ) || ( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) ) return false;
+    if( !( mods & Qt::ControlModifier ) ) return false;
     int key = event->key();
+    bool zero0 = key == Qt::Key_0 || PhysicalKeys::numberRowDigit( event ) == 0;
+    Qt::KeyboardModifiers extra = mods & ~( Qt::ControlModifier | Qt::ShiftModifier );
+    if( zero0 && ( extra == Qt::AltModifier || extra == Qt::MetaModifier ) )
+    {
+        CircuitView* v = CircuitView::self();
+        if( !v ) return true;
+        if( extra == Qt::AltModifier ) v->zoomToFit();
+        else                           v->zoomSelected();
+        return true;
+    }
+    if( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) return false;
     if( key == Qt::Key_Plus || key == Qt::Key_Equal ){ zoomAround( 1.25 );     return true; }
     if( key == Qt::Key_Minus )                       { zoomAround( 1/1.25 );   return true; }
     bool zero = key == Qt::Key_0 || PhysicalKeys::numberRowDigit( event ) == 0;  // AZERTY: Cmd+à

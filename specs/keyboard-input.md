@@ -181,6 +181,7 @@ Parts mode:
 | `Cmd+=` / `Cmd++` | zoom in (the cross or view centre kept in place) | same | same | – |
 | `Cmd+-` | zoom out | same | same | – |
 | `Cmd+0` | zoom 100 % | same | same | – |
+| `Opt+Cmd+0` / `Ctrl+Cmd+0` | zoom to fit all / the selection (toolbar keys) | same | same | – |
 | Tab / Shift+Tab | part nearest the cursor | next/prev part | next/prev part | revert, then next/prev |
 | Esc | – | unselect all | unselect all | revert value |
 | Enter | – | – | unselect, cursor 64 px right | commit, unselect, cursor right |
@@ -215,7 +216,10 @@ Drawing a wire (K9b):
 | Enter | connect to the free pin or the wire within 8 px of the cross |
 | Esc (or a mouse press) | cancel: the wire, its dot and the split go |
 
-Ctrl/Cmd shortcuts are unchanged. Alt+char part shortcuts keep working.
+Ctrl/Cmd shortcuts are unchanged. Alt+char part shortcuts keep working. Toolbar
+keys (K9g): `Cmd+,` settings, `Cmd+P` export, F5 start / stop, F6 pause / resume,
+F7 current flow, F8 capacitor / inductor display, F9 part states, F10 instruments,
+F12 noise — anywhere in the window.
 
 ### 4.3 Selection change and the auto pin rule (used by K4, K5, K8, mouse)
 
@@ -665,6 +669,50 @@ Validate
 - [ ] h, w, k or a digit: refused with the reason.
 - [ ] Restart: the changes are kept.
 
+### K9g — Toolbar keys, shown in the tooltips
+
+Every toolbar button with a key shows it in its tooltip, written as the platform
+writes it (D22): `Settings (⌘,)` on macOS, `Settings (Ctrl+,)` on Windows and Linux.
+
+| Button | Key (macOS) | Key (Windows, Linux) | Read by |
+|---|---|---|---|
+| Settings | ⌘, | Ctrl+, | window shortcut |
+| New / Open / Save / Save As | ⌘N ⌘O ⌘S ⇧⌘S | Ctrl+N … | the canvas (existing) |
+| Export as image | ⌘P | Ctrl+P | window shortcut |
+| Undo / Redo | ⌘Z ⇧⌘Z | Ctrl+Z Ctrl+Shift+Z | the canvas (existing) |
+| Zoom to fit | ⌥⌘0 | Ctrl+Alt+0 | the canvas (zoomKey) |
+| Zoom to selected | ⌃⌘0 | Ctrl+Meta+0 | the canvas (zoomKey) |
+| Zoom to scale 1 | ⌘0 | Ctrl+0 | the canvas (existing) |
+| Start / stop | F5 | F5 | window shortcut |
+| Pause / resume | F6 | F6 | window shortcut |
+| Current flow | F7 | F7 | window shortcut |
+| Capacitor charge, inductor current | F8 | F8 | window shortcut |
+| Part states | F9 | F9 | window shortcut |
+| Instruments | F10 | F10 | window shortcut |
+| Transient noise | F12 | F12 | window shortcut |
+
+- The file and edit keys stay read by the canvas, so the code editor keeps its own
+  ⌘N ⌘O ⌘S ⌘Z (window shortcuts would take them there too). The zoom keys are read by
+  the canvas because ⌥ changes the character of 0 on macOS: 0 is also matched by its
+  physical key, as ⌘0 already was (AZERTY: the à/0 key, without Shift).
+- Noise is F12, not F11 as proposed: macOS uses F11 for Show Desktop.
+- On a Mac keyboard the F keys need fn, unless *Use F1, F2, etc. keys as standard
+  function keys* is on (System Settings > Keyboard).
+- The tooltip follows the button's text: `Stop Simulation (F5)` while running.
+- The same notation fix applies to the context menus (component, canvas, code
+  editor) and the code editor's toolbar, which wrote `Ctrl+C` on macOS: they
+  now show ⌘C (`KeyText::native`).
+- CLI: `ui toolbar` lists the buttons with their tooltip and key; `ui type F5`,
+  `ui type cmd+,` go through Qt's shortcut map as a real key does.
+  `tests/kbd/test_toolbar_keys.py`.
+
+Validate
+- [ ] Hover each toolbar button: the tooltip ends with its key, ⌘ ⌥ ⌃ ⇧ symbols.
+- [ ] fn+F5 starts, fn+F6 pauses / resumes, fn+F5 stops; fn+F7 … F10, fn+F12 toggle.
+- [ ] ⌘, opens Settings, ⌘P the export dialog (also with the code editor focused).
+- [ ] ⌥⌘à/0 zooms to fit, ⌃⌘à/0 to the selection, ⌘à/0 to 100 %.
+- [ ] Right click a part: Copy ⌘C, Rotate CW ⌘R … (no "Ctrl").
+
 ### K10 — Shortcut list in Settings
 *(epic: "listing shortcuts")*
 
@@ -803,23 +851,12 @@ Decisions (user, 2026-11-18):
   
   
 
+- **D22** (user, 2026-11-19) Shortcut texts in the GUI follow the platform: Qt's
+  portable form in the code ("Ctrl+N", Ctrl = ⌘ on macOS), shown with
+  `QKeySequence::NativeText` (⌘N on macOS, Ctrl+N elsewhere) through
+  `KeyText::native` / `KeyText::tipWithKey` (`src/gui/keytext.h`). No hand-written
+  "Ctrl+" in a visible text.
+
 # 7. Next
 
 - Multiple part selection by shift arrow starting on empty canvas drawing a rectangle over parts
-- Add shortcuts for toolbar items. Each toolbar item should show its shortcut in its hover help text. Before to implement, propose me the shortcuts for each toolbar button. Double check this proposal:
-  - `⌘ + , open settings`
-  - `⌘ + p export `
-  - option+ ⌘ + à/0 zoom to fit 
-  - ctrl+ ⌘ + à/0 zoom to selected 
-  - `⌘ + B`
-  - `⌘ + D`
-  - `⌘ + E`
-  - `⌘ + G`
-  - `⌘ + I`
-  - `⌘ + J`
-  - `⌘ + K`
-  - `⌘ + L`
-  - `⌘ + R`
-  - `⌘ + T`
-  - `⌘ + U`
-  - `⌘ + Y`

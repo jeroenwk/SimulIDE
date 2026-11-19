@@ -16,6 +16,7 @@
 #include <QSettings>
 
 #include "editorwidget.h"
+#include "keytext.h"
 #include "appfonts.h"
 #include "findreplace.h"
 #include "propdialog.h"
@@ -643,48 +644,59 @@ void EditorWidget::createActions()
                  this,              SLOT( openRecentFile() ), Qt::UniqueConnection);
     }
 
-    newAct = new QAction(QIcon(":/new.svg"), tr("&New\tCtrl+N"), this);
+    newAct = new QAction(QIcon(":/new.svg"), tr("&New")+"\t"+KeyText::native("Ctrl+N"), this);
     newAct->setStatusTip(tr("Create a new file"));
     connect( newAct, SIGNAL(triggered()), this, SLOT(newFile()), Qt::UniqueConnection);
 
-    openAct = new QAction(QIcon(":/open.svg"), tr("&Open...\tCtrl+O"), this);
+    openAct = new QAction(QIcon(":/open.svg"), tr("&Open...")+"\t"+KeyText::native("Ctrl+O"), this);
     openAct->setStatusTip(tr("Open an existing file"));
     connect(openAct, SIGNAL(triggered()), this, SLOT(open()), Qt::UniqueConnection);
 
-    saveAct = new QAction(QIcon(":/save.svg"), tr("&Save\tCtrl+S"), this);
+    saveAct = new QAction(QIcon(":/save.svg"), tr("&Save")+"\t"+KeyText::native("Ctrl+S"), this);
     saveAct->setStatusTip(tr("Save the document to disk"));
     saveAct->setEnabled(false);
     connect(saveAct, SIGNAL(triggered()), this, SLOT(save()), Qt::UniqueConnection);
 
-    saveAsAct = new QAction(QIcon(":/saveas.svg"),tr("Save &As...\tCtrl+Shift+S"), this);
+    saveAsAct = new QAction(QIcon(":/saveas.svg"),tr("Save &As...")+"\t"+KeyText::native("Ctrl+Shift+S"), this);
     saveAsAct->setStatusTip(tr("Save the document under a new name"));
     saveAsAct->setEnabled(false);
     connect(saveAsAct, SIGNAL(triggered()), this, SLOT(saveAs()), Qt::UniqueConnection);
 
-    cutAct = new QAction(QIcon(":/cut.svg"), tr("Cu&t\tCtrl+X"), this);
+    cutAct = new QAction(QIcon(":/cut.svg"), tr("Cu&t")+"\t"+KeyText::native("Ctrl+X"), this);
     cutAct->setStatusTip(tr("Cut the current selection's contents to the clipboard"));
     cutAct->setEnabled(false);
     connect(cutAct, SIGNAL(triggered()), this, SLOT(cut()), Qt::UniqueConnection);
 
-    copyAct = new QAction(QIcon(":/copy.svg"), tr("&Copy\tCtrl+C"), this);
+    copyAct = new QAction(QIcon(":/copy.svg"), tr("&Copy")+"\t"+KeyText::native("Ctrl+C"), this);
     copyAct->setStatusTip(tr("Copy the current selection's contents to the clipboard"));
     copyAct->setEnabled(false);
     connect(copyAct, SIGNAL(triggered()), this, SLOT(copy()), Qt::UniqueConnection);
 
-    pasteAct = new QAction(QIcon(":/paste.svg"), tr("&Paste\tCtrl+V"), this);
+    pasteAct = new QAction(QIcon(":/paste.svg"), tr("&Paste")+"\t"+KeyText::native("Ctrl+V"), this);
     pasteAct->setStatusTip(tr("Paste the clipboard's contents into the current selection"));
     pasteAct->setEnabled(false);
     connect(pasteAct, SIGNAL(triggered()), this, SLOT(paste()), Qt::UniqueConnection);
 
-    undoAct = new QAction(QIcon(":/undo.svg"), tr("Undo\tCtrl+Z"), this);
+    undoAct = new QAction(QIcon(":/undo.svg"), tr("Undo")+"\t"+KeyText::native("Ctrl+Z"), this);
     undoAct->setStatusTip(tr("Undo the last action"));
     undoAct->setEnabled(false);
     connect(undoAct, SIGNAL(triggered()), this, SLOT(undo()), Qt::UniqueConnection);
 
-    redoAct = new QAction(QIcon(":/redo.svg"), tr("Redo\tCtrl+Shift+Z"), this);
+    redoAct = new QAction(QIcon(":/redo.svg"), tr("Redo")+"\t"+KeyText::native("Ctrl+Shift+Z"), this);
     redoAct->setStatusTip(tr("Redo the last action"));
     redoAct->setEnabled(false);
     connect(redoAct, SIGNAL(triggered()), this, SLOT(redo()));
+
+    // Tooltips with the keys, as this platform writes them (⌘N on macOS)
+    KeyText::tipWithKey( newAct,    "Ctrl+N" );
+    KeyText::tipWithKey( openAct,   "Ctrl+O" );
+    KeyText::tipWithKey( saveAct,   "Ctrl+S" );
+    KeyText::tipWithKey( saveAsAct, "Ctrl+Shift+S" );
+    KeyText::tipWithKey( cutAct,    "Ctrl+X" );
+    KeyText::tipWithKey( copyAct,   "Ctrl+C" );
+    KeyText::tipWithKey( pasteAct,  "Ctrl+V" );
+    KeyText::tipWithKey( undoAct,   "Ctrl+Z" );
+    KeyText::tipWithKey( redoAct,   "Ctrl+Shift+Z" );
 
     runAct =  new QAction(QIcon(":/runtobk.png"),tr("Run To Breakpoint"), this);
     runAct->setStatusTip(tr("Run to next breakpoint"));

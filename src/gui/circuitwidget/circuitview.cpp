@@ -18,6 +18,7 @@
 #include <QComboBox>
 
 #include "circuitview.h"
+#include "keytext.h"
 #include "exportdialog.h"
 #include "circuitwidget.h"
 #include "circuit.h"
@@ -319,15 +320,15 @@ void CircuitView::contextMenuEvent( QContextMenuEvent* event )
 
         menu.addSeparator();
 
-        QAction* pasteAction = menu.addAction(QIcon(":/paste.svg"),tr("Paste")+"\tCtrl+V");
+        QAction* pasteAction = menu.addAction(QIcon(":/paste.svg"),tr("Paste")+"\t"+KeyText::native("Ctrl+V"));
         connect( pasteAction, &QAction::triggered,
                         this, &CircuitView::slotPaste, Qt::UniqueConnection );
 
-        QAction* undoAction = menu.addAction(QIcon(":/undo.svg"),tr("Undo")+"\tCtrl+Z");
+        QAction* undoAction = menu.addAction(QIcon(":/undo.svg"),tr("Undo")+"\t"+KeyText::native("Ctrl+Z"));
         connect( undoAction, &QAction::triggered,
                   m_circuit, &Circuit::undo, Qt::UniqueConnection );
 
-        QAction* redoAction = menu.addAction(QIcon(":/redo.svg"),tr("Redo")+"\tCtrl+Y");
+        QAction* redoAction = menu.addAction(QIcon(":/redo.svg"),tr("Redo")+"\t"+KeyText::native("Ctrl+Y"));
         connect( redoAction, &QAction::triggered,
                   m_circuit, &Circuit::redo, Qt::UniqueConnection );
 
