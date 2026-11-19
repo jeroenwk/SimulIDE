@@ -6,6 +6,7 @@
 #include <math.h>
 
 #include "connectorline.h"
+#include "keyboardcontroller.h"
 #include "theme.h"
 #include "connector.h"
 #include "circuitview.h"
@@ -185,7 +186,16 @@ void ConnectorLine::mousePressEvent( QGraphicsSceneMouseEvent* event )
     }
     else if( event->button() == Qt::LeftButton )
     {
-        if( event->modifiers() == Qt::ControlModifier ) setSelected( !isSelected() ); // Select - Deselect
+        if( event->modifiers() == Qt::ControlModifier )   // The whole wire, or the corner near the
+        {                                                 // click, as the keyboard walk selects it (K9d)
+            QList<ConnectorLine*>* lines = m_pConnector->lineList();
+            int i = lines->indexOf( this ), n = lines->size();
+            QPoint at = event->scenePos().toPoint();
+            auto near = []( QPoint a, QPoint b ){ return ( a-b ).manhattanLength() <= 6; };
+            if     ( i > 0   && near( at, p1() ) ) KeyboardController::self()->walkFromMouse( 1, m_pConnector->getUid(), i, p1() );
+            else if( i < n-1 && near( at, p2() ) ) KeyboardController::self()->walkFromMouse( 1, m_pConnector->getUid(), i+1, p2() );
+            else KeyboardController::self()->walkFromMouse( 0, m_pConnector->getUid(), -1, at );
+        }
         
         else if( event->modifiers() & Qt::ShiftModifier ) // Move Corner
         {

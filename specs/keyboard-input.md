@@ -578,6 +578,29 @@ Validate
 - [ ] Next to a corner: the corner; on the middle of a wire: the wire.
 - [ ] Esc: nothing selected, the cross at the item.
 
+### K9d — Cmd+click on a wire, corner or dot
+*(user request 2026-11-19, after K9c)*
+
+- Cmd+click (Ctrl in Qt) on a **wire** selects the whole wire as network mode
+  does (highlighted, `NetworkWalk::startFrom`); within 6 px of a **corner**, the
+  corner; on a **dot**, the dot. The canvas takes the keys, so Tab, arrows and
+  Backspace go on from there. Cmd+click on a part still toggles it in the
+  selection.
+- It replaces upstream's Ctrl+click on a wire, which toggled **one segment** in
+  the selection: Delete and Copy then took the whole wire anyway
+  (`Circuit::removeItems`, `copy`), and a selected segment only moved rigidly
+  with a dragged group of parts — the one use that goes (a rubber band still
+  selects segments). Moving a segment (middle-button drag) and a corner
+  (Shift+drag) does not depend on selection and is unchanged.
+- A walk started by the mouse does not scroll: scrolling under the pressed
+  button sends the wire a mouse move, which dragged its segment (found while
+  testing). `ui click x,y --cmd` (CLI) clicks with Cmd held.
+
+Validate
+- [ ] Cmd+click a wire: the whole wire highlighted; Tab walks on.
+- [ ] Cmd+click near a corner: the corner; arrows move it.
+- [ ] Cmd+click a dot: the dot. Cmd+click a part: toggled as before.
+
 ### K10 — Shortcut list in Settings
 *(epic: "listing shortcuts")*
 
@@ -704,6 +727,6 @@ Decisions (user, 2026-11-18):
 # 7. Next
 
 - Multiple part selection by shift arrow starting on empty canvas drawing a rectangle over parts
-- hitting wire mode '=' while no part is selected should select the nearest dot, or nearest corner or nearest wire
+- Support other keyboarss than azerty
 - Configurable shortcuts for components in part settings
-- 
+- pressing 'k' on the canvas should add the selected part in the left pane at cross position. pressing ':' should select the part under the selected part in the left pane while keeping the focus on the canvas. '/' should select the part above it.

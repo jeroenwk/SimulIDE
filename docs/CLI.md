@@ -417,7 +417,7 @@ the pause.
 | `ui type <key> [key ...]` | Real key presses on the canvas, as typed: a character (`r`, `<`, `_`, `é`) or a name (`Left Right Up Down Tab Enter Esc Backspace Delete Space Home End`), modifiers joined with `+` (`shift+Left`, `cmd+z`). An uppercase letter implies Shift. The AZERTY number row without Shift is typed by its characters (`& é " ' ( è ç à`): each is its physical digit key with that text. Gives the canvas focus first; returns `kbd state` |
 | `ui mouse <x,y>` | Move the mouse (no button) to a scene position over the canvas; returns `kbd state` |
 | `ui drag <x1,y1> <x2,y2>` | Drag with the left mouse button between two scene positions (press, moves in 8 px steps, release); returns `kbd state` |
-| `ui click <x,y>` | Left click at a scene position on the canvas, as the mouse does (on empty canvas: clears the selection, places the keyboard cursor); returns `kbd state` |
+| `ui click <x,y> [--cmd]` | Left click at a scene position on the canvas, as the mouse does (on empty canvas: clears the selection, places the keyboard cursor; `--cmd` holds Cmd: on a wire, corner or dot it starts network mode there); returns `kbd state` |
 | `ui focus canvas\|none` | Give the canvas keyboard focus or take it away |
 
 These commands work on any part with on-screen controls, including push

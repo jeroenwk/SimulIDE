@@ -50,6 +50,10 @@ class KeyboardController
         void mousePressed();                     // Any button: ends pan mode
         void clickedEmpty( QPointF scenePos );   // Left click (no drag) on empty canvas: the cross goes there
 
+        // Cmd+click on a wire, corner or dot (K9d): network mode with that item selected,
+        // highlighted as when walked to with the keyboard. kind: NetworkWalk::kind_t
+        void walkFromMouse( int kind, QString uid, int index, QPoint pos );
+
         void setFocused( bool focused );    // Canvas got / lost keyboard focus
         bool focused() { return m_focused; }
 
@@ -104,7 +108,7 @@ class KeyboardController
         bool enterNetwork();                        // =: false = not for us (no single part)
         void leaveNetwork( bool reselect );         // Back to parts mode (the part selected again)
         bool networkKey( QKeyEvent* event, Qt::KeyboardModifiers mods );   // false: not a walk key
-        void showStep();                            // Select / mark the current step, scroll to it
+        void showStep( bool scroll = true );        // Select / mark the current step, scroll to it
         void moveCorner( QPointF delta );
         void deleteWire();
         void markCorner( bool on );                 // Repaint the step mark's area

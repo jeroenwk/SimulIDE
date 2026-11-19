@@ -207,6 +207,36 @@ def test(sim):
               note=str(step(s)))
     sim.cli("ui", "type", "esc")
 
+    # Cmd+click (K9d) on a wire, a corner or a dot: network mode with that item selected
+    # and highlighted, as the keyboard selects it; the keys go on from there
+    build(sim)
+    w0 = wires(sim)
+    s = sim.cli("ui", "click", "240,100", "--cmd")
+    sim.check("cmd+click a wire: network mode on it", int(net(s) is not None and step(s)["kind"] == "wire"), 1,
+              absolute=0, note=str(net(s) and step(s)))
+    sim.check("cmd+click a wire: the whole wire highlighted", int(net(s)["selectedWires"] == [step(s)["uid"]]), 1,
+              absolute=0, note=str(net(s)["selectedWires"]))
+    sim.check("cmd+click a wire: the canvas has the keys", int(s["focused"]), 1, absolute=0)
+    sim.cli("ui", "click", "240,100", "--cmd")           # Again, on the selected wire: it must not move
+    sim.check("cmd+click: the wire does not move (no scroll under the button)", int(wires(sim) == w0), 1,
+              absolute=0, note=str([w["points"] for w in wires(sim).values()]))
+    s = sim.cli("ui", "click", "282,100", "--cmd")    # On the line, 2 px before the corner
+    sim.check("cmd+click near a corner: the corner", int(step(s)["kind"] == "corner" and step(s)["pos"] == [284, 100]), 1,
+              absolute=0, note=str(step(s)))
+    s = sim.cli("ui", "type", "shift+Up")
+    sim.check("cmd+click a corner, then arrows: it moves", int(step(s)["pos"] == [284, 92]), 1, absolute=0,
+              note=str(step(s)))
+    sim.cli("ui", "type", "cmd+z")
+    s = sim.cli("ui", "click", "200,100", "--cmd")
+    sim.check("cmd+click the dot: the dot", int(step(s)["kind"] == "dot"), 1, absolute=0, note=str(step(s)))
+    sim.check("cmd+click the dot: highlighted", int(net(s)["selectedDots"] == [step(s)["uid"]]), 1, absolute=0)
+    s = sim.cli("ui", "type", "esc")
+    s = sim.cli("ui", "click", "100,100", "--cmd")       # On R1: a part is still toggled
+    sim.check("cmd+click a part: selected, no network mode", int(net(s) is None and s["selection"] == ["Resistor-1"]), 1,
+              absolute=0, note=str(s["selection"]))
+    s = sim.cli("ui", "click", "100,100", "--cmd")
+    sim.check("cmd+click a part again: unselected", int(s["selection"] == []), 1, absolute=0, note=str(s["selection"]))
+
     # No wire in the circuit: a message, parts mode
     sim.cli("circuit", "new", "--discard")
     sim.cli("comp", "add", "Resistor", "--label", "R1", "--at", "100,100")
