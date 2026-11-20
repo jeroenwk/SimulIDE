@@ -86,7 +86,7 @@ When the user wants to build or try circuits together, follow **`docs/COLLABORAT
   - A long-running command calls `c.defer()` and later completes the returned `CliPending`, usually from `Cli::pollUntil`.
   - `CliRefs` (`clirefs.cpp`) resolves component, pin and wire references.
 - **Threading:**
-  - The simulation worker runs between GUI timer ticks, so CLI handlers can run while it is busy.
+  - The simulation worker runs between GUI timer ticks. `CliApi::exec` calls `Simulator::holdWorker()` before every handler: the worker finishes its time step and stops (a solved step, not an iteration in progress; a step over 50 ms of wall time is still cut, `breakStep()`). The GUI timer does the same at each frame. After the handler, `resumeWorker()` runs the parts' `updateStep()` (where a released Push or a property change is applied) and lets the worker finish the frame's span.
   - Anything that touches the event queue or MCU state must run from an `Updatable::updateStep()`, which is called while the worker is idle. `cli_mcu.cpp` does this through `CliTicker::runIdle`.
   - UART bytes are injected by an `eElement` that schedules simulation events, one frame each (`UartFeeder`).
 - **Lifetime:**

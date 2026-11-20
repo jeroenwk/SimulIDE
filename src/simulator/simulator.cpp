@@ -107,13 +107,7 @@ void Simulator::timerEvent( QTimerEvent* e )  //update at m_timerTick_ms rate (5
     else if( m_warning < 0 )
     { if( ++m_warning == 0 ) CircuitWidget::self()->setMsg( " "+tr("Running")+" ", 0 ); }
 
-    if( !m_CircuitFuture.isFinished() ) // Stop remaining parallel thread
-    {
-        simState_t state = m_state;
-        m_state = SIM_WAITING;
-        m_CircuitFuture.waitForFinished();
-        m_state = state;
-    }
+    holdWorker();                       // Stop remaining parallel thread, at the end of a step
     if( m_debug && m_state == SIM_PAUSED ) CircuitWidget::self()->debugPaused();
     if( m_noiseEl ) CircuitWidget::self()->updateNoise();   // Armed / on / ended
 
@@ -168,6 +162,9 @@ void Simulator::runCircuit()
 
     eElement* event = m_firstEvent;
     uint64_t endRun = m_circTime + m_psPF; // Run upto next Timer event
+    if( m_resumeRun && m_runEnd > m_circTime ) endRun = m_runEnd;   // Held by a CLI command: same end
+    m_resumeRun = false;
+    m_runEnd = endRun;
     if( m_stopAt && endRun > m_stopAt ) endRun = (m_stopAt > m_circTime) ? m_stopAt : m_circTime;
     uint64_t nextTime;
 
@@ -199,10 +196,11 @@ void Simulator::runCircuit()
 void Simulator::runSettled()   // The step is solved: elements that asked see its final values
 {
     if( m_stepWatch ) addToSettled( m_stepWatch );
+    if( !stepComplete() ) return;   // Left in the middle of the step: values not final. The list
+                                    // stays: the step is finished in the next run
     eElement* el = m_settled;
     m_settled = nullptr;
     m_settledGen++;
-    if( m_state < SIM_RUNNING ) return;   // Stopped in the middle of the step: values not final
     while( el ){
         eElement* next = el->nextSettled;
         el->stepSettled();
@@ -265,7 +263,7 @@ void Simulator::solveCircuit()
                 m_nlBudget = qMin( m_maxNlstp, (uint32_t)1000 );
                 return;
             }
-            if( m_state < SIM_RUNNING ){ m_converged = false; break; }    // Loop broken without converging
+            if( m_state < SIM_RUNNING && breakStep() ){ m_converged = false; break; } // Loop broken without converging
             if( m_changedNode ) solveMatrix();
         }
         if( !m_converged ) return; // Don't run linear until nonliear converged (Loop broken)
@@ -278,7 +276,7 @@ void Simulator::solveCircuit()
             m_voltChanged->voltChanged();
             m_voltChanged = m_voltChanged->nextChanged;
         }
-        if( m_state < SIM_RUNNING ) break;    // Loop broken without converging
+        if( m_state < SIM_RUNNING && breakStep() ) break;    // Loop broken without converging
     }
 }
 
@@ -557,7 +555,36 @@ void Simulator::pauseSim() // Only pause simulation, don't update UI
 {
     if( m_state <= SIM_PAUSED ) return;
     m_oldState = m_state;
+    m_holdSince = m_RefTimer.nsecsElapsed();
     m_state = SIM_PAUSED;
+}
+
+// The GUI timer (each frame) and every CLI command call this before they read the circuit. The
+// worker used to be stopped in the middle of a step: the frame then drew, and a CLI read could
+// return, the values of an unfinished Newton iteration (a bridge diode of board_mains read 10 A
+// where no solved step goes above 2.2 A, and Kirchhoff's current law broken by amps). It now
+// finishes the step first, unless that takes over 50 ms (breakStep). A CLI command arriving while
+// the worker runs waited for nothing at all and raced it; it now waits here too.
+void Simulator::holdWorker()
+{
+    if( m_CircuitFuture.isFinished() ) return;
+    if( m_state != SIM_RUNNING ){ m_CircuitFuture.waitForFinished(); return; }  // Pausing or stopping
+    m_holdSince = m_RefTimer.nsecsElapsed();
+    m_state = SIM_WAITING;
+    m_CircuitFuture.waitForFinished();
+    m_state = SIM_RUNNING;
+}
+
+// GUI thread, after a CLI command held the worker: run the rest of this frame's span now instead
+// of at the next timer tick, so a script polling in a loop does not slow the simulation down.
+// The parts' updateStep() runs first, as at each frame: a change the command made (a Push
+// released, a property set) is applied there, and the worker must not run on without it
+void Simulator::resumeWorker()
+{
+    if( m_state != SIM_RUNNING || !m_CircuitFuture.isFinished() || m_circTime >= m_runEnd ) return;
+    for( Updatable* el : m_updateList ) el->updateStep();  // As each frame: what the command changed
+    m_resumeRun = true;                                     // (a released Push, a property) applies first
+    m_CircuitFuture = QtConcurrent::run( this, &Simulator::runCircuit );
 }
 
 void Simulator::resumeSim()

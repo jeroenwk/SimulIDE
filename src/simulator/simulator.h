@@ -48,6 +48,11 @@ class Simulator : public QObject
 
         void startSim( bool paused=false );
         void pauseSim();
+
+        // GUI thread: let the worker finish the time step it is solving and stop there, so what
+        // the GUI and the CLI read next is a converged step, not a Newton iteration in progress
+        void holdWorker();
+        void resumeWorker();
         void resumeSim();
         void stopSim();
 
@@ -193,6 +198,16 @@ class Simulator : public QObject
         eElement* m_stepWatch = nullptr;
         uint64_t  m_settledGen = 1;
         inline void runSettled();
+
+        // Worker: a stop was asked (frame, pause: m_state < SIM_RUNNING). Leave the step unsolved
+        // only when stopping for good, or when finishing it has taken over 50 ms of wall time
+        inline bool breakStep() {
+            return m_state < SIM_PAUSED || m_RefTimer.nsecsElapsed()-m_holdSince > 50000000; }
+        inline bool stepComplete() {
+            return m_converged && !m_changedNode && !m_nonLinear && !m_voltChanged; }
+        qint64 m_holdSince = 0;   // Wall time (m_RefTimer) the stop was asked
+        uint64_t m_runEnd = 0;    // Simulated time the current frame's run goes up to
+        bool m_resumeRun = false; // The next run goes on to m_runEnd (resumeWorker)
         QList<eElement*> m_startSettle;
         void startSettle();
 

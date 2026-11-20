@@ -60,6 +60,11 @@ simulide cli [options] -                  Run commands from stdin
 - **Exit codes:** `0` ok, `1` command error, `2` cannot connect.
 - **Output:** errors go to stderr as `error: ...`, and notes (closed dialogs,
   warnings) go to stderr as `note: ...`.
+- **While the simulation runs**, every command first lets the solver finish the time
+  step it is working on and runs between two steps, so `read`, `probe` and the rest give
+  a solved step (Kirchhoff's laws hold), never a Newton iteration in progress. The
+  solver then goes on at once. A step that needs over 50 ms of wall time is still cut
+  short (`tests/regress/test_settled_reads.py`).
 
 ### Arguments
 
