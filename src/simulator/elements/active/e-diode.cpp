@@ -56,6 +56,7 @@ void eDiode::stamp()
 void eDiode::voltChanged()
 {
     double voltPN = m_ePin[0]->getVoltage() - m_ePin[1]->getVoltage();
+    m_voltSolved = voltPN;   // The last call of a step is the converged one: the solved voltage
 
     if( m_changed ) m_changed = false;
     else if( qFabs( voltPN - m_voltPN ) < .01 )                          // Converged
@@ -215,6 +216,8 @@ void eDiode::getModels() // Static
                     data.emCoef = item.attribute("emCoef").toDouble();
                     data.brkDow = item.attribute("brkDown").toDouble();
                     data.resist = item.attribute("resist").toDouble();
+                    data.maxCur   = item.attribute("maxCurr").toDouble();    // IF(AV), A (optional)
+                    data.surgeCur = item.attribute("surgeCurr").toDouble();  // IFSM, A (optional)
 
                     if     ( type == "diode") m_diodes.insert( name, data );
                     else if( type == "zener") m_zeners.insert( name, data );
@@ -237,5 +240,7 @@ void eDiode::setModel( QString model )
 void eDiode::setModelData( diodeData_t data )
 {
     SetParameters( data.satCur*1e-9, data.emCoef, data.brkDow, data.resist );
+    if( data.maxCur   > 0 ) m_maxCur   = data.maxCur;     // Ratings, when the model has them
+    if( data.surgeCur > 0 ) m_surgeCur = data.surgeCur;
 }
 

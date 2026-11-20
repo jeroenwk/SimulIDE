@@ -7,13 +7,15 @@
         <!-- ES1J: 1 A 600 V superfast rectifier (trr 35 ns; transient time not modelled).
              Is and n fit 0.495 V at ~1 mA (a real ES1J measured with a 34401A diode test,
              led_driver test 13) with nA reverse leakage; 0.5 Ohm gives ~1.25 V at 1 A
-             (datasheet max 1.7 V). Breakdown = VRRM. -->
-        <item name="ES1J superfast" satCurr_nA="1" resist="0.5" emCoef="1.39" brkDown="600" />
+             (datasheet max 1.7 V). Breakdown = VRRM. Ratings (onsemi ES1F-ES1J datasheet, 2024):
+             IF(AV) 1 A, IFSM 30 A. -->
+        <item name="ES1J superfast" satCurr_nA="1" resist="0.5" emCoef="1.39" brkDown="600" maxCurr="1" surgeCurr="30" />
         <!-- 1N4007: 1 A 1000 V general-purpose rectifier (trr ~2 us, not modelled). Is, n and Rs
              from the common SPICE model (Diodes Inc.): 0.55 V at 1 mA (led_driver test 9 read
              0.5-0.65 V with a 34401A diode test), 0.91 V at 1 A (datasheet max 1.1 V).
-             Breakdown = VRRM. -->
-        <item name="1N4007" satCurr_nA="7.02767" resist="0.0341512" emCoef="1.80803" brkDown="1000" />
+             Breakdown = VRRM. Ratings of the 1N4001-1N4007 datasheets: IF(AV) 1 A, IFSM 30 A
+             (8.3 ms half-sine). -->
+        <item name="1N4007" satCurr_nA="7.02767" resist="0.0341512" emCoef="1.80803" brkDown="1000" maxCurr="1" surgeCurr="30" />
         <!-- 1N4148 / 1N914: small-signal switching diode (trr 4 ns, not modelled). Is, n and Rs
              from the common SPICE model (Is 2.52 nA, N 1.752, Rs 0.568 ohm): 0.59 V at 1 mA,
              0.69 V at 10 mA (datasheet max 1.0 V), 0.85 V at 100 mA. Breakdown = VRRM 100 V. -->

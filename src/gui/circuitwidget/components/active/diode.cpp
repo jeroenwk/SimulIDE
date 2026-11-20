@@ -3,6 +3,8 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <cmath>
+
 #include <QPainter>
 #include <QMenu>
 
@@ -53,6 +55,11 @@ Diode::Diode( QString type, QString id, bool zener )
     m_resistor->setEpin( 1, m_pin[1] );
 
     m_isZener = zener;
+    m_surgeCur = zener ? 0 : 30;   // A 1 A rectifier's IFSM (1N4007, ES1J: 30 A for 8.3 ms). A
+                                   // zener's surge rating is a reverse power: none by default
+    m_absCur = m_signedCur = m_avgCur = m_peakCur = 0;
+    m_lastT = m_surgeT = 0;
+    m_surged = false;
     if( zener ){
         m_diodeType = "zener";
         setModel( "Zener Default" );
@@ -73,8 +80,11 @@ Diode::Diode( QString type, QString id, bool zener )
         new DoubProp<Diode>("Threshold" , tr("Forward Voltage"),"V"
                            , this, &Diode::threshold, &Diode::setThreshold ),
 
-        new DoubProp<Diode>("MaxCurrent", tr("Max Current"),"A"
+        new DoubProp<Diode>("MaxCurrent", tr("Max Average Current (IF(AV))"),"A"
                            , this, &Diode::maxCurrent, &Diode::setMaxCurrent ),
+
+        new DoubProp<Diode>("SurgeCurrent", tr("Surge Current (IFSM, 0 = none)"),"A"
+                           , this, &Diode::surgeCurrent, &Diode::setSurgeCurrent ),
 
         new DoubProp<Diode>("Resistance", tr("Resistance"),"Ω"
                            , this, &Diode::res, &Diode::setResSafe ),
@@ -126,6 +136,9 @@ void Diode::initialize()
     eDiode::initialize();
     m_region = -1;
     clearStates();
+    m_absCur = m_signedCur = m_avgCur = m_peakCur = 0;
+    m_lastT = m_surgeT = 0;
+    m_surged = false;
 
     update();
 }
@@ -138,17 +151,70 @@ void Diode::stamp()
     eDiode::stamp();
 }
 
-void Diode::updateStep()
+// Ratings as in a datasheet. Max Current is IF(AV), the average a rectifier carries for good: it is
+// compared with |I| through a first-order low-pass of 100 ms (thermal-like: a 50/60 Hz ripple is
+// smoothed, a 10 ms inrush of 5 A reaches 0.5 A). Surge Current is IFSM, the non-repetitive peak
+// (30 A for an 8.3 ms half-sine on a 1 A rectifier): compared with the current of each solved
+// step. Before, the instantaneous current of the frame was compared with IF(AV): the bridge of
+// led_driver board_mains flashed on its 1.9 A peaks while it averaged 27 mA.
+// Flags only: the diode is not damaged, the circuit goes on as before.
+#define AVG_TAU    100e9   // ps
+#define SURGE_HOLD 100e9   // ps: SURGE shown this long after the last peak above IFSM
+
+// Called for every diode on every solved step (54 million times in 450 ms of led_driver
+// board_mains): kept to a few multiplies, no division, no virtual call (+3 % at first)
+inline void Diode::average( uint64_t t )   // |I| held since m_lastT, into the low-pass
 {
-    if( m_current > m_maxCur ){
-        m_warning = true;
-        m_crashed = m_current > m_maxCur*2;
-        update();
-    }else{
-        if( m_warning ) update();
-        m_warning = false;
-        m_crashed = false;
+    if( t <= m_lastT ) return;
+    double x = (double)(t - m_lastT)*( 1/AVG_TAU );
+    double k = ( x < 0.01 ) ? x : 1-std::exp( -x );   // Steps are far shorter than tau: no exp()
+    m_avgCur += ( m_absCur - m_avgCur )*k;
+    m_lastT = t;
+}
+
+inline void Diode::setRegion( uint64_t t )   // average( t ) done
+{
+    if( m_surgeCur > 0 && m_absCur > m_surgeCur ){ m_surged = true; m_surgeT = t; }  // Still above
+    else if( m_surged && t - m_surgeT > SURGE_HOLD ) m_surged = false;
+
+    double ai = m_absCur;
+    int r = m_region;
+    if( m_surged ) r = 4;
+    else if( m_maxCur > 0 && ( r == 3 ? m_avgCur > 0.95*m_maxCur : m_avgCur > m_maxCur ) ) r = 3;
+    else{
+        // Thresholds above the saturation current: reverse-biased, a junction leaks Is (3 uA for
+        // the ES1J fitted to led_driver's D3A), which is not conduction nor breakdown
+        bool on = ( r == 1 || r == 2 || r == 3 || r == 4 ) ? ai > 1e-6 + 2*m_satCur
+                                                           : ai > 1e-5 + 10*m_satCur;
+        if( !on ) r = 0;
+        else      r = ( m_signedCur > 0 ) ? 1 : 2;
     }
+    if( r == m_region ) return;
+    m_region = r;
+    if     ( r == 0 ) reportState("OFF", stOff );
+    else if( r == 1 ) reportState( m_isZener ? "FORWARD" : "ON", stWait );
+    else if( r == 2 ){
+        if( m_isZener ) reportState("REGULATING", stOn );
+        else            reportState("BREAKDOWN",  stFault );
+    }
+    else if( r == 3 ) reportState("OVER", stFault );
+    else              reportState("SURGE", stFault );
+}
+
+void Diode::updateStep()   // GUI thread, worker idle
+{
+    // Nothing changed since the last solved step (a DC circuit): the average still moves and
+    // SURGE still ends, so the state is updated here too, with the current held since then
+    uint64_t t = Simulator::self()->circTime();
+    average( t );
+    setRegion( t );
+
+    bool warning = m_maxCur > 0 && m_avgCur > m_maxCur;
+    bool crashed = m_surged || ( m_maxCur > 0 && m_avgCur > 2*m_maxCur );
+    if( warning || crashed || m_warning || m_crashed ) update();
+    m_warning = warning || crashed;
+    m_crashed = crashed;
+
     if( m_changed ) voltChanged(); // m_changed cleared at eDiode::voltChanged
 }
 
@@ -166,32 +232,25 @@ void Diode::voltChanged()
 }
 
 // Part state (docs/PART_STATES.md), from the junction current (forward positive):
-//   OFF         less than 10 uA either way (back below 1 uA: a factor 10, near zero currents ring)
+//   OFF         less than 10 uA + 10 Is either way (back below 1 uA + 2 Is: a factor 10, near zero
+//               currents ring; Is: a reverse-biased junction leaks its saturation current)
 //   ON          conducting forward (amber, a closed switch). A zener: FORWARD
 //   BREAKDOWN   conducting in reverse (the junction voltage is negative): red for a diode,
 //               REGULATING (green) for a zener, whose working state it is
-//   OVER        current above Max Current (back below 0.95 x): red
+//   OVER        averaged current (100 ms low-pass) above Max Current, IF(AV) (back below 0.95 x): red
+//   SURGE       a solved step above Surge Current, IFSM; held 100 ms after the last one: red
 // Current, not voltage: the forward voltage at 10 uA..1 A depends on the model (Is, n).
-void Diode::stepSettled()
+void Diode::stepSettled()   // Worker: a solved step
 {
-    double i  = m_current;
-    double ai = qFabs( i );
-    int r = m_region;
-    if( m_maxCur > 0 && ( r == 3 ? ai > 0.95*m_maxCur : ai > m_maxCur ) ) r = 3;
-    else{
-        bool on = ( r == 1 || r == 2 || r == 3 ) ? ai > 1e-6 : ai > 1e-5;
-        if( !on ) r = 0;
-        else      r = ( i > 0 ) ? 1 : 2;
-    }
-    if( r == m_region ) return;
-    m_region = r;
-    if     ( r == 0 ) reportState("OFF", stOff );
-    else if( r == 1 ) reportState( m_isZener ? "FORWARD" : "ON", stWait );
-    else if( r == 2 ){
-        if( m_isZener ) reportState("REGULATING", stOn );
-        else            reportState("BREAKDOWN",  stFault );
-    }
-    else reportState("OVER", stFault );
+    double i  = junctionCurrent();   // Anode to cathode, without the junction capacitance's current
+    double ai = qFabs( i );          // (a reverse-biased diode charging its Cj is not in breakdown)
+    uint64_t t = Simulator::self()->circTime();
+    average( t );
+    if( m_surgeCur > 0 && m_absCur > m_surgeCur ) m_surgeT = t;   // The held current lasted until now
+    m_signedCur = i;
+    m_absCur = ai;
+    if( ai > m_peakCur ) m_peakCur = ai;
+    setRegion( t );
 }
 
 void Diode::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )
