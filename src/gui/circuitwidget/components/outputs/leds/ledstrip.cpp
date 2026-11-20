@@ -45,6 +45,7 @@ LedStrip::LedStrip( QString type, QString id )
     m_ledVf   = 2.75;
     m_ledRes  = 1.0;
     m_ledImax = 0.3;
+    m_ledIpeak = 0;
 
     // Replace LedBase's groups: here the electric values are per LED, the totals follow
     for( QString g : { simulideTr("LedBase","Main"), simulideTr("LedBase","Electric") } )
@@ -77,8 +78,11 @@ LedStrip::LedStrip( QString type, QString id )
         new DoubProp<LedStrip>("LedRes", tr("Resistance"), "Ω"
                               , this, &LedStrip::ledRes, &LedStrip::setLedRes ),
 
-        new DoubProp<LedStrip>("LedImax", tr("Max Current"), "mA"
+        new DoubProp<LedStrip>("LedImax", tr("Max Current (IF, average)"), "mA"
                               , this, &LedStrip::ledImax, &LedStrip::setLedImax ),
+
+        new DoubProp<LedStrip>("LedIpeak", tr("Peak Current (IFP, 0 = none)"), "mA"
+                              , this, &LedStrip::ledIpeak, &LedStrip::setLedIpeak ),
     }, 0} );
 
     setLabelPos(-24,-28, 0 );
@@ -105,11 +109,13 @@ void LedStrip::setStrings( int m )    { if( m < 1 ) m = 1; m_strings = m; update
 void LedStrip::setLedVf( double v )   { if( v < 0 ) v = 0; m_ledVf = v;   updateModel(); }
 void LedStrip::setLedRes( double r )  { if( r <= 0 ) r = 1e-3; m_ledRes = r; updateModel(); }
 void LedStrip::setLedImax( double i ) { if( i <= 0 ) i = 1e-3; m_ledImax = i; updateModel(); }
+void LedStrip::setLedIpeak( double i ){ if( i < 0 ) i = 0; m_ledIpeak = i; updateModel(); }
 
 void LedStrip::updateModel()
 {
     eLed::setThreshold( m_count*m_ledVf );
     eLed::setMaxCurrent( m_strings*m_ledImax );
+    setPeakCurrentRating( m_strings*m_ledIpeak );
     eLed::setRes( m_count*m_ledRes/m_strings );
     if( showProp() == "Totals" ) setValLabelText( totals() );
     update();
