@@ -17,6 +17,9 @@ struct diodeData_t
     double emCoef;
     double brkDow;
     double resist;
+    double maxCur;     // Datasheet IF(AV), A (0: not in the model, the part keeps its own; a
+                       // brace list without it gives 0)
+    double surgeCur;   // Datasheet IFSM, A (0: idem)
 };
 
 class eNode;
@@ -43,8 +46,16 @@ class eDiode : public eResistor
         double emCoef() { return m_emCoef; }
         void   setEmCoef( double emCoef );
 
-        double maxCurrent() { return m_maxCur; }
+        double maxCurrent() { return m_maxCur; }          // IF(AV): limit of the averaged current
         void   setMaxCurrent( double cur ) { m_maxCur = cur; }
+
+        // Junction current, anode to cathode, at the solved voltage (valid in stepSettled(), after
+        // the step's last voltChanged()): the linear companion the matrix was solved with (m_current is the current at the voltage of the last iteration, up to
+        // 10 mV away: 21 % at n = 2). Without the junction capacitance's current
+        double junctionCurrent() { return m_current + m_admit*( m_voltSolved - m_voltPN ); }
+
+        double surgeCurrent() { return m_surgeCur; }      // IFSM: limit of the peak (0 = none)
+        void   setSurgeCurrent( double cur ) { m_surgeCur = cur; }
 
         // Junction capacitance C(V) = Cj0/(1-V/Vj)^M (0 = none; typical 4 pF while noise is on)
         double cj0() { return m_cj.cj0(); }
@@ -82,8 +93,10 @@ class eDiode : public eResistor
 
         double m_bkDown;
         double m_maxCur;
+        double m_surgeCur = 0;
 
         double m_voltPN;
+        double m_voltSolved = 0;   // Junction voltage at the last voltChanged()
         double m_bAdmit;
 
         QString m_diodeType;

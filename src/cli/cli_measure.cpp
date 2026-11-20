@@ -201,6 +201,8 @@ QJsonObject readComp( Component* comp )
             o["voltage"] = num( v );
             o["current"] = num( i );
             o["power"]   = num( v*i );
+            o["current_avg"]  = num( d->avgCurrent() );    // |I| low-passed (100 ms), vs Max Current
+            o["current_peak"] = num( d->peakCurrent() );   // Largest |I| since the start, vs Surge Current
     }   }
     else if( dynamic_cast<BJT*>( comp ) )         // Terminal currents (into the part) and the region
     {
