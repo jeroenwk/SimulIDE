@@ -3,6 +3,8 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <cmath>
+
 #include "ledbase.h"
 #include "theme.h"
 #include "circuitwidget.h"
@@ -31,6 +33,10 @@ LedBase::LedBase( QString type, QString id )
     m_graphical = true;
     m_grounded  = false;
     m_intensity = 0;
+    m_peakLimit = 0;
+    m_stepCur = m_avgCur = m_peakCur = 0;
+    m_lastT = m_peakT = 0;
+    m_peaked = false;
 
     m_color = QColor( Qt::black );
     setColorStr("Yellow");
@@ -51,8 +57,11 @@ LedBase::LedBase( QString type, QString id )
         new DoubProp<LedBase>("Threshold", tr("Forward Voltage"), "V"
                              , this, &LedBase::threshold, &LedBase::setThreshold ),
 
-        new DoubProp<LedBase>("MaxCurrent", tr("Max Current"), "mA"
+        new DoubProp<LedBase>("MaxCurrent", tr("Max Current (IF, average)"), "mA"
                              , this, &LedBase::maxCurrent, &LedBase::setMaxCurrent ),
+
+        new DoubProp<LedBase>("PeakCurrent", tr("Peak Current (IFP, 0 = none)"), "mA"
+                             , this, &LedBase::peakCurrentRating, &LedBase::setPeakCurrentRating ),
 
         new DoubProp<LedBase>("Resistance", tr("Resistance"), "Ω"
                              , this, &LedBase::res, &LedBase::setRes ),
@@ -79,31 +88,74 @@ void LedBase::initialize()
     eLed::initialize();
     m_region = -1;
     clearStates();
+    m_stepCur = m_avgCur = m_peakCur = 0;
+    m_lastT = m_peakT = 0;
+    m_peaked = false;
     update();
 }
 
-void LedBase::updateStep()
+// Ratings as in a datasheet (as the diode's, docs/PART_STATES.md). Max Current is IF, the current
+// the LED carries for good (a heating limit): compared with I through a first-order low-pass of
+// 100 ms, so a 100 Hz ripple or a PWM drive is smoothed. Peak Current is IFP, the pulse rating:
+// compared with the current of each solved step (0 = none, the default). Before, the state
+// compared the current at that moment with Max Current: the LED strip of led_driver board_mains
+// (312 mA average, 550 mA peaks at 100 Hz on 5 x 60 mA strings) read OVER on every mains crest.
+// Flags only: the LED is not damaged, the circuit goes on as before.
+#define AVG_TAU   100e9   // ps
+#define PEAK_HOLD 100e9   // ps: PEAK shown this long after the last step above IFP
+
+inline void LedBase::average( uint64_t t )   // I held since m_lastT, into the low-pass
+{
+    if( t <= m_lastT ) return;
+    double x = (double)(t - m_lastT)*( 1/AVG_TAU );
+    double k = ( x < 0.01 ) ? x : 1-std::exp( -x );   // Steps are far shorter than tau: no exp()
+    m_avgCur += ( m_stepCur - m_avgCur )*k;
+    m_lastT = t;
+}
+
+inline void LedBase::setRegion( uint64_t t )   // average( t ) done
+{
+    if( m_peakLimit > 0 && m_stepCur > m_peakLimit ){ m_peaked = true; m_peakT = t; }  // Still above
+    else if( m_peaked && t - m_peakT > PEAK_HOLD ) m_peaked = false;
+
+    double i = m_stepCur;
+    int r = m_region;
+    if( m_peaked ) r = 3;
+    else if( m_maxCurrent > 0 && ( r == 2 ? m_avgCur > 0.95*m_maxCurrent : m_avgCur > m_maxCurrent ) ) r = 2;
+    else if( r >= 1 ) r = ( i < 5e-6 ) ? 0 : 1;
+    else              r = ( i > 1e-5 ) ? 1 : 0;
+
+    if( r == m_region ) return;
+    m_region = r;
+    if     ( r == 0 ) reportState("OFF",  stOff );
+    else if( r == 1 ) reportState("ON",   stOn );
+    else if( r == 2 ) reportState("OVER", stFault );
+    else              reportState("PEAK", stFault );
+}
+
+void LedBase::updateStep()   // GUI thread, worker idle
 {
     uint32_t intensity = m_intensity;
     eLed::updateBright();
 
-    if( overCurrent() > 1.5 )
-    {
-        m_warning = true;
-        m_crashed = overCurrent() > 2;
-        update();
-    }else{
-        if( m_warning ) update();
-        m_warning = false;
-        m_crashed = false;
-    }
+    // Nothing changed since the last solved step (a DC circuit): the average still moves and PEAK
+    // still ends, so the state is updated here too, with the current held since then
+    uint64_t t = Simulator::self()->circTime();
+    average( t );
+    setRegion( t );
+
+    bool warning = m_peaked || ( m_maxCurrent > 0 && m_avgCur > m_maxCurrent );
+    bool crashed = m_maxCurrent > 0 && m_avgCur > 2*m_maxCurrent;
+    if( warning || crashed || m_warning || m_crashed ) update();
+    m_warning = warning || crashed;
+    m_crashed = crashed;
+
     if( intensity != m_intensity ) update();
     if( m_changed )
     {
         m_changed = false;
         voltChanged();
     }
-
 }
 
 void LedBase::setGrounded( bool grounded )
@@ -210,24 +262,20 @@ void LedBase::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w 
 
 void LedBase::voltChanged()
 {
-    if( m_stateLog ) Simulator::self()->addToSettled( this );   // State from this step's final values
+    Simulator::self()->addToSettled( this );   // Ratings and state from this step's final values
     eLed::voltChanged();
 }
 
-// Part state (docs/PART_STATES.md): OFF, ON (green: lit, conducting more than 10 uA, back below 5 uA)
-// or OVER (red: above Max Current at this moment, back below 0.95 x). The red crash drawing still
-// uses the averaged current (1.5 x): a PWM-driven LED can show OVER on its pulses without crashing.
-void LedBase::stepSettled()
+// Part state (docs/PART_STATES.md): OFF, ON (green: lit, conducting more than 10 uA, back below
+// 5 uA), OVER (red: the averaged current, 100 ms low-pass, above Max Current, IF; back below 0.95 x)
+// or PEAK (red: a solved step above Peak Current, IFP; held 100 ms after the last one).
+void LedBase::stepSettled()   // Worker: a solved step
 {
+    uint64_t t = Simulator::self()->circTime();
+    average( t );
     double i = m_current;
-    int r = m_region;
-    if( m_maxCurrent > 0 && ( r == 2 ? i > 0.95*m_maxCurrent : i > m_maxCurrent ) ) r = 2;
-    else if( r == 1 || r == 2 ) r = ( i < 5e-6 ) ? 0 : 1;
-    else r = ( i > 1e-5 ) ? 1 : 0;
-
-    if( r == m_region ) return;
-    m_region = r;
-    if     ( r == 0 ) reportState("OFF",  stOff );
-    else if( r == 1 ) reportState("ON",   stOn );
-    else              reportState("OVER", stFault );
+    if( m_peakLimit > 0 && m_stepCur > m_peakLimit ) m_peakT = t;   // The held current lasted until now
+    m_stepCur = i;
+    if( i > m_peakCur ) m_peakCur = i;
+    setRegion( t );
 }

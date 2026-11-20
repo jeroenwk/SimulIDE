@@ -13,7 +13,8 @@ class LibraryItem;
 // A string of identical LEDs, N in series and M such strings in parallel, as one element.
 // SimulIDE's LED (eLed) is piecewise linear: off below its forward voltage, then a series
 // resistance. Identical LEDs add up exactly in that model, so the whole strip is one eLed with
-// forward voltage N x Vf, resistance N x R / M and max current M x Imax. Properties are per LED.
+// forward voltage N x Vf, resistance N x R / M, max current M x IF and peak current M x IFP.
+// Properties are per LED.
 class LedStrip : public LedBase
 {
     public:
@@ -43,6 +44,9 @@ class LedStrip : public LedBase
         double ledImax() { return m_ledImax; }
         void setLedImax( double i );
 
+        double ledIpeak() { return m_ledIpeak; }
+        void setLedIpeak( double i );
+
         QString totals();
         void setTotals( QString ) {;}    // Read only: shown in the value label
 
@@ -57,7 +61,8 @@ class LedStrip : public LedBase
         int    m_strings;   // strings in parallel
         double m_ledVf;     // forward voltage of one LED (V)
         double m_ledRes;    // series resistance of one LED (Ohm)
-        double m_ledImax;   // max current of one LED (A)
+        double m_ledImax;   // max current of one LED, IF: an average (A)
+        double m_ledIpeak;  // peak current of one LED, IFP (A), 0 = none
 };
 
 #endif

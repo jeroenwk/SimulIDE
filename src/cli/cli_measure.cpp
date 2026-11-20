@@ -7,6 +7,7 @@
 #include <limits>
 #include <algorithm>
 
+#include "ledbase.h"
 #include "capacitorbase.h"
 #include "inductor.h"
 #include "transformer.h"
@@ -95,6 +96,12 @@ QJsonObject readComp( Component* comp )
         o["brightness"] = num( led->brightness() );
         o["current"]    = num( led->overCurrent()*led->maxCurrent() );
         o["overloaded"] = led->overCurrent() > 1.5;
+        if( LedBase* lb = dynamic_cast<LedBase*>( comp ) )   // Ratings (docs/PART_STATES.md)
+        {
+            o["overloaded"]   = lb->maxCurrent() > 0 && lb->avgCurrent() > lb->maxCurrent();
+            o["current_avg"]  = num( lb->avgCurrent() );    // I low-passed (100 ms), vs Max Current (IF)
+            o["current_peak"] = num( lb->peakCurrent() );   // Largest I since the start, vs Peak Current (IFP)
+        }
     }
     else if( CapacitorBase* cap = dynamic_cast<CapacitorBase*>( comp ) )
     {
