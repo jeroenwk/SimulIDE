@@ -311,6 +311,10 @@ void CliApi::exec( const QJsonObject& req, std::function<void(QJsonObject)> done
         done( makeReply( false, QJsonValue(), err, {} ) );
         return;
     }
+    // Read and change the circuit only between two solved steps, never while the worker is in the
+    // middle of one (values of an unfinished iteration, or a race with the worker thread)
+    if( Simulator::self() ) Simulator::self()->holdWorker();
+
     m_messages.clear();
     m_capturing = true;
 
@@ -323,6 +327,7 @@ void CliApi::exec( const QJsonObject& req, std::function<void(QJsonObject)> done
     catch( std::exception& e ) { ok = false; error = QString("internal error: ")+e.what(); }
 
     m_capturing = false;
+    if( Simulator::self() ) Simulator::self()->resumeWorker();
     QStringList msgs = m_messages;
     m_messages.clear();
 
