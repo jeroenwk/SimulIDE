@@ -594,6 +594,40 @@ After these, every circuit of the repos is covered except those with a real seri
 audio output (8, refused on purpose): **757 of the 773 go back bit for bit** (143 before the
 part state code); the other 8 are the known limits above. `test_simctl_history_parts.py`: 44 checks, 21 circuits. 
 
+**Circuits that don't go back yet** (2026-11-21, `sim history check` over the 773 circuits of the
+repos: 6 × 1 ms run, back 4 ms, 3 checkpoints). Paths from `~/perso/electronics/`.
+
+Refused on purpose (← names the part; the circuit runs as before):
+
+| Circuit | Part | Why |
+|---|---|---|
+| `SimulIDE/resources/examples/Micro/Arduino/Serial_Port_connection/analog_serial.sim1` | SerialPort | a real port: data from outside can't be replayed |
+| `SimulIDE/resources/examples/Micro/Arduino/Serial_Port_connection/barGraph_serial.sim1` | SerialPort | same |
+| `SimulIDE/resources/examples/Micro/Peripherals/serial port/arduino_serial_echo.sim1` | SerialPort | same |
+| `SimulIDE/resources/examples/Micro/mcs-65/micro-kim-1/micro-kim-1.sim1` | SerialPort | same |
+| `SimulIDE/resources/examples/Micro/Arduino/arduino_music/arduino_music.sim1` | AudioOut | paced by the sound card's buffer (wall time) |
+| `SimulIDE/resources/examples/Micro/Pic/16F88x/16F886_Song/song.sim1` | AudioOut | same |
+| `SimulIDE/resources/examples/Outputs/Audio/audio.sim1` | AudioOut | same |
+| `SimulIDE/resources/examples/Outputs/Audio/resonator.sim1` | AudioOut | same |
+
+Go back, but the replay differs (what differs, then the cause):
+
+| Circuit | Differs | Cause |
+|---|---|---|
+| `SimulIDE/resources/examples/Active/BJT/npn-curve.sim1` | ammeter outputs `Amperimeter-49/114-outnod`, `Oscope-8-Pin1` | a meter's output pin is set once per GUI frame (`Meter::updateStep`) |
+| `SimulIDE/resources/examples/Active/triac.sim1` | ammeter output `Amperimeter-4-outnod` | same |
+| `led_driver/sim/board_mains_reference.sim1` | ammeter output `Amperimeter-34-outnod` | same |
+| `books/duncan/fig56_4_ujt_relaxation_oscillator.sim1` | the UJT's two BJTs, `Capacitor-5` | steps that don't converge (100 000 iterations), cut by the 50 ms wall-time guard: the run itself isn't repeatable |
+| `SimulIDE/resources/examples/Micro/Pic/16F88x/16f887_CCP/887_ccp.sim1` | logic analyzer input pins (once; node voltages the same) | the first run after opening differs from later runs (below) |
+| `books/scherz/fig12_57b_switch_bounce_example.sim1` | diodes, zener and buffer inputs of the T_AND ternary subcircuit (another steady state) | unexplained: the run is repeatable, so some state is missing |
+
+No result:
+
+| Circuit | Why |
+|---|---|
+| `books/duncan/fig40_3_centre_tap_rectifier.sim1` | diode D1 never converges, so no step is complete at a frame and no keyframe is taken (`sim history`: "the step was not solved") |
+| `books/scherz/fig3_91e_coax_highpass.sim1` | the check took over 120 s (a slow circuit); not known to differ |
+
 Found on the way: the **first run after opening** `board_mains` differs from later runs (two
 skips of 200 ms after the first: same hash; the first: another), so some part keeps state
 across a stop and a start. It doesn't touch keyframes (they restore within a run); to chase.
