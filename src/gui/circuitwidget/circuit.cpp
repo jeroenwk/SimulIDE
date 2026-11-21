@@ -215,6 +215,8 @@ void Circuit::loadStrDoc( QString &doc )
                 else if( name == "reaStep" ) m_simulator->setreactStep( val.toULongLong() );
                 else if( name == "supplyRamp" ) m_simulator->setSupplyRamp( val.toULongLong() );
                 else if( name == "skip"    ) m_simulator->setSkipInterval( val.toULongLong() ); // 0 = 1 step
+                else if( name == "speedLock" ) m_simulator->setSpeedLock( val.toInt() );
+                else if( name == "lockMaxStep" ) m_simulator->setLockMaxStep( val.toULongLong() ); // 0 = 100 × reaStep
                 else if( name == "animate" ) setAnimate( val.toInt() );
                 else if( name == "chargeScale" ) m_chargeScale = val.toDouble();
                 else if( name == "currentScale" ) m_currentScale = val.toDouble();
@@ -520,6 +522,8 @@ QString Circuit::circuitHeader()
     header += "reaStep=\""+QString::number( m_simulator->reactStep() )+"\" ";
     if( m_simulator->supplyRamp() ) header += "supplyRamp=\""+QString::number( m_simulator->supplyRamp() )+"\" ";
     if( m_simulator->skipInterval() != 1000000000 ) header += "skip=\""+QString::number( m_simulator->skipInterval() )+"\" ";  // Default 1 ms
+    if( m_simulator->speedLock() ) header += "speedLock=\"1\" ";
+    if( m_simulator->lockMaxStepSet() ) header += "lockMaxStep=\""+QString::number( m_simulator->lockMaxStepSet() )+"\" ";
     header += "animate=\""+QString::number( m_animate )+"\" ";
     if( m_chargeScale > 0 ) header += "chargeScale=\""+QString::number( m_chargeScale )+"\" ";
     if( m_currentScale > 0 ) header += "currentScale=\""+QString::number( m_currentScale )+"\" ";

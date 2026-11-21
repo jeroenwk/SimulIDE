@@ -266,6 +266,18 @@ QList<Setting>& settings()
             if( !SimSkip::parseInterval( v, &ps ) ) throw CliError("skipInterval: step, or 1ps … 1min (e.g. 5us)");
             CircuitWidget::self()->setSkipInterval( ps );
         }});
+    list.append({"speedLock", "simulation", "Hold the set speed: while the computer can't keep up, capacitors and inductors use a coarser step (up to speedLockMaxStep). Saved with the circuit.",
+        [](){ return QJsonValue( Simulator::self()->speedLock() ); },
+        []( QString v ){
+            CircuitWidget::self()->setSpeedLock( parseBool( v ) );
+        }});
+    list.append({"speedLockMaxStep", "simulation", "Largest reactive step the speed lock may use (default: 100 × reactStep; 0 = the default). Saved with the circuit.",
+        [](){ return QJsonValue( Cli::timeStr( Simulator::self()->lockMaxStep() ) ); },
+        []( QString v ){
+            uint64_t ps = ( v.trimmed() == "0" || v.trimmed().toLower() == "default" ) ? 0 : Cli::parseTime( v );
+            Simulator::self()->setLockMaxStep( ps );
+            Circuit::self()->setChanged();
+        }});
     list.append({"slopeSteps", "simulation", "Steps used for signal slopes (0 = instant edges).",
         [](){ return QJsonValue( Simulator::self()->slopeSteps() ); },
         []( QString v ){

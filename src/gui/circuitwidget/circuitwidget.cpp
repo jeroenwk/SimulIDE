@@ -512,6 +512,21 @@ void CircuitWidget::createToolBars()
         if( !note.isEmpty() ) qInfo().noquote() << "Speed:" << note;
     });
     m_simRunItems << m_simToolBar.addWidget( m_timebase );
+
+    // Speed lock (specs/sim-control.md §3.9): hold the set speed by coarsening the reactive step
+    m_lockAct = new QAction( QIcon(":/simlock.svg"), tr("Speed lock"), this );
+    m_lockAct->setCheckable( true );
+    m_lockAct->setToolTip( tr("Speed lock: hold the set speed. While the computer can't keep up, capacitors and\n"
+                              "inductors use a coarser step (up to the max. reactive step, Settings: Simulation).\n"
+                              "Less accurate; skips keep the normal step. Saved with the circuit.") );
+    connect( m_lockAct, &QAction::toggled, this, [this]( bool on ){ setSpeedLock( on ); } );
+    m_simToolBar.addAction( m_lockAct );
+    m_simRunItems << m_lockAct;
+    m_lockLabel = new QLabel( this );
+    m_lockLabel->setFont( m_badgeFont );
+    m_lockLabel->setStyleSheet("QLabel { color: white; background-color: #e67800; padding: 1px 5px; }");
+    m_lockBadgeAct = m_simToolBar.addWidget( m_lockLabel );
+    m_lockBadgeAct->setVisible( false );
     syncTimebase( Simulator::self() ? Simulator::self()->psPerSec() : (uint64_t)1e12 );
 
     // Skip interval (specs/sim-control.md §3.3): ↑ ↓ change it, → / ⏭ skip by it
@@ -616,6 +631,7 @@ void CircuitWidget::setSimExpanded( bool on )
     m_simExpanded = on;
     for( QAction* a : m_simRunItems ) a->setVisible( on );
     updateNoise();                    // The NOISE badge follows the bar
+    updateLock();
     m_toolRows = 0;                   // Lay out again
     layoutToolBars();
 }
@@ -687,6 +703,7 @@ bool CircuitWidget::newCircuit()
     showDescription();
     MainWindow::self()->settings()->setValue( "lastCircDir", m_lastCircDir );
     updateNoise();   // A new circuit has noise off
+    updateLock();
     return true;
 }
 
@@ -744,6 +761,7 @@ void CircuitWidget::loadCirc( QString path )
         m_infoWidget->clearLastRun();
         showDescription();
         updateNoise();   // The noise button follows the file
+        updateLock();
 }   }
 
 void CircuitWidget::printDescription()
@@ -946,6 +964,38 @@ void CircuitWidget::toggleNoise( bool on )
     Circuit::self()->setChanged();   // Saved with the circuit
     if( sim->isRunning() || sim->isPaused() ){ powerCircOff(); powerCircOn(); } // Noise starts with the simulation
     updateNoise();
+}
+
+void CircuitWidget::setSpeedLock( bool on )
+{
+    Simulator* sim = Simulator::self();
+    if( !sim ) return;
+    if( sim->speedLock() != on ){
+        sim->setSpeedLock( on );
+        Circuit::self()->setChanged();   // Saved with the circuit
+    }
+    updateLock();
+}
+
+void CircuitWidget::updateLock()
+{
+    Simulator* sim = Simulator::self();
+    if( !m_lockAct || !sim ) return;
+    if( m_lockAct->isChecked() != sim->speedLock() ){
+        QSignalBlocker b( m_lockAct );
+        m_lockAct->setChecked( sim->speedLock() );
+    }
+    bool show = m_simExpanded && sim->speedLock() && ( sim->stepScale() > 1 || sim->lockLimited() );
+    QString t = show ? tr("step ×%1").arg( sim->stepScale() )+( sim->lockLimited() ? " max" : "" ) : "";
+    if( m_lockLabel->text() != t )
+    {
+        m_lockLabel->setText( t );
+        m_lockLabel->setToolTip( tr("Speed lock: capacitors and inductors integrate with %1 (reactive step %2 × %3, max. %4)")
+            .arg( Simulator::siStr( sim->lockedStep()*1e-12, "s" ), Simulator::siStr( sim->reactStep()*1e-12, "s" ) )
+            .arg( sim->stepScale() ).arg( Simulator::siStr( sim->lockMaxStep()*1e-12, "s" ) )
+            +( sim->lockLimited() ? "\n"+tr("Can't keep up even so: the speed shown is the real one") : "" ) );
+    }
+    if( m_lockBadgeAct->isVisible() != show ) m_lockBadgeAct->setVisible( show );
 }
 
 void CircuitWidget::updateNoise()

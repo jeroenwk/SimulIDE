@@ -367,7 +367,7 @@ Removing wires around a junction works as in the GUI:
 | `sim start` / `sim stop` | Power the circuit on or off |
 | `sim pause` / `sim resume` | |
 | `sim run --for <time>` | Run for an exact span of simulated time, then pause. Replies when done |
-| `sim status` | State, simulated time, target and actual speed; `skipping: true` while a skip is not done |
+| `sim status` | State, simulated time, target and actual speed; `skipping: true` while a skip is not done; with the speed lock on (or used this run) `speedLock` {`on`, `scale`, `step`, `max_step`, `limited`} and a `note` once it coarsened the reactive step |
 | `sim skip [<time>\|step] [--count N]` | Pause and skip forward by a span (`5us`, `2.5ms`, `1min`), or by the skip interval (`settings skipInterval`) without one, as fast as the computer can whatever the set speed, then pause; replies after one frame with `from`, `skipped` and `note`. `step` = to the next solver event. `--count N`: N times as far (N solver steps). Starts a stopped simulation (a run starts at 1 ps, so `sim skip 1ms` from stopped lands on 1 ms + 1 ps, as `sim run --for`). The → key and the toolbar's ⏭ do the same (specs/sim-control.md) |
 | `sim step [--count N]` | One solver step: run the next pending event time, solve and pause (`sim skip step`) |
 | `sim speed [percent]` | Target speed in % of real time |
@@ -632,7 +632,7 @@ The groups follow the Settings dialog:
 |---|---|
 | app | `language`, `fontScale`, `fontName`, `userPath` |
 | circuit | `drawGrid`, `showScroll`, `animate`, `fps`, `autoBackup` |
-| simulation | `speed`, `skipInterval`, `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps`, `supplyRamp`, `noise`, `noiseBW`, `noiseScale`, `noiseSeed`, `noiseStart`, `noiseStop`, `noiseOff` |
+| simulation | `speed`, `skipInterval`, `speedLock` (hold the set speed by coarsening the reactive step, specs/sim-control.md §3.9), `speedLockMaxStep` (its limit, 0 = 100 × `reactStep`), `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps`, `supplyRamp`, `noise`, `noiseBW`, `noiseScale`, `noiseSeed`, `noiseStart`, `noiseStop`, `noiseOff` |
 
 - Simulation settings are saved with the circuit.
 - `logVerbose` (Messages pane: Log: Verbose) also shows debug logs, the lines
