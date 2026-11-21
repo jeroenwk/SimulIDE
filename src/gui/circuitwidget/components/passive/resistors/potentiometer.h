@@ -15,6 +15,8 @@ class LibraryItem;
 class Potentiometer : public Dialed, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Potentiometer )
         Potentiometer( QString type, QString id );
         ~Potentiometer();
 

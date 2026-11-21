@@ -119,3 +119,11 @@ void Aip31068_i2c::showPins( bool show )
     m_pinSda->setVisible( show );
     m_clkPin->setVisible( show );
 }
+
+void Aip31068_i2c::simState( StateIO& s )
+{
+    Hd44780_Base::simState( s );
+    TwiModule::simState( s );
+    s.io( m_controlByte );
+    s.io( m_phase );
+}

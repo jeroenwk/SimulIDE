@@ -112,3 +112,12 @@ bool FlipFlopBase::rPinState()
     if( m_useRS ) return m_resetPin->getInpState();
     return false;
 }
+
+void FlipFlopBase::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_useRS );
+    s.io( m_srInv );
+    s.io( m_Q0 );
+    s.io( m_dataPins );
+}

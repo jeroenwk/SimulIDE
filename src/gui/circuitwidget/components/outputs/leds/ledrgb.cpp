@@ -242,3 +242,10 @@ void LedRgb::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
 
     Component::paintSelected( p );
 }
+
+void LedRgb::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_commonCathode );
+    s.io( bright );
+}

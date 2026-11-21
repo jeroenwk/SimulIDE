@@ -524,3 +524,49 @@ void Ssd1306::paint( QPainter* p, const QStyleOptionGraphicsItem*, QWidget* )
     }
     Component::paintSelected( p );
 }
+
+void Ssd1306::simState( StateIO& s )
+{
+    TwiModule::simState( s );
+    s.io( m_rotate );
+    s.io( m_Co );
+    s.io( m_start );
+    s.io( m_data );
+    s.io( m_lastCommand );
+    s.io( m_readBytes );
+    s.io( m_readIndex );
+    s.io( m_width );
+    s.io( m_height );
+    s.io( m_maxWidth );
+    s.io( m_maxHeight );
+    s.io( m_rows );
+    s.io( m_addrX );
+    s.io( m_addrY );
+    s.io( m_startX );
+    s.io( m_endX );
+    s.io( m_startY );
+    s.io( m_endY );
+    s.io( m_lineMask );
+    s.io( m_rowMask );
+    s.io( m_dispOffset );
+    s.io( m_ramOffset );
+    s.io( m_addrMode );
+    s.io( m_scroll );
+    s.io( m_scrollDir );
+    s.io( m_scrollV );
+    s.io( m_scrollStartY );
+    s.io( m_scrollEndY );
+    s.io( m_scrollTop );
+    s.io( m_scrollRows );
+    s.io( m_vScrollOffset );
+    s.io( m_scrollSingle );
+    s.io( m_scrollStep );
+    s.io( m_scrollCount );
+    s.io( m_dispOn );
+    s.io( m_dispFull );
+    s.io( m_dispInv );
+    s.io( m_scanInv );
+    s.io( m_remap );
+    s.io( m_mr );
+    for( std::vector<uint8_t>& row : m_DDRAM ) s.ioVector( row );
+}

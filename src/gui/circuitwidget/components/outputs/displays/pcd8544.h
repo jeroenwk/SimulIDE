@@ -25,6 +25,8 @@
 class Pcd8544 : public Component, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Pcd8544 )
         Pcd8544( QString type, QString id );
         ~Pcd8544();
         

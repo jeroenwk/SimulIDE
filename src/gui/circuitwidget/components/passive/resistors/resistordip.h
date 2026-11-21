@@ -18,6 +18,8 @@ class Pin;
 class ResistorDip : public Component, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( ResistorDip )
         ResistorDip( QString type, QString id );
         ~ResistorDip();
 

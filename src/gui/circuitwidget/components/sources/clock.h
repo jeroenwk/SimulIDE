@@ -13,6 +13,8 @@ class LibraryItem;
 class Clock : public ClockBase
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Clock )
         Clock( QString type, QString id );
         ~Clock();
 

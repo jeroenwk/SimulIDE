@@ -320,3 +320,19 @@ void eCurrReg::getModels() // Static: resources/data/currregs.model
     }
     m_names.append( "Custom" );
 }
+
+void eCurrReg::simState( StateIO& s )
+{
+    eElement::simState( s );
+    pinCurrents( s );
+    s.io( m_temp );
+    s.io( m_V0 );
+    s.io( m_I0 );
+    s.io( m_v );
+    s.io( m_u );
+    s.io( m_iP );
+    s.io( m_iM );
+    s.io( m_iR );
+    m_aux.simState( s );
+    s.io( m_J0 );
+}

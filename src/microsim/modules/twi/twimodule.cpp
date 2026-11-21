@@ -363,3 +363,31 @@ void TwiModule::setSclPin( IoPin* pin )
     m_scl = pin;
     m_clkPin = pin;
 }
+
+void TwiModule::simState( StateIO& s )
+{
+    eClockedDevice::simState( s );
+    s.io( m_cCode );
+    s.io( m_address );
+    s.io( m_addrBits );
+    s.io( m_freq );
+    s.io( m_clockPeriod );
+    s.io( m_lastSDA );
+    s.io( m_sdaState );
+    s.io( m_toggleScl );
+    s.io( m_isAddr );
+    s.io( m_write );
+    s.io( m_sendACK );
+    s.io( m_masterACK );
+    s.io( m_addrMatch );
+    s.io( m_genCall );
+    s.io( m_enabled );
+    s.io( m_bitPtr );
+    s.io( m_txReg );
+    s.io( m_rxReg );
+    s.io( m_mode );
+    s.io( m_i2cState );
+    s.io( m_lastState );
+    s.io( m_twiState );
+    s.io( m_nextState );
+}

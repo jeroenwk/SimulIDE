@@ -46,3 +46,8 @@ void PushBase::keyEvent( QString key, bool pressed )
         if( pressed ) onbuttonPressed();
         else          onbuttonReleased();
 }   }
+
+void PushBase::simState( StateIO& s )
+{
+    SwitchBase::simState( s );
+}

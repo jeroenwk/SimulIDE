@@ -59,3 +59,8 @@ void FlipFlopJK::calcOutput()
     m_Q0 = (J && !Q) || (!K && Q) ;
     m_nextOutVal = m_Q0? 1:2;
 }
+
+void FlipFlopJK::simState( StateIO& s )
+{
+    FlipFlopBase::simState( s );
+}

@@ -236,3 +236,13 @@ void MuxAnalog::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* 
 
     Component::paintSelected( p );
 }
+
+void MuxAnalog::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_addrBits );
+    s.io( m_channels );
+    s.io( m_address );
+    s.io( m_admit );
+    s.io( m_enabled );
+}

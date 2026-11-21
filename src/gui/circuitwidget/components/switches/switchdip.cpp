@@ -274,3 +274,12 @@ void SwitchDip::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* 
 
     Component::paintSelected( p );
 }
+
+void SwitchDip::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_exclusive );
+    s.io( m_commonPin );
+    s.io( m_size );
+    s.io( m_state );
+}

@@ -137,7 +137,7 @@ void SimHistory::capture( Simulator* sim, bool replace )
         if( !sim->simCore( s ) )
         {
             m_skipped++;
-            m_error = "the step was not solved, or an event of an element outside the list";
+            m_error = sim->coreError();
             return;
         }
         if( s.overflow() )                       // Past the end: start again at the beginning

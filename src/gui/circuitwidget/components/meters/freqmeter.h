@@ -14,6 +14,8 @@ class LibraryItem;
 class FreqMeter : public Component, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( FreqMeter )
         FreqMeter( QString type, QString id );
         ~FreqMeter();
 

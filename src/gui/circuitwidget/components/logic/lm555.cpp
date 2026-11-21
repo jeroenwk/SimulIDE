@@ -217,3 +217,17 @@ void Lm555::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
 
     Component::paintSelected( p );
 }
+
+void Lm555::simState( StateIO& s )
+{
+    eElement::simState( s );
+    m_resA.simState( s );
+    m_resB.simState( s );
+    m_resD.simState( s );
+    s.io( m_voltPos );
+    s.io( m_voltNeg );
+    s.io( m_cmos );
+    s.io( m_propDelay );
+    s.io( m_outState );
+    s.io( m_reset );
+}

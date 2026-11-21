@@ -53,3 +53,8 @@ void FlipFlopD::calcOutput()
 {
     m_nextOutVal = m_inPin[0]->getInpState()? 1:2; // D state
 }
+
+void FlipFlopD::simState( StateIO& s )
+{
+    FlipFlopBase::simState( s );
+}

@@ -60,6 +60,17 @@ void eElement::resumeEvents()
     m_pendingTime = 0;
 }
 
+// A model that publishes its pin currents (BJT, JFET, current regulator, op amp): they are read
+// later (noise sources, meters), so they belong to the state
+void eElement::pinCurrents( StateIO& s )
+{
+    for( ePin* p : m_ePin ){
+        double a = p ? p->trueCurrent() : 0;
+        s.io( a );
+        if( p && !s.saving() ) p->setTrueCurrent( a );
+    }
+}
+
 void eElement::simState( StateIO& s )   // Base fields; the event queue is the simulator's
 {
     s.io( m_changed );

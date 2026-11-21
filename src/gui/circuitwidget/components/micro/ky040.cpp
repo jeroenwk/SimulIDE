@@ -202,3 +202,17 @@ void KY040::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
 
     Component::paintSelected( p );
 }
+
+void KY040::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_steps );
+    s.io( m_prevDialVal );
+    s.io( m_delta );
+    s.io( m_stepDelta );
+    s.io( m_posA );
+    s.io( m_posB );
+    s.io( m_stateA );
+    s.io( m_stateB );
+    s.io( m_changed );
+}

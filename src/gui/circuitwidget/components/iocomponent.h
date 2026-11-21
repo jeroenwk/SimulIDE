@@ -6,6 +6,8 @@
 #ifndef IOCOMPONENT_H
 #define IOCOMPONENT_H
 
+
+#include "simstate.h"
 #include <queue>
 
 #include "component.h"
@@ -16,6 +18,7 @@ class IoPin;
 class IoComponent : public Component
 {
     public:
+        void simState( StateIO& s );   // Keyframes (specs/sim-control.md §4.5)
         IoComponent( QString type, QString id );
         ~IoComponent();
 

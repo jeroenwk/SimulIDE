@@ -218,3 +218,12 @@ void ResistorDip::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget
 
     Component::paintSelected( p );
 }
+
+void ResistorDip::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_resist );
+    s.io( m_size );
+    s.io( m_pullUp );
+    s.io( m_puVolt );
+}

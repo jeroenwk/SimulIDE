@@ -29,6 +29,8 @@ class IoPin;
 class eClockedDevice : public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( eClockedDevice )
         eClockedDevice( QString id );
         ~eClockedDevice();
 

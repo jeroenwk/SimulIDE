@@ -135,3 +135,12 @@ void SR04::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* 
 
     Component::paintSelected( p );
 }
+
+void SR04::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_lastStep );
+    s.io( m_lastTrig );
+    s.io( m_busy );
+    s.io( m_echouS );
+}

@@ -294,3 +294,14 @@ void SevenSegment::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidge
 
     Component::paintSelected( p );
 }
+
+void SevenSegment::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_commonCathode );
+    s.io( m_verticalPins );
+    s.io( m_numDisplays );
+    s.io( m_threshold );
+    s.io( m_maxCurrent );
+    s.io( m_resistance );
+}

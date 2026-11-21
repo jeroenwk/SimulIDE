@@ -16,6 +16,8 @@ class LibraryItem;
 class DcMotor : public LinkerComponent, public eResistor
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( DcMotor )
         DcMotor( QString type, QString id );
         ~DcMotor();
 

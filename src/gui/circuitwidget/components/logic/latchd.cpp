@@ -134,3 +134,9 @@ void LatchD::updateSize()
     m_area = QRect( -(m_width/2)*8, -(m_height/2)*8, m_width*8, height*8 );
     Circuit::self()->update();
 }
+
+void LatchD::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_channels );
+}

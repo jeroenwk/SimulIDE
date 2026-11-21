@@ -6,6 +6,8 @@
 #ifndef HD44780BASE_H
 #define HD44780BASE_H
 
+
+#include "simstate.h"
 #include "component.h"
 #include "e-element.h"
 #include "pin.h"
@@ -13,6 +15,7 @@
 class Hd44780_Base : public Component
 {
     public:
+        void simState( StateIO& s );   // Keyframes (specs/sim-control.md §4.5)
         Hd44780_Base( QString type, QString id );
         ~Hd44780_Base();
 

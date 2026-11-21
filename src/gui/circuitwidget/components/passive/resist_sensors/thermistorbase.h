@@ -11,6 +11,8 @@
 class ThermistorBase : public VarResBase
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( ThermistorBase )
         ThermistorBase( QString type, QString id );
         ~ThermistorBase();
 

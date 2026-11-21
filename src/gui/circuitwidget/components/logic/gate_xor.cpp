@@ -103,3 +103,8 @@ void XorGate::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 
     Component::paintSelected( p );
 }
+
+void XorGate::simState( StateIO& s )
+{
+    Gate::simState( s );
+}

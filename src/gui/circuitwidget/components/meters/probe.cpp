@@ -133,3 +133,10 @@ void Probe::paint( QPainter *p, const QStyleOptionGraphicsItem *option, QWidget 
 
     Component::paintSelected( p );
 }
+
+void Probe::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_voltIn );
+    s.io( m_voltTrig );
+}

@@ -379,3 +379,20 @@ void UJT::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
 
     Component::paintSelected( p );
 }
+
+void Unijunction::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_ujt );
+    s.io( m_setting );
+}
+
+void UJT::simState( StateIO& s )
+{
+    Unijunction::simState( s );
+}
+
+void PUT::simState( StateIO& s )
+{
+    Unijunction::simState( s );
+}

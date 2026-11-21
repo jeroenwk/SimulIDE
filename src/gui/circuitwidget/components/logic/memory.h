@@ -15,6 +15,8 @@ class LibraryItem;
 class Memory : public IoComponent, public eElement, public MemData
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Memory )
         Memory( QString type, QString id );
         ~Memory();
 

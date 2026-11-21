@@ -20,7 +20,7 @@ fuse, varistor, bridge, the buck with three AngelScript cores, LED strip, scope)
   paused at t0: back to t0 + 1 ms gives v_C = 10(1 − e⁻¹) (the click replayed), back to before t0
   gives the switch open, its button too, and v_C = 0; the scope has no sample after the
   restored time.
-- A circuit with a part that has no state code yet (a BJT): going back is refused, naming it.
+- A circuit with a part that has no exact replay (the audio output, paced by the sound card): going back is refused, naming it.
 """
 import os
 import time
@@ -119,7 +119,7 @@ def test_back_switch(sim):
     c("sim", "stop")
 
     # A part without state code: going back is refused and named
-    c("comp", "add", "BJT", "--label", "Q1", "--at", "400,0")
+    c("comp", "add", "AudioOut", "--label", "SPK1", "--at", "400,0")
     c("sim", "start")
     time.sleep(0.5)
     try:
@@ -127,7 +127,7 @@ def test_back_switch(sim):
         err = ""
     except Exception as e:
         err = str(e)
-    sim.check("no state code (BJT): going back refused, naming it", 1 if "BJT" in err else 0, 1, absolute=0, note=err[:120])
+    sim.check("no exact replay (AudioOut): going back refused, naming it", 1 if "AudioOut" in err else 0, 1, absolute=0, note=err[:120])
     c("sim", "stop")
 
 

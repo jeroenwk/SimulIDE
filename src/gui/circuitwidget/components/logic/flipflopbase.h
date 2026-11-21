@@ -11,6 +11,8 @@
 class FlipFlopBase : public LogicComponent
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( FlipFlopBase )
         FlipFlopBase( QString type, QString id );
         ~FlipFlopBase();
 

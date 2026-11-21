@@ -153,3 +153,9 @@ void CurrReg::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w 
 
     Component::paintSelected( p );
 }
+
+void CurrReg::simState( StateIO& s )
+{
+    eCurrReg::simState( s );
+    s.io( m_region );
+}

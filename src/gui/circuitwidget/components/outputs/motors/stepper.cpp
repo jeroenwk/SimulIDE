@@ -241,3 +241,18 @@ void Stepper::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 
     Component::paintSelected( p );
 }
+
+void Stepper::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_steps );
+    s.io( m_res );
+    s.io( m_ang );
+    s.io( m_stpang );
+    s.io( m_Ppos );
+    s.io( m_bipolar );
+    m_resA1.simState( s );
+    m_resA2.simState( s );
+    m_resB1.simState( s );
+    m_resB2.simState( s );
+}

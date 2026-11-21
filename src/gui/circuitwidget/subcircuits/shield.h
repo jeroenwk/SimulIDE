@@ -11,6 +11,8 @@
 class ShieldSubc : public BoardSubc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( ShieldSubc )
         ShieldSubc( QString type, QString id, QString device );
         ~ShieldSubc();
 

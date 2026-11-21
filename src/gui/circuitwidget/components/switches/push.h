@@ -13,6 +13,8 @@ class LibraryItem;
 class Push : public PushBase
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Push )
         Push( QString type, QString id );
         ~Push();
 

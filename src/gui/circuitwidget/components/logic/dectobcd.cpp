@@ -91,3 +91,10 @@ void DecToBcd::set16bits( bool set )
     setNumInps( m_bits-1, "D", 1 );
     m_oePin->setY( m_area.y()-8 );
 }
+
+void DecToBcd::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_16Bits );
+    s.io( m_bits );
+}

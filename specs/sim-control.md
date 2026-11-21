@@ -465,7 +465,7 @@ taking them must be proven on `board_mains` before anything else.
 - `SimHistory`: a ring of keyframes in one arena (256 MB default, `settings historyBudget`),
   one per frame taken in the GUI timer after `holdWorker()` (a solved step; a frame whose step
   isn't solved is skipped), restore = the last keyframe at or before t.
-- CLI: `settings history` (off by default while it is built), `sim history` (count, span, bytes,
+- CLI: `settings history` (on by default since going back was built), `sim history` (count, span, bytes,
   capture time mean/max, missing classes), `sim history sizes` (bytes per class),
   `sim history check [--span] [--points] [--back] [--keep CLASS]`, `sim hash`, `settings runSeed`.
 
@@ -510,6 +510,47 @@ same hash as the first time, steps back land on the earlier 50 ns step times.
   (Messages: "History: the circuit changed during the run …").
 - History is on by default (a user setting, `Simulation/history`); a circuit with a part
   without state code keeps running as before, and ← says which parts.
+
+**More part types (2026-11-21)** [SIMULATED]: state code for every non-MCU part found in the 773
+circuits of the repos (books, YouTube, led_driver, samples, the shipped examples, test circuits):
+BJT, JFET, SCR, triac, diac, UJT/PUT, voltage and current regulators, the logic family
+(`IoComponent` with its queues of pending outputs, gates, buffers, flip-flops, latches,
+counters, mux/demux, shift registers, BCD decoders, adders), memories (`ioVector` of the RAM),
+the 555, relays, push buttons, DIP switches, keypad, potentiometers and sensors (LDR,
+thermistor, RTD, strain gauge), the transformer and its coils, sources, rails, clocks, probes,
+voltmeter, frequency meter, logic analyzer, lamp, DC motor, stepper, LED displays and matrices,
+HD44780/SSD1306/PCD8544/KS0108/ILI9341 displays (their RAM), WS2812, MAX72xx, I2C parts and the
+DS1307/DS1621/DHT22/SR04/KY040 modules, and the **noise engine** (each source's random
+generator and normal distribution, copied as bytes, so a noisy run replays the same numbers).
+Most field lists were generated from the headers (plain values, fixed arrays, members with
+their own state) and reviewed; `sim history check` over all the circuits found what was missing.
+
+- Found that way: the models that publish exact pin currents (`ePin::trueCurrent`: BJT, JFET,
+  current regulator, op amp) keep them on the pins, which keyframes didn't hold; the noise
+  read them, so a noisy BJT circuit diverged after a restore. `eElement::pinCurrents()` saves
+  them. More display state left out: the lamp's brightness, the DC motor's angle and speed, the
+  frequency meter's averaged period (all summed or reset per GUI frame).
+- A skip that lands takes a keyframe where it pauses: a skip shorter than a frame left none,
+  and the places skipped to are quick to come back to.
+- **Result**: 659 of the 773 circuits go back bit for bit (`sim history check`: 6 × 1 ms run,
+  back 4 ms, 3 checkpoints, every node and every element's state identical), against 143
+  before. `tests/regress/test_simctl_history_parts.py`: 15 shipped examples covering the new
+  classes, plus a BJT oscillator with noise on. 106 circuits are refused: all but one hold an
+  MCU (AVR, PIC, 8051, …: their peripherals and cores are the next step); one has a
+  `SubPackage` (the package editor).
+- **Known limits** (circuits that run but can't replay exactly; `sim history` says why where it
+  can):
+  - A **meter's output pin** (ammeter, voltmeter `outnod`) is set once per GUI frame
+    (`Meter::updateStep`), so the circuit depends on when frames fall; a replay differs where
+    that output feeds something (2 examples). Would need the output updated at fixed simulated
+    times.
+  - **Steps that don't converge** (the UJT relaxation oscillator of Duncan 56.4, the centre-tap
+    rectifier of Duncan 40.3): a step that iterates past its limit can be cut by the 50 ms
+    wall-time guard (`breakStep`), so the run itself isn't repeatable; where no step is ever
+    complete at a frame, no keyframe is taken (`sim history` error: "the step was not solved").
+  - The **audio output** is paced by the sound card's buffer: refused (`hasSimState` false).
+  - Scherz 12.57b (switch debouncer with the T_AND ternary subcircuit) lands in another state
+    after a replay, unexplained so far.
 
 Found on the way: the **first run after opening** `board_mains` differs from later runs (two
 skips of 200 ms after the first: same hash; the first: another), so some part keeps state

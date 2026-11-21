@@ -65,3 +65,8 @@ void FlipFlopRS::voltChanged()
         scheduleOutPuts( this );
     }
 }
+
+void FlipFlopRS::simState( StateIO& s )
+{
+    FlipFlopBase::simState( s );
+}

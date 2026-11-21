@@ -697,7 +697,8 @@ void Simulator::setNoise( const NoiseSettings& s )
 
 bool Simulator::simCore( StateIO& s )
 {
-    if( s.saving() && !stepComplete() ) return false;
+    m_coreError.clear();
+    if( s.saving() && !stepComplete() ){ m_coreError = "the step was not solved"; return false; }
     s.io( m_circTime );
     s.io( m_nlBudget );
     s.io( m_stepScale );
@@ -717,7 +718,10 @@ bool Simulator::simCore( StateIO& s )
     if( s.saving() )
     {
         for( eElement* e = m_firstEvent; e; e = e->nextEvent ){
-            if( e->simIndex < 0 || e->simIndex >= m_elementList.size() || m_elementList.at( e->simIndex ) != e ) return false;
+            if( e->simIndex < 0 || e->simIndex >= m_elementList.size() || m_elementList.at( e->simIndex ) != e ){
+                m_coreError = "an event of "+e->getId()+", an element outside the list";
+                return false;
+            }
             n++;
         }
         s.io( n );

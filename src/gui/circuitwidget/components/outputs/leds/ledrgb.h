@@ -15,6 +15,8 @@ class LibraryItem;
 class LedRgb : public Component, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( LedRgb )
         LedRgb( QString type, QString id );
         ~LedRgb();
 

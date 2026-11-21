@@ -15,6 +15,8 @@ class eNode;
 class Relay : public MechContact
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Relay )
         Relay( QString type, QString id );
         ~Relay();
 

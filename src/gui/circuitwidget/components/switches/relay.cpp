@@ -142,3 +142,11 @@ void Relay::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
 
     MechContact::paint( p, o, w );
 }
+
+void Relay::simState( StateIO& s )
+{
+    MechContact::simState( s );
+    s.io( m_trigCurrent );
+    s.io( m_relCurrent );
+    s.io( m_relayOn );
+}

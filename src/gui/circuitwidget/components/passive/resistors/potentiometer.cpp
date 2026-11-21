@@ -179,3 +179,14 @@ void Potentiometer::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidg
 
     Component::paintSelected( p );
 }
+
+void Potentiometer::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_resist );
+    s.io( m_voltOut );
+    s.io( m_res1 );
+    s.io( m_setFromCode );
+    m_resA.simState( s );
+    m_resB.simState( s );
+}

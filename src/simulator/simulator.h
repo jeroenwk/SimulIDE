@@ -171,6 +171,7 @@ class Simulator : public QObject
         // every element, and the event queue. Worker idle. Saving returns false when the step is
         // not solved or an event belongs to an element outside the list
         bool simCore( class StateIO& s );
+        QString coreError() { return m_coreError; }   // Why simCore() refused (saving)
         // Time of the last event run (a solved step), for one step back. Worker idle
         uint64_t lastEventTime() { return m_lastEvent; }
         void setLastEventTime( uint64_t t ) { m_lastEvent = t; }
@@ -257,6 +258,7 @@ class Simulator : public QObject
         uint64_t m_runEnd = 0;    // Simulated time the current frame's run goes up to
         bool m_resumeRun = false; // The next run goes on to m_runEnd (resumeWorker)
         QList<eElement*> m_startSettle;
+        QString m_coreError;
         void startSettle();
 
         QList<eElement*> m_elementList;

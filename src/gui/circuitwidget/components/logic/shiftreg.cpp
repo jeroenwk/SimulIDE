@@ -90,3 +90,9 @@ void ShiftReg::setResetInv( bool inv )
     m_resetInv = inv;
     m_inPin[2]->setInverted( inv );
 }
+
+void ShiftReg::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_resetInv );
+}

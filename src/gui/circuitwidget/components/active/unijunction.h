@@ -38,6 +38,8 @@ struct unijData_t {
 class Unijunction : public Component, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Unijunction )
         Unijunction( QString type, QString id, bool ujt );
         ~Unijunction();
 
@@ -92,6 +94,8 @@ class Unijunction : public Component, public eElement
 class PUT : public Unijunction
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PUT )
         PUT( QString type, QString id );
         ~PUT();
 
@@ -104,6 +108,8 @@ class PUT : public Unijunction
 class UJT : public Unijunction
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( UJT )
         UJT( QString type, QString id );
         ~UJT();
 

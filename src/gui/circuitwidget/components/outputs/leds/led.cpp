@@ -91,3 +91,8 @@ void Led::drawForeground( QPainter* p )
     p->drawLine( 8,-4, 8, 4 );
     p->drawLine(-6, 0, 10, 0 );
 }
+
+void Led::simState( StateIO& s )
+{
+    LedBase::simState( s );
+}

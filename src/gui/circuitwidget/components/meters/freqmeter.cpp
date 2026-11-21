@@ -185,3 +185,12 @@ void FreqMeter::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWid
 
     Component::paintSelected( p );
 }
+
+void FreqMeter::simState( StateIO& s )   // Not the averaged period: reset per GUI frame (display)
+{
+    eElement::simState( s );
+    s.io( m_rising );
+    s.io( m_falling );
+    s.io( m_filter );
+    s.io( m_lastData );
+}

@@ -434,3 +434,44 @@ void Ili9341::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 
     Component::paintSelected( p );
 }
+
+void Ili9341::simState( StateIO& s )
+{
+    eClockedDevice::simState( s );
+    s.io( m_rxReg );
+    s.io( m_inBit );
+    s.io( m_inByte );
+    s.io( m_data );
+    s.io( m_dataBytes );
+    s.io( m_addrX );
+    s.io( m_addrY );
+    s.io( m_startX );
+    s.io( m_endX );
+    s.io( m_startY );
+    s.io( m_endY );
+    s.io( m_maxX );
+    s.io( m_maxY );
+    s.io( m_dirX );
+    s.io( m_dirY );
+    s.io( m_rowCol );
+    s.io( m_startLin );
+    s.io( m_lastCommand );
+    s.io( m_scrollStartPage );
+    s.io( m_scrollEndPage );
+    s.io( m_scrollInterval );
+    s.io( m_scrollVertOffset );
+    s.io( m_scrollCount );
+    s.io( m_readBytes );
+    s.io( m_dispOn );
+    s.io( m_dispInv );
+    s.io( m_scroll );
+    s.io( m_scrollR );
+    s.io( m_scrollV );
+    s.io( m_RGB );
+    m_pinCS.simState( s );
+    m_pinRst.simState( s );
+    m_pinDC.simState( s );
+    m_pinMosi.simState( s );
+    m_pinSck.simState( s );
+    s.io( m_aDispRam );
+}

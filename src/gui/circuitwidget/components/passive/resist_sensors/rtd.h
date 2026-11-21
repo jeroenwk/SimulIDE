@@ -17,6 +17,8 @@ class LibraryItem;
 class RTD : public ThermistorBase
 {
      public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( RTD )
         RTD( QString type, QString id );
         ~RTD();
 

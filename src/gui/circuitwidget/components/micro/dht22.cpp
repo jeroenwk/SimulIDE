@@ -291,3 +291,21 @@ void Dht22::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
 
     Component::paintSelected( p );
 }
+
+void Dht22::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_DHT22 );
+    s.io( m_lastIn );
+    s.io( m_set );
+    s.io( m_lastTime );
+    s.io( m_start );
+    s.io( m_data );
+    s.io( m_bit );
+    s.io( m_temp );
+    s.io( m_humi );
+    s.io( m_tempInc );
+    s.io( m_humiInc );
+    s.io( m_outStep );
+    s.io( m_bitStep );
+}

@@ -42,3 +42,8 @@ void Voltimeter::updateStep()
 }   }
 
 double Voltimeter::instant() { return m_ePin[0]->getVoltage()-m_ePin[1]->getVoltage(); }
+
+void Voltimeter::simState( StateIO& s )
+{
+    Meter::simState( s );
+}

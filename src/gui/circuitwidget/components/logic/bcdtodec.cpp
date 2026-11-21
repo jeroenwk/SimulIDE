@@ -83,3 +83,9 @@ void BcdToDec::set_16bits( bool set )
     setNumOuts( m_16Bits ? 16 : 10 );
     m_oePin->setY( m_area.y()-8 );
 }
+
+void BcdToDec::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_16Bits );
+}

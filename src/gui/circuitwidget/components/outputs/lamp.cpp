@@ -254,3 +254,21 @@ void Lamp::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
 
     Component::paintSelected( p );
 }
+
+void Lamp::simState( StateIO& s )   // Not the brightness: summed per GUI frame (display)
+{
+    eResistor::simState( s );
+    s.io( m_maxCurrent );
+    s.io( m_fixedRes );
+    s.io( m_ratedPower );
+    s.io( m_ratedVolt );
+    s.io( m_coldRatio );
+    s.io( m_thermalTau );
+    s.io( m_temp );
+    s.io( m_tHot );
+    s.io( m_rCold );
+    s.io( m_kRad );
+    s.io( m_cTh );
+    s.io( m_radiated );
+    s.io( m_thStep );
+}

@@ -21,6 +21,8 @@ struct sample_t{
 class LAnalizer : public PlotBase
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( LAnalizer )
         LAnalizer( QString type, QString id );
         ~LAnalizer();
 

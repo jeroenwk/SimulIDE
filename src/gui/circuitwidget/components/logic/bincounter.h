@@ -13,6 +13,8 @@ class LibraryItem;
 class BinCounter : public LogicComponent
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( BinCounter )
         BinCounter( QString type, QString id );
         ~BinCounter();
 

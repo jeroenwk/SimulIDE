@@ -376,3 +376,22 @@ void DynamicMemory::slotShowTable()
     m_memTable->setWindowTitle( "DRAM: "+idLabel() );
     m_memTable->setData( &m_ram, m_dataBytes );
 }
+
+void DynamicMemory::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_refreshPeriod );
+    s.io( m_rowAddrBits );
+    s.io( m_colAddrBits );
+    s.io( m_addrBits );
+    s.io( m_dataBits );
+    s.io( m_dataBytes );
+    s.io( m_intRefresh );
+    s.io( m_rowAddress );
+    s.io( m_address );
+    s.io( m_refreshError );
+    s.io( m_oe );
+    s.io( m_ras );
+    s.io( m_cas );
+    s.ioVector( m_ram );
+}

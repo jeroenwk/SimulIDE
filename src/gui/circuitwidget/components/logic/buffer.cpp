@@ -90,3 +90,8 @@ void Buffer::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget
 
     Component::paintSelected( p );
 }
+
+void Buffer::simState( StateIO& s )
+{
+    Gate::simState( s );
+}

@@ -64,3 +64,8 @@ void FullAdder::voltChanged()
     if( co  ) m_nextOutVal += 2;
     scheduleOutPuts( this );
 }
+
+void FullAdder::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+}

@@ -15,6 +15,8 @@ class LibraryItem;
 class Ili9341 : public Component, public eClockedDevice
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Ili9341 )
         Ili9341( QString type, QString id );
         ~Ili9341();
         

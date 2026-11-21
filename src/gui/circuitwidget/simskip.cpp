@@ -236,6 +236,10 @@ void SimSkip::finish( bool ok, QString msg )
     }
     m_then = nullptr;
     m_back = false;
+    // Landed and paused on a solved step: a keyframe there, so a skip shorter than a frame still
+    // leaves one and the places skipped to are quick to come back to (specs/sim-control.md §4.8)
+    Simulator* sim = Simulator::self();
+    if( ok && sim && sim->isRunning() && SimHistory::self()->usable() ) SimHistory::self()->capture( sim );
     // A quick skip is seen in the time; a long, cancelled or failed one gets a line in Messages
     if( m_announced || !ok ) qInfo().noquote() << "Skip: "+msg;
     m_announced = false;

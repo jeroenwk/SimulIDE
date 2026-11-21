@@ -171,3 +171,9 @@ void Demux::paint( QPainter *p, const QStyleOptionGraphicsItem *option, QWidget 
 
     Component::paintSelected( p );
 }
+
+void Demux::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_addrBits );
+}

@@ -70,6 +70,9 @@ class eNoise : public eElement
         virtual void stamp() override;
         virtual void runEvent() override;
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( eNoise )
+
         enum State { Armed=0, Active, Ended };
         State state() { return (State)m_state.load(); }
 

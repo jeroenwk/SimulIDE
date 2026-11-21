@@ -71,3 +71,21 @@ void RtClock::setDisOut( bool d )
     m_disOut = d;
     if( !m_outEnable ) m_outpin->setOutState( m_disOut );
 }
+
+void RtClock::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_disabled );
+    s.io( m_outEnable );
+    s.io( m_disOut );
+    s.io( m_tCount );
+    s.io( m_sCount );
+    s.io( m_toggle );
+    s.io( m_halfPeriod );
+    s.io( m_freqBase );
+    int t = m_time.msecsSinceStartOfDay();   // Wall-clock start: kept as the keyframe's
+    qint64 d = m_date.toJulianDay();
+    s.io( t );
+    s.io( d );
+    if( !s.saving() ){ m_time = QTime::fromMSecsSinceStartOfDay( t ); m_date = QDate::fromJulianDay( d ); }
+}

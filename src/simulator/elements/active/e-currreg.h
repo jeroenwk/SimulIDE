@@ -39,6 +39,8 @@ struct currRegData_t{
 class eCurrReg : public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( eCurrReg )
         eCurrReg( QString id );
         ~eCurrReg();
 

@@ -13,6 +13,8 @@ class LibraryItem;
 class BcdTo7S : public BcdBase
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( BcdTo7S )
         BcdTo7S( QString type, QString id );
         ~BcdTo7S();
 

@@ -14,6 +14,8 @@ class LibraryItem;
 class DynamicMemory : public LogicComponent, public MemData
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( DynamicMemory )
         DynamicMemory( QString type, QString id );
         ~DynamicMemory();
 

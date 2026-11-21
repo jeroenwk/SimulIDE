@@ -15,6 +15,8 @@ class IoPin;
 class Rail : public Component, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Rail )
         Rail( QString type, QString id );
         ~Rail();
 

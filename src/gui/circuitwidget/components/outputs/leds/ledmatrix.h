@@ -15,6 +15,8 @@ class LibraryItem;
 class LedMatrix : public Component, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( LedMatrix )
         LedMatrix( QString type, QString id );
         ~LedMatrix();
 

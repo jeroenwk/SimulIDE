@@ -13,6 +13,8 @@
 class VarResBase : public Dialed, public eResistor
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( VarResBase )
         VarResBase( QString type, QString id );
         ~VarResBase();
 

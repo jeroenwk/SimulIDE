@@ -16,6 +16,8 @@ class LibraryItem;
 class AudioOut : public Component, public eResistor
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        virtual bool hasSimState() override { return false; }   // Paced by the sound card's buffer (wall time): no exact replay
         AudioOut( QString type, QString id );
         ~AudioOut();
     

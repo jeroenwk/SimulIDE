@@ -240,3 +240,19 @@ void Max72xx_matrix::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWid
 
     Component::paintSelected( p );
 }
+
+void Max72xx_matrix::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_numDisplays );
+    s.io( m_intensity );
+    s.io( m_decodemode );
+    s.io( m_scanlimit );
+    s.io( m_shutdown );
+    s.io( m_test );
+    s.io( m_rxReg );
+    s.io( m_inBit );
+    s.io( m_inDisplay );
+    s.io( m_ledColor );
+    s.io( m_ram );
+}

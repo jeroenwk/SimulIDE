@@ -82,3 +82,8 @@ void Push::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* 
     }
     Component::paintSelected( p );
 }
+
+void Push::simState( StateIO& s )
+{
+    PushBase::simState( s );
+}

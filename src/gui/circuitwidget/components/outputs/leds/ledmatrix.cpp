@@ -280,3 +280,14 @@ void LedMatrix::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* 
 
     Component::paintSelected( p );
 }
+
+void LedMatrix::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_verticalPins );
+    s.io( m_resist );
+    s.io( m_maxCurr );
+    s.io( m_threshold );
+    s.io( m_rows );
+    s.io( m_cols );
+}

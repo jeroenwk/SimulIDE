@@ -221,3 +221,27 @@ void WS2812::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
 
     Component::paintSelected( p );
 }
+
+void WS2812::simState( StateIO& s )
+{
+    eClockedDevice::simState( s );
+    s.io( m_state );
+    s.io( m_word );
+    s.io( m_byte );
+    s.io( m_bit );
+    s.io( m_data );
+    s.io( m_rows );
+    s.io( m_cols );
+    s.io( m_leds );
+    s.io( m_RES );
+    s.io( m_T0H );
+    s.io( m_T0L );
+    s.io( m_T1H );
+    s.io( m_T1L );
+    s.io( m_stepsPerus );
+    s.io( m_lastHstate );
+    s.io( m_newWord );
+    s.io( m_lastTime );
+    s.ioVector( m_rgb );
+    s.ioVector( m_led );
+}

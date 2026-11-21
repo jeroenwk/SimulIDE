@@ -439,6 +439,7 @@ void OpAmp::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
 void OpAmp::simState( StateIO& s )
 {
     eElement::simState( s );
+    pinCurrents( s );
     s.io( m_mode );
     s.io( m_flips );
     s.io( m_changes );

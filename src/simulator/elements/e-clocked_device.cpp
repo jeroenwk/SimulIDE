@@ -96,3 +96,11 @@ void eClockedDevice::remove()
 {
     if( m_clkPin) m_clkPin->removeConnector();
 }
+
+void eClockedDevice::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_clock );
+    s.io( m_clkState );
+    s.io( m_trigger );
+}

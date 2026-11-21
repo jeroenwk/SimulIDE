@@ -124,3 +124,17 @@ void LogicSubc::setFallTime( double time )
     for( Component* c : m_compList )
         c->setPropStr("Tf_ps", QString::number(m_timeHL)+" ps");
 }
+
+void LogicSubc::simState( StateIO& s )
+{
+    SubCircuit::simState( s );
+    s.io( m_inHighV );
+    s.io( m_inLowV );
+    s.io( m_ouHighV );
+    s.io( m_ouLowV );
+    s.io( m_inImp );
+    s.io( m_ouImp );
+    s.io( m_propDelay );
+    s.io( m_timeLH );
+    s.io( m_timeHL );
+}

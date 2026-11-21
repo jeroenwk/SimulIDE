@@ -135,3 +135,8 @@ void LaChannel::voltChanged()
     }
 }
 
+void LaChannel::simState( StateIO& s )
+{
+    DataChannel::simState( s );
+    s.io( m_busValue );
+}

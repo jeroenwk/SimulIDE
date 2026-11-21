@@ -13,6 +13,8 @@ class LibraryItem;
 class Mux : public LogicComponent
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Mux )
         QRectF boundingRect() const override { return m_area; }
     
         Mux( QString type, QString id );

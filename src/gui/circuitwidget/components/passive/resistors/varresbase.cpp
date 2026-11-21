@@ -108,3 +108,13 @@ void VarResBase::updateProxy()
 {
     m_proxy->setPos( QPoint(-m_dialW.width()/2, 7) );
 }
+
+void VarResBase::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_value );
+    s.io( m_setFromCode );
+    s.io( m_minVal );
+    s.io( m_maxVal );
+    s.io( m_step );
+}

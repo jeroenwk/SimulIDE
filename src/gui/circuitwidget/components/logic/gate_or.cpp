@@ -105,3 +105,8 @@ void OrGate::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget
 
     Component::paintSelected( p );
 }
+
+void OrGate::simState( StateIO& s )
+{
+    Gate::simState( s );
+}

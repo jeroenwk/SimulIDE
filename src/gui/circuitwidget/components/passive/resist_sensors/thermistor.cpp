@@ -86,3 +86,10 @@ void Thermistor::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWi
 
     Component::paintSelected( p );
 }
+
+void Thermistor::simState( StateIO& s )
+{
+    ThermistorBase::simState( s );
+    s.io( m_bVal );
+    s.io( m_r25 );
+}

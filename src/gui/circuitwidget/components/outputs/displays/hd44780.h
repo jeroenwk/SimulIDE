@@ -15,6 +15,8 @@ class LibraryItem;
 class Hd44780 : public Hd44780_Base, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Hd44780 )
         Hd44780( QString type, QString id );
         ~Hd44780();
         

@@ -92,3 +92,15 @@ void RTD::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* w
 
     Component::paintSelected( p );
 }
+
+void RTD::simState( StateIO& s )
+{
+    ThermistorBase::simState( s );
+    s.io( m_lastTime );
+    s.io( m_tau );
+    s.io( m_t0_tau );
+    s.io( m_r0 );
+    s.io( coef_temp_a );
+    s.io( coef_temp_b );
+    s.io( coef_temp_c );
+}
