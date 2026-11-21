@@ -14,6 +14,7 @@
 - Keys (§3.1–3.2), sent with ui type --window: Space starts / pauses / resumes, ↑ ↓ step the
   1–2–5 ladder (⇧ ×5, ⌥ ×10, ⇧⌥ ×100), → skips (⇧ 5×), Esc stops. With the canvas focused,
   Space is the keyboard editor's (D1); Esc on an idle canvas hands the keys back (D11).
+- A pause writes the old info pane's numbers as one line in Messages ("Paused at … · set …").
 """
 
 import os
@@ -114,6 +115,9 @@ def test_keys(sim):
 
     sim.check("Space starts", 1 if key("Space") == "running" else 0, 1, absolute=0)
     sim.check("Space pauses", 1 if key("Space") == "paused" else 0, 1, absolute=0)
+    m = sim.cli("messages")
+    lines = m["lines"] if isinstance(m, dict) else m
+    sim.check("pause writes the run line in Messages", 1 if any(l.startswith("Paused at ") and " · set " in l for l in lines) else 0, 1, absolute=0)
     sim.check("Space resumes", 1 if key("Space") == "running" else 0, 1, absolute=0)
     key("Space")
     for k, want in [("Up", "2 ms"), ("shift+Up", "10 ms"), ("opt+Up", "100 ms"),

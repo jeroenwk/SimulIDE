@@ -144,6 +144,7 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
              , m_outPane( this )
              , m_circToolBar( this )
              , m_simToolBar( this )
+             , m_infoBar( this )
              , m_fileMenu( this )
              , m_infoMenu( this )
 {
@@ -174,7 +175,7 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     m_infoWidget = new InfoWidget( this );
     m_infoWidget->setTargetSpeed( 100 );
     m_infoWidget->setFixedWidth( 322*MainWindow::self()->fontScale() );
-    m_infoWidget->setVisible( MainWindow::self()->settings()->value("showInfoPanel", false ).toBool() );
+    m_infoWidget->setVisible( false );   // Not shown: its numbers go to Messages (pause, stop); it still feeds the toolbar
 
     m_panelSplitter = new QSplitter( this );
     m_panelSplitter->setObjectName("Panelplitter");
@@ -223,12 +224,8 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     m_mainSplitter->addWidget( m_panelSplitter );
     m_mainSplitter->setSizes( {500, 100} );
 
-    QFont font( MainWindow::self()->defaultFontName(), 10, QFont::Bold );
-    double scale = MainWindow::self()->fontScale();
-    font.setPixelSize( 14*scale );
-    m_msgLabel = new QLabel( this );
-    m_msgLabel->setFont( font );
-    m_msgLabel->setMaximumSize( 200*scale, 20*scale );
+    m_badgeFont = QFont( MainWindow::self()->defaultFontName(), 10, QFont::Bold );   // The NOISE badge
+    m_badgeFont.setPixelSize( 14*MainWindow::self()->fontScale() );
 
     createActions();
     updateRecentFileActions();
@@ -505,7 +502,7 @@ void CircuitWidget::createToolBars()
         if( !parseSpeed( typed, &ps ) )
         {
             m_timebase->setBad( true );
-            setMsg( " "+tr("Speed?")+" "+typed+" ", 2 );
+            qWarning().noquote() << "[sim] Speed? "+typed+" (e.g. 25%, 3 ms/s; 1 ps/s … 1000 s/s)";
             return;
         }
         QString note = Cli::setSimSpeed( ps );
@@ -514,7 +511,7 @@ void CircuitWidget::createToolBars()
         m_timebase->lineEdit()->clearFocus();
         if( !note.isEmpty() ) qInfo().noquote() << "Speed:" << note;
     });
-    m_simToolBar.addWidget( m_timebase );
+    m_simRunItems << m_simToolBar.addWidget( m_timebase );
     syncTimebase( Simulator::self() ? Simulator::self()->psPerSec() : (uint64_t)1e12 );
 
     // Skip interval (specs/sim-control.md §3.3): ↑ ↓ change it, → / ⏭ skip by it
@@ -538,29 +535,35 @@ void CircuitWidget::createToolBars()
         if( !SimSkip::parseInterval( typed, &ps ) )
         {
             m_skipBox->setBad( true );
-            setMsg( " "+tr("Skip interval?")+" "+typed+" (1 step, 1 ps … 1 min) ", 2 );
+            qWarning().noquote() << "[sim] Skip interval? "+typed+" (1 step, or 1 ps … 1 min)";
             return;
         }
         m_skipBox->setBad( false );
         setSkipInterval( ps );
         m_skipBox->lineEdit()->clearFocus();
     });
-    m_simToolBar.addWidget( m_skipBox );
+    m_simRunItems << m_simToolBar.addWidget( m_skipBox );
     syncSkip( Simulator::self() ? Simulator::self()->skipInterval() : 1000000000 );
 
     m_simToolBar.addAction( skipBackAct );
     m_simToolBar.addAction( powerCircAct );
     m_simToolBar.addAction( pauseSimAct );
     m_simToolBar.addAction( skipFwdAct );
-    m_simToolBar.addSeparator();//..........................
+    m_simRunItems << skipBackAct << pauseSimAct << skipFwdAct;
 
-    spacer = new QWidget();
-    spacer->setFixedWidth( 15 );
-    m_simToolBar.addWidget( spacer );
-    m_simToolBar.addWidget( m_msgLabel );
+    QLabel* timeLabel = new QLabel( this );            // Simulation time, next to the run buttons
+    QFont tf = timeLabel->font();
+    tf.setPixelSize( 12*MainWindow::self()->fontScale() );
+    timeLabel->setFont( tf );
+    timeLabel->setContentsMargins( 6*MainWindow::self()->fontScale(), 0, 0, 0 );
+    m_simRunItems << m_simToolBar.addWidget( timeLabel );
+    m_infoWidget->setToolbarTime( timeLabel );
+    m_simRunItems << m_simToolBar.addSeparator();//..........................
+    // No status block: the time's colour gives the state (green running, light grey paused),
+    // other status messages go to Messages (setMsg)
 
-    // Transient noise on: always in sight (docs/NOISE_SPEC.md). The white noise icon stands
-    // for the word; the box is as high as the status label beside it
+    // Transient noise on: in sight while the simulation runs (docs/NOISE_SPEC.md). The white noise
+    // icon stands for the word
     double ns = MainWindow::self()->fontScale();
     int boxH = 20*ns;
     m_noiseBox = new QWidget( this );
@@ -574,12 +577,12 @@ void CircuitWidget::createToolBars()
     QLabel* noiseIcon = new QLabel( m_noiseBox );
     noiseIcon->setPixmap( QIcon(":/noise_white.svg").pixmap( QSize( boxH-2, boxH-2 ) ) );
     m_noiseLabel = new QLabel( m_noiseBox );
-    m_noiseLabel->setFont( m_msgLabel->font() );   // The same text as "Running" / "Paused"
+    m_noiseLabel->setFont( m_badgeFont );
     m_noiseLabel->setStyleSheet("QLabel { color: white; }");
     nl->addWidget( noiseIcon );
     nl->addWidget( m_noiseLabel );
     m_noiseBox->setToolTip( tr("Transient noise is on: thermal and shot noise of the parts are added (Settings: Simulation, or CLI settings noise*)") );
-    m_simToolBar.addWidget( spacer = new QWidget() );
+    m_simRunItems << m_simToolBar.addWidget( spacer = new QWidget() );
     spacer->setFixedWidth( 8 );
     m_noiseAct = m_simToolBar.addWidget( m_noiseBox );
     m_noiseAct->setVisible( false );
@@ -593,63 +596,54 @@ void CircuitWidget::createToolBars()
     m_infoMenu.addAction( aboutAct );
     m_infoMenu.addAction( aboutQtAct );
 
-    QLabel* timeLabel = new QLabel( this );            // Simulation time, right-aligned before Info
-    QFont tf = timeLabel->font();
-    tf.setPixelSize( 12*MainWindow::self()->fontScale() );
-    timeLabel->setFont( tf );
-    m_simToolBar.addWidget( timeLabel );
-    m_infoWidget->setToolbarTime( timeLabel );
-
-    QToolButton* infoPanelButton = new QToolButton( this );   // Shows / hides the speed and load pane
-    infoPanelButton->setCheckable( true );
-    infoPanelButton->setChecked( m_infoWidget->isVisibleTo( this ) );
-    auto syncPanelButton = [this, infoPanelButton]( bool on )
-    {
-        infoPanelButton->setArrowType( on ? Qt::UpArrow : Qt::DownArrow );
-        infoPanelButton->setToolTip( on ? tr("Hide the simulation info pane (speed, load, FPS)")
-                                        : tr("Show the simulation info pane (speed, load, FPS)") );
-    };
-    syncPanelButton( infoPanelButton->isChecked() );
-    connect( infoPanelButton, &QToolButton::toggled, [this, syncPanelButton]( bool on )
-    {
-        m_infoWidget->setVisible( on );
-        MainWindow::self()->settings()->setValue("showInfoPanel", on );
-        syncPanelButton( on );
-    });
-    m_simToolBar.addWidget( infoPanelButton );
-
+    // Info menu: at the right end of the first row, whatever the simulation shows
+    m_infoBar.setObjectName( "m_infoBar" );
+    m_infoBar.setIconSize( QSize( fs, fs ) );
     QToolButton* infoButton = new QToolButton( this );
     infoButton->setToolTip( tr("Info") );
     infoButton->setMenu( &m_infoMenu );
     infoButton->setIcon( QIcon(":/help.svg") );
     infoButton->setPopupMode( QToolButton::InstantPopup );
-    m_simToolBar.addWidget( infoButton );
-    
-    m_simToolBar.addSeparator();//..........................
+    m_infoBar.addWidget( infoButton );
+
+    setSimExpanded( false );          // Stopped: only the play button
+}
+
+// Stopped: the simulation bar is only the play button, beside the first row. Running, paused or
+// debugging: all of it (speed, skip, run buttons, time, NOISE badge) in a row of its own
+void CircuitWidget::setSimExpanded( bool on )
+{
+    m_simExpanded = on;
+    for( QAction* a : m_simRunItems ) a->setVisible( on );
+    updateNoise();                    // The NOISE badge follows the bar
+    m_toolRows = 0;                   // Lay out again
     layoutToolBars();
 }
 
 void CircuitWidget::layoutToolBars()
 {
     if( !m_toolGrid ) return;
-    // QToolBar's size hint is the width with every item shown
-    int need = m_circToolBar.sizeHint().width()+m_simToolBar.sizeHint().width();
+    // QToolBar's size hint is the width with every visible item shown
+    int need = m_circToolBar.sizeHint().width()+m_simToolBar.sizeHint().width()+m_infoBar.sizeHint().width();
     int rows = ( m_toolRow->width() > 0 && m_toolRow->width() < need ) ? 2 : 1;
+    if( m_simExpanded ) rows = 2;
     if( rows == m_toolRows ) return;
     m_toolRows = rows;
     m_toolGrid->removeWidget( &m_circToolBar );
     m_toolGrid->removeWidget( &m_simToolBar );
+    m_toolGrid->removeWidget( &m_infoBar );
     m_toolGrid->setColumnStretch( 0, 0 );
     m_toolGrid->setColumnStretch( 1, 0 );
     if( rows == 1 ){
         m_toolGrid->addWidget( &m_circToolBar, 0, 0 );
         m_toolGrid->addWidget( &m_simToolBar,  0, 1 );
-        m_toolGrid->setColumnStretch( 1, 1 );       // The second bar's spacer takes the rest
+        m_toolGrid->setColumnStretch( 1, 1 );       // The play button's bar takes the rest
     }else{
-        m_toolGrid->addWidget( &m_circToolBar, 0, 0, 1, 2 );
-        m_toolGrid->addWidget( &m_simToolBar,  1, 0, 1, 2 );
-        m_toolGrid->setColumnStretch( 0, 1 );
+        m_toolGrid->addWidget( &m_circToolBar, 0, 0 );
+        m_toolGrid->addWidget( &m_simToolBar,  1, 0, 1, 3 );
+        m_toolGrid->setColumnStretch( 1, 1 );
     }
+    m_toolGrid->addWidget( &m_infoBar, 0, 2 );      // Info: right end of the first row
 }
 
 bool CircuitWidget::eventFilter( QObject* obj, QEvent* ev )
@@ -812,12 +806,13 @@ void CircuitWidget::powerCircOn()
     pauseSimAct->setIcon( QIcon(":/simpause.svg") );
     pauseSimAct->setEnabled( true );
     MainWindow::self()->setState("▶");
-    setMsg( " "+tr("Running")+" ", 0 );
 
     CurrentFlow::self()->attach();       // Each circuit has a new Simulator
     ChargeView::self()->attach();
     StatusView::self()->attach();
     EventLog::self()->attach();
+    m_loggedMsgs.clear();                // Status messages: once per run
+    setSimExpanded( true );
     m_infoWidget->setSimState( InfoWidget::shownRunning );
     Simulator::self()->startSim();
     m_circView.clearFocus();             // The simulation keys work (specs/sim-control.md §3.1)
@@ -826,7 +821,10 @@ void CircuitWidget::powerCircOn()
 
 void CircuitWidget::powerCircOff()
 {
-    if( Simulator::self()->isRunning() ) Simulator::self()->stopSim();
+    if( Simulator::self()->isRunning() ){
+        if( !Simulator::self()->isPaused() ) logRunInfo( tr("Stopped") );   // Paused: logged then
+        Simulator::self()->stopSim();
+    }
 
     powerCircAct->setIcon( QIcon(":/simplay.svg") );
     pauseSimAct->setIcon( QIcon(":/simpause.svg") );
@@ -836,11 +834,11 @@ void CircuitWidget::powerCircOff()
     pauseSimAct->setEnabled( false );
     pauseSimAct->setText(tr("Pause Simulation"));
     MainWindow::self()->setState("■");
-    setMsg( " "+tr("Stopped")+" ", 1 );
 
     m_infoWidget->setRate( 0, 0 );
     m_infoWidget->setSimState( InfoWidget::shownStopped );
     updtKeyOwner();
+    setSimExpanded( false );
     CurrentFlow::self()->clear();
     ChargeView::self()->clear();
     EventLog::self()->stop();
@@ -857,9 +855,9 @@ void CircuitWidget::powerCircDebug()
     powerCircAct->setEnabled( false );
     pauseSimAct->setEnabled( false );
     MainWindow::self()->setState("❚❚");
-    setMsg( " "+tr("Debug")+"❚❚", 3 );
 
     m_infoWidget->setRate(-1 );  //m_rateLabel->setText( tr("Speed: Debugger") );
+    setSimExpanded( true );
 
     CurrentFlow::self()->attach();       // Debugger start has its own path
     ChargeView::self()->attach();
@@ -878,13 +876,11 @@ void CircuitWidget::debugPaused()
     if( m_paused ) return;
     m_paused = true;
 
-    setMsg( " "+tr("Debug")+"❚❚", 3 );
     MainWindow::self()->setState("❚❚");
 }
 
 void CircuitWidget::resumeDebug()
 {
-    setMsg( " "+tr("Debug")+"  ▶ ", 4 );
     MainWindow::self()->setState("▶");
     Simulator::self()->resumeSim();
 }
@@ -894,7 +890,7 @@ void CircuitWidget::pauseCirc()
     if( Simulator::self()->simState() > SIM_PAUSED )
     {
         Simulator::self()->pauseSim();
-        setMsg( " "+tr("Paused")+" ", 1 );
+        if( !SimSkip::self()->active() ) logRunInfo( tr("Paused") );
         MainWindow::self()->setState("❚❚");
         pauseSimAct->setText(tr("Resume Simulation"));
         pauseSimAct->setIcon( QIcon(":/simresume.svg") );
@@ -906,7 +902,6 @@ void CircuitWidget::pauseCirc()
     else if( Simulator::self()->isPaused() )
     {
         Simulator::self()->resumeSim();
-        setMsg( " "+tr("Running")+" ", 0 );
         MainWindow::self()->setState("▶");
         pauseSimAct->setText(tr("Pause Simulation"));
         pauseSimAct->setIcon( QIcon(":/simpause.svg") );
@@ -968,18 +963,22 @@ void CircuitWidget::updateNoise()
         m_noiseBox->setToolTip( Simulator::self()->noiseBadge()
             +"\n"+tr("Thermal and shot noise of the parts are added (Settings: Simulation: Noise, or CLI settings noise*)") );
     }
-    bool show = !t.isEmpty();
+    bool show = !t.isEmpty() && m_simExpanded;
     if( m_noiseAct->isVisible() != show ) m_noiseAct->setVisible( show );
 }
 
+// Status messages: there is no status block in the toolbar. The state words (Running, Paused,
+// Stopped, Debug) are given by the time's colour; any other message goes to Messages, once per
+// run (a warning raised at every non-converged step, which EventLog details in red, comes once)
 void CircuitWidget::setMsg( QString msg, int type )
 {
-    if     ( type == 0 ) m_msgLabel->setStyleSheet("QLabel { background-color: lightgreen; color: black;  font-weight: bold;}");
-    else if( type == 1 ) m_msgLabel->setStyleSheet("QLabel { background-color: orange;     color: white;  font-weight: bold;}");
-    else if( type == 2 ) m_msgLabel->setStyleSheet("QLabel { background-color: red;        color: yellow; font-weight: bold;}");
-    else if( type == 3 ) m_msgLabel->setStyleSheet("QLabel { background-color: blue;       color: white;  font-weight: bold;}");
-    else if( type == 4 ) m_msgLabel->setStyleSheet("QLabel { background-color: lightblue;  color: black;  font-weight: bold;}");
-    m_msgLabel->setText( "   "+msg+"   " );
+    QString t = msg.trimmed();
+    static const QStringList states{ tr("Running"), tr("Paused"), tr("Stopped"), "Running", "Paused", "Stopped" };
+    if( t.isEmpty() || states.contains( t ) || t.startsWith( tr("Debug") ) || m_loggedMsgs.contains( t ) ) return;
+    m_loggedMsgs.insert( t );
+    if     ( type == 2 ) qCritical().noquote() << "[sim]" << t;
+    else if( type == 1 ) qWarning().noquote() << "[sim]" << t;
+    else qInfo().noquote() << t;
 }
 
 void CircuitWidget::updateRecentFiles()
@@ -1063,8 +1062,7 @@ bool CircuitWidget::simKey( QKeyEvent* ev )
         case Qt::Key_Down:
         {
             uint64_t v = SimSkip::nextInterval( sim->skipInterval(), key == Qt::Key_Up ? 1 : -1, factor == 1 ? 0 : factor );
-            setSkipInterval( v );
-            setMsg( " "+tr("Skip")+" "+SimSkip::intervalText( v )+" ", sim->isPaused() ? 1 : running ? 0 : 1 );
+            setSkipInterval( v );                   // Shown in the skip box
             return true;
         }
         case Qt::Key_Right:
@@ -1072,7 +1070,7 @@ bool CircuitWidget::simKey( QKeyEvent* ev )
             return true;
         case Qt::Key_Left:
             if( ev->isAutoRepeat() ) return true;
-            setMsg( " "+tr("Going back needs the history (phase 2)")+" ", 1 );
+            qInfo().noquote() << tr("Going back in time needs the history (not yet: specs/sim-control.md phase 2)");
             return true;
     }
     return false;
@@ -1084,7 +1082,7 @@ void CircuitWidget::skipForward( int count )
     if( !sim ) return;
     QString err = SimSkip::self()->start( sim->skipInterval(), count );
     if( !err.isEmpty() && err.startsWith("busy") ) return;
-    if( !err.isEmpty() ) setMsg( " "+err+" ", 1 );
+    if( !err.isEmpty() ) qInfo().noquote() << "Skip: "+err;
 }
 
 void CircuitWidget::setSkipInterval( uint64_t ps )
@@ -1123,6 +1121,18 @@ void CircuitWidget::syncSkip( uint64_t ps )
     if( skipFwdAct ) skipFwdAct->setText( tip );
 }
 
+// The numbers of the old info pane, one line in Messages when the simulation pauses or stops
+void CircuitWidget::logRunInfo( QString what )
+{
+    Simulator* sim = Simulator::self();
+    if( !sim ) return;
+    QString line = what+" at "+InfoWidget::timeText( sim->circTime() )
+                  +" · "+tr("set")+" "+InfoWidget::speedText( sim->psPerSec() );
+    QString rate = m_infoWidget->rateSummary();
+    if( !rate.isEmpty() ) line += " · "+rate;
+    qInfo().noquote() << line;
+}
+
 // The skip box is framed while the simulation has the keys (specs/sim-control.md §3.1)
 void CircuitWidget::updtKeyOwner()
 {
@@ -1137,8 +1147,7 @@ void CircuitWidget::updtKeyOwner()
 
 void CircuitWidget::simKeysBack()
 {
-    m_circView.clearFocus();
-    setMsg( " "+tr("Keys: simulation")+" ", Simulator::self()->isPaused() ? 1 : 0 );
+    m_circView.clearFocus();                    // The skip box frame shows it
 }
 
 void CircuitWidget::syncTimebase( uint64_t psPerSec )

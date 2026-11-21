@@ -55,6 +55,7 @@ class SimSkip : public QObject, public Updatable
         uint64_t m_target = 0;
         uint64_t m_span   = 0;
         int      m_stepsLeft = 0;    // Solver steps still to do (span 0)
+        bool     m_announced = false;  // A long skip: its start was logged
         int64_t  m_waitFrame = -1;   // Paused at the end: the frame count to wait past
         uint64_t m_frames = 0;
         QTimer   m_poll;

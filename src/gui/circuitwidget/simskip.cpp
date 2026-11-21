@@ -126,12 +126,10 @@ void SimSkip::poll()
 
 void SimSkip::progress()
 {
-    if( m_wall.elapsed() < 300 ) return;          // A short skip shows only its result
-    Simulator* sim = Simulator::self();
-    double done = ( m_target > m_from ) ? 100.0*double( sim->circTime()-m_from )/double( m_target-m_from ) : 0;
-    if( done < 0 ) done = 0;
-    CircuitWidget::self()->setMsg( " Skipping "+intervalText( m_target-m_from )+" … "
-                                   +QString::number( (int)done )+" % ", 4 );
+    // The toolbar time shows how far a skip has come; a long one gets a line in Messages
+    if( m_wall.elapsed() < 300 || m_announced ) return;
+    m_announced = true;
+    qInfo().noquote() << "Skipping "+intervalText( m_target-m_from )+" from "+Simulator::siStr( m_from*1e-12, "s" )+" …";
 }
 
 void SimSkip::finish( bool ok, QString msg )
@@ -139,8 +137,9 @@ void SimSkip::finish( bool ok, QString msg )
     m_poll.stop();
     m_active = false;
     m_waitFrame = -1;
-    Simulator* sim = Simulator::self();
-    if( sim && sim->isPaused() ) CircuitWidget::self()->setMsg( " Paused · "+msg+" ", 1 );
+    // A quick skip is seen in the time; a long, cancelled or failed one gets a line in Messages
+    if( m_announced || !ok ) qInfo().noquote() << "Skip: "+msg;
+    m_announced = false;
     qDebug() << "[skip]" << ( ok ? "done:" : "ended:" ) << msg;
     QList<Done> done = m_done;
     m_done.clear();
