@@ -3,6 +3,7 @@
  *                                                                         *
  ***( see copyright.txt file at root folder )*******************************/
 
+#include <QTimer>
 #include <math.h>
 
 #include "uitheme.h"
@@ -284,8 +285,16 @@ void AppDialog::buildColors()
     updateColorButtons();
 }
 
+void AppDialog::updtRunNote()
+{
+    if( !m_runNote ) return;
+    bool on = Simulator::self() && Simulator::self()->isRunning();
+    if( m_runNote->isVisible() != on ) m_runNote->setVisible( on );
+}
+
 void AppDialog::showEvent( QShowEvent* e )
 {
+    updtRunNote();
     // The dialog is reused: values may have changed (CLI, toolbar) since it was built
     QSignalBlocker b1( currentFlow );
     currentFlow->setChecked( CurrentFlow::self()->enabled() );
@@ -420,6 +429,18 @@ void AppDialog::buildNoise()
     verticalLayout_2->insertWidget( verticalLayout_2->count()-1, line );
     verticalLayout_2->insertSpacing( verticalLayout_2->count()-1, 9 );
     verticalLayout_2->insertWidget( verticalLayout_2->count()-1, m_noiseBox );   // Above the bottom spacer
+
+    // specs/sim-control.md §3.8: shown while the simulation runs
+    m_runNote = new QLabel( tr("The simulation is running: Speed, FPS and Max. Iterations apply at once; "
+                               "Reactive Step, Slope Steps and Noise apply at the next start. "
+                               "Changes are logged in Messages with the simulated time."), simTab );
+    m_runNote->setWordWrap( true );
+    m_runNote->setStyleSheet("QLabel { color: #e67800; }");
+    verticalLayout_2->insertWidget( 0, m_runNote );
+    QTimer* runTimer = new QTimer( this );
+    connect( runTimer, &QTimer::timeout, this, [this](){ if( isVisible() ) updtRunNote(); } );
+    runTimer->start( 500 );
+    updtRunNote();
 
     connect( m_noiseBox, &QGroupBox::toggled, this, [this](bool){ applyNoise(); } );
     for( QLineEdit* e : { m_noiseBW, m_noiseSeed, m_noiseStart, m_noiseStop, m_noiseOff } )

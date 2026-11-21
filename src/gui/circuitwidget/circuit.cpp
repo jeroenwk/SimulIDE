@@ -214,6 +214,7 @@ void Circuit::loadStrDoc( QString &doc )
                 else if( name == "NLsteps" ) m_simulator->setMaxNlSteps( val.toUInt() );
                 else if( name == "reaStep" ) m_simulator->setreactStep( val.toULongLong() );
                 else if( name == "supplyRamp" ) m_simulator->setSupplyRamp( val.toULongLong() );
+                else if( name == "skip"    ) m_simulator->setSkipInterval( val.toULongLong() ); // 0 = 1 step
                 else if( name == "animate" ) setAnimate( val.toInt() );
                 else if( name == "chargeScale" ) m_chargeScale = val.toDouble();
                 else if( name == "currentScale" ) m_currentScale = val.toDouble();
@@ -518,6 +519,7 @@ QString Circuit::circuitHeader()
     header += "NLsteps=\""+QString::number( m_simulator->maxNlSteps() )+"\" ";
     header += "reaStep=\""+QString::number( m_simulator->reactStep() )+"\" ";
     if( m_simulator->supplyRamp() ) header += "supplyRamp=\""+QString::number( m_simulator->supplyRamp() )+"\" ";
+    if( m_simulator->skipInterval() != 1000000000 ) header += "skip=\""+QString::number( m_simulator->skipInterval() )+"\" ";  // Default 1 ms
     header += "animate=\""+QString::number( m_animate )+"\" ";
     if( m_chargeScale > 0 ) header += "chargeScale=\""+QString::number( m_chargeScale )+"\" ";
     if( m_currentScale > 0 ) header += "currentScale=\""+QString::number( m_currentScale )+"\" ";
@@ -1369,7 +1371,11 @@ void Circuit::keyPressEvent( QKeyEvent* event )
     }
     if( key == Qt::Key_Escape )
     {
+        bool linking = Linker::m_selecComp;
         Linker::stopLinking();
+        // Nothing left to cancel while the simulation runs: hand the keys back to it (D11)
+        if( !linking && m_simulator->isRunning() && event->modifiers() == Qt::NoModifier )
+            CircuitWidget::self()->simKeysBack();
         return;
     }
     if( event->modifiers() & Qt::AltModifier ) // Create Component shortcut

@@ -49,10 +49,12 @@ InfoWidget::InfoWidget( QWidget* parent )
     overLoadVal->setVisible( false );
 }
 
-void InfoWidget::showBarTime()   // Toolbar copy of the time: headings purple, grey while stopped
+void InfoWidget::showBarTime()   // Toolbar copy of the time, coloured by the state
 {
     if( !m_barTime ) return;
-    QColor c = ( m_shown == shownStopped ) ? QColor( 120, 120, 120 ) : UiTheme::headingColor();
+    // The state is the colour (no status block): green running, light grey paused, grey stopped
+    QColor c = ( m_shown == shownRunning ) ? QColor( 0x2e, 0xb8, 0x4f )
+             : ( m_shown == shownPaused  ) ? QColor( 0xb8, 0xb8, 0xb8 ) : QColor( 120, 120, 120 );
     QString sheet = QString("font-weight: bold; color: rgb(%1, %2, %3)").arg( c.red() ).arg( c.green() ).arg( c.blue() );
     if( m_barTime->property("_sheetBase").toString() != sheet )   // Only on a change (UiTheme adapts it for dark mode)
     {
@@ -130,8 +132,20 @@ void InfoWidget::updtMcu()
     mainMcuName->setVisible( Mcu::self() );
 }
 
+QString InfoWidget::rateSummary()
+{
+    if( m_rate <= 0 ) return "";
+    QString t = tr("real")+" "+speedText( m_rate*1e8 )+" ("+QString::number( m_rate/100, 'f', 1 )+" %)"
+               +" · "+tr("sim load")+" "+QString::number( m_simLoad, 'f', 0 )+" %"
+               +" · "+tr("GUI load")+" "+QString::number( m_guiLoad, 'f', 0 )+" %"
+               +" · "+QString::number( m_fps )+" FPS";
+    if( Mcu::self() ) t += " · "+Mcu::self()->device()+" at "+QString::number( Mcu::self()->freq()*1e-6 )+" MHz";
+    return t;
+}
+
 void InfoWidget::setRate( double rate, double simLoad, double guiLoad, int fps )
 {
+    m_rate = rate; m_simLoad = simLoad; m_guiLoad = guiLoad; m_fps = fps;
     updtMcu();
     if( rate < 0 )
     {

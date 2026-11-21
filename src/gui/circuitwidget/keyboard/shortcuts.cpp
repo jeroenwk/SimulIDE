@@ -56,6 +56,16 @@ const QList<Shortcut>& Shortcuts::all()
         { "View", "Show instruments (toggle)", "F10", "" },
         { "Simulation", "Start / stop the simulation", "F5", "" },
         { "Simulation", "Pause / resume the simulation", "F6", "Simulation running" },
+        // Simulation keys (specs/sim-control.md §3.2): only while the canvas has no keyboard focus.
+        // A start takes it from the canvas; a click gives it back; the skip box is framed blue then
+        { "Simulation", "Start / pause / resume the simulation", "Space", "Canvas without focus" },
+        { "Simulation", "Stop the simulation; during a skip: cancel the skip (stays paused)", "Esc", "Canvas without focus" },
+        { "Simulation", "Skip interval: next / previous value (1 step, 1 ps … 1 min, 1–2–5)", "Up / Down", "Canvas without focus" },
+        { "Simulation", "Skip interval ×5 / ×10 / ×100 (Down: ÷)", "Shift+Up / Opt+Up / Shift+Opt+Up", "Canvas without focus" },
+        { "Simulation", "Pause and skip forward by the skip interval; stopped: start, then skip", "Right", "Canvas without focus" },
+        { "Simulation", "Skip forward 5× / 10× / 100× the skip interval", "Shift+Right / Opt+Right / Shift+Opt+Right", "Canvas without focus" },
+        { "Simulation", "Skip back (needs the history: not yet)", "Left", "Canvas without focus" },
+        { "Simulation", "Give the keys back to the simulation", "Esc", "Simulation on, canvas focused, nothing selected or in progress" },
         { "Simulation", "Transient noise (toggle)", "F12", "" },
         { "File", "Export as image (PNG, SVG)", "Cmd+P", "" },
         { "File", "Settings", "Cmd+,", "" },

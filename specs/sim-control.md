@@ -1,7 +1,8 @@
 # Simulation control: keys, skip, speed, history and snapshots
 
-Status: **all decisions taken** (D1–D15, user, 2026-11-21; Decision log §9). Phase 1 and the
-speed lock are ready to build; phases 2 and 3 are studies.
+Status: **phase 1 built** on `feature/sim-control` (2026-11-21), §3.1–3.8; differences from
+this text are noted in place. All decisions taken (D1–D15, Decision log §9). The speed lock
+(§3.9) is next; phases 2 and 3 are studies.
 
 Goal: control a running simulation the way you control a media player or a scope: play/pause,
 stop and skip forward from the keyboard, set the skip interval and the speed by typing, and
@@ -65,11 +66,13 @@ canvas does not have focus, i.e. after a start, until the canvas is given focus 
 
 - While the simulation is running or paused, a **window-level key filter** (an event filter on
   `MainWindow`, installed at start and removed at stop) handles Space, Esc and the arrows when
-  the focused widget is neither the canvas nor a text field (a property field, the code editor,
-  a search box, an editable combo such as the speed or skip box: the same test as
-  `CircuitView::enterEvent`).
+  the focused widget is neither the canvas nor a widget that uses these keys itself: a text
+  field (a property field, the code editor, a search box), a list or tree (the component list,
+  the file browser), an editable combo such as the speed or skip box
+  (`CircuitWidget::keysToSim`).
 - At start, the canvas is cleared of focus (`clearFocus()`) and the keyboard cursor is hidden.
-  A canvas mode in progress (wire drawing, network walk, value editing) is ended.
+  A canvas mode in progress (wire drawing, network walk, value editing) is **not** ended yet
+  (left out of phase 1): it waits until the canvas gets the focus back.
 - While running or paused, the canvas does not take focus when the mouse merely enters it
   (`CircuitView::enterEvent` checks the state); otherwise moving the mouse over the circuit
   would end the simulation keys at once. A **click** on the canvas gives it focus (keyboard
@@ -78,11 +81,11 @@ canvas does not have focus, i.e. after a start, until the canvas is given focus 
   it does today (`KeyboardController::escKey`, `Circuit::keyPressEvent`): ends a link or a wire
   being drawn, leaves network mode or a value edit, clears the selection. When none of these
   applies (nothing in progress, nothing selected), it clears the canvas focus and the
-  simulation keys are active again; the status line says "Keys: simulation". So from a
+  simulation keys are active again; the skip box gets its blue frame again. So from a
   selected part it is Esc, Esc. That Esc never stops the simulation: only an Esc while the
   canvas has no focus does.
-- The toolbar shows which one has the keys (e.g. the skip box framed while the simulation
-  keys are active), so a key press is never a surprise.
+- The toolbar shows which one has the keys: the skip box has a blue frame while the simulation
+  keys are active (`updtKeyOwner`, on every focus change).
 - F5 (start/stop) and F6 (pause/resume) are window shortcuts and work whatever has focus (D2).
 - At stop, the filter is removed and the canvas gets focus again if the mouse is over it.
 
@@ -101,7 +104,7 @@ Simulation keys (canvas not focused, §3.1); F5 and F6 work everywhere:
 | ← | — | pause, skip back (phase 2) | skip back (phase 2) | ignored |
 
 - Shift, Option and Shift+Option on → / ← skip 5×, 10× and 100× the interval (D5).
-- In phase 1, ← says in the status line "going back needs the history (phase 2)".
+- In phase 1, ← writes "Going back in time needs the history" in Messages.
 - **Auto-repeat**: holding → skips again after each skip has finished and its frame has been
   drawn; repeats that arrive during a skip are dropped, so releasing the key stops at once.
 - F5 and F6 keep their current actions (`powerCircAct`, `pauseSimAct`); F7–F10 and F12 keep
@@ -112,7 +115,7 @@ Simulation keys (canvas not focused, §3.1); F5 and F6 work everywhere:
 ### 3.3 Skip interval
 
 - Values: **`1 step`** (the next event timestamp, solved), then a 1–2–5 ladder from **1 ps** to
-  **1 min** (1 ps, 2 ps, 5 ps, 10 ps … 500 ms, 1 s, 2 s, 5 s, 10 s, 20 s, 30 s, 1 min), 41 values
+  **1 min** (1 ps, 2 ps, 5 ps, 10 ps … 500 ms, 1 s, 2 s, 5 s, 10 s, 20 s, 30 s, 1 min), 43 values
   plus `1 step`.
 - ↑ makes it larger, ↓ smaller. Factors (D5):
 
@@ -124,7 +127,7 @@ Simulation keys (canvas not focused, §3.1); F5 and F6 work everywhere:
   | Shift + Option | ×100 | 100 µs |
 
   A product is rounded to the nearest ladder value and clamped to 1 ps … 1 min; ↓ from 1 ps
-  goes to `1 step`. Each change is shown for a moment in the status line ("Skip 5 µs").
+  goes to `1 step`. The skip box shows each change.
 - An interval shorter than the step size is allowed and shown with a note ("1 ps < step 1 µs:
   skips to the next step"); the skip always ends on a solved step.
 - Saved with the circuit, as the speed is (`skipInterval` in the simulation settings) (D6).
@@ -137,28 +140,45 @@ the meters, scope and part views show the new state.
 
 - **Speed during a skip** (D7): as fast as the computer can, no real-time throttle; the point
   of a skip is to get there.
-- A long skip (1 min of a 1 µs-step circuit is 6·10⁷ steps) shows its progress in the status
-  line ("Skipping 1 min … 37 %") and can be cancelled (§3.2).
+- A long skip (1 min of a 1 µs-step circuit is 6·10⁷ steps) shows its progress in the toolbar
+  time and can be cancelled (§3.2). One that takes over 300 ms of wall time, is cancelled or
+  fails gets a line in Messages ("Skipping 1 min from 2 ms …", "Skip: +1 min → 1 min 2 ms");
+  a quick one only moves the time.
 - `1 step`: a new `Simulator::stepOnce()` runs the events of the next timestamp, solves and
   pauses. If there is no next event, it says so ("no event pending: the circuit is static").
-- The status line after a skip gives the new time and what was skipped ("+5 µs → 1.250 ms").
 
 ### 3.5 Toolbar
 
-Layout of the sim row: `[speed ▾] [skip ▾] ⏮ ▶ ❚❚ ⏭ …`
+Layout (user, 2026-11-21, built):
+
+- **Stopped**: one row, the editing bar, then only the play button; the Info menu at the right
+  end. Speed, skip, the other run buttons and the time are hidden.
+- **Running, paused or debugging**: always two rows, even when one would fit. The first is the
+  editing bar with the Info menu at its right end; the second is the simulation bar:
+  `[speed ▾] [skip ▾] ⏮ ⏹ ⏯ ⏭  time  [NOISE]`. A stop (not a pause) collapses it again
+  (`CircuitWidget::setSimExpanded`).
+- **No status block**: the time's colour gives the state, green running, light grey paused.
+  Other status messages (`CircuitWidget::setMsg`: simulator warnings and errors) go to
+  Messages, once per run; answers to a key or a typed value (a refused skip, a speed that
+  doesn't parse, ← in phase 1) every time.
+- **No info pane** (speed, loads, FPS, main MCU): its numbers are one line in Messages when the
+  simulation pauses or stops while running, e.g. `Paused at 1 s 500 ms 000 µs · set 1 s/s ·
+  real 886 ms/s (88.6 %) · sim load 14 % · GUI load 0 % · 20 FPS` (`logRunInfo`; the real
+  speed is the last full second's, so it reads low just after a start). The `InfoWidget`
+  stays, hidden: it still computes the toolbar time and the orange real-speed box.
 
 - **Speed box**: editable `QComboBox` (presets stay in the list). Accepted: a time per second
   (`3 ms/s`, `3ms`, `0.25 s/s`) or a percentage of real time (`25%`, `0.3 %`), parsed with
-  `Simulator::parseSi`. Enter applies through `Cli::setSimSpeed()` (its notes go to the status
-  line); Esc in the field restores the value; a value that doesn't parse turns the field red
-  and keeps the old speed. The orange real-speed override stays, shown only while the field is
-  not being edited. Range 1 ps/s … 1000 s/s (what `setSimSpeed` allows) — check.
+  `Simulator::parseSi`. Enter applies through `Cli::setSimSpeed()` (its notes go to Messages);
+  Esc in the field restores the value; a value that doesn't parse turns the field red, keeps
+  the old speed and says so in Messages. The orange real-speed override stays, shown only while
+  the field is not being edited. Range 1 ps/s … 1000 s/s.
 - **Skip box**: the same kind of editable combo, the ladder as its list, `1 step` first.
   Accepted: `1 step`, `step`, any time `1ps` … `1min` (also `60s`); a typed value off the
   ladder is kept as typed (↑/↓ then move to the next ladder value).
 - Tooltips give the keys (`KeyText::tipWithKey`): "Skip interval (↑ ↓, ⇧ ×5, ⌥ ×10, ⇧⌥ ×100)",
   "Skip forward (→)".
-- Two buttons ⏮ ⏭ next to play/pause (D8): `[speed ▾] [skip ▾] ⏮ ▶ ❚❚ ⏭ …`. ⏮ is disabled
+- Two buttons ⏮ ⏭ around stop and pause (D8). ⏮ is disabled
   until the history exists (phase 2) and for a circuit without history (§4.6).
 
 ### 3.6 CLI
@@ -171,14 +191,23 @@ Everything the keys do has a CLI command (CLI.md, Simulation):
 | `sim skip --back [<time>\|step]` | Phase 2 |
 | `sim step` | One solver step (= `sim skip step`) |
 | `settings set skipInterval <time>\|step` | The toolbar skip box |
-| `ui key space\|esc\|up\|right …` | (exists as `ui type`?) to test the key routing in the GUI |
+| `ui type <keys> --window` | Real key presses to the focused widget (the window when none), the canvas focus left as it is: tests the key routing |
+| `sim status` | gets `skipping: true` while a skip is not done (it pauses at its end, then waits one frame) |
+
+A run starts at t = 1 ps (`Simulator::resetSim`), so the reactive parts' events fall on
+1 ps + k·step. A skip is measured from the real start time, as `sim run --for` is: `sim skip
+1ms` from stopped lands on 1 ms + 1 ps. Measured from 0 it stopped 1 ps before an event, one
+reactive step behind `sim run --for` (found by the test).
 
 ### 3.7 Tests (phase 1)
 
-- `tests/` script: `sim skip 1ms` from paused lands on t + 1 ms exactly; `sim step` lands on the
-  next event time of a 555 astable; `skipInterval` saved and reloaded; ladder rounding with
-  each modifier; speed box parsing (`25%`, `3ms/s`, garbage).
-- GUI: key routing with focus on the canvas, on a property field, in the code editor.
+`tests/regress/test_simctl_skip.py` (28 checks): exact landing of `sim skip` from stopped, by the
+interval and with `--count`; `sim step` on the next event; a skip and `sim run --for` give the
+same capacitor voltage bit for bit; 10 ms at a set speed of 1 µs/s skipped in 0.1 s of wall
+time; `skipInterval` saved and reopened; every key (Space ×3, ↑ ↓ with each modifier, → ⇧→,
+Esc, → from stopped), Space ignored while the canvas has the focus, Esc on an idle canvas handing
+the keys back. Still by hand: typing in the speed and skip boxes, the blue frame, the Settings
+dialog note.
 
 ### 3.8 Simulation settings changed during a run
 
@@ -200,7 +229,7 @@ structure or the matrix pattern, which is what would need a stop. Three changes 
 instead:
 
 1. The dialog marks the settings that apply **at the next start** ("applies at the next
-   start") while the simulation runs, and the status line says so after such a change, so
+   start") while the simulation runs, and the Messages line says so after such a change, so
    nobody waits for a change that isn't coming.
 2. A change during a run is written to Messages with its simulated time ("t = 12.5 ms:
    max. iterations 100000 → 1000"), as results after it may differ.
@@ -320,7 +349,7 @@ is, for the same binary and the same inputs, except for:
 
 Each element class gets two virtual functions: `saveState( StateWriter& )` and
 `loadState( StateReader& )`. The default reports "no history support"; when a circuit
-contains such a part, history is off and the status line names the parts (as noise does with
+contains such a part, history is off and Messages names the parts (as noise does with
 `noiseOff`). Rollout class by class, most used first: sources, R, C, L, diode, BJT, MOSFET,
 switches, logic gates and flip-flops, 555, op amp, meters, scope, then MCUs, then script parts.
 
@@ -338,7 +367,7 @@ the per-class work is the bulk, ~120–140 classes, most with a few fields. With
 Going back and snapshots may be limited to circuits (D12): electrical and logic parts. A
 circuit with a microcontroller, a script part (AngelScript core, `components/`) or a link to
 the outside world (a serial port, a real clock) has **no history**: ⏮ and ← are disabled, the
-status line names the parts that prevent it, and skip forward works as in phase 1. MCUs and
+Messages names the parts that prevent it, and skip forward works as in phase 1. MCUs and
 script parts can get the state API later, part by part, without changing this design.
 
 ## 5. Phase 3: saved snapshots and triggers

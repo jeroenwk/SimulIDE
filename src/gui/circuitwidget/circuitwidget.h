@@ -7,6 +7,7 @@
 #define CIRCUITWIDGET_H
 
 #include <QMenu>
+#include <QSet>
 #include <QToolBar>
 #include <QComboBox>
 #include <QVBoxLayout>
@@ -43,6 +44,10 @@ class CircuitWidget : public QWidget
         void updateNoise();     // Toolbar NOISE label: shown while transient noise is on
 
         void syncTimebase( uint64_t psPerSec );   // Show the simulation speed in the toolbar
+        void syncSkip( uint64_t ps );             // Show the skip interval in the toolbar (0 = 1 step)
+        void setSkipInterval( uint64_t ps );      // Set it (toolbar, keys): saved with the circuit
+        void skipForward( int count );            // → / ⏭: pause and skip count × the interval
+        void simKeysBack();                       // Esc on an idle canvas: the simulation keys again
         // Running slower than the set speed: the speed box shows the real speed in orange (realPsPerSec 0: off)
         void showRealSpeed( double realPsPerSec );
         void syncCurrentFlow( bool on ) { if( currentFlowAct->isChecked() != on ) currentFlowAct->setChecked( on ); }
@@ -109,16 +114,26 @@ class CircuitWidget : public QWidget
  static bool m_verboseLog;
         
         QToolBar m_circToolBar;      // File, edit, zoom
-        QToolBar m_simToolBar;       // Speed, run, views, messages, time, info: beside the first, or below it
+        QToolBar m_simToolBar;       // Stopped: play only, beside the first. On: speed, skip, run buttons, time, NOISE, below it
+        QToolBar m_infoBar;          // Info menu: right end of the first row
         QWidget*     m_toolRow  = nullptr;
         QGridLayout* m_toolGrid = nullptr;
         int  m_toolRows = 0;
-        void layoutToolBars();       // One row when both fit, else two
+        void layoutToolBars();       // One row when both fit, else two; two while the simulation is on
+        void setSimExpanded( bool on );   // The whole simulation bar (on) or only the play button
+        bool m_simExpanded = false;
+        QList<QAction*> m_simRunItems;    // Hidden while stopped
         bool eventFilter( QObject* obj, QEvent* ev ) override;
+        bool keysToSim();                    // Focus outside the canvas, text fields, lists, editable combos
+        bool simKey( class QKeyEvent* ev );  // Space, Esc, arrows: true when used
+        void logRunInfo( QString what );  // Speed, loads, FPS (the old info pane) in Messages
+        void updtKeyOwner();                 // Frame the skip box while the simulation has the keys
+        bool m_simHasKeys = false;
 
-        QLabel* m_msgLabel;
+        QSet<QString> m_loggedMsgs;  // Status messages (setMsg) already in Messages this run
+        QFont m_badgeFont;           // Text of the NOISE badge
         QLabel* m_noiseLabel = nullptr;   // Text of the NOISE badge (state, scale, window)
-        QWidget* m_noiseBox = nullptr;    // The badge: white noise icon + m_noiseLabel on orange, as high as the status label
+        QWidget* m_noiseBox = nullptr;    // The badge: white noise icon + m_noiseLabel on orange
         QAction* m_noiseAct = nullptr;
         InfoWidget* m_infoWidget;
         DescriptionWidget* m_descWidget;
@@ -140,6 +155,8 @@ class CircuitWidget : public QWidget
         QAction* zoomOneAct;
         QAction* powerCircAct;
         QAction* pauseSimAct;
+        QAction* skipFwdAct = nullptr;
+        QAction* skipBackAct = nullptr;
         QAction* currentFlowAct;
         QAction* capChargeAct;
         QAction* partStatusAct;
@@ -147,6 +164,7 @@ class CircuitWidget : public QWidget
         QAction* noiseOnAct = nullptr;
         QAction* exportAct;
         class SpeedBox* m_timebase = nullptr;   // Simulated time per real second
+        class SpeedBox* m_skipBox = nullptr;    // Skip interval
         QAction* settAppAct;
         QAction* infoAct;
         QAction* aboutAct;

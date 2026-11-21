@@ -31,6 +31,8 @@ class InfoWidget : public QWidget, private Ui::infoWidget
         void clearLastRun() { m_lastTime = 0; setSimState( shownStopped ); } // New or opened circuit   // Label the time: stopped (reset, greyed), running, paused
         void setTargetSpeed( double s );
         void updtMcu();
+        // "real 0.98 s/s (98.0 %) · sim load 12 % · GUI load 3 % · 20 FPS" (last second; "" before one)
+        QString rateSummary();
 
         // A copy of the time in the circuit toolbar
         void setToolbarTime( QLabel* l ) { m_barTime = l; setSimState( m_shown ); }
@@ -38,6 +40,8 @@ class InfoWidget : public QWidget, private Ui::infoWidget
     public slots:
 
     private:
+        double   m_rate = 0, m_simLoad = 0, m_guiLoad = 0;   // Last values of setRate
+        int      m_fps = 0;
         uint64_t m_lastTime = 0;     // Last simulation time shown (ps)
         QPalette m_timePalette;      // Normal colour of the time
         QPalette m_speedPalette;     // Normal colour of the real speed

@@ -8,6 +8,7 @@
 #include "simulator.h"
 #include "updatable.h"
 #include "noise.h"
+#include "simskip.h"
 
 #include <QJsonArray>
 
@@ -39,6 +40,7 @@ QJsonObject simStatus()
     if( sim->isRunning() && !sim->isPaused() )
         o["realSpeed"] = qRound( sim->realSpeed() )/100.0;     // Achieved speed, % of real time
     o["noise"] = Cli::noiseJson();
+    if( SimSkip::self()->active() ) o["skipping"] = true;   // A skip (→ key, toolbar, sim skip) not done yet
     return o;
 }
 
@@ -207,6 +209,54 @@ void CliApi::registerSim()
             return true;
         });
         return QJsonValue();
+    });
+
+    // Skip (specs/sim-control.md §3.4): as the → key and the toolbar's skip button
+    auto skipCmd = []( CliCtx& c, uint64_t span, int count ) -> QJsonValue
+    {
+        Simulator* sim = Simulator::self();
+        uint64_t before = sim->isRunning() ? sim->circTime() : 0;
+        QString err = SimSkip::self()->start( span, count );
+        if( !err.isEmpty() ) throw CliError( err );
+        CliPendingPtr reply = c.defer();
+        SimSkip::self()->whenDone( [reply, before]( bool ok, QString msg )
+        {
+            if( !ok ){ reply->fail( msg ); return; }
+            QJsonObject o = simStatus();
+            o["from"] = Cli::timeStr( before );
+            o["skipped"] = Cli::timeStr( Simulator::self()->circTime()-SimSkip::self()->from() );
+            o["note"] = msg;
+            reply->ok( o );
+        });
+        return QJsonValue();
+    };
+
+    add("sim skip", "sim skip [<time>|step] [--count N] [--back]", "Pause and skip forward by a time span, "
+        "or by the skip interval (settings skipInterval) without one, as fast as the computer can, then pause "
+        "and reply after one frame. 'step' = to the next solver event. --count N skips N times as far "
+        "(N solver steps). Starts a stopped simulation from 0. --back: going back needs the history (not yet).",
+        [skipCmd]( CliCtx& c ) -> QJsonValue
+    {
+        if( c.has("back") ) throw CliError("going back in time needs the history (specs/sim-control.md phase 2): not implemented yet");
+        uint64_t span = Simulator::self()->skipInterval();
+        if( !c.pos.isEmpty() && !SimSkip::parseInterval( c.pos.at(0), &span ) )
+            throw CliError("invalid skip: "+c.pos.at(0)+" (step, or 1ps … 1min, e.g. 5us)");
+        int count = 1;
+        QString n = c.opt("count", "1");
+        bool ok = false;
+        count = n.toInt( &ok );
+        if( !ok || count < 1 || count > 1000000 ) throw CliError("--count must be 1 … 1000000");
+        return skipCmd( c, span, count );
+    });
+
+    add("sim step", "sim step [--count N]", "One solver step: run the next pending event time, solve, pause "
+        "(= sim skip step).",
+        [skipCmd]( CliCtx& c ) -> QJsonValue
+    {
+        bool ok = false;
+        int count = c.opt("count", "1").toInt( &ok );
+        if( !ok || count < 1 || count > 1000000 ) throw CliError("--count must be 1 … 1000000");
+        return skipCmd( c, 0, count );
     });
 
     add("sim speed", "sim speed [percent]", "Get or set target simulation speed in % of real time (100 = real time).",
