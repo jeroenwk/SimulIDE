@@ -32,6 +32,7 @@ class Socket;
 class eNode;
 class CircMatrix;
 
+class eReactive;
 class Simulator : public QObject
 {
         friend class eNode;
@@ -99,13 +100,14 @@ class Simulator : public QObject
         uint64_t circTime() { return m_circTime; }
 
         // Hold simulation time at this point (0 = no limit). Used by CLI "sim run --for"
-        void setStopAt( uint64_t ps ) { m_stopAt = ps; }
+        // Worker idle (CLI handler, skip): a stop point also puts the speed lock at ×1 (D15)
+        void setStopAt( uint64_t ps ) { m_stopAt = ps; if( ps && m_stepScale > 1 ) applyStepScale( 1 ); }
         uint64_t stopAt() { return m_stopAt; }
 
         // Skip (specs/sim-control.md §3.4): with fast run on, the worker runs up to m_stopAt as
         // fast as it can instead of one frame's span; each frame's holdWorker() still cuts it, so
         // the GUI keeps drawing. Off again at reset
-        void setFastRun( bool f ) { m_fastRun = f; }
+        void setFastRun( bool f ) { m_fastRun = f; if( f && m_stepScale > 1 ) applyStepScale( 1 ); }
         bool fastRun() { return m_fastRun; }
         // Time of the next pending event (0: none). Worker idle only (paused, or held)
         uint64_t nextEventTime() { return m_firstEvent ? m_firstEvent->eventTime : 0; }
@@ -113,6 +115,20 @@ class Simulator : public QObject
         // Skip interval of the toolbar and the arrow keys, saved with the circuit (0 = one solver step)
         uint64_t skipInterval() { return m_skipInterval; }
         void setSkipInterval( uint64_t ps );   // Also shows it in the toolbar
+
+        // Speed lock (specs/sim-control.md §3.9): while the computer can't keep the set speed,
+        // capacitors and inductors integrate with a coarser step (× stepScale, doubled or halved
+        // once per frame) up to lockMaxStep. Saved with the circuit; skips and run --for use ×1
+        bool speedLock() { return m_speedLock; }
+        void setSpeedLock( bool on );
+        uint64_t lockMaxStepSet() { return m_lockMaxStep; }      // 0 = the default, 100 × reactStep
+        uint64_t lockMaxStep() { return m_lockMaxStep ? m_lockMaxStep : 100*m_reactStep; }
+        void setLockMaxStep( uint64_t ps );
+        int stepScale() { return m_stepScale; }
+        uint64_t lockedStep();     // The reactive step in use now (reactStep × scale, capped)
+        bool lockLimited() { return m_lockLimit; }   // Can't keep up even at the limit (or no steps to coarsen)
+        bool lockUsedThisRun() { return m_lockMaxScale > 1; }
+        int  lockMaxScaleUsed() { return m_lockMaxScale; }
 
         void timerEvent( QTimerEvent* e );
 
@@ -285,6 +301,19 @@ class Simulator : public QObject
         uint64_t m_noiseSeed = 0;
         void startNoise();
         void stopNoise();
+
+        bool     m_speedLock   = false;
+        uint64_t m_lockMaxStep = 0;
+        int      m_stepScale   = 1;
+        int      m_lockMaxScale = 1;  // Largest factor used this run
+        int      m_lockSlow = 0;      // Frames in a row below 95 % of the set speed
+        int      m_lockIdle = 0;      // Frames in a row with the load below 50 %
+        bool     m_lockLimit = false;
+        QList<eReactive*> m_reactive; // Capacitors and inductors of this run (stamped)
+        bool     m_lockRan = false;   // The worker ran last frame
+        uint64_t m_lockCap = 0;       // lockMaxStep() the elements were set with
+        void speedLockFrame();
+        void applyStepScale( int s );
 };
  #endif
 

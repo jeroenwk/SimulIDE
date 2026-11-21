@@ -1,8 +1,8 @@
 # Simulation control: keys, skip, speed, history and snapshots
 
-Status: **phase 1 built** on `feature/sim-control` (2026-11-21), §3.1–3.8; differences from
-this text are noted in place. All decisions taken (D1–D15, Decision log §9). The speed lock
-(§3.9) is next; phases 2 and 3 are studies.
+Status: **phase 1 merged** (main b0096de, 2026-11-21), §3.1–3.8; **speed lock built** on
+`feature/sim-speedlock` (§3.9); differences from this text are noted in place. All decisions
+taken (D1–D15, Decision log §9). Phases 2 and 3 are studies.
 
 Goal: control a running simulation the way you control a media player or a scope: play/pause,
 stop and skip forward from the keyboard, set the skip interval and the speed by typing, and
@@ -267,6 +267,26 @@ speed** instead, by making the simulation coarser while the CPU can't keep up.
 - Saved with the circuit (`speedLock`, bool, off by default); a toggle in the Settings dialog
   and a checkable entry in the speed box's list; CLI `settings set speedLock true`.
 
+**As built (2026-11-21)**:
+- `eReactive::setStepScale` (capacitors, inductors, junction capacitances) shares the live path
+  of `setFineStep` (`applyStep`); the noise step still wins when finer. **Transformers keep
+  their own step** (they are not `eReactive`), as with noise.
+- The measure is the share of its frame span the worker managed (`simPsPF / psPF`), not the
+  wall-clock speed: a slow GUI is not the solver's fault and a coarser step would not help.
+  The factor changes in the GUI timer after `holdWorker()`, with the worker idle.
+- A skip (`setFastRun`), `sim run --for` and `sim average` (`setStopAt`) put the factor at ×1
+  at once, while they hold the worker: a skip shorter than a frame would otherwise run coarse.
+- The toggle is a lock button after the speed box (not an entry in its list: a combo box has
+  no checkable rows); the orange badge "step ×N" (" max" at the limit) after it. Settings:
+  a "Speed lock" group with the max. reactive step (empty = 100 × the reactive step).
+  CLI: `settings speedLock`, `settings speedLockMaxStep`; `sim status` gives `speedLock`
+  {on, scale, step, max_step, limited} and a `note` once the factor went above ×1 in the run.
+- Messages: a new largest factor of the run, the return to ×1, and "can't keep up" (at the
+  max. step, or "events, not steps" with no capacitor or inductor); the other changes go to
+  the debug log (`[lock]`), as the factor can swing up and down every second.
+- Measured [SIMULATED, test_simctl_speedlock.py]: 50 Hz sine into 1 kΩ · 1 µF with a 1 ns
+  reactive step runs at 3 % of real time unlocked; locked it settles at ×32 (32 ns) and 96 %.
+
 ## 4. Phase 2: going back in time
 
 ### 4.1 What "back" means
@@ -406,7 +426,7 @@ specs/scope-trigger-level.md).
 1. Phase 1: key filter and focus (3.1–3.2), skip interval and skip forward (3.3–3.4), editable
    speed and skip boxes with ⏮ ⏭ (3.5), CLI (3.6), the settings marks and Messages lines
    (3.8). One PR.
-1b. Speed lock (3.9). One PR.
+1b. Speed lock (3.9). One PR. Built (`feature/sim-speedlock`).
 2. Phase 2: state API on a first set of parts with `sim history check`, keyframes, replay and
    skip back; then the remaining circuit part classes (not MCUs, §4.6).
 3. Phase 3: snapshot files, then triggers (with the scope redesign).

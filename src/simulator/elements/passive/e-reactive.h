@@ -28,6 +28,10 @@ class eReactive : public eResistor
         // Simulation thread
         void setFineStep( uint64_t ps );
 
+        // Speed lock (specs/sim-control.md §3.9): integrate with the step × this factor, up to
+        // Simulator::lockMaxStep(). Worker idle (GUI timer, after holdWorker); 1 again at stamp
+        void setStepScale( int s );
+
     protected:
         void updtReactStep();
         uint64_t baseStep();
@@ -36,6 +40,8 @@ class eReactive : public eResistor
         // (capacitor) scales with it; one that holds a current (inductor) does not
         virtual void rescaleSource( double r ){ (void)r; }
         uint64_t m_fineStep = 0;
+        int      m_stepScale = 1;
+        void applyStep();          // m_timeStep from baseStep(), the stored current rescaled
 
         virtual void voltSample(){;}   // m_volt has a new value (simulation thread)
 

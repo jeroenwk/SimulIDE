@@ -89,6 +89,7 @@
         <file alias="simpaused.png">../src/icons/mainwindow/simpaused.png</file>
         <file alias="simplay.svg">../src/icons/mainwindow/simplay.svg</file>
         <file alias="simskipfwd.svg">../src/icons/mainwindow/simskipfwd.svg</file>
+        <file alias="simlock.svg">../src/icons/mainwindow/simlock.svg</file>
         <file alias="simskipback.svg">../src/icons/mainwindow/simskipback.svg</file>
         <file alias="simstop.svg">../src/icons/mainwindow/simstop.svg</file>
         <file alias="simpause.svg">../src/icons/mainwindow/simpause.svg</file>

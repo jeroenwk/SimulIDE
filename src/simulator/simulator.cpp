@@ -111,6 +111,7 @@ void Simulator::timerEvent( QTimerEvent* e )  //update at m_timerTick_ms rate (5
     holdWorker();                       // Stop remaining parallel thread, at the end of a step
     if( m_debug && m_state == SIM_PAUSED ) CircuitWidget::self()->debugPaused();
     if( m_noiseEl ) CircuitWidget::self()->updateNoise();   // Armed / on / ended
+    if( m_speedLock ) CircuitWidget::self()->updateLock();   // The "step ×N" badge
 
     for( Updatable* el : m_updateList ) el->updateStep();
     EditorWindow::self()->outPane()->updateStep(); // OutPanel in Editor can be created before this simulator.
@@ -124,6 +125,9 @@ void Simulator::timerEvent( QTimerEvent* e )  //update at m_timerTick_ms rate (5
     // Get Simulation times
     m_simPsPF = m_circTime-m_tStep;
     m_tStep   = m_circTime;
+
+    if( m_state == SIM_RUNNING ) speedLockFrame();   // Worker idle: the step factor can change
+    m_lockRan = ( m_state == SIM_RUNNING );
 
     if( m_state == SIM_RUNNING ) // Run Circuit in a parallel thread
         m_CircuitFuture = QtConcurrent::run( this, &Simulator::runCircuit );
@@ -394,6 +398,15 @@ void Simulator::startSim( bool paused )
         //qDebug() << "initializing  "<< enode->itemId();
     }
     for( eElement* el : m_elementList ) el->stamp();
+    m_reactive.clear();   // Speed lock: the steps it can coarsen
+    for( eElement* el : m_elementList )
+        if( eReactive* r = dynamic_cast<eReactive*>( el ) ) m_reactive.append( r );
+    m_stepScale = 1;
+    m_lockMaxScale = 1;
+    m_lockSlow = m_lockIdle = 0;
+    m_lockLimit = false;
+    m_lockRan = false;
+    m_lockCap = lockMaxStep();
     if( m_noiseEl )       // Messages: what makes noise, and a reactStep that can't follow it
     {
         qInfo().noquote() << "Noise on:" << m_noiseEl->sources() << "sources ("
@@ -471,6 +484,9 @@ void Simulator::stopSim()
     m_changedNode = NULL;
     m_settled = nullptr;
     m_settledGen++;
+    m_reactive.clear();
+    m_stepScale = 1;
+    m_lockLimit = false;
 }
 
 void Simulator::startNoise()
@@ -666,6 +682,89 @@ void Simulator::setNoise( const NoiseSettings& s )
     QString before = text();
     m_noise = s;
     logRunChange("noise", before, text(), true );
+}
+
+void Simulator::setSpeedLock( bool on )
+{
+    logRunChange("speed lock", m_speedLock ? "on" : "off", on ? "on" : "off", false );
+    m_speedLock = on;     // The factor follows at the next frame
+}
+
+void Simulator::setLockMaxStep( uint64_t ps )
+{
+    logRunChange("max. reactive step", siStr( lockMaxStep()*1e-12, "s"),
+                 siStr( ( ps ? ps : 100*m_reactStep )*1e-12, "s"), false );
+    m_lockMaxStep = ps;
+}
+
+uint64_t Simulator::lockedStep()
+{
+    uint64_t step = m_reactStep*(uint64_t)m_stepScale;
+    uint64_t max = qMax( lockMaxStep(), m_reactStep );
+    return ( step > max ) ? max : step;
+}
+
+// Once per frame, worker idle. The worker runs one frame's span (m_psPF) per frame and is cut
+// at the next frame when it hasn't finished: m_simPsPF / m_psPF is how much of its span the
+// solver managed, whatever the GUI does. Below 95 % for 3 frames: double the factor; done with
+// the load below 50 % for 10 frames: halve it, never below ×1
+void Simulator::speedLockFrame()
+{
+    bool want = m_speedLock && !m_fastRun && !m_stopAt && !m_debug;   // D15: skips, run --for at ×1
+    if( !want )
+    {
+        if( m_stepScale > 1 ) applyStepScale( 1 );
+        m_lockSlow = m_lockIdle = 0;
+        m_lockLimit = false;
+        return;
+    }
+    if( m_lockCap != lockMaxStep() ){ m_lockCap = lockMaxStep(); applyStepScale( m_stepScale ); }
+    if( !m_lockRan || m_psPF == 0 ) return;     // No run last frame (paused, just started)
+
+    double done = (double)m_simPsPF/(double)m_psPF;
+    if( done < 0.95 )
+    {
+        m_lockIdle = 0;
+        if( ++m_lockSlow < 3 ) return;
+        m_lockSlow = 0;
+        bool atMax = m_reactive.isEmpty() || m_reactStep*(uint64_t)m_stepScale >= qMax( lockMaxStep(), m_reactStep );
+        if( atMax )
+        {
+            if( !m_lockLimit )
+                qInfo().noquote() << "Speed lock at t = "+siStr( m_circTime*1e-12, "s" )+": "
+                    +( m_reactive.isEmpty() ? QString("can't keep up: events, not steps (no capacitor or inductor to coarsen)")
+                                            : "can't keep up at the max. reactive step "+siStr( lockedStep()*1e-12, "s" ) );
+            m_lockLimit = true;
+            return;
+        }
+        applyStepScale( m_stepScale*2 );
+        return;
+    }
+    m_lockSlow = 0;
+    m_lockLimit = false;
+    if( done >= 0.99 && m_simLoad < 50 && m_stepScale > 1 )
+    {
+        if( ++m_lockIdle < 10 ) return;
+        m_lockIdle = 0;
+        applyStepScale( m_stepScale/2 );
+    }
+    else m_lockIdle = 0;
+}
+
+void Simulator::applyStepScale( int s )
+{
+    if( s < 1 ) s = 1;
+    int old = m_stepScale;
+    m_stepScale = s;
+    for( eReactive* r : m_reactive ) r->setStepScale( s );
+    if( s == old ) return;
+
+    // Messages: a new largest factor and the return to ×1; every change in the debug log
+    QString line = "Speed lock at t = "+siStr( m_circTime*1e-12, "s" )+": step ×"+QString::number( s )
+                  +" (reactive step "+siStr( lockedStep()*1e-12, "s" )+")";
+    if( s > m_lockMaxScale || ( s == 1 && old > 1 && !m_fastRun && !m_stopAt ) ) qInfo().noquote() << line;
+    else qDebug().noquote() << "[lock]" << line;
+    if( s > m_lockMaxScale ) m_lockMaxScale = s;
 }
 
 void Simulator::setSkipInterval( uint64_t ps )

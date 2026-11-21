@@ -21,6 +21,7 @@ eReactive::~eReactive(){}
 void eReactive::stamp()
 {
     m_fineStep = 0;
+    m_stepScale = 1;
     eResistor::stamp();
 
     if( m_ePin[0]->isConnected() && m_ePin[1]->isConnected() )
@@ -76,14 +77,32 @@ void eReactive::runEvent()
 uint64_t eReactive::baseStep()
 {
     uint64_t step = m_reacStep ? m_reacStep : Simulator::self()->reactStep(); // Time in ps
-    if( m_fineStep && m_fineStep < step ) step = m_fineStep;
+    if( m_stepScale > 1 )                  // Speed lock: coarser, up to the max. reactive step
+    {
+        uint64_t max = Simulator::self()->lockMaxStep();
+        uint64_t s = step*(uint64_t)m_stepScale;
+        if( s > max ) s = ( max > step ) ? max : step;
+        step = s;
+    }
+    if( m_fineStep && m_fineStep < step ) step = m_fineStep;   // The noise step wins: finer
     return step;
 }
 
 void eReactive::setFineStep( uint64_t ps )
 {
-    if( !m_ePin[0]->isConnected() || !m_ePin[1]->isConnected() ) return;
     m_fineStep = ps;
+    applyStep();
+}
+
+void eReactive::setStepScale( int s )
+{
+    m_stepScale = ( s < 1 ) ? 1 : s;
+    applyStep();
+}
+
+void eReactive::applyStep()
+{
+    if( !m_ePin[0]->isConnected() || !m_ePin[1]->isConnected() ) return;
     uint64_t step = baseStep();
     if( step == m_timeStep ) return;
 

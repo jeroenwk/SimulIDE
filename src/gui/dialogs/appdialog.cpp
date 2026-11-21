@@ -111,6 +111,7 @@ AppDialog::AppDialog( QWidget* parent )
     slopeStepsBox->setValue( Simulator::self()->slopeSteps() );
     m_blocked = false;
     buildNoise();
+    buildLock();
 
     updtSpeedPer();
 
@@ -308,6 +309,7 @@ void AppDialog::showEvent( QShowEvent* e )
     animate->setChecked( Circuit::self()->animate() );
     refreshColors();
     syncNoise();
+    syncLock();
     fillShortcuts();                         // Part letters may have changed
     QDialog::showEvent( e );
 }
@@ -431,7 +433,7 @@ void AppDialog::buildNoise()
     verticalLayout_2->insertWidget( verticalLayout_2->count()-1, m_noiseBox );   // Above the bottom spacer
 
     // specs/sim-control.md §3.8: shown while the simulation runs
-    m_runNote = new QLabel( tr("The simulation is running: Speed, FPS and Max. Iterations apply at once; "
+    m_runNote = new QLabel( tr("The simulation is running: Speed, FPS, Max. Iterations and the speed lock apply at once; "
                                "Reactive Step, Slope Steps and Noise apply at the next start. "
                                "Changes are logged in Messages with the simulated time."), simTab );
     m_runNote->setWordWrap( true );
@@ -453,6 +455,60 @@ void AppDialog::buildNoise()
         applyNoise();
     });
     syncNoise();
+}
+
+// Speed lock group (specs/sim-control.md §3.9), above the noise group
+void AppDialog::buildLock()
+{
+    m_lockBox = new QGroupBox( tr("Speed lock (hold the set speed)"), simTab );
+    m_lockBox->setCheckable( true );
+    m_lockBox->setToolTip( tr("While the computer can't keep the set speed, capacitors and inductors integrate "
+                              "with a coarser step (doubled until it keeps up, up to the max. reactive step). "
+                              "Less accurate; skips and sim run --for keep the normal step. Saved with the circuit.") );
+    QFormLayout* f = new QFormLayout( m_lockBox );
+    m_lockMax = new QLineEdit( m_lockBox );
+    m_lockMax->setToolTip( tr("Largest reactive step the lock may use, e.g. 100us. Empty or 0: 100 × the reactive step") );
+    f->addRow( tr("Max. reactive step"), m_lockMax );
+    m_lockErr = new QLabel( m_lockBox );
+    m_lockErr->setStyleSheet("QLabel { color: #c00000; }");
+    f->addRow( "", m_lockErr );
+    int at = verticalLayout_2->indexOf( m_noiseBox );
+    QFrame* line = new QFrame( simTab );
+    line->setFrameShape( QFrame::HLine );
+    line->setFrameShadow( QFrame::Sunken );
+    verticalLayout_2->insertWidget( at, m_lockBox );
+    verticalLayout_2->insertSpacing( at+1, 9 );
+    verticalLayout_2->insertWidget( at+2, line );
+    verticalLayout_2->insertSpacing( at+3, 9 );
+
+    connect( m_lockBox, &QGroupBox::toggled, this, [this]( bool on ){ CircuitWidget::self()->setSpeedLock( on ); } );
+    connect( m_lockMax, &QLineEdit::editingFinished, this, [this]()
+    {
+        QString t = m_lockMax->text().trimmed();
+        uint64_t ps = 0;
+        if( !t.isEmpty() && t != "0" )
+        {
+            bool ok = false;
+            double s = Simulator::parseSi( t, "s", &ok );
+            if( !ok || s <= 0 ){ m_lockErr->setText( tr("Not a valid time (e.g. 100us)") ); return; }
+            ps = (uint64_t)llround( s*1e12 );
+        }
+        Simulator::self()->setLockMaxStep( ps );
+        Circuit::self()->setChanged();
+        syncLock();
+    });
+    syncLock();
+}
+
+void AppDialog::syncLock()
+{
+    if( !m_lockBox ) return;
+    Simulator* sim = Simulator::self();
+    QSignalBlocker b( m_lockBox );
+    m_lockBox->setChecked( sim->speedLock() );
+    m_lockMax->setText( sim->lockMaxStepSet() ? Simulator::siStr( sim->lockMaxStepSet()*1e-12, "s" ) : "" );
+    m_lockMax->setPlaceholderText( Simulator::siStr( sim->lockMaxStep()*1e-12, "s" )+tr(" (100 × reactive step)") );
+    m_lockErr->clear();
 }
 
 void AppDialog::syncNoise()

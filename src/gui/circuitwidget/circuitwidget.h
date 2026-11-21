@@ -42,6 +42,9 @@ class CircuitWidget : public QWidget
         void setMsg(QString msg , int type);
         void toggleNoise( bool on );   // Toolbar noise button: restarts a running simulation
         void updateNoise();     // Toolbar NOISE label: shown while transient noise is on
+        // Speed lock (specs/sim-control.md §3.9): toggle beside the speed box, saved with the circuit
+        void setSpeedLock( bool on );
+        void updateLock();      // Each frame: the "step ×N" badge and the toggle
 
         void syncTimebase( uint64_t psPerSec );   // Show the simulation speed in the toolbar
         void syncSkip( uint64_t ps );             // Show the skip interval in the toolbar (0 = 1 step)
@@ -134,6 +137,9 @@ class CircuitWidget : public QWidget
         QFont m_badgeFont;           // Text of the NOISE badge
         QLabel* m_noiseLabel = nullptr;   // Text of the NOISE badge (state, scale, window)
         QWidget* m_noiseBox = nullptr;    // The badge: white noise icon + m_noiseLabel on orange
+        QAction* m_lockAct = nullptr;     // Speed lock toggle
+        QLabel*  m_lockLabel = nullptr;   // "step ×8" on orange while the lock coarsens the step
+        QAction* m_lockBadgeAct = nullptr;
         QAction* m_noiseAct = nullptr;
         InfoWidget* m_infoWidget;
         DescriptionWidget* m_descWidget;

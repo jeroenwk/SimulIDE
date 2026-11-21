@@ -98,6 +98,11 @@ class AppDialog : public QDialog, private Ui::AppDialog
 
         // Transient noise group on the Simulation page (docs/NOISE.md)
         void buildNoise();
+        void buildLock();           // Speed lock group (specs/sim-control.md §3.9)
+        void syncLock();
+        class QGroupBox* m_lockBox = nullptr;
+        class QLineEdit* m_lockMax = nullptr;
+        class QLabel*    m_lockErr = nullptr;
         void syncNoise();
         void applyNoise();
         class QGroupBox* m_noiseBox = nullptr;

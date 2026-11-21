@@ -41,6 +41,19 @@ QJsonObject simStatus()
         o["realSpeed"] = qRound( sim->realSpeed() )/100.0;     // Achieved speed, % of real time
     o["noise"] = Cli::noiseJson();
     if( SimSkip::self()->active() ) o["skipping"] = true;   // A skip (→ key, toolbar, sim skip) not done yet
+    if( sim->speedLock() || sim->lockUsedThisRun() )        // Speed lock (specs/sim-control.md §3.9)
+    {
+        QJsonObject l{
+            {"on",       sim->speedLock() },
+            {"scale",    sim->stepScale() },
+            {"step",     Cli::timeStr( sim->lockedStep() ) },
+            {"max_step", Cli::timeStr( sim->lockMaxStep() ) } };
+        if( sim->lockLimited() ) l["limited"] = true;       // Can't keep up even so
+        o["speedLock"] = l;
+        if( sim->lockUsedThisRun() )
+            o["note"] = "the speed lock coarsened the reactive step this run (up to ×"
+                        +QString::number( sim->lockMaxScaleUsed() )+"): results are less accurate";
+    }
     return o;
 }
 
