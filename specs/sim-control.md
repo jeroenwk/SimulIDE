@@ -628,6 +628,37 @@ No result:
 | `books/duncan/fig40_3_centre_tap_rectifier.sim1` | diode D1 never converges, so no step is complete at a frame and no keyframe is taken (`sim history`: "the step was not solved") |
 | `books/scherz/fig3_91e_coax_highpass.sim1` | the check took over 120 s (a slow circuit); not known to differ |
 
+**Parts that break going back** (2026-11-21: each of the 569 items of the component library
+placed alone in a running circuit, then `sim history` → `missing`; library item names as in
+`lib list`). A circuit with one of these refuses ← / `sim skip --back` and names the class; it
+runs as before.
+
+No state code yet:
+
+| Element class | Library items |
+|---|---|
+| `ADC` | ADC |
+| `DAC` | DAC, DAC7621, DAC8562 |
+| `Ds18b20` | DS18B20 |
+| `Esp01` | Esp01 |
+| `Function` (scripted logic function) | Function, 74HC40102, 74HC40103, 74XX381, 74XX382, AD7224, CD4009, CD4010, TL494 |
+| `Header` | Header |
+| `I2CMaster` | I2CMaster |
+| `KY023` | KY023 (joystick) |
+| `Servo` | Servo |
+| `Socket` | Socket |
+| `TouchPad` | TouchPadR |
+
+Refused on purpose: `SerialPort` (SerialPort: a real port, data from outside can't be replayed)
+and `AudioOut` (AudioOut: paced by the sound card's buffer).
+
+Covered, but the replay is not exact:
+
+| Part | When |
+|---|---|
+| Ammeter, voltmeter (`Meter`: Amperimeter, Voltimeter) | their output pin (`outnod`) takes the shown value once per GUI frame, so its value depends on when frames fall |
+| Any part whose model doesn't converge in a circuit (seen: the UJT in Duncan 56.4, a diode in Duncan 40.3) | a step cut by the 50 ms wall-time guard makes the run itself unrepeatable; no keyframe while no step is complete |
+
 Found on the way: the **first run after opening** `board_mains` differs from later runs (two
 skips of 200 ms after the first: same hash; the first: another), so some part keeps state
 across a stop and a start. It doesn't touch keyframes (they restore within a run); to chase.
