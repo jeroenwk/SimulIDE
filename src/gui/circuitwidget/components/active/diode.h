@@ -17,6 +17,9 @@ class Diode : public LinkerComponent, public eDiode
         Diode( QString type, QString id, bool zener=false );
         ~Diode();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Diode )
+
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 
@@ -31,7 +34,7 @@ class Diode : public LinkerComponent, public eDiode
 
         virtual double res() override{ return m_resistor->res(); }
         double diodeCurrent() { return m_resistor->current(); } // Anode to cathode (CLI read)
-        double avgCurrent()  { return m_avgCur; }   // |I| through a 100 ms low-pass (vs Max Current)
+        double avgCurrent();                          // The low-pass now (the stored one runs to the last solved step)   // |I| through a 100 ms low-pass (vs Max Current)
         double peakCurrent() { return m_peakCur; }  // Largest |I| of a solved step since the start
         virtual void setResSafe( double resist ) override { m_resistor->setResSafe(resist);}
 
@@ -42,7 +45,9 @@ class Diode : public LinkerComponent, public eDiode
         int  m_region;           // Part state: -1 none, 0 off, 1 forward, 2 breakdown, 3 over current
                                  // (average), 4 surge (peak above Surge Current)
         void average( uint64_t t );
-        void setRegion( uint64_t t );   // Part state from the held current and the average
+        double avgAt( uint64_t t );    // The low-pass advanced to t, not stored: a GUI frame must not
+                                       // split the integration (keyframes replay it bit for bit)
+        void setRegion( uint64_t t, double avg, bool step );   // Part state from the held current and the average
 
         double   m_signedCur;    // I of the last solved step, anode to cathode
 

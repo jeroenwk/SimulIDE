@@ -633,3 +633,39 @@ void Fuse::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
     }
     Component::paintSelected( p );
 }
+
+void Fuse::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_speed );
+    s.io( m_in );
+    s.io( m_i2tSet );
+    s.io( m_vdropSet );
+    s.io( m_ratedVolt );
+    s.io( m_breakSet );
+    s.io( m_cMinFuse );
+    s.io( m_cShare );
+    s.io( m_cTau2 );
+    s.io( m_resMode );
+    s.io( m_keepBlown );
+    m_heat.simState( s );
+    s.io( m_h );
+    s.io( m_tFlush );
+    s.io( m_tPrev );
+    s.io( m_u );
+    s.io( m_S );
+    s.io( m_sumI2t );
+    s.io( m_predU );
+    s.io( m_blown );
+    s.io( m_blownBySim );
+    s.io( m_blownAt );
+    s.io( m_blowCurrent );
+    s.io( m_broke );
+    s.io( m_overVolt );
+    s.io( m_level );
+    s.io( m_msgPending );
+    s.io( m_voltMsgPending );
+    s.io( m_overVoltAt );
+    s.io( m_overVoltMax );
+    s.io( m_repaint );
+}

@@ -17,6 +17,9 @@ class Mosfet : public Component, public eMosfet
         Mosfet( QString type, QString id );
         ~Mosfet();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Mosfet )
+
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 

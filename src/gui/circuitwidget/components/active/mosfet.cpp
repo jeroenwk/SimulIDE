@@ -182,3 +182,9 @@ void Mosfet::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
     }
     Component::paintSelected( p );
 }
+
+void Mosfet::simState( StateIO& s )
+{
+    eMosfet::simState( s );
+    s.io( m_region );
+}

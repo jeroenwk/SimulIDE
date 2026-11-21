@@ -10,6 +10,7 @@
 #include "uitheme.h"
 #include "cliapi.h"
 #include "simskip.h"
+#include "simhistory.h"
 #include "circuitwidget.h"
 #include "mainwindow.h"
 #include "circuitwidget.h"
@@ -278,6 +279,15 @@ QList<Setting>& settings()
             Simulator::self()->setLockMaxStep( ps );
             Circuit::self()->setChanged();
         }});
+    list.append({"history", "simulation", "Keep a keyframe of the circuit state every frame, to go back in time (specs/sim-control.md §4). Off by default while it is built.",
+        [](){ return QJsonValue( SimHistory::self()->enabled() ); },
+        []( QString v ){ SimHistory::self()->setEnabled( parseBool( v ) ); }});
+    list.append({"historyBudget", "simulation", "Memory for the keyframes, in MB (default 256); the oldest are overwritten when it is full.",
+        [](){ return QJsonValue( (double)( SimHistory::self()->budget()/( 1024*1024 ) ) ); },
+        []( QString v ){ SimHistory::self()->setBudget( (uint64_t)parseInt( v, "historyBudget", 1, 65536 )*1024*1024 ); }});
+    list.append({"runSeed", "simulation", "Seed of rand() at each start (flip-flop start states, random WaveGen): 0 = a new one each start (sim status gives the one in use). Not saved.",
+        [](){ return QJsonValue( (qint64)Simulator::self()->runSeedSet() ); },
+        []( QString v ){ Simulator::self()->setRunSeed( (uint32_t)parseInt( v, "runSeed", 0, 2147483647 ) ); }});
     list.append({"slopeSteps", "simulation", "Steps used for signal slopes (0 = instant edges).",
         [](){ return QJsonValue( Simulator::self()->slopeSteps() ); },
         []( QString v ){

@@ -58,3 +58,14 @@ void eJunctionCap::voltSample()   // New voltage: the capacitance follows it (1 
         eResistor::setRes( updtRes() );
     }
 }
+
+void eJunctionCap::simState( StateIO& s )
+{
+    eReactive::simState( s );
+    s.io( m_cj0 );
+    s.io( m_vj );
+    s.io( m_m );
+    s.io( m_noiseCj0 );
+    s.io( m_cjUsed );
+    s.io( m_c );
+}

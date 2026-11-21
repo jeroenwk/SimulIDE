@@ -348,3 +348,31 @@ void IoPin::registerScript( asIScriptEngine* engine )
                                    , asMETHODPR( IoPin, isConnected, (), bool)
                                    , asCALL_THISCALL );
 }
+
+void IoPin::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_inpHighV );
+    s.io( m_inpLowV );
+    s.io( m_outHighV );
+    s.io( m_outLowV );
+    s.io( m_outVolt );
+    s.io( m_vddAdmit );
+    s.io( m_gndAdmit );
+    s.io( m_vddAdmEx );
+    s.io( m_gndAdmEx );
+    s.io( m_inputImp );
+    s.io( m_outputImp );
+    s.io( m_openImp );
+    s.io( m_admit );
+    s.io( m_inpState );
+    s.io( m_inpVolt );
+    s.io( m_outState );
+    s.io( m_stateZ );
+    s.io( m_nextState );
+    s.io( m_skipStamp );
+    s.io( m_steps );
+    s.io( m_timeRis );
+    s.io( m_timeFal );
+    s.io( m_pinMode );
+}

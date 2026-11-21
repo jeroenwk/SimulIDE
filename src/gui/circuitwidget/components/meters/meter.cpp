@@ -262,3 +262,20 @@ void Meter::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
 
     Component::paintSelected( p );
 }
+
+void Meter::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_reading );
+    s.io( m_avgTime );
+    s.io( m_block );
+    s.io( m_blockStart );
+    s.io( m_lastT );
+    s.io( m_held );
+    s.io( m_sum );
+    s.io( m_sum2 );
+    s.io( m_result );
+    s.io( m_haveResult );
+    s.io( m_dispValue );
+    s.io( m_switchPins );
+}

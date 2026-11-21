@@ -16,6 +16,9 @@ class Switch : public SwitchBase
         Switch( QString type, QString id );
         ~Switch();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Switch )
+
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 

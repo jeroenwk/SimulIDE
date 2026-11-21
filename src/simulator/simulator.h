@@ -165,6 +165,19 @@ class Simulator : public QObject
         void addToElementList( eElement* el );
         void remFromElementList( eElement* el );
         
+        int eNodeCount() { return m_eNodeList.size(); }
+
+        // Keyframes (specs/sim-control.md §4.5): save or load the simulator core, every node and
+        // every element, and the event queue. Worker idle. Saving returns false when the step is
+        // not solved or an event belongs to an element outside the list
+        bool simCore( class StateIO& s );
+
+        // Run seed (specs/sim-control.md §4.4): std::srand() at each start, so the parts that
+        // use rand() (flip-flop start states, random WaveGen, dynamic RAM contents) repeat when
+        // the same seed is used again (a replay). setRunSeed(0): a new seed at each start
+        uint32_t runSeed() { return m_runSeed; }           // Of the current (or last) run
+        uint32_t runSeedSet() { return m_runSeedSet; }
+        void setRunSeed( uint32_t s ) { m_runSeedSet = s; }
         double eNodeVolt( int n ) { return ( n > 0 && n <= m_eNodeList.size() ) ? m_eNodeList.at( n-1 )->getVolt() : 0; } // Node 0 = ground
 
         void addToUpdateList( Updatable* el );
@@ -302,6 +315,8 @@ class Simulator : public QObject
         void startNoise();
         void stopNoise();
 
+        uint32_t m_runSeed = 0;
+        uint32_t m_runSeedSet = 0;
         bool     m_speedLock   = false;
         uint64_t m_lockMaxStep = 0;
         int      m_stepScale   = 1;

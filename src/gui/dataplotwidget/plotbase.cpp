@@ -311,3 +311,8 @@ bool PlotBase::screenDue()
     m_shownTime = now;
     return true;
 }
+
+void PlotBase::simState( StateIO& s )   // A display: nothing of it is in a keyframe (its trace,
+{                                          // measurements and triggers follow the GUI frames and never
+    eElement::simState( s );              // feed the circuit; the trace is cut back on its own)
+}

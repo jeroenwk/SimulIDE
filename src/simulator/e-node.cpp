@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "e-node.h"
+#include "simstate.h"
 #include "pin.h"
 #include "e-pin.h"
 #include "connector.h"
@@ -394,4 +395,17 @@ void eNode::clearConnList( Connection* first )
         first = first->next;
         delete del;
     }
+}
+
+void eNode::simState( StateIO& s )
+{
+    s.io( m_volt );
+    for( Connection* c = m_firstAdmit;   c; c = c->next ) s.io( c->value );
+    for( Connection* c = m_firstSingAdm; c; c = c->next ) s.io( c->value );
+    for( Connection* c = m_firstCurrent; c; c = c->next ) s.io( c->value );
+    if( s.saving() ) return;
+    m_admitChanged = true;
+    m_currChanged  = true;
+    m_changed = false;
+    changed();
 }

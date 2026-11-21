@@ -322,3 +322,8 @@ void OscopeChannel::setFilter( double f )
 
     m_filter = f;
 }
+
+void OscopeChannel::simState( StateIO& s )   // A display: nothing of it is in a keyframe (its trace,
+{                                          // measurements and triggers follow the GUI frames and never
+    DataChannel::simState( s );              // feed the circuit; the trace is cut back on its own)
+}

@@ -30,6 +30,9 @@ class eDiode : public eResistor
         eDiode( QString id );
         ~eDiode();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( eDiode )
+
         virtual void stamp() override;
         virtual void voltChanged() override;
         virtual void noiseSources( QList<NoiseSrc>& list ) override;

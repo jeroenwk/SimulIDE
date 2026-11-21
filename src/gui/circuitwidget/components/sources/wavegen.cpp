@@ -559,3 +559,28 @@ void WaveGen::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 
     Component::paintSelected( p );
 }
+
+void WaveGen::simState( StateIO& s )
+{
+    ClockBase::simState( s );
+    s.io( m_bipolar );
+    s.io( m_floating );
+    s.io( m_impChanged );
+    s.io( m_outImp );
+    s.io( m_waveType );
+    s.io( m_duty );
+    s.io( m_vOut );
+    s.io( m_voltMid );
+    s.io( m_voltBase );
+    s.io( m_lastVout );
+    s.io( m_halfW );
+    s.io( m_time );
+    s.io( m_phaseShift );
+    s.io( m_steps );
+    s.io( m_qSteps );
+    s.io( m_nextStep );
+    s.io( m_index );
+    s.io( m_maxValue );
+    s.io( m_minValue );
+    s.io( m_mult );
+}

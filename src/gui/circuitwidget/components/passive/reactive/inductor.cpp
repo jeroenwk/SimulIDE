@@ -179,3 +179,12 @@ void Inductor::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w
 
     Component::paintSelected( p );
 }
+
+void Inductor::simState( StateIO& s )
+{
+    eReactive::simState( s );
+    s.io( m_inductance );
+    // Not saved: m_shownCurr, m_shownRef (the coil colour of the last GUI frame)
+    s.io( m_currentScale );
+    s.io( m_maxCurrent );
+}

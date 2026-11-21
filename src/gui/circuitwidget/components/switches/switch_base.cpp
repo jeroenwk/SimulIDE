@@ -192,3 +192,15 @@ void SwitchBase::slotProperties()
     }
     Component::slotProperties();
 }
+
+void SwitchBase::simState( StateIO& s )
+{
+    MechContact::simState( s );
+    s.io( m_bounceTime );
+    s.io( m_bounces );
+    s.io( m_target );
+    s.io( m_bounceLeft );
+    s.io( m_bounceN );
+    s.io( m_contact );
+    s.io( m_started );
+}

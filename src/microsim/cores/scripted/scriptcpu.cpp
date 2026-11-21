@@ -653,3 +653,16 @@ void ScriptCpu::setLinkedStr( QString s, int i )
     m_context->SetArgDWord( 1, i );
     execute();
 }
+
+void ScriptCpu::simState( StateIO& s )
+{
+    ScriptModule::simState( s );
+    s.io( m_retCycles );
+    s.io( m_PC );
+    s.io( m_RET_ADDR );
+    s.io( m_stLevel );
+    s.io( m_stPeakLevel );
+    s.io( m_stShowLevel );
+    s.io( m_stHold );
+    scriptGlobals( s );
+}

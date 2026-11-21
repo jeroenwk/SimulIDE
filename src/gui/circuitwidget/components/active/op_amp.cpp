@@ -435,3 +435,35 @@ void OpAmp::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
 
     Component::paintSelected( p );
 }
+
+void OpAmp::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_mode );
+    s.io( m_flips );
+    s.io( m_changes );
+    s.io( m_held );
+    s.io( m_flipTime );
+    s.io( m_checkStable );
+    s.io( m_satVd );
+    s.io( m_satOut );
+    s.io( m_stampI );
+    s.io( m_stampVpos );
+    s.io( m_stampVneg );
+    s.io( m_constIn );
+    s.io( m_dirty );
+    s.io( m_linIter );
+    s.io( m_lastVd );
+    s.io( m_nudge );
+    s.io( m_diag );
+    s.io( m_powerPins );
+    s.io( m_switchPins );
+    s.io( m_accuracy );
+    s.io( m_gain );
+    s.io( m_voltPos );
+    s.io( m_voltNeg );
+    s.io( m_voltPosDef );
+    s.io( m_voltNegDef );
+    s.io( m_outImp );
+    s.io( m_region );
+}

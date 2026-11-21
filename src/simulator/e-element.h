@@ -12,6 +12,7 @@
 
 class ePin;
 struct NoiseSrc;
+#include "simstate.h"
 
 class eElement
 {
@@ -39,6 +40,12 @@ class eElement
         // each with its spectral density at the operating point of the moment. None by default
         virtual void noiseSources( QList<NoiseSrc>& ){;}
 
+        // Keyframes (specs/sim-control.md §4.5): read or write this element's state, the fields
+        // that change during a run (simstate.h). Overrides call their base first. hasSimState():
+        // this exact class saves everything it needs (SIM_STATE); false = no history support
+        virtual void simState( StateIO& s );
+        virtual bool hasSimState() { return typeid( *this ) == typeid( eElement ); }
+
         virtual void setNumEpins( int n );
 
         virtual ePin* getEpin( int num );
@@ -61,6 +68,7 @@ class eElement
 
         eElement* nextSettled = nullptr;
         uint64_t  settledGen  = 0;     // Simulator::m_settledGen when last added
+        int       simIndex    = -1;    // Place in the simulator's element list (keyframes), set at start
 
     protected:
         uint64_t m_pendingTime;

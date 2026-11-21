@@ -17,6 +17,9 @@ class Meter : public Component, public eResistor
         Meter( QString type, QString id );
         ~Meter();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Meter )
+
         virtual bool setPropStr( QString prop, QString val ) override;
 
         bool swithchPins() { return m_switchPins; }

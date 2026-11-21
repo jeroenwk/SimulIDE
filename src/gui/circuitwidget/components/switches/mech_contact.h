@@ -15,6 +15,9 @@ class MechContact : public Component, public eElement
         MechContact( QString type, QString id );
         ~MechContact();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( MechContact )
+
         virtual int poles() { return m_numPoles; }
         virtual void setPoles( int poles );
 

@@ -17,6 +17,9 @@ class Csource : public Component, public eResistor
         Csource( QString type, QString id );
         ~Csource();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Csource )
+
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 

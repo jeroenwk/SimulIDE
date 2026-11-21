@@ -65,6 +65,10 @@ class eNode
 
         QList<int> getConnections();
 
+        // Keyframes (specs/sim-control.md §4.5): the voltage and every stamped value; loading
+        // marks the node changed, so the next solve restamps the matrix from them
+        void simState( class StateIO& s );
+
         eNode* nextCH;
 
     private:

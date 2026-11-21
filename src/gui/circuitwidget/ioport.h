@@ -26,6 +26,9 @@ class IoPort :public eElement
         IoPort( QString name );
         ~IoPort();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( IoPort )
+
         void reset();
         virtual void runEvent() override;
 

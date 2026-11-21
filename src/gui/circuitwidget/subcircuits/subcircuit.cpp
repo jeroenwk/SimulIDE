@@ -500,3 +500,8 @@ QString SubCircuit::toString()
     }
     return item;
 }
+
+void SubCircuit::simState( StateIO& s )
+{
+    Chip::simState( s );
+}

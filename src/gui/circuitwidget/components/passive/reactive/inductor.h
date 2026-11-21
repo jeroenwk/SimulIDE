@@ -18,6 +18,9 @@ class Inductor : public Reactive, public GaugeOwner
         Inductor( QString type, QString id );
         ~Inductor();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Inductor )
+
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 

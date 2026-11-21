@@ -21,6 +21,9 @@ class Fuse : public Comp2Pin, public eResistor
         Fuse( QString type, QString id );
         ~Fuse();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Fuse )
+
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 

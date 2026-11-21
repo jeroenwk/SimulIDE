@@ -22,6 +22,8 @@
 #include "e-reactive.h"
 #include "e-coil.h"
 #include "e-junctioncap.h"
+#include "simstate.h"
+#include "simhistory.h"
 #include <random>
 
 Simulator* Simulator::m_pSelf = NULL;
@@ -63,6 +65,7 @@ Simulator::Simulator( QObject* parent )
 Simulator::~Simulator()
 {
     m_CircuitFuture.waitForFinished();
+    SimHistory::self()->stop();
     stopNoise();
     delete m_matrix;
     if( m_pSelf == this ) m_pSelf = NULL; // Elements destroyed later must not use a dangling pointer
@@ -109,6 +112,7 @@ void Simulator::timerEvent( QTimerEvent* e )  //update at m_timerTick_ms rate (5
     { if( ++m_warning == 0 ) CircuitWidget::self()->setMsg( " "+tr("Running")+" ", 0 ); }
 
     holdWorker();                       // Stop remaining parallel thread, at the end of a step
+    if( m_state == SIM_RUNNING && SimHistory::self()->usable() ) SimHistory::self()->capture( this );
     if( m_debug && m_state == SIM_PAUSED ) CircuitWidget::self()->debugPaused();
     if( m_noiseEl ) CircuitWidget::self()->updateNoise();   // Armed / on / ended
     if( m_speedLock ) CircuitWidget::self()->updateLock();   // The "step ×N" badge
@@ -369,6 +373,9 @@ void Simulator::startSim( bool paused )
 {
     stopNoise();          // A restart without a stop
     resetSim();
+    m_runSeed = m_runSeedSet;
+    while( m_runSeed == 0 ) m_runSeed = std::random_device{}();
+    std::srand( m_runSeed );   // Before initialize(): flip-flops draw their start state there
     setPsPerSec( m_psPerSec );
     m_debug = paused;
     m_state = SIM_STARTING;
@@ -398,6 +405,7 @@ void Simulator::startSim( bool paused )
         //qDebug() << "initializing  "<< enode->itemId();
     }
     for( eElement* el : m_elementList ) el->stamp();
+    for( int i=0; i<m_elementList.size(); ++i ) m_elementList.at( i )->simIndex = i;
     m_reactive.clear();   // Speed lock: the steps it can coarsen
     for( eElement* el : m_elementList )
         if( eReactive* r = dynamic_cast<eReactive*>( el ) ) m_reactive.append( r );
@@ -433,6 +441,7 @@ void Simulator::startSim( bool paused )
     }
 
     m_matrix->createMatrix( m_eNodeList );
+    SimHistory::self()->start( this );   // Which elements can't be saved yet
 
     /// qDebug() << "\nCircuit Matrix looks good";
 
@@ -487,6 +496,7 @@ void Simulator::stopSim()
     m_reactive.clear();
     m_stepScale = 1;
     m_lockLimit = false;
+    SimHistory::self()->stop();
 }
 
 void Simulator::startNoise()
@@ -682,6 +692,63 @@ void Simulator::setNoise( const NoiseSettings& s )
     QString before = text();
     m_noise = s;
     logRunChange("noise", before, text(), true );
+}
+
+bool Simulator::simCore( StateIO& s )
+{
+    if( s.saving() && !stepComplete() ) return false;
+    s.io( m_circTime );
+    s.io( m_nlBudget );
+    s.io( m_stepScale );
+
+    if( !s.saving() ){ m_changedNode = nullptr; m_voltChanged = nullptr; m_nonLinear = nullptr; }
+    if( !s.mark( 0x45444f4e ) ) return false;                  // NODE
+    for( eNode* n : m_eNodeList ) n->simState( s );
+
+    if( !s.mark( 0x4d454c45 ) ) return false;                  // ELEM
+    for( int i=0; i<m_elementList.size(); ++i )
+    {
+        if( !s.mark( (uint32_t)i ) ) return false;             // Each element: a field list that differs is caught here
+        m_elementList.at( i )->simState( s );
+    }
+    if( !s.mark( 0x544e5645 ) ) return false;                  // EVNT
+    uint32_t n = 0;
+    if( s.saving() )
+    {
+        for( eElement* e = m_firstEvent; e; e = e->nextEvent ){
+            if( e->simIndex < 0 || e->simIndex >= m_elementList.size() || m_elementList.at( e->simIndex ) != e ) return false;
+            n++;
+        }
+        s.io( n );
+        for( eElement* e = m_firstEvent; e; e = e->nextEvent ){
+            int32_t idx = e->simIndex;
+            s.io( idx );
+            s.io( e->eventTime );
+        }
+        return true;
+    }
+    s.io( n );
+    for( eElement* el : m_elementList ){ el->eventTime = 0; el->nextEvent = nullptr; }
+    m_firstEvent = nullptr;
+    eElement* last = nullptr;
+    for( uint32_t k=0; k<n; ++k )
+    {
+        int32_t idx = -1; uint64_t time = 0;
+        s.io( idx );
+        s.io( time );
+        if( s.overflow() || idx < 0 || idx >= m_elementList.size() ) return false;
+        eElement* e = m_elementList.at( idx );
+        e->eventTime = time;
+        if( last ) last->nextEvent = e; else m_firstEvent = e;
+        last = e;
+    }
+    m_settled = nullptr;
+    m_settledGen++;
+    m_NLstep = 0;
+    m_converged = true;
+    m_runEnd = m_circTime;
+    m_resumeRun = false;
+    return !s.overflow();
 }
 
 void Simulator::setSpeedLock( bool on )

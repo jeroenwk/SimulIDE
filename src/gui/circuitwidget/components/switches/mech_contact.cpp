@@ -202,3 +202,13 @@ void MechContact::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QW
     Component::paintSelected( p );
 }
 
+void MechContact::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_closed );
+    s.io( m_nClose );
+    s.io( m_ButHidden );
+    s.io( m_numPoles );
+    s.io( m_numthrows );
+    s.io( m_pin0 );
+}

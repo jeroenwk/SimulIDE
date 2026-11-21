@@ -104,3 +104,16 @@ void ClockBase::setHidden( bool hide, bool hidArea, bool hidLabel )
 }
 
 void ClockBase::onbuttonclicked() { setRunning( !m_isRunning ); }
+
+void ClockBase::simState( StateIO& s )
+{
+    FixedVolt::simState( s );
+    s.io( m_state );
+    s.io( m_isRunning );
+    s.io( m_alwaysOn );
+    s.io( m_lastTime );
+    s.io( m_stepsPC );
+    s.io( m_fstepsPC );
+    s.io( m_freq );
+    s.io( m_remainder );
+}

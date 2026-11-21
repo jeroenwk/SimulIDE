@@ -148,3 +148,10 @@ void FixedVolt::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWid
 
     Component::paintSelected( p );
 }
+
+void FixedVolt::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_voltage );
+    s.io( m_rampK );
+}

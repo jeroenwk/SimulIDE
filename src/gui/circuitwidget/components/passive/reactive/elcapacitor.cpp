@@ -65,3 +65,8 @@ void elCapacitor::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QW
 
     Component::paintSelected( p );
 }
+
+void elCapacitor::simState( StateIO& s )
+{
+    CapacitorBase::simState( s );
+}

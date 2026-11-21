@@ -447,3 +447,7 @@ void Oscope::setVoltPos( int ch, double vp )
     m_oscWidget->updateVoltPosBox( ch, vp );
 }
 
+void Oscope::simState( StateIO& s )   // A display: nothing of it is in a keyframe (its trace,
+{                                          // measurements and triggers follow the GUI frames and never
+    PlotBase::simState( s );              // feed the circuit; the trace is cut back on its own)
+}

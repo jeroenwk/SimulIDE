@@ -17,6 +17,9 @@ class OpAmp : public Component, public eElement
     public:
         OpAmp( QString type, QString id );
         ~OpAmp();
+
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( OpAmp )
         
         static Component* construct( QString type, QString id );
         static LibraryItem* libraryItem();

@@ -15,6 +15,9 @@ class eLed : public eResistor
         eLed( QString id );
         ~eLed();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( eLed )
+
         virtual void stamp() override;
         virtual void initialize() override;
         virtual void voltChanged() override;

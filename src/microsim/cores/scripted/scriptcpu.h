@@ -24,6 +24,11 @@ class ScriptCpu : public ScriptModule, public McuCpu
         ScriptCpu( eMcu* mcu );
         ~ScriptCpu();
 
+        // Keyframes (specs/sim-control.md §4.5): CPU fields, the shown state and the script's
+        // globals. Covered when every global is of a type scriptGlobals() handles
+        virtual void simState( StateIO& s ) override;
+        virtual bool hasSimState() override { return typeid( *this ) == typeid( ScriptCpu ) && unsupportedGlobals().isEmpty(); }
+
         virtual void initialize() override;
         virtual void voltChanged() override;
         virtual void runEvent() override;

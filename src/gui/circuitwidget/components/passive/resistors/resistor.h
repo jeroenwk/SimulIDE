@@ -18,6 +18,9 @@ class Resistor : public Comp2Pin, public eResistor
         Resistor( QString type, QString id );
         ~Resistor();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Resistor )
+
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 

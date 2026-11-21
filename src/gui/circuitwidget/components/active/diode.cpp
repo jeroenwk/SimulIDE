@@ -172,15 +172,26 @@ inline void Diode::average( uint64_t t )   // |I| held since m_lastT, into the l
     m_lastT = t;
 }
 
-inline void Diode::setRegion( uint64_t t )   // average( t ) done
+double Diode::avgAt( uint64_t t )
 {
-    if( m_surgeCur > 0 && m_absCur > m_surgeCur ){ m_surged = true; m_surgeT = t; }  // Still above
+    if( t <= m_lastT ) return m_avgCur;
+    double x = (double)(t - m_lastT)*( 1/AVG_TAU );
+    double k = ( x < 0.01 ) ? x : 1-std::exp( -x );
+    return m_avgCur + ( m_absCur - m_avgCur )*k;
+}
+
+double Diode::avgCurrent() { return avgAt( Simulator::self()->circTime() ); }
+
+// step: at a solved step (average( t ) done, avg = m_avgCur); else a GUI frame, which only reads
+void Diode::setRegion( uint64_t t, double avg, bool step )
+{
+    if( m_surgeCur > 0 && m_absCur > m_surgeCur ){ m_surged = true; if( step ) m_surgeT = t; }  // Still above
     else if( m_surged && t - m_surgeT > SURGE_HOLD ) m_surged = false;
 
     double ai = m_absCur;
     int r = m_region;
     if( m_surged ) r = 4;
-    else if( m_maxCur > 0 && ( r == 3 ? m_avgCur > 0.95*m_maxCur : m_avgCur > m_maxCur ) ) r = 3;
+    else if( m_maxCur > 0 && ( r == 3 ? avg > 0.95*m_maxCur : avg > m_maxCur ) ) r = 3;
     else{
         // Thresholds above the saturation current: reverse-biased, a junction leaks Is (3 uA for
         // the ES1J fitted to led_driver's D3A), which is not conduction nor breakdown
@@ -206,8 +217,7 @@ void Diode::updateStep()   // GUI thread, worker idle
     // Nothing changed since the last solved step (a DC circuit): the average still moves and
     // SURGE still ends, so the state is updated here too, with the current held since then
     uint64_t t = Simulator::self()->circTime();
-    average( t );
-    setRegion( t );
+    setRegion( t, avgAt( t ), false );   // Reads only: the stored average follows the solved steps
 
     bool warning = m_maxCur > 0 && m_avgCur > m_maxCur;
     bool crashed = m_surged || ( m_maxCur > 0 && m_avgCur > 2*m_maxCur );
@@ -250,7 +260,7 @@ void Diode::stepSettled()   // Worker: a solved step
     m_signedCur = i;
     m_absCur = ai;
     if( ai > m_peakCur ) m_peakCur = ai;
-    setRegion( t );
+    setRegion( t, m_avgCur, true );
 }
 
 void Diode::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget )
@@ -275,4 +285,18 @@ void Diode::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
         p->drawLine( 7, 6, 10, 6 );
     }
     Component::paintSelected( p );
+}
+
+void Diode::simState( StateIO& s )
+{
+    eDiode::simState( s );
+    s.io( m_isZener );
+    s.io( m_region );
+    s.io( m_signedCur );
+    s.io( m_absCur );
+    s.io( m_avgCur );
+    s.io( m_peakCur );
+    s.io( m_lastT );
+    s.io( m_surgeT );
+    s.io( m_surged );
 }

@@ -238,3 +238,13 @@ void IoPort::registerScript( asIScriptEngine* engine )
                                    , asMETHODPR( IoPort, trigger, (uint), void)
                                    , asCALL_THISCALL );
 }
+
+void IoPort::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_pinState );
+    s.io( m_nextState );
+    s.io( m_pinDirection );
+    s.io( m_pinMode );
+    s.io( m_index );
+}

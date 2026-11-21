@@ -1,7 +1,7 @@
 # Simulation control: keys, skip, speed, history and snapshots
 
-Status: **phase 1 merged** (main b0096de, 2026-11-21), §3.1–3.8; **speed lock built** on
-`feature/sim-speedlock` (§3.9); differences from this text are noted in place. All decisions
+Status: **phase 1 merged** (main b0096de, 2026-11-21), §3.1–3.8; **speed lock merged**
+(main 7a697b7, §3.9); phase 2 started on `feature/sim-history` (§4.7: determinism measured); differences from this text are noted in place. All decisions
 taken (D1–D15, Decision log §9). Phases 2 and 3 are studies.
 
 Goal: control a running simulation the way you control a media player or a scope: play/pause,
@@ -389,6 +389,91 @@ circuit with a microcontroller, a script part (AngelScript core, `components/`) 
 the outside world (a serial port, a real clock) has **no history**: ⏮ and ← are disabled, the
 Messages names the parts that prevent it, and skip forward works as in phase 1. MCUs and
 script parts can get the state API later, part by part, without changing this design.
+
+### 4.7 Measured: determinism and replay speed (2026-11-21)
+
+**Determinism** [SIMULATED]: 11 circuits were each run to the same time by four routes (frames
+at 100 % speed, a skip, frames at 10 %, a skip again), and every node voltage was compared bit
+for bit (`sim hash`, FNV-1a over the doubles): RC (AoE 1.33), 555 astable, inverter ring,
+7490 BCD counter, Wien bridge, Schmitt relaxation oscillator, SCR, Johnson counter, Arduino
+serial echo, Z80 mini, 6502 Ben Eater.
+
+- First pass: 9 of 11 identical. The 7490 and the Johnson counter differed **even between two
+  skips**: flip-flops draw a random start state with `std::rand()` when noise is off
+  (`flipflopbase.cpp`), and `rand()` was never seeded per run (also random WaveGen, dynamic RAM).
+- With a **run seed** (`std::srand` at each start; `settings runSeed`, `sim status` → `seed`):
+  **11 of 11 identical**, the three MCU circuits included. So the frame boundaries, the
+  speed and fast run don't change what is computed; the seed and the inputs are all a replay
+  needs.
+
+**Replay speed** (a 5 s skip from stopped, this M1) [SIMULATED]: 3× real time (Z80) to 40×
+(RC, 7490); 555, Wien, Schmitt, Arduino 7–10×. Going back by replaying from the start
+costs t / (3…40): instant for the slow speeds used to watch a circuit (1 min at 1 ms/s is
+60 ms simulated), 1.5–20 s after a minute at real time.
+
+**Consequence for the plan**: replay from the start needs no state API at all, only the
+seeds and the input journal, and it works for **every** circuit, MCUs and script parts
+included (they are deterministic too). Keyframes (§4.3, the state API) then only make it
+faster. Proposed order:
+
+- **2a. Replay from the start.** Run seed and noise seed kept per run; the input journal
+  (§4.3) for live property changes (generic, at `setPropStr`) and the interactive parts
+  (switch, push, DIP switch, keypad, variable sources, clock button), each stamped with the
+  frame time at which `updateStep()` applies it; an input the journal can't record (a part
+  without the hook, a real serial port) ends the history, as an edit does. ← and ⏮ replay to
+  the target as a skip (Esc cancels, progress in the time label); `sim skip --back`,
+  `sim history` (span, journal), `sim history check` (round trip with `sim hash`).
+- **2b. Keyframes** with the state API (§4.5) for the common parts, to make ← take ≤ 50 ms;
+  a circuit with a part that has no state API keeps 2a (slower, still exact).
+
+### 4.8 Keyframes proven on board_mains (2026-11-21) [SIMULATED]
+
+Decided with the user: keyframes first (replay from the start is too slow for `board_mains`:
+it runs at 25–60 ms/s, so going back from 10 s would replay for 3–7 minutes), and the cost of
+taking them must be proven on `board_mains` before anything else.
+
+**What was built** (branch `feature/sim-history`):
+- `StateIO` (`simstate.h`): one `simState( StateIO& )` per class reads or writes its fields, the
+  same list both ways; raw bytes straight into a preallocated arena, no allocation per keyframe;
+  a marker before each element catches a save and a load that drift apart. `SIM_STATE( Class )`
+  declares a class covered; a subclass that doesn't is reported missing.
+- Generic layers: the simulator core (time, non-linear budget, speed-lock factor), every node's
+  voltage and stamped values (admittances, currents: the matrix is rebuilt from them), the
+  event queue in order (element index + time), and the **AngelScript globals** of script parts
+  (numbers, bools, enums, strings, read through the module API: no per-script code).
+- Per class: the 27 classes of `board_mains` (R, C, L, diode, zener, junction cap, varistor,
+  fuse with its heat model, switch, WaveGen, LED strip, ammeter, battery, current source,
+  MOSFET, op amp, MCU pins and ports, the scripted MCU and core, subcircuit, scope).
+- `SimHistory`: a ring of keyframes in one arena (256 MB default, `settings historyBudget`),
+  one per frame taken in the GUI timer after `holdWorker()` (a solved step; a frame whose step
+  isn't solved is skipped), restore = the last keyframe at or before t.
+- CLI: `settings history` (off by default while it is built), `sim history` (count, span, bytes,
+  capture time mean/max, missing classes), `sim history sizes` (bytes per class),
+  `sim history check [--span] [--points] [--back] [--keep CLASS]`, `sim hash`, `settings runSeed`.
+
+**Rule found: display state is not in a keyframe.** Fields summed or reset at each GUI frame (LED
+brightness, the scope's measurements and trace, the coil colour) depend on when frames fall, not
+on the simulation, and never feed the circuit: they carry on from their present value. Two
+reports were frame-dependent and are fixed: the diode's and LED's 100 ms current average
+(`current_avg`, OVER) was advanced to each frame's time, splitting the integration differently
+in each run; the stored average now follows the solved steps only, and frames and readers
+compute it up to now without storing it.
+
+**Results** (`tests/regress/test_simctl_history.py`, and a proof script run on this M1):
+
+| | Measured |
+|---|---|
+| Keyframe | 17.6 KB (34 MCU pins 5.5 KB, 21 junction caps 3.4 KB: mostly constants; can shrink) |
+| Taking one | 15 µs mean, 34 µs max, every frame (20/s): 0.03 % of the 50 ms frame |
+| Speed, history off vs on | 42.97 vs 42.94 ms/s over 6 × 10 s each, alternating: −0.07 % (sd 0.2–0.5 %, noise); a second run −0.11 % |
+| Memory | 350 KB/s of wall time: 256 MB holds 12 min, i.e. 30 s of `board_mains` time at 43 ms/s; 10 s back = 70 MB |
+| Restoring one | 7–15 µs |
+| Round trip (`sim history check`) | at 26 ms (start-up, 10 ms back), 198 ms (40 ms back), 445 ms (200 ms back), 589 ms (5 ms back): at 5 checkpoints each, every node voltage **and** every element's saved state identical to the bit |
+| Negative control (`--keep`) | keeping the inductor, diodes, zener, varistor or the script cores at their present state: node voltages differ; keeping the fuse, meters, LED strip, op amp, junction caps: their state differs. So the check sees state that is not restored |
+
+Found on the way: the **first run after opening** `board_mains` differs from later runs (two
+skips of 200 ms after the first: same hash; the first: another), so some part keeps state
+across a stop and a start. It doesn't touch keyframes (they restore within a run); to chase.
 
 ## 5. Phase 3: saved snapshots and triggers
 

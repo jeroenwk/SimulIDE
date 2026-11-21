@@ -144,3 +144,17 @@ void eLed::noiseSources( QList<NoiseSrc>& list )   // Shot noise of the junction
     s.psd = [this](){ return Noise::twoQ*qFabs( m_current ); };
     list.append( s );
 }
+
+void eLed::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_converged );
+    // Not saved: m_prevStep, m_intensity, m_avgCurrent, m_totalCurrent, m_lastPeriod and
+    // m_brightness are the brightness display, summed and reset at each GUI frame (updateBright)
+    s.io( m_maxCurrent );
+    s.io( m_lastCurrent );
+    s.io( m_voltPN );
+    s.io( m_threshold );
+    s.io( m_imped );
+    s.io( m_lastThCurrent );
+}

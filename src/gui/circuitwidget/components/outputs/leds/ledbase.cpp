@@ -113,15 +113,26 @@ inline void LedBase::average( uint64_t t )   // I held since m_lastT, into the l
     m_lastT = t;
 }
 
-inline void LedBase::setRegion( uint64_t t )   // average( t ) done
+double LedBase::avgAt( uint64_t t )
 {
-    if( m_peakLimit > 0 && m_stepCur > m_peakLimit ){ m_peaked = true; m_peakT = t; }  // Still above
+    if( t <= m_lastT ) return m_avgCur;
+    double x = (double)(t - m_lastT)*( 1/AVG_TAU );
+    double k = ( x < 0.01 ) ? x : 1-std::exp( -x );
+    return m_avgCur + ( m_stepCur - m_avgCur )*k;
+}
+
+double LedBase::avgCurrent() { return avgAt( Simulator::self()->circTime() ); }
+
+// step: at a solved step (average( t ) done, avg = m_avgCur); else a GUI frame, which only reads
+void LedBase::setRegion( uint64_t t, double avg, bool step )
+{
+    if( m_peakLimit > 0 && m_stepCur > m_peakLimit ){ m_peaked = true; if( step ) m_peakT = t; }  // Still above
     else if( m_peaked && t - m_peakT > PEAK_HOLD ) m_peaked = false;
 
     double i = m_stepCur;
     int r = m_region;
     if( m_peaked ) r = 3;
-    else if( m_maxCurrent > 0 && ( r == 2 ? m_avgCur > 0.95*m_maxCurrent : m_avgCur > m_maxCurrent ) ) r = 2;
+    else if( m_maxCurrent > 0 && ( r == 2 ? avg > 0.95*m_maxCurrent : avg > m_maxCurrent ) ) r = 2;
     else if( r >= 1 ) r = ( i < 5e-6 ) ? 0 : 1;
     else              r = ( i > 1e-5 ) ? 1 : 0;
 
@@ -141,8 +152,7 @@ void LedBase::updateStep()   // GUI thread, worker idle
     // Nothing changed since the last solved step (a DC circuit): the average still moves and PEAK
     // still ends, so the state is updated here too, with the current held since then
     uint64_t t = Simulator::self()->circTime();
-    average( t );
-    setRegion( t );
+    setRegion( t, avgAt( t ), false );   // Reads only: the stored average follows the solved steps
 
     bool warning = m_peaked || ( m_maxCurrent > 0 && m_avgCur > m_maxCurrent );
     bool crashed = m_maxCurrent > 0 && m_avgCur > 2*m_maxCurrent;
@@ -277,5 +287,20 @@ void LedBase::stepSettled()   // Worker: a solved step
     if( m_peakLimit > 0 && m_stepCur > m_peakLimit ) m_peakT = t;   // The held current lasted until now
     m_stepCur = i;
     if( i > m_peakCur ) m_peakCur = i;
-    setRegion( t );
+    setRegion( t, m_avgCur, true );
+}
+
+void LedBase::simState( StateIO& s )
+{
+    eLed::simState( s );
+    s.io( m_region );
+    s.io( m_peakLimit );
+    s.io( m_stepCur );
+    s.io( m_avgCur );
+    s.io( m_peakCur );
+    s.io( m_lastT );
+    s.io( m_peakT );
+    s.io( m_peaked );
+    s.io( m_grounded );
+    s.io( m_ledColor );
 }

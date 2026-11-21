@@ -32,6 +32,9 @@ class Mcu : public Chip, public Linker
         Mcu( QString type, QString id, QString device );
         ~Mcu();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Mcu )
+
  static Mcu* self() { return m_pSelf; }
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();

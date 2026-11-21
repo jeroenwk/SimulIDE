@@ -17,6 +17,9 @@ class Chip : public Component, public eElement
         Chip( QString type, QString id, QString device="" );
         ~Chip();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Chip )
+
         bool isBoard() { return m_isBoard; }
         
         bool logicSymbol() { return m_isLS; }
