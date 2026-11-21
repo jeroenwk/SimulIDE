@@ -24,6 +24,9 @@ class SerialTerm : public Component, public UsartModule, public eElement
  static LibraryItem* libraryItem();
 
         virtual void stamp() override;
+
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( SerialTerm )
         virtual void updateStep() override;
         virtual void runEvent() override;
 

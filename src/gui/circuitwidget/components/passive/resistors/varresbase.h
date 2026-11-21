@@ -31,6 +31,7 @@ class VarResBase : public Dialed, public eResistor
         void setStep( double step ) { if( step<0 ) step=0; m_step = step ; }
 
         virtual void setLinkedValue( double v, int i=0 ) override;
+        virtual void stateRestored() override;   // The dial shows the restored value
 
         virtual void initialize() override;
 

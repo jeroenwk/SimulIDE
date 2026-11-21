@@ -73,3 +73,7 @@ void ScriptSpi::endTransaction()
     byteReceived( m_srReg );
 }
 
+void ScriptSpi::simState( StateIO& s )
+{
+    McuSpi::simState( s );
+}

@@ -25,6 +25,8 @@ class Potentiometer : public Dialed, public eElement
 
         virtual void initialize() override;
         virtual void updateStep() override;
+        void applyRes();
+        virtual void stateRestored() override;   // The dial shows the restored value
         virtual void dialChanged( int val ) override;
 
         double getVal();

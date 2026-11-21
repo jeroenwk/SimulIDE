@@ -118,3 +118,12 @@ void VarResBase::simState( StateIO& s )
     s.io( m_maxVal );
     s.io( m_step );
 }
+
+void VarResBase::stateRestored()   // As Potentiometer::stateRestored()
+{
+    if( m_maxVal <= m_minVal ) return;
+    m_setFromCode = true;
+    m_dialW.setValue( qRound( ( m_value-m_minVal )*1000/( m_maxVal-m_minVal ) ) );
+    m_setFromCode = false;
+}
+

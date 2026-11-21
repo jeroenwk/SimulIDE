@@ -35,6 +35,8 @@ CIRCUITS = [
     ("tiny85 pin-change interrupt", EX + "/Micro/Avr/tiny85/tiny85_pcint/pcint_001.sim1"),
     ("PIC 12F675 timer 1", EX + "/Micro/Pic/12F675/12F675_T1-XC8/12F675_T1-XC8.sim1"),
     ("PIC 16F876 I2C LCD", EX + "/Micro/Pic/16F87x/16F876_I2C-Lcd/i2c-lcd.sim1"),
+    ("Arduino + serial terminal (echo)", EX + "/Micro/Arduino/arduino_serial_echo/arduino_serial_echo.sim1"),
+    ("Arduino + scripted I2C digipot (dial resynced)", EX + "/Scripted/I2C_Digipot/I2CDigipot_test.sim1"),
 ]
 
 

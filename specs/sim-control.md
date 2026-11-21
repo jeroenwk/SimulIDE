@@ -568,9 +568,20 @@ configuration). Found by the check:
   live for the whole run).
 - More display state: the logic analyzer's frame counter.
 
+The AVR circuits completed (2026-11-21): the serial terminal (its typed bytes waiting to be sent),
+the scripted I2C and SPI modules (their script globals are the script CPU's), and the real
+serial port refused (data from outside can't be replayed). Found: a **potentiometer set from
+the simulation** (a script's I2C byte, a linked part) only took its new value at the next GUI
+frame, so the circuit depended on when frames fell; it is now applied at once (`applyRes`, the
+label still follows at the frame). And a dial is GUI state that signals only a change: after a
+restore it still showed the later value and swallowed the same value set again by the replay,
+so `stateRestored()` moves the potentiometer's and the variable resistors' dials back. All 51
+AVR circuits of the repos now go back bit for bit, except those with a real serial port or
+the audio output (refused).
+
 69 of the 88 MCU examples go back bit for bit; over all 773 circuits, 742 (was 143 before
 the part state code). `test_simctl_history_parts.py`: 44 checks, 21 circuits. Not done yet: 8051, 6502, Z80 and the ZX
-Spectrum ULA, the serial port (a real port: refused for now), scripted displays.
+Spectrum ULA, scripted displays.
 
 Found on the way: the **first run after opening** `board_mains` differs from later runs (two
 skips of 200 ms after the first: same hash; the first: another), so some part keeps state

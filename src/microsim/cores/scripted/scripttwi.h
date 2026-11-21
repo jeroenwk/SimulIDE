@@ -14,6 +14,8 @@ class asIScriptFunction;
 class ScriptTwi : public McuTwi, public ScriptPerif
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( ScriptTwi )
         ScriptTwi( eMcu* mcu, QString name );
         ~ScriptTwi();
 
