@@ -758,3 +758,15 @@ void EditDialog::setBusPin( bool b )
     if( m_invertCheckBox->isChecked() ) m_invertCheckBox->setChecked( !b );
 }
 
+void SubPackage::simState( StateIO& s )
+{
+    Chip::simState( s );
+    s.io( m_fakePin );
+    s.io( m_angle );
+    s.io( m_p1X );
+    s.io( m_p1Y );
+    s.io( m_p2X );
+    s.io( m_p2Y );
+    s.io( m_circPosSaved );
+    s.io( m_boardMode );
+}

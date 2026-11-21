@@ -25,6 +25,8 @@ class IoPin;
 class Mcs65Cpu : public Mcs65Interface
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Mcs65Cpu )
         Mcs65Cpu( eMcu* mcu );
         ~Mcs65Cpu();
 

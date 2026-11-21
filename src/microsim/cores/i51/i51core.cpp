@@ -909,3 +909,39 @@ void I51Core::Exec()
     }
     write_S_Bit( 0, parity );
 }
+
+void I51Core::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_psStep );
+    s.io( m_readCycle );
+    s.io( m_rCycles );
+    s.io( m_readExtPGM );
+    s.io( m_cpuState );
+    s.io( m_readPC );
+    s.io( m_lastPC );
+    s.io( m_pgmData );
+    s.io( m_opcode );
+    s.io( m_addrMode );
+    s.io( m_opAddr );
+    s.io( m_op0 );
+    s.io( m_op2 );
+    s.io( m_RxAddr );
+    s.io( m_bitAddr );
+    s.io( m_bitMask );
+    s.io( m_invert );
+    s.io( m_upperData );
+    s.io( m_memState );
+    s.io( m_read );
+    s.io( m_extPGM );
+    s.io( m_addrH );
+    s.io( m_addr );
+    s.io( m_data );
+    s.io( m_addrSetTime );
+    s.io( m_laEnEndTime );
+    s.io( m_readSetTime );
+    s.io( m_writeSetTime );
+    s.io( m_readBusTime );
+    s.io( m_dataTime );
+    s.ioVector( m_readOp );   // Instruction bytes already fetched
+}

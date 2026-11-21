@@ -1,7 +1,7 @@
 """Going back in time with the other part types (specs/sim-control.md §4.8): state code for the
 BJT, logic gates and buffers, flip-flops, counters, memory, the 555, relays, the transformer,
-sources, meters, switches, displays, the noise generator, and the AVR and PIC MCUs (core,
-interrupts, peripherals, ports).
+sources, meters, switches, displays, the noise generator, and the AVR, PIC and 8051 MCUs (core,
+interrupts, peripherals, ports), the Z80 with the ZX Spectrum ULA and the 6502.
 
 For each example circuit: history usable (no class missing), then `sim history check`: run on
 over three checkpoints, go back 4 ms to a keyframe, replay to the same checkpoints and compare
@@ -37,6 +37,11 @@ CIRCUITS = [
     ("PIC 16F876 I2C LCD", EX + "/Micro/Pic/16F87x/16F876_I2C-Lcd/i2c-lcd.sim1"),
     ("Arduino + serial terminal (echo)", EX + "/Micro/Arduino/arduino_serial_echo/arduino_serial_echo.sim1"),
     ("Arduino + scripted I2C digipot (dial resynced)", EX + "/Scripted/I2C_Digipot/I2CDigipot_test.sim1"),
+    ("8051 switch (fetched instruction bytes)", EX + "/Micro/mcs-51/mcs-51_switch/mcs-51_test.sim1"),
+    ("8051 external program memory", EX + "/Micro/mcs-51/mcs51_extPGM/mcs51_extPGM.sim1"),
+    ("Z80 mini", EX + "/Micro/Z80/z80-mini.sim1"),
+    ("ZX Spectrum (Z80, ULA, scripted display)", EX + "/Micro/Z80/ZX_Spectrum/ULA_Z80-MCU-fast.sim1"),
+    ("6502 breadboard computer", EX + "/Micro/mcs-65/6502_ben/6502_ben.sim1"),
 ]
 
 

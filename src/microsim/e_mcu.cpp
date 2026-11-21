@@ -297,4 +297,5 @@ void eMcu::simState( StateIO& s )
     if( m_cpu ) m_cpu->coreState( s );          // PC, return address (registers: in m_dataMem)
     m_interrupts.intState( s, m_modules );
     for( McuPort* port : m_mcuPorts ) port->portState( s );   // Their input bits (PINx): not elements
+    for( McuModule* m : m_modules ) if( !dynamic_cast<eElement*>( m ) ) m->moduleState( s );
 }

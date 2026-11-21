@@ -18,7 +18,8 @@ class LaChannel : public DataChannel
 
     public:
 
-        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        virtual void simState( StateIO& s ) override;
+        virtual void stateRestored() override;   // Keyframes (specs/sim-control.md §4.5)
         SIM_STATE( LaChannel )
         LaChannel( LAnalizer* la, QString id );
         ~LaChannel();

@@ -14,6 +14,8 @@ class asIScriptFunction;
 class ScriptDisplay : public Display, public ScriptPerif
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( ScriptDisplay )
         ScriptDisplay( int width, int height, QString name, QWidget* parent );
         ~ScriptDisplay();
 

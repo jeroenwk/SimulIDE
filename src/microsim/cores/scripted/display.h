@@ -16,6 +16,8 @@
 class Display : public QWidget, public Updatable, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Display )
         Display( uint width, uint height, QString name, QWidget* parent );
         ~Display();
 

@@ -11,6 +11,8 @@
 class I51Timer : public McuTimer
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( I51Timer )
         I51Timer( eMcu* mcu, QString name );
         ~I51Timer();
 

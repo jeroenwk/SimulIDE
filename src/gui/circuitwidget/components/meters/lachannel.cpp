@@ -135,8 +135,21 @@ void LaChannel::voltChanged()
     }
 }
 
-void LaChannel::simState( StateIO& s )
+void LaChannel::simState( StateIO& s )   // A display, as the scope channel: not in a keyframe
 {
     DataChannel::simState( s );
-    s.io( m_busValue );
+}
+
+void LaChannel::stateRestored()            // The trace cut back to the restored time
+{
+    uint64_t now = Simulator::self()->circTime();
+    int size = m_buffer.size();
+    int i = m_bufferCounter;
+    for( int n=0; n<size && m_time[i] > now; ++n )
+    {
+        m_time[i] = 0;
+        m_buffer[i] = 0;
+        if( --i < 0 ) i = size-1;
+    }
+    m_bufferCounter = i;
 }

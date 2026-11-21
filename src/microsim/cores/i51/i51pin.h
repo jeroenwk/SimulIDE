@@ -17,6 +17,8 @@ class I51Pin : public McuPin
     friend class McuPort;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( I51Pin )
         I51Pin( McuPort* port, int i, QString id , Component* mcu );
         ~I51Pin();
 

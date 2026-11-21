@@ -574,3 +574,56 @@ void ULA_ZX48k::generatePhicpu()
         }
     }
 }
+
+void ULA_ZX48k::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_type );
+    s.io( m_isSrceen );
+    s.io( m_vidCasDelayFall );
+    s.io( m_vidCasDelayFallFirst );
+    s.io( m_vidCasDelayRise );
+    s.io( m_hSyncFirst );
+    s.io( m_hSyncLast );
+    s.io( m_scanLines );
+    s.io( m_vSyncFirst );
+    s.io( m_vSyncLast );
+    s.io( m_clk7 );
+    s.io( m_C );
+    s.io( m_V );
+    s.io( m_flashClock );
+    s.io( m_tclka );
+    s.io( m_tclkb );
+    s.io( m_int );
+    s.io( m_border );
+    s.io( m_vidRas );
+    s.io( m_vidCas );
+    s.io( m_dataLatch );
+    s.io( m_shiftReg );
+    s.io( m_attrDataLatch );
+    s.io( m_attrOutLatchInk );
+    s.io( m_attrOutLatchPaper );
+    s.io( m_attrOutLatchFlBr );
+    s.io( m_borderColour );
+    s.io( m_evenScanLine );
+    s.io( m_a14 );
+    s.io( m_a15 );
+    s.io( m_mreqn );
+    s.io( m_iorqn );
+    s.io( m_rdn );
+    s.io( m_wrn );
+    s.io( m_mreqT23 );
+    s.io( m_iorqTW3 );
+    s.io( m_cpuClk );
+    s.io( m_romcsn );
+    s.io( m_rasEn );
+    s.io( m_ram16 );
+    s.io( m_cpuCas );
+    s.io( m_dramWe );
+    s.io( m_portRd );
+    s.io( m_portWr );
+    s.io( m_mic );
+    s.io( m_aeDelayed );
+    s.io( m_screen );
+    CpuBase::coreState( s );
+}

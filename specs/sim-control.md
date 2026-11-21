@@ -579,9 +579,20 @@ so `stateRestored()` moves the potentiometer's and the variable resistors' dials
 AVR circuits of the repos now go back bit for bit, except those with a real serial port or
 the audio output (refused).
 
-69 of the 88 MCU examples go back bit for bit; over all 773 circuits, 742 (was 143 before
-the part state code). `test_simctl_history_parts.py`: 44 checks, 21 circuits. Not done yet: 8051, 6502, Z80 and the ZX
-Spectrum ULA, scripted displays.
+The other families (2026-11-21): the **8051** (its core is an element; found: the instruction
+bytes already fetched, `m_readOp`, are state), the **Z80** (its register structs are plain
+values; `Z80RegPair` only refers into `regs[]`), the **ZX Spectrum ULA** (with its 448 × 312
+screen buffer), the **6502** (the routine of the current cycle is a member-function pointer,
+valid for the run, copied as bytes), the **scripted display** (its picture), and the package
+editor (`SubPackage`). The standalone CPUs (Z80, 6502, ULA) save their PC themselves, as no
+eMcu does it for them. MCU modules that are not elements (USART register front ends, ports)
+get `McuModule::moduleState()`, called by `eMcu` (the 8051 USART's baud counter). The logic
+analyzer's channels are display state like the scope's: not in a keyframe, their trace cut
+back on a restore (`LaChannel::stateRestored`).
+
+After these, every circuit of the repos is covered except those with a real serial port or the
+audio output (8, refused on purpose): **757 of the 773 go back bit for bit** (143 before the
+part state code); the other 8 are the known limits above. `test_simctl_history_parts.py`: 44 checks, 21 circuits. 
 
 Found on the way: the **first run after opening** `board_mains` differs from later runs (two
 skips of 200 ms after the first: same hash; the first: another), so some part keeps state

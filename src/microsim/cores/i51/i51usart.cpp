@@ -142,3 +142,12 @@ void I51Usart::setRxFlags( uint16_t frame )
     //writeRegBits( m_UPE, frame & parityError ); // parityError
 }
 
+void I51Usart::moduleState( StateIO& s )
+{
+    McuModule::simState( s );
+    s.io( m_counter );
+    s.io( m_smodVal );
+    s.io( m_smodDiv );
+    s.io( m_stopBitError );
+}
+

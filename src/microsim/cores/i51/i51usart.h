@@ -14,6 +14,7 @@ class McuTimer;
 class I51Usart : public McuUsart
 {
     public:
+        virtual void moduleState( StateIO& s ) override;   // Keyframes: its baud counter
         I51Usart( eMcu* mcu, QString name, int number );
         ~I51Usart();
 
