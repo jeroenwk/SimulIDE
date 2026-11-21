@@ -1,3 +1,4 @@
+#include <QSignalBlocker>
 /***************************************************************************
  *   Copyright (C) 2016 by Santiago González                               *
  *                                                                         *
@@ -203,4 +204,11 @@ void SwitchBase::simState( StateIO& s )
     s.io( m_bounceN );
     s.io( m_contact );
     s.io( m_started );
+}
+
+void SwitchBase::stateRestored()
+{
+    QSignalBlocker b( m_button );
+    m_button->setChecked( m_closed != m_nClose );   // As onbuttonclicked() reads it
+    update();
 }

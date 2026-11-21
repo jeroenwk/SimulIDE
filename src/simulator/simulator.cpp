@@ -186,6 +186,7 @@ void Simulator::runCircuit()
         while( m_circTime == nextTime )         // Run all event with same timeStamp
         {
             m_circTime = event->eventTime;
+            m_lastEvent = m_circTime;
             m_firstEvent = event->nextEvent;    // free Event
             event->nextEvent = NULL;
             event->eventTime = 0;
@@ -919,10 +920,16 @@ void Simulator::addToEnodeList( eNode* nod )
 { if( !m_eNodeList.contains(nod) ) m_eNodeList.append( nod ); }
 
 void Simulator::addToElementList( eElement* el )
-{ if( !m_elementList.contains(el) ) m_elementList.append(el); }
+{
+    if( m_elementList.contains( el ) ) return;
+    m_elementList.append( el );
+    if( isRunning() ) SimHistory::self()->end("the circuit changed during the run");   // Keyframes no longer fit
+}
 
 void Simulator::remFromElementList( eElement* el )
-{ m_elementList.removeOne(el); }
+{
+    if( m_elementList.removeOne( el ) && isRunning() ) SimHistory::self()->end("the circuit changed during the run");
+}
 
 void Simulator::addToUpdateList( Updatable* el )
 { if( !m_updateList.contains(el) ) m_updateList.append(el); }

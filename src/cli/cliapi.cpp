@@ -11,6 +11,8 @@
 #include <QFileInfo>
 
 #include "cliapi.h"
+#include "simhistory.h"
+#include <QSet>
 #include "simulator.h"
 
 CliApi* CliApi::m_pSelf = nullptr;
@@ -223,7 +225,7 @@ bool CliApi::parseArgv( QJsonArray argv, QString& cmd, CliCtx& ctx, QString& err
     else cmd = tokens.at(0);
 
     // Options that never take a value (so a following positional is not consumed)
-    static const QStringList boolFlags = {"discard","hex","peek","cr","lf","crlf","rx","tx","all","add","none"};
+    static const QStringList boolFlags = {"discard","hex","peek","cr","lf","crlf","rx","tx","all","add","none","back"};
 
     bool optsEnded = false;
     for( int i=start; i<tokens.size(); ++i )
@@ -327,6 +329,12 @@ void CliApi::exec( const QJsonObject& req, std::function<void(QJsonObject)> done
     catch( std::exception& e ) { ok = false; error = QString("internal error: ")+e.what(); }
 
     m_capturing = false;
+    // A change while it runs or is paused (a property, a button, a byte sent): a keyframe now, so
+    // going back to a time after it replays from a state that has it (specs/sim-control.md §4.8)
+    static const QSet<QString> changes{ "comp set", "mcu eeprom", "mcu reset", "serial send", "settings set",
+        "ui click", "ui dial", "ui drag", "ui press", "ui release", "ui set", "ui key", "ui type", "ui mouse", "script run" };
+    if( ok && Simulator::self() && Simulator::self()->isRunning() && changes.contains( cmd )
+        && SimHistory::self()->usable() ) SimHistory::self()->capture( Simulator::self(), true );
     if( Simulator::self() ) Simulator::self()->resumeWorker();
     QStringList msgs = m_messages;
     m_messages.clear();

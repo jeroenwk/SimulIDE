@@ -279,7 +279,7 @@ QList<Setting>& settings()
             Simulator::self()->setLockMaxStep( ps );
             Circuit::self()->setChanged();
         }});
-    list.append({"history", "simulation", "Keep a keyframe of the circuit state every frame, to go back in time (specs/sim-control.md §4). Off by default while it is built.",
+    list.append({"history", "simulation", "Keep a keyframe of the circuit state every frame, to go back in time (← ⏮, sim skip --back; specs/sim-control.md §4). On by default; a user setting.",
         [](){ return QJsonValue( SimHistory::self()->enabled() ); },
         []( QString v ){ SimHistory::self()->setEnabled( parseBool( v ) ); }});
     list.append({"historyBudget", "simulation", "Memory for the keyframes, in MB (default 256); the oldest are overwritten when it is full.",

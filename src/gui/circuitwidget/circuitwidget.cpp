@@ -326,8 +326,9 @@ void CircuitWidget::createActions()
     skipFwdAct->setStatusTip(tr("Pause and skip forward by the skip interval"));
     connect( skipFwdAct, &QAction::triggered, this, [this](){ skipForward( 1 ); } );
 
-    skipBackAct = new QAction( QIcon(":/simskipback.svg"),tr("Skip Back (not yet: needs the history, phase 2)"), this);
-    skipBackAct->setEnabled( false );
+    skipBackAct = new QAction( QIcon(":/simskipback.svg"),tr("Skip Back"), this);
+    skipBackAct->setStatusTip(tr("Pause and go back by the skip interval (keyframes of the run)"));
+    connect( skipBackAct, &QAction::triggered, this, [this](){ skipBack( 1 ); } );
 
     pauseSimAct = new QAction( QIcon(":/simpause.svg"),tr("Pause Simulation"), this);
     pauseSimAct->setStatusTip(tr("Pause Simulation"));
@@ -1119,8 +1120,7 @@ bool CircuitWidget::simKey( QKeyEvent* ev )
             if( !SimSkip::self()->active() ) skipForward( factor );   // Repeats during a skip are dropped
             return true;
         case Qt::Key_Left:
-            if( ev->isAutoRepeat() ) return true;
-            qInfo().noquote() << tr("Going back in time needs the history (not yet: specs/sim-control.md phase 2)");
+            if( !SimSkip::self()->active() ) skipBack( factor );      // Held down: steps back as fast as it lands
             return true;
     }
     return false;
@@ -1133,6 +1133,15 @@ void CircuitWidget::skipForward( int count )
     QString err = SimSkip::self()->start( sim->skipInterval(), count );
     if( !err.isEmpty() && err.startsWith("busy") ) return;
     if( !err.isEmpty() ) qInfo().noquote() << "Skip: "+err;
+}
+
+void CircuitWidget::skipBack( int count )
+{
+    Simulator* sim = Simulator::self();
+    if( !sim ) return;
+    QString err = SimSkip::self()->startBack( sim->skipInterval(), count );
+    if( !err.isEmpty() && err.startsWith("busy") ) return;
+    if( !err.isEmpty() ) qInfo().noquote() << "Back: "+err;
 }
 
 void CircuitWidget::setSkipInterval( uint64_t ps )

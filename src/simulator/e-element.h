@@ -45,6 +45,9 @@ class eElement
         // this exact class saves everything it needs (SIM_STATE); false = no history support
         virtual void simState( StateIO& s );
         virtual bool hasSimState() { return typeid( *this ) == typeid( eElement ); }
+        // After a keyframe was loaded (GUI thread, worker idle): bring widgets and displays in
+        // line with the restored state (a switch's button, a scope trace cut back)
+        virtual void stateRestored(){;}
 
         virtual void setNumEpins( int n );
 

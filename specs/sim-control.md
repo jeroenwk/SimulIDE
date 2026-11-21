@@ -471,6 +471,28 @@ compute it up to now without storing it.
 | Round trip (`sim history check`) | at 26 ms (start-up, 10 ms back), 198 ms (40 ms back), 445 ms (200 ms back), 589 ms (5 ms back): at 5 checkpoints each, every node voltage **and** every element's saved state identical to the bit |
 | Negative control (`--keep`) | keeping the inductor, diodes, zener, varistor or the script cores at their present state: node voltages differ; keeping the fuse, meters, LED strip, op amp, junction caps: their state differs. So the check sees state that is not restored |
 
+**Going back (built 2026-11-21)**: ← / ⏮ / `sim skip --back` restore the last keyframe at or
+before now − interval and replay the rest as a skip (fast run), then pause; one solver step back
+(`sim step --back`, the "1 step" interval) replays to now − 1 ps, reads when the last step ran
+(`Simulator::lastEventTime`) and replays again onto it. Keyframes after the restored one are
+dropped (the future is recomputed as it runs on). Measured on `board_mains` [SIMULATED]: back
+10 ms lands on the earlier time with the same state hash it had there, forward again gives the
+same hash as the first time, steps back land on the earlier 50 ns step times.
+
+- **Inputs need no journal** while there is a keyframe every frame: a click sets a part's
+  pending fields (e.g. `m_closed`, `m_changed`), which are saved, and `updateStep()` applies them
+  right after the frame's keyframe, so a replay applies them at the same time. A CLI command that
+  changes the running circuit (`comp set`, `ui click`, `serial send`, …) takes a keyframe right
+  after it (`CliApi::exec`), as it acts between frames. A property changed in the GUI dialog
+  between two frames is the one case still missed (up to one frame) — the journal of §4.3 is
+  for that, and for thinned keyframes.
+- `eElement::stateRestored()` after a load: a switch's button follows the restored contact; a
+  scope channel drops its samples after the restored time (the trace is cut back).
+- An edit that adds or removes an element during the run ends the history for the run
+  (Messages: "History: the circuit changed during the run …").
+- History is on by default (a user setting, `Simulation/history`); a circuit with a part
+  without state code keeps running as before, and ← says which parts.
+
 Found on the way: the **first run after opening** `board_mains` differs from later runs (two
 skips of 200 ms after the first: same hash; the first: another), so some part keeps state
 across a stop and a start. It doesn't touch keyframes (they restore within a run); to chase.

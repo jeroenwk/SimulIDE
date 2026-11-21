@@ -264,7 +264,7 @@ static QJsonValue histCheck( CliCtx& c )
     auto hc = std::make_shared<HistCheck>();
     hc->reply = c.defer();
     hc->from = sim->circTime();
-    hc->back = c.has("back") ? Cli::parseTime( c.opt("back", "0") ) : 0;
+    hc->back = c.has("ago") ? Cli::parseTime( c.opt("ago", "0") ) : 0;
     hc->keep = c.opt("keep", "");
     for( int i=1; i<=n; ++i ) hc->points.append( hc->from + span*(uint64_t)i/(uint64_t)n );
     histCheckStep( hc );
@@ -304,11 +304,11 @@ void CliApi::registerSim()
                             {"hash", nodeHash() } };
     });
 
-    add("sim history", "sim history [sizes | check [--span T] [--points N] [--back T] [--keep CLASS]]", "Keyframes of the run (specs/sim-control.md §4): "
+    add("sim history", "sim history [sizes | check [--span T] [--points N] [--ago T] [--keep CLASS]]", "Keyframes of the run (specs/sim-control.md §4): "
         "on, usable, count, span, bytes, size of the last one, capture time (mean and max, µs), frames skipped, and "
         "the element classes without state support (missing: history is off for this circuit). check: round trip "
         "of the keyframes: from now, skip to N checkpoints over the span (default 5 ms, 5) recording sim hash at "
-        "each, go back to the keyframe at or before now (--back T: T before now), skip to the same checkpoints "
+        "each, go back to the keyframe at or before now (--ago T: T before now), skip to the same checkpoints "
         "again: ok when every hash is the same (bit for bit). --keep CLASS (negative control): that class keeps "
         "its present state instead of the keyframe's, so the check should fail when its state matters.",
         []( CliCtx& c ) -> QJsonValue
@@ -436,11 +436,11 @@ void CliApi::registerSim()
     });
 
     // Skip (specs/sim-control.md §3.4): as the → key and the toolbar's skip button
-    auto skipCmd = []( CliCtx& c, uint64_t span, int count ) -> QJsonValue
+    auto skipCmd = []( CliCtx& c, uint64_t span, int count, bool back ) -> QJsonValue
     {
         Simulator* sim = Simulator::self();
         uint64_t before = sim->isRunning() ? sim->circTime() : 0;
-        QString err = SimSkip::self()->start( span, count );
+        QString err = back ? SimSkip::self()->startBack( span, count ) : SimSkip::self()->start( span, count );
         if( !err.isEmpty() ) throw CliError( err );
         CliPendingPtr reply = c.defer();
         SimSkip::self()->whenDone( [reply, before]( bool ok, QString msg )
@@ -448,7 +448,8 @@ void CliApi::registerSim()
             if( !ok ){ reply->fail( msg ); return; }
             QJsonObject o = simStatus();
             o["from"] = Cli::timeStr( before );
-            o["skipped"] = Cli::timeStr( Simulator::self()->circTime()-SimSkip::self()->from() );
+            uint64_t now = Simulator::self()->circTime();
+            o["skipped"] = ( now >= before ) ? Cli::timeStr( now-before ) : "-"+Cli::timeStr( before-now );
             o["note"] = msg;
             reply->ok( o );
         });
@@ -458,10 +459,10 @@ void CliApi::registerSim()
     add("sim skip", "sim skip [<time>|step] [--count N] [--back]", "Pause and skip forward by a time span, "
         "or by the skip interval (settings skipInterval) without one, as fast as the computer can, then pause "
         "and reply after one frame. 'step' = to the next solver event. --count N skips N times as far "
-        "(N solver steps). Starts a stopped simulation from 0. --back: going back needs the history (not yet).",
+        "(N solver steps). Starts a stopped simulation from 0. --back: go back as far, with the keyframes of the run "
+        "(settings history): to the keyframe at or before the target, then on to it, paused.",
         [skipCmd]( CliCtx& c ) -> QJsonValue
     {
-        if( c.has("back") ) throw CliError("going back in time needs the history (specs/sim-control.md phase 2): not implemented yet");
         uint64_t span = Simulator::self()->skipInterval();
         if( !c.pos.isEmpty() && !SimSkip::parseInterval( c.pos.at(0), &span ) )
             throw CliError("invalid skip: "+c.pos.at(0)+" (step, or 1ps … 1min, e.g. 5us)");
@@ -470,17 +471,17 @@ void CliApi::registerSim()
         bool ok = false;
         count = n.toInt( &ok );
         if( !ok || count < 1 || count > 1000000 ) throw CliError("--count must be 1 … 1000000");
-        return skipCmd( c, span, count );
+        return skipCmd( c, span, count, c.has("back") );
     });
 
-    add("sim step", "sim step [--count N]", "One solver step: run the next pending event time, solve, pause "
+    add("sim step", "sim step [--count N] [--back]", "One solver step: run the next pending event time, solve, pause "
         "(= sim skip step).",
         [skipCmd]( CliCtx& c ) -> QJsonValue
     {
         bool ok = false;
         int count = c.opt("count", "1").toInt( &ok );
         if( !ok || count < 1 || count > 1000000 ) throw CliError("--count must be 1 … 1000000");
-        return skipCmd( c, 0, count );
+        return skipCmd( c, 0, count, c.has("back") );
     });
 
     add("sim speed", "sim speed [percent]", "Get or set target simulation speed in % of real time (100 = real time).",

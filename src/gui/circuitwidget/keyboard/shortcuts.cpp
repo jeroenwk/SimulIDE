@@ -64,7 +64,7 @@ const QList<Shortcut>& Shortcuts::all()
         { "Simulation", "Skip interval ×5 / ×10 / ×100 (Down: ÷)", "Shift+Up / Opt+Up / Shift+Opt+Up", "Canvas without focus" },
         { "Simulation", "Pause and skip forward by the skip interval; stopped: start, then skip", "Right", "Canvas without focus" },
         { "Simulation", "Skip forward 5× / 10× / 100× the skip interval", "Shift+Right / Opt+Right / Shift+Opt+Right", "Canvas without focus" },
-        { "Simulation", "Skip back (needs the history: not yet)", "Left", "Canvas without focus" },
+        { "Simulation", "Pause and go back by the skip interval (Shift/Opt: 5×/10×/100×), with the keyframes of the run", "Left", "Canvas without focus" },
         { "Simulation", "Give the keys back to the simulation", "Esc", "Simulation on, canvas focused, nothing selected or in progress" },
         { "Simulation", "Transient noise (toggle)", "F12", "" },
         { "File", "Export as image (PNG, SVG)", "Cmd+P", "" },

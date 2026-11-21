@@ -50,6 +50,7 @@ class CircuitWidget : public QWidget
         void syncSkip( uint64_t ps );             // Show the skip interval in the toolbar (0 = 1 step)
         void setSkipInterval( uint64_t ps );      // Set it (toolbar, keys): saved with the circuit
         void skipForward( int count );            // → / ⏭: pause and skip count × the interval
+        void skipBack( int count );               // ← / ⏮: pause and go back count × the interval
         void simKeysBack();                       // Esc on an idle canvas: the simulation keys again
         // Running slower than the set speed: the speed box shows the real speed in orange (realPsPerSec 0: off)
         void showRealSpeed( double realPsPerSec );

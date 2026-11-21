@@ -13,10 +13,17 @@
 #include "simstate.h"
 #include "simulator.h"
 #include "e-element.h"
+#include "mainwindow.h"
+#include <QSettings>
 
 SimHistory* SimHistory::self()
 {
-    static SimHistory* s = new SimHistory();
+    static SimHistory* s = nullptr;
+    if( !s ){
+        s = new SimHistory();
+        if( MainWindow::self() )        // A user setting, on by default (Simulation/history)
+            s->m_enabled = MainWindow::self()->settings()->value("Simulation/history", true ).toBool();
+    }
     return s;
 }
 
@@ -24,6 +31,10 @@ void SimHistory::setEnabled( bool on )
 {
     m_enabled = on;
     if( !on ) stop();
+    if( MainWindow::self() ){
+        MainWindow::self()->settings()->setValue("Simulation/history", on );
+        MainWindow::self()->settings()->sync();
+    }
 }
 
 void SimHistory::setBudget( uint64_t bytes )
@@ -50,6 +61,7 @@ QString SimHistory::className( eElement* el )
 void SimHistory::start( Simulator* sim )
 {
     stop();
+    m_ended    = false;
     m_captures = 0;
     m_skipped  = 0;
     m_totalNs  = 0;
@@ -64,6 +76,15 @@ void SimHistory::start( Simulator* sim )
         m_missing << it.key()+" ×"+QString::number( it.value() );
     m_missing.sort();
     m_usable = m_missing.isEmpty();
+}
+
+void SimHistory::end( QString why )
+{
+    if( m_ended || !m_enabled ) return;
+    stop();
+    m_ended = true;
+    m_error = why;
+    qInfo().noquote() << "History: "+why+", going back is off until the next start";
 }
 
 void SimHistory::stop()
@@ -90,7 +111,7 @@ void SimHistory::dropOverlapping( uint64_t from, uint64_t to )
     }
 }
 
-void SimHistory::capture( Simulator* sim )
+void SimHistory::capture( Simulator* sim, bool replace )
 {
     if( !m_enabled ) return;
     QElapsedTimer t;
@@ -102,7 +123,12 @@ void SimHistory::capture( Simulator* sim )
         if( !m_arena ){ m_enabled = false; m_error = "no memory for the history"; return; }
         m_arenaSize = m_budget;
     }
-    if( !m_keys.empty() && m_keys.back().time == sim->circTime() ) return;   // Paused: same state
+    if( !m_keys.empty() && m_keys.back().time == sim->circTime() )
+    {
+        if( !replace ) return;                   // Paused: the same state
+        m_head = m_keys.back().off;              // Changed at the same time: take it again
+        m_keys.pop_back();
+    }
 
     for( int pass=0; pass<2; ++pass )
     {
@@ -160,6 +186,8 @@ uint64_t SimHistory::restore( Simulator* sim, uint64_t t, QString keepClass )
             StateIO k( kept.data(), kept.size(), false );
             for( eElement* el : keep ) el->simState( k );
         }
+        sim->setLastEventTime( it->time );
+        for( eElement* el : sim->elementList() ) el->stateRestored();
         return it->time;
     }
     return 0;

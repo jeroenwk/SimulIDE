@@ -8,6 +8,8 @@
 #include "simskip.h"
 #include "simulator.h"
 #include "circuitwidget.h"
+#include "simhistory.h"
+#include "infowidget.h"
 
 SimSkip* SimSkip::self()
 {
@@ -69,6 +71,88 @@ QString SimSkip::start( uint64_t span, int count )
     return "";
 }
 
+QString SimSkip::startBack( uint64_t span, int count )
+{
+    if( m_active ) return "busy: a skip is running";
+    if( count < 1 ) count = 1;
+    Simulator* sim = Simulator::self();
+    if( !sim || !sim->isRunning() ) return "nothing to go back to: the simulation is stopped";
+    if( sim->simState() == SIM_DEBUG || sim->isPauseDebug() ) return "the debugger controls the simulation";
+    SimHistory* h = SimHistory::self();
+    if( !h->enabled() ) return "history is off (settings history)";
+    if( !h->usable() )
+    {
+        if( !h->missing().isEmpty() ) return "no history for this circuit: "+h->missing().join(", ")+" can't be saved yet";
+        return "no history: "+h->lastError();
+    }
+    if( h->count() == 0 ) return "no keyframe yet";
+    if( !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
+
+    m_back = true;
+    m_backFrom = sim->circTime();
+    m_announced = false;
+    m_wall.start();
+    if( span == 0 )
+    {
+        m_backSteps = count;
+        stepBack();
+        return m_active ? "" : "no earlier step in the history";
+    }
+
+    uint64_t back = span*(uint64_t)count;
+    uint64_t target = ( back < m_backFrom ) ? m_backFrom-back : 0;
+    if( target < h->firstTime() ) target = h->firstTime();   // The history starts there
+    QString err = backTo( target );
+    if( !err.isEmpty() ) m_back = false;
+    return err;
+}
+
+QString SimSkip::backTo( uint64_t target )
+{
+    Simulator* sim = Simulator::self();
+    uint64_t k = SimHistory::self()->restore( sim, target );
+    if( !k ){ m_back = false; return "no keyframe at or before "+Simulator::siStr( target*1e-12, "s" ); }
+    SimHistory::self()->truncateAfter( k );   // Going on from here: the old future is recomputed
+    InfoWidget::self()->setCircTime( sim->circTime() );   // The toolbar time at once
+    if( k >= target )                         // On a keyframe: only a frame for the displays
+    {
+        m_active = true;
+        m_from = m_target = target;
+        m_span = 1;
+        m_waitFrame = (int64_t)m_frames;
+        sim->addToUpdateList( this );
+        m_poll.start();
+        return "";
+    }
+    m_active = false;
+    QString err = start( target-k );          // Replay from the keyframe (fast run), pause there
+    m_from = m_backFrom;                      // Reported from where the back started
+    return err;
+}
+
+// One solver step back: replay to just before the present time, read when the last step before
+// it ran, replay again to exactly there. Two replays of at most one frame each
+void SimSkip::stepBack()
+{
+    Simulator* sim = Simulator::self();
+    uint64_t now = sim->circTime();
+    if( now <= SimHistory::self()->firstTime()+1 ){ backTo( now ); return; }   // The history starts here
+    uint64_t probe = now-1;
+    uint64_t k = SimHistory::self()->restore( sim, probe );
+    if( !k ){ finish( false, "no keyframe before "+Simulator::siStr( now*1e-12, "s" ) ); return; }
+    auto land = [this]()
+    {
+        uint64_t last = Simulator::self()->lastEventTime();   // The last step at or before now-1
+        if( --m_backSteps > 0 ) m_then = [this](){ stepBack(); };
+        QString err = backTo( last );
+        if( !err.isEmpty() ){ m_then = nullptr; finish( false, err ); }
+    };
+    if( k == probe ){ land(); return; }
+    m_then = land;
+    QString err = start( probe-k );
+    if( !err.isEmpty() ){ m_then = nullptr; finish( false, err ); }
+}
+
 void SimSkip::cancel()
 {
     if( !m_active ) return;
@@ -119,6 +203,11 @@ void SimSkip::poll()
     if( (int64_t)m_frames <= m_waitFrame ) return;
 
     uint64_t t = sim->circTime();
+    if( m_back )
+    {
+        finish( true, "−"+intervalText( m_backFrom-t )+" → "+Simulator::siStr( t*1e-12, "s" ) );
+        return;
+    }
     QString span = m_span ? intervalText( t-m_from ) : intervalText( 0 );
     if( m_span == 0 && t > m_from ) span += " ("+intervalText( t-m_from )+")";
     finish( true, "+"+span+" → "+Simulator::siStr( t*1e-12, "s" ) );
@@ -129,7 +218,8 @@ void SimSkip::progress()
     // The toolbar time shows how far a skip has come; a long one gets a line in Messages
     if( m_wall.elapsed() < 300 || m_announced ) return;
     m_announced = true;
-    qInfo().noquote() << "Skipping "+intervalText( m_target-m_from )+" from "+Simulator::siStr( m_from*1e-12, "s" )+" …";
+    if( m_back ) qInfo().noquote() << "Going back to "+Simulator::siStr( m_target*1e-12, "s" )+" …";
+    else qInfo().noquote() << "Skipping "+intervalText( m_target-m_from )+" from "+Simulator::siStr( m_from*1e-12, "s" )+" …";
 }
 
 void SimSkip::finish( bool ok, QString msg )
@@ -137,6 +227,15 @@ void SimSkip::finish( bool ok, QString msg )
     m_poll.stop();
     m_active = false;
     m_waitFrame = -1;
+    if( ok && m_then )                 // A phase of a longer move (a step back): on to the next one
+    {
+        auto next = m_then;
+        m_then = nullptr;
+        next();
+        return;
+    }
+    m_then = nullptr;
+    m_back = false;
     // A quick skip is seen in the time; a long, cancelled or failed one gets a line in Messages
     if( m_announced || !ok ) qInfo().noquote() << "Skip: "+msg;
     m_announced = false;

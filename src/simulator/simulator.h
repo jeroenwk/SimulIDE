@@ -171,6 +171,9 @@ class Simulator : public QObject
         // every element, and the event queue. Worker idle. Saving returns false when the step is
         // not solved or an event belongs to an element outside the list
         bool simCore( class StateIO& s );
+        // Time of the last event run (a solved step), for one step back. Worker idle
+        uint64_t lastEventTime() { return m_lastEvent; }
+        void setLastEventTime( uint64_t t ) { m_lastEvent = t; }
 
         // Run seed (specs/sim-control.md §4.4): std::srand() at each start, so the parts that
         // use rand() (flip-flop start states, random WaveGen, dynamic RAM contents) repeat when
@@ -315,6 +318,7 @@ class Simulator : public QObject
         void startNoise();
         void stopNoise();
 
+        uint64_t m_lastEvent = 0;
         uint32_t m_runSeed = 0;
         uint32_t m_runSeedSet = 0;
         bool     m_speedLock   = false;

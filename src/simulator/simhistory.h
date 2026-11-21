@@ -28,12 +28,14 @@ class SimHistory
 
         // Simulation start: which elements have no state support (empty: history works)
         void start( Simulator* sim );
-        void stop();                                 // Keyframes dropped (a stop, an edit)
-        bool usable() { return m_enabled && m_usable; }
+        void stop();                                 // Keyframes dropped (a stop)
+        void end( QString why );                     // History over for this run (an edit): why in lastError()
+        bool usable() { return m_enabled && m_usable && !m_ended; }
         QStringList missing() { return m_missing; }  // "Class ×n" without simState
 
         // GUI timer, worker idle at a solved step
-        void capture( Simulator* sim );
+        // replace: a keyframe at the same time is taken again (a change while paused, by the CLI)
+        void capture( Simulator* sim, bool replace=false );
         // Load the last keyframe at or before t (worker idle, paused). Returns its time, 0 = none
         // keepClass (negative control of sim history check): elements of that class keep their
         // present state instead of the keyframe's
@@ -61,6 +63,7 @@ class SimHistory
 
         bool     m_enabled = false;
         bool     m_usable  = false;
+        bool     m_ended   = false;
         uint64_t m_budget  = 256ull*1024*1024;
         uint8_t* m_arena   = nullptr;
         uint64_t m_arenaSize = 0;
