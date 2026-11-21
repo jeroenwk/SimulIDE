@@ -81,9 +81,16 @@ def test(sim):
     t0 = time.time()
     r = sim.cli("sim", "skip", "10ms", timeout=60)
     wall = time.time() - t0
+    sim.check("1 us/s sets the skip interval to 100 ns", 1 if sim.cli("settings", "get", "skipInterval") == "100 ns" else 0, 1, absolute=0,
+              note=sim.cli("settings", "get", "skipInterval"))
     sim.check("skip ignores the set speed: lands", ps(r), 10000000001, absolute=0)
     sim.check("skip ignores the set speed: wall time < 10 s", 1 if wall < 10 else 0, 1, absolute=0, note="%.2f s" % wall)
     sim.cli("sim", "stop")
+    sim.cli("sim", "speed", "100")
+    sim.check("1 s/s sets the skip interval to 100 ms", 1 if sim.cli("settings", "get", "skipInterval") == "100 ms" else 0, 1, absolute=0)
+    sim.cli("settings", "set", "skipInterval", "step")
+    sim.cli("sim", "speed", "10")
+    sim.check("a speed change keeps 1 step", 1 if sim.cli("settings", "get", "skipInterval") == "1 step" else 0, 1, absolute=0)
     sim.cli("sim", "speed", "100")
 
     # Saved with the circuit
@@ -146,6 +153,14 @@ def test_keys(sim):
     sim.cli("ui", "type", "Esc")                   # On the canvas, nothing to cancel
     sim.check("Esc on the idle canvas does not stop", 1 if sim.cli("sim", "status")["state"] == "running" else 0, 1, absolute=0)
     sim.check("then Space pauses again", 1 if key("Space") == "paused" else 0, 1, absolute=0)
+
+    # Only a click gives the canvas the keys; a click elsewhere takes them back (§3.1)
+    for w in ("toolbar", "messages"):
+        sim.cli("ui", "focus", "canvas")
+        st = sim.cli("ui", "click", "--widget", w)
+        sim.check("a click on the %s takes the focus from the canvas" % w, 1 if not st["focused"] else 0, 1, absolute=0)
+        sim.check("then Space is the simulation's again (%s)" % w, 1 if key("Space") == "running" else 0, 1, absolute=0)
+        key("Space")
 
 
 def test_all(sim):

@@ -20,6 +20,10 @@ OutPanelText::OutPanelText( QWidget* parent )
     m_textBuffer = "";
 
     m_highlighter = new OutHighlighter( document() );
+    // Read-only (select and copy still work): an editable pane counted as a text field, so it
+    // kept Space and the arrows from the simulation after a click in it (specs/sim-control.md §3.1)
+    setReadOnly( true );
+    setTextInteractionFlags( Qt::TextSelectableByMouse | Qt::TextSelectableByKeyboard );
 
     setProperty("uiThemeKeep", true );     // Sets its own colours for both themes
     applyTheme( UiTheme::self()->isDark() );
@@ -108,7 +112,9 @@ void OutPanelText::mouseReleaseEvent( QMouseEvent* event )
         if( comp->getUid() != data->uid ) continue;
         Circuit::self()->clearSelection();
         comp->setSelected( true );
-        CircuitView::self()->centerOn( comp );
+        CircuitView* v = CircuitView::self();     // Moved only when the part is out of view
+        QRectF seen = v->mapToScene( v->viewport()->rect() ).boundingRect();
+        if( !seen.contains( comp->sceneBoundingRect() ) ) v->centerOn( comp );
         break;
     }
 }

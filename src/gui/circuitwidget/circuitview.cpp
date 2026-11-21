@@ -79,6 +79,11 @@ void CircuitView::clear()
     }
     m_circuit = new Circuit( -1600, -1200, 3200, 2400, this );
     setScene( m_circuit );
+    // No touch events: on a Mac trackpad a finger resting over the canvas is a touch, and Qt
+    // gives the focus on a touch as on a click, so the canvas took the simulation keys while
+    // the mouse only moved over it. Pinch zoom and scrolling come as gesture and wheel events
+    setAttribute( Qt::WA_AcceptTouchEvents, false );
+    viewport()->setAttribute( Qt::WA_AcceptTouchEvents, false );
     resetMatrix();
     m_scale = 1;
     m_enterItem = NULL;
@@ -253,21 +258,11 @@ void CircuitView::mouseMoveEvent( QMouseEvent* event )
     KeyboardController::self()->mouseMoved( event->pos() );
 }
 
-// The mouse entering the canvas gives it the keyboard, so the cursor cross shows and
-// keys work without a click — unless text is being typed elsewhere (a property field,
-// the code editor, a search box) or another window is active (a dialog)
+// Only a click gives the canvas the keyboard, never the mouse merely passing over it
+// (specs/sim-control.md §3.1): hovering would take the keys from the simulation or a field
 void CircuitView::enterEvent( QEvent* event )
 {
     QGraphicsView::enterEvent( event );
-    if( hasFocus() || QApplication::activeWindow() != window() ) return;
-    // Running or paused: the keys belong to the simulation until a click (specs/sim-control.md §3.1)
-    if( Simulator::self() && Simulator::self()->isRunning() ) return;
-    QWidget* f = QApplication::focusWidget();
-    QComboBox* combo = qobject_cast<QComboBox*>( f );
-    bool typing = qobject_cast<QLineEdit*>( f ) || qobject_cast<QTextEdit*>( f )
-               || qobject_cast<QPlainTextEdit*>( f ) || qobject_cast<QAbstractSpinBox*>( f )
-               || ( combo && combo->isEditable() );
-    if( !typing ) setFocus( Qt::MouseFocusReason );
 }
 
 void CircuitView::focusInEvent( QFocusEvent* event )

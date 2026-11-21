@@ -231,6 +231,7 @@ QList<Setting>& settings()
             if( pct <= 0 ) throw CliError("speed must be > 0");
             s_note = Cli::setSimSpeed( (uint64_t)( pct*1e10 ) );
             Circuit::self()->setChanged();
+            if( CircuitWidget::self() ) CircuitWidget::self()->skipFollowSpeed();
         }});
     list.append({"stepSize", "simulation", "Simulation step size (e.g. 1us).",
         [](){ return QJsonValue( Cli::timeStr( Simulator::self()->stepSize() ) ); },

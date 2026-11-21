@@ -67,16 +67,26 @@ canvas does not have focus, i.e. after a start, until the canvas is given focus 
 - While the simulation is running or paused, a **window-level key filter** (an event filter on
   `MainWindow`, installed at start and removed at stop) handles Space, Esc and the arrows when
   the focused widget is neither the canvas nor a widget that uses these keys itself: a text
-  field (a property field, the code editor, a search box), a list or tree (the component list,
-  the file browser), an editable combo such as the speed or skip box
+  field (a property field, the code editor, a search box), a list or tree while stopped (the
+  component list, the file browser: running or paused, they leave these keys to the simulation,
+  user 2026-11-21), an editable combo such as the speed or skip box
   (`CircuitWidget::keysToSim`).
 - At start, the canvas is cleared of focus (`clearFocus()`) and the keyboard cursor is hidden.
   A canvas mode in progress (wire drawing, network walk, value editing) is **not** ended yet
   (left out of phase 1): it waits until the canvas gets the focus back.
-- While running or paused, the canvas does not take focus when the mouse merely enters it
-  (`CircuitView::enterEvent` checks the state); otherwise moving the mouse over the circuit
-  would end the simulation keys at once. A **click** on the canvas gives it focus (keyboard
-  editor keys again).
+- The canvas never takes focus when the mouse merely enters it, in any state (user,
+  2026-11-21; before, it did while stopped): only a **click** on the canvas gives it focus
+  (keyboard editor keys again).
+- A **click anywhere else** in the window (the toolbar and its buttons, Messages, a panel)
+  takes the focus from the canvas (`CircuitWidget::eventFilter`, on the mouse press); a widget
+  that takes focus itself (a text field) gets it. A read-only text such as Messages does not
+  keep the simulation keys from working (`keysToSim`); Messages is read-only (select and copy
+  only), it was an editable text and kept the keys. A click on a part's line in Messages selects
+  the part and moves the view only when the part is out of sight (before: always centred).
+- The canvas accepts **no touch events** (`WA_AcceptTouchEvents` off): on a Mac trackpad a finger
+  resting over the canvas is a touch, which Qt treats as a click for the focus, so the canvas took
+  the keys while the pointer only passed over it. Pinch zoom and scrolling are gesture and wheel
+  events and still work.
 - **Esc hands the keys back** (D11): on the canvas while running or paused, Esc first does what
   it does today (`KeyboardController::escKey`, `Circuit::keyPressEvent`): ends a link or a wire
   being drawn, leaves network mode or a value edit, clears the selection. When none of these
@@ -87,7 +97,7 @@ canvas does not have focus, i.e. after a start, until the canvas is given focus 
 - The toolbar shows which one has the keys: the skip box has a blue frame while the simulation
   keys are active (`updtKeyOwner`, on every focus change).
 - F5 (start/stop) and F6 (pause/resume) are window shortcuts and work whatever has focus (D2).
-- At stop, the filter is removed and the canvas gets focus again if the mouse is over it.
+- At stop, the filter is removed; the canvas gets focus again only with a click.
 
 ### 3.2 Keys
 
@@ -131,6 +141,14 @@ Simulation keys (canvas not focused, §3.1); F5 and F6 work everywhere:
 - An interval shorter than the step size is allowed and shown with a note ("1 ps < step 1 µs:
   skips to the next step"); the skip always ends on a solved step.
 - Saved with the circuit, as the speed is (`skipInterval` in the simulation settings) (D6).
+- **Follows the speed** (user, 2026-11-21): the interval is a tenth of the first speed in the speed
+  list at or below the speed reached: 1 µs/s → 100 ns, 1 ms/s → 100 µs, 25 ms/s (10 ms/s) → 1 ms,
+  1 s/s → 100 ms. Set when the speed is set (toolbar, `sim speed`, `settings set speed`), and
+  while running (not paused, not skipping) from the **real speed** when it is below the set speed
+  (the orange speed, speed lock off): board_mains set to 1 s/s but reaching 25 ms/s gets 1 ms. A
+  10 % margin before moving up a list step keeps it from flipping. It changes only when that list
+  step changes, so a value set by hand (↑ / ↓, the box) stays until then. A run starts from the
+  interval as it is (the one saved with the circuit). `1 step` is kept.
 
 ### 3.4 Skip forward
 

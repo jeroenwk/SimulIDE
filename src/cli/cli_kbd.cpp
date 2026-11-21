@@ -9,6 +9,7 @@
 #include <QMouseEvent>
 #include <QApplication>
 #include <QScrollBar>
+#include <QAbstractScrollArea>
 
 #include "cliapi.h"
 #include "circuitview.h"
@@ -289,7 +290,7 @@ void CliApi::registerKbd()
         return out;
     });
 
-    add("ui click", "ui click <x,y> [--cmd] [--double] | ui click <comp> [index]",
+    add("ui click", "ui click <x,y> [--cmd] [--double] | ui click <comp> [index] | ui click --widget messages|toolbar",
         "Left click (press and release) at a scene position on the canvas, as the mouse does: "
         "on empty canvas it clears the selection and places the keyboard cursor there; --cmd holds Cmd "
         "(Ctrl elsewhere): on a wire, corner or dot it starts network mode there; in network mode, on a "
@@ -298,6 +299,20 @@ void CliApi::registerKbd()
         "the point first.",
         []( CliCtx& c ) -> QJsonValue
     {
+        if( c.has("widget") )          // A press and release on a widget outside the canvas
+        {
+            QString n = c.opt("widget", "").toLower();
+            QWidget* w = n == "messages" ? (QWidget*)CircuitWidget::self()->outPane()
+                       : n == "toolbar"  ? (QWidget*)CircuitWidget::self()->simToolBar() : nullptr;
+            if( !w ) throw CliError("widget must be messages or toolbar");
+            if( QAbstractScrollArea* a = qobject_cast<QAbstractScrollArea*>( w ) ) w = a->viewport();
+            QPoint p( w->width()/2, w->height()/2 );
+            QMouseEvent press( QEvent::MouseButtonPress, p, w->mapToGlobal( p ), Qt::LeftButton, Qt::LeftButton, Qt::NoModifier );
+            QApplication::sendEvent( w, &press );
+            QMouseEvent release( QEvent::MouseButtonRelease, p, w->mapToGlobal( p ), Qt::LeftButton, Qt::NoButton, Qt::NoModifier );
+            QApplication::sendEvent( w, &release );
+            return kbdState();
+        }
         if( c.pos.isEmpty() ) throw CliError("missing position x,y or component name");
         if( !c.pos.at( 0 ).contains(',') ) return uiClickControl( c );   // The older form
 

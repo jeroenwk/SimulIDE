@@ -431,6 +431,7 @@ the pause.
 | `ui mouse <x,y>` | Move the mouse (no button) to a scene position over the canvas; returns `kbd state` |
 | `ui drag <x1,y1> <x2,y2>` | Drag with the left mouse button between two scene positions (press, moves in 8 px steps, release); returns `kbd state` |
 | `ui click <x,y> [--cmd] [--double]` | Left click at a scene position on the canvas, as the mouse does (on empty canvas: clears the selection, places the keyboard cursor; `--cmd` holds Cmd: on a wire, corner or dot it starts network mode there, and in network mode marks / unmarks a wire; `--double` adds a double click: with `--cmd` on a wire, its net is marked); returns `kbd state` |
+| `ui click --widget messages\|toolbar` | Press and release on Messages or the simulation toolbar, as the mouse does: takes the keyboard focus from the canvas; returns `kbd state` |
 | `ui focus canvas\|none` | Give the canvas keyboard focus or take it away |
 
 These commands work on any part with on-screen controls, including push
@@ -634,7 +635,7 @@ The groups follow the Settings dialog:
 |---|---|
 | app | `language`, `fontScale`, `fontName`, `userPath` |
 | circuit | `drawGrid`, `showScroll`, `animate`, `fps`, `autoBackup` |
-| simulation | `speed`, `skipInterval`, `history` (keyframes every frame, off by default), `historyBudget` (MB, default 256), `runSeed` (rand() seed at each start, 0 = new), `speedLock` (hold the set speed by coarsening the reactive step, specs/sim-control.md §3.9), `speedLockMaxStep` (its limit, 0 = 100 × `reactStep`), `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps`, `supplyRamp`, `noise`, `noiseBW`, `noiseScale`, `noiseSeed`, `noiseStart`, `noiseStop`, `noiseOff` |
+| simulation | `speed` (also sets `skipInterval` to a tenth of a second at that speed, `1 step` kept), `skipInterval`, `history` (keyframes every frame, on by default), `historyBudget` (MB, default 256), `runSeed` (rand() seed at each start, 0 = new), `speedLock` (hold the set speed by coarsening the reactive step, specs/sim-control.md §3.9), `speedLockMaxStep` (its limit, 0 = 100 × `reactStep`), `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps`, `supplyRamp`, `noise`, `noiseBW`, `noiseScale`, `noiseSeed`, `noiseStart`, `noiseStop`, `noiseOff` |
 
 - Simulation settings are saved with the circuit.
 - `logVerbose` (Messages pane: Log: Verbose) also shows debug logs, the lines

@@ -492,6 +492,7 @@ void CliApi::registerSim()
             double pct = Cli::parseNum( c.pos.at(0), "speed");
             if( pct <= 0 ) throw CliError("speed must be > 0");
             QString note = Cli::setSimSpeed( (uint64_t)( pct*1e10 ) );
+            if( CircuitWidget::self() ) CircuitWidget::self()->skipFollowSpeed();   // As the toolbar
             QJsonObject o = simStatus();
             if( !note.isEmpty() ) o["note"] = note;
             return o;
