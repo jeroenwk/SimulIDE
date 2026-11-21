@@ -43,6 +43,10 @@ class CircuitWidget : public QWidget
         void updateNoise();     // Toolbar NOISE label: shown while transient noise is on
 
         void syncTimebase( uint64_t psPerSec );   // Show the simulation speed in the toolbar
+        void syncSkip( uint64_t ps );             // Show the skip interval in the toolbar (0 = 1 step)
+        void setSkipInterval( uint64_t ps );      // Set it (toolbar, keys): saved with the circuit
+        void skipForward( int count );            // → / ⏭: pause and skip count × the interval
+        void simKeysBack();                       // Esc on an idle canvas: the simulation keys again
         // Running slower than the set speed: the speed box shows the real speed in orange (realPsPerSec 0: off)
         void showRealSpeed( double realPsPerSec );
         void syncCurrentFlow( bool on ) { if( currentFlowAct->isChecked() != on ) currentFlowAct->setChecked( on ); }
@@ -115,6 +119,10 @@ class CircuitWidget : public QWidget
         int  m_toolRows = 0;
         void layoutToolBars();       // One row when both fit, else two
         bool eventFilter( QObject* obj, QEvent* ev ) override;
+        bool keysToSim();                    // Focus outside the canvas and text fields
+        bool simKey( class QKeyEvent* ev );  // Space, Esc, arrows: true when used
+        void updtKeyOwner();                 // Frame the skip box while the simulation has the keys
+        bool m_simHasKeys = false;
 
         QLabel* m_msgLabel;
         QLabel* m_noiseLabel = nullptr;   // Text of the NOISE badge (state, scale, window)
@@ -140,6 +148,8 @@ class CircuitWidget : public QWidget
         QAction* zoomOneAct;
         QAction* powerCircAct;
         QAction* pauseSimAct;
+        QAction* skipFwdAct = nullptr;
+        QAction* skipBackAct = nullptr;
         QAction* currentFlowAct;
         QAction* capChargeAct;
         QAction* partStatusAct;
@@ -147,6 +157,7 @@ class CircuitWidget : public QWidget
         QAction* noiseOnAct = nullptr;
         QAction* exportAct;
         class SpeedBox* m_timebase = nullptr;   // Simulated time per real second
+        class SpeedBox* m_skipBox = nullptr;    // Skip interval
         QAction* settAppAct;
         QAction* infoAct;
         QAction* aboutAct;

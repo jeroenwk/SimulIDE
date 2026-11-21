@@ -9,6 +9,8 @@
 #include "instrumentview.h"
 #include "uitheme.h"
 #include "cliapi.h"
+#include "simskip.h"
+#include "circuitwidget.h"
 #include "mainwindow.h"
 #include "circuitwidget.h"
 #include "circuit.h"
@@ -257,6 +259,13 @@ QList<Setting>& settings()
     list.append({"supplyRamp", "simulation", "DC sources (Battery, Rail, Fixed Voltage) rise from 0 over this time at each start (0 = a step; e.g. 1ms). Saved with the circuit.",
         [](){ return QJsonValue( Cli::timeStr( Simulator::self()->supplyRamp() ) ); },
         []( QString v ){ Simulator::self()->setSupplyRamp( Cli::parseTime( v ) ); }});
+    list.append({"skipInterval", "simulation", "Skip interval of the arrow keys and the toolbar (step = one solver step, or 1ps … 1min). Saved with the circuit.",
+        [](){ return QJsonValue( SimSkip::intervalText( Simulator::self()->skipInterval() ) ); },
+        []( QString v ){
+            uint64_t ps = 0;
+            if( !SimSkip::parseInterval( v, &ps ) ) throw CliError("skipInterval: step, or 1ps … 1min (e.g. 5us)");
+            CircuitWidget::self()->setSkipInterval( ps );
+        }});
     list.append({"slopeSteps", "simulation", "Steps used for signal slopes (0 = instant edges).",
         [](){ return QJsonValue( Simulator::self()->slopeSteps() ); },
         []( QString v ){

@@ -176,7 +176,7 @@ static void parseKey( QString tok, int& key, Qt::KeyboardModifiers& mods, QStrin
 
 void CliApi::registerKbd()
 {
-    add("ui type", "ui type <key> [key ...] [--layout us|de|fr]",
+    add("ui type", "ui type <key> [key ...] [--layout us|de|fr] [--window]",
         "Type keys on the canvas as real key events (press + release each), as the keyboard does. "
         "A key is a character (r, 2, <, _, é) or a name (Left Right Up Down Tab Enter Esc Backspace "
         "Delete Space Home End Shift F1…F12; Shift alone: pressed and released, it ends a selection rectangle), with modifiers joined by +: shift+Left, cmd+z, cmd+shift+<. "
@@ -185,7 +185,9 @@ void CliApi::registerKbd()
         "--layout us|de|fr: printable keys as macOS sends them on a US QWERTY, German QWERTZ or "
         "French AZERTY keyboard (Shift where that layout needs it, the physical key code): "
         "e.g. = is Shift+0 with de, digits need Shift with fr. Gives the canvas focus first. A key "
-        "bound to a toolbar button (F5, cmd+, ...) triggers it, as a real key does.",
+        "bound to a toolbar button (F5, cmd+, ...) triggers it, as a real key does. --window: the keys go "
+        "to the widget that has the focus (the window when none), the canvas focus is left as it is: "
+        "the simulation keys (Space, Esc, arrows while the canvas has no focus, specs/sim-control.md).",
         []( CliCtx& c ) -> QJsonValue
     {
         if( c.pos.isEmpty() ) throw CliError("missing keys");
@@ -198,17 +200,22 @@ void CliApi::registerKbd()
         QList<K> keys;
         for( QString tok : c.pos ){ K k; parseKey( tok, k.key, k.mods, k.text, layout, k.vk ); keys.append( k ); }
 
-        v->setFocus( Qt::OtherFocusReason );
-        if( CliApi::self()->headless() ) KeyboardController::self()->setFocused( true ); // No active window offscreen
+        bool toWindow = c.flag("window");
+        if( !toWindow ){
+            v->setFocus( Qt::OtherFocusReason );
+            if( CliApi::self()->headless() ) KeyboardController::self()->setFocused( true ); // No active window offscreen
+        }
         if( !QApplication::activeWindow() ) QApplication::setActiveWindow( v->window() );   // Window shortcuts need one
         for( const K& k : keys )
         {
+            QWidget* to = v;
+            if( toWindow ) to = QApplication::focusWidget() ? QApplication::focusWidget() : v->window();
             // First as a shortcut, as Qt does with a real key (the toolbar keys: F5, Cmd+, ...)
-            if( qt_sendShortcutOverrideEvent( v, 0, k.key, k.mods, k.text, false, 1 ) ) continue;
+            if( qt_sendShortcutOverrideEvent( to, 0, k.key, k.mods, k.text, false, 1 ) ) continue;
             QKeyEvent press( QEvent::KeyPress, k.key, k.mods, 0, k.vk, 0, k.text );
-            QApplication::sendEvent( v, &press );
+            QApplication::sendEvent( to, &press );
             QKeyEvent release( QEvent::KeyRelease, k.key, k.mods, 0, k.vk, 0, k.text );
-            QApplication::sendEvent( v, &release );
+            QApplication::sendEvent( to, &release );
         }
         return kbdState();
     });

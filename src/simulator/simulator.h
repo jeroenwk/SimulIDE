@@ -73,20 +73,20 @@ class Simulator : public QObject
         void setStepsPerSec( uint64_t sps );
 
         uint64_t reactStep() { return m_reactStep; }
-        void setreactStep( uint64_t rs ) { m_reactStep = rs; }
+        void setreactStep( uint64_t rs );
 
-        void  setSlopeSteps( int steps ) { m_slopeSteps = steps; }
+        void  setSlopeSteps( int steps );
 
         // Supply ramp (create-circuit sim-coldstart): DC sources (Battery, Rail, Fixed Voltage)
         // rise from 0 to their value over this time at the start of a run, as a bench supply
         // does. 0 = a step (the default). Instant steps can start a loop in a state a real
         // supply never visits (an op amp railed, a cascode dead)
         uint64_t supplyRamp() { return m_supplyRamp; }
-        void setSupplyRamp( uint64_t ps ) { m_supplyRamp = ps; }
+        void setSupplyRamp( uint64_t ps );
         static const int RAMP_STEPS = 50;
         int slopeSteps( ) { return m_slopeSteps; }
 
-        void  setMaxNlSteps( uint32_t steps ) { m_maxNlstp = steps; m_nlBudget = steps; }
+        void  setMaxNlSteps( uint32_t steps );
 
         struct NlReport { uint64_t time; uint32_t iterations; QStringList ids; };  // Step left unconverged
         QList<NlReport> takeNlReports();            // GUI thread: reports since the last call
@@ -101,6 +101,18 @@ class Simulator : public QObject
         // Hold simulation time at this point (0 = no limit). Used by CLI "sim run --for"
         void setStopAt( uint64_t ps ) { m_stopAt = ps; }
         uint64_t stopAt() { return m_stopAt; }
+
+        // Skip (specs/sim-control.md §3.4): with fast run on, the worker runs up to m_stopAt as
+        // fast as it can instead of one frame's span; each frame's holdWorker() still cuts it, so
+        // the GUI keeps drawing. Off again at reset
+        void setFastRun( bool f ) { m_fastRun = f; }
+        bool fastRun() { return m_fastRun; }
+        // Time of the next pending event (0: none). Worker idle only (paused, or held)
+        uint64_t nextEventTime() { return m_firstEvent ? m_firstEvent->eventTime : 0; }
+
+        // Skip interval of the toolbar and the arrow keys, saved with the circuit (0 = one solver step)
+        uint64_t skipInterval() { return m_skipInterval; }
+        void setSkipInterval( uint64_t ps );   // Also shows it in the toolbar
 
         void timerEvent( QTimerEvent* e );
 
@@ -146,7 +158,7 @@ class Simulator : public QObject
 
         // Transient noise (docs/NOISE_SPEC.md): settings saved with the circuit, used at the next start
         NoiseSettings& noise() { return m_noise; }
-        void setNoise( const NoiseSettings& s ) { m_noise = s; }
+        void setNoise( const NoiseSettings& s );
         eNoise* noiseEngine() { return m_noiseEl; }   // Null when noise is off or stopped
         uint64_t noiseSeedUsed() { return m_noiseSeed; } // 0 before the first start with noise
         // Was noise active at some time in [t0, t1] (ps) of this run (or of the last one, after a stop)?
@@ -156,6 +168,10 @@ class Simulator : public QObject
         QString noiseSummary();                        // "×1 · 10 MHz · seed 7 · 0–1 ms"
  static QString siStr( double v, QString unit );       // 1e7,"Hz" -> "10 MHz"
  static double  parseSi( QString v, QString unit, bool* ok ); // "10MHz","Hz" -> 1e7; "1ms","s" -> 1e-3
+
+        // A simulation setting changed while the simulation runs: a line in Messages with the
+        // simulated time (specs/sim-control.md §3.8); nextStart: it only applies at the next start
+        void logRunChange( QString what, QString from, QString to, bool nextStart );
 
         void addToSocketList( Socket* el );
         void remFromSocketList( Socket* el );
@@ -249,6 +265,8 @@ class Simulator : public QObject
         uint64_t m_timerTime;
         uint64_t m_circTime;
         uint64_t m_stopAt;
+        uint64_t m_skipInterval = 1000000000;   // 1 ms
+        bool     m_fastRun = false;
         uint64_t m_tStep;
         uint64_t m_lastStep;
         uint64_t m_refTime;

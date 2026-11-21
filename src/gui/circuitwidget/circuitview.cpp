@@ -18,6 +18,7 @@
 #include <QComboBox>
 
 #include "circuitview.h"
+#include "simulator.h"
 #include "keytext.h"
 #include "exportdialog.h"
 #include "circuitwidget.h"
@@ -259,6 +260,8 @@ void CircuitView::enterEvent( QEvent* event )
 {
     QGraphicsView::enterEvent( event );
     if( hasFocus() || QApplication::activeWindow() != window() ) return;
+    // Running or paused: the keys belong to the simulation until a click (specs/sim-control.md §3.1)
+    if( Simulator::self() && Simulator::self()->isRunning() ) return;
     QWidget* f = QApplication::focusWidget();
     QComboBox* combo = qobject_cast<QComboBox*>( f );
     bool typing = qobject_cast<QLineEdit*>( f ) || qobject_cast<QTextEdit*>( f )

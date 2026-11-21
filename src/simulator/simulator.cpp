@@ -56,6 +56,7 @@ Simulator::Simulator( QObject* parent )
 
     resetSim();
     CircuitWidget::self()->setMsg( " "+tr("Stopped")+" ", 1 );
+    CircuitWidget::self()->syncSkip( m_skipInterval );   // A new circuit: the default interval
 
     m_RefTimer.start();
 }
@@ -162,6 +163,7 @@ void Simulator::runCircuit()
 
     eElement* event = m_firstEvent;
     uint64_t endRun = m_circTime + m_psPF; // Run upto next Timer event
+    if( m_fastRun && m_stopAt > m_circTime ) endRun = m_stopAt; // A skip: to its end as fast as it can
     if( m_resumeRun && m_runEnd > m_circTime ) endRun = m_runEnd;   // Held by a CLI command: same end
     m_resumeRun = false;
     m_runEnd = endRun;
@@ -300,6 +302,7 @@ void Simulator::resetSim()
     m_lastRefT = 0;
     m_circTime = 1;
     m_stopAt   = 0;
+    m_fastRun  = false;
     m_updtTime = 0;
     m_NLstep   = 0;
     m_converged = true;  // A stop during the non-linear loop leaves it false
@@ -620,6 +623,55 @@ void Simulator::setFps( uint64_t fps )
 {
     m_fps = fps;
     setPsPerSec( m_psPerSec );
+}
+
+// Simulation settings (specs/sim-control.md §3.8): changed during a run, they are logged with the
+// simulated time; the reactive step, slope steps, supply ramp and noise are read at the start
+void Simulator::logRunChange( QString what, QString from, QString to, bool nextStart )
+{
+    if( !isRunning() || from == to ) return;
+    qInfo().noquote() << "Settings at t = "+siStr( m_circTime*1e-12, "s" )+": "+what+" "+from+" → "+to
+                         +( nextStart ? " (applies at the next start)" : "" );
+}
+
+void Simulator::setreactStep( uint64_t rs )
+{
+    logRunChange("reactive step", siStr( m_reactStep*1e-12, "s"), siStr( rs*1e-12, "s"), true );
+    m_reactStep = rs;
+}
+
+void Simulator::setSlopeSteps( int steps )
+{
+    logRunChange("slope steps", QString::number( m_slopeSteps ), QString::number( steps ), true );
+    m_slopeSteps = steps;
+}
+
+void Simulator::setSupplyRamp( uint64_t ps )
+{
+    logRunChange("supply ramp", siStr( m_supplyRamp*1e-12, "s"), siStr( ps*1e-12, "s"), true );
+    m_supplyRamp = ps;
+}
+
+void Simulator::setMaxNlSteps( uint32_t steps )
+{
+    logRunChange("max. iterations", QString::number( m_maxNlstp ), QString::number( steps ), false );
+    m_maxNlstp = steps;
+    m_nlBudget = steps;
+}
+
+void Simulator::setNoise( const NoiseSettings& s )
+{
+    auto text = [this](){ return m_noise.on ? noiseSummary()+( m_noise.off.isEmpty() ? "" : " · off: "+m_noise.off.join(",") )
+                                            : QString("off"); };
+    QString before = text();
+    m_noise = s;
+    logRunChange("noise", before, text(), true );
+}
+
+void Simulator::setSkipInterval( uint64_t ps )
+{
+    m_skipInterval = ps;
+    if( CircuitWidget::self() ) CircuitWidget::self()->syncSkip( ps );
 }
 
 void Simulator::setStepsPerSec( uint64_t sps )

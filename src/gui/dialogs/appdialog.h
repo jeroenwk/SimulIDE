@@ -101,6 +101,8 @@ class AppDialog : public QDialog, private Ui::AppDialog
         void syncNoise();
         void applyNoise();
         class QGroupBox* m_noiseBox = nullptr;
+        class QLabel* m_runNote = nullptr;    // While running: which settings wait for the next start
+        void updtRunNote();
         class QLineEdit* m_noiseBW = nullptr;
         class QDoubleSpinBox* m_noiseScale = nullptr;
         class QLineEdit* m_noiseSeed = nullptr;

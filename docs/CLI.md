@@ -367,7 +367,9 @@ Removing wires around a junction works as in the GUI:
 | `sim start` / `sim stop` | Power the circuit on or off |
 | `sim pause` / `sim resume` | |
 | `sim run --for <time>` | Run for an exact span of simulated time, then pause. Replies when done |
-| `sim status` | State, simulated time, target and actual speed |
+| `sim status` | State, simulated time, target and actual speed; `skipping: true` while a skip is not done |
+| `sim skip [<time>\|step] [--count N]` | Pause and skip forward by a span (`5us`, `2.5ms`, `1min`), or by the skip interval (`settings skipInterval`) without one, as fast as the computer can whatever the set speed, then pause; replies after one frame with `from`, `skipped` and `note`. `step` = to the next solver event. `--count N`: N times as far (N solver steps). Starts a stopped simulation (a run starts at 1 ps, so `sim skip 1ms` from stopped lands on 1 ms + 1 ps, as `sim run --for`). The → key and the toolbar's ⏭ do the same (specs/sim-control.md) |
+| `sim step [--count N]` | One solver step: run the next pending event time, solve and pause (`sim skip step`) |
 | `sim speed [percent]` | Target speed in % of real time |
 | `noise sources` | The transient noise sources of the running circuit: part, type, kind (thermal / shot / channel), nodes, spectral density `psd` (A²/Hz) and the `rms` current per update. See [NOISE.md](NOISE.md) |
 | `sim average --for <time> <pin\|comp> ...` | Run for a span, then pause, and give the time-weighted mean, RMS, min and max over every converged solver step: the voltage at a pin (`R1.lPin`), or for a two-pin part (`R1`, `C1`, `L1`) the voltage across it (pin 0 − pin 1) and the current into pin 0; a meter (`Amperimeter`, `Voltimeter`) the same between its two terminals (its current, the voltage across it). On a fresh run the unsolved start (before the first solved step) is kept out of min and max. Exact for switching waveforms; a mean of `scope data` samples is not, since they sit on a fixed time grid. A logic output with no wire (an unused Q̄) is read at every solved step; another pin with nothing connected is refused |
@@ -422,7 +424,7 @@ the pause.
 | `ui set <comp> [index] on\|off` | Set a switch or toggle. Switch and DIP switch positions are saved with the circuit (Switch: hidden property `Toggled`, true when flipped away from its Normally Closed setting) |
 | `ui dial <comp> [index] <value\|N%>` | Potentiometers, variable sources, encoders, sliders |
 | `ui key <char> [down\|up\|tap]` | Keyboard key, for parts bound to a key |
-| `ui type <key> [key ...] [--layout us\|de\|fr]` | Real key presses on the canvas, as typed: a character (`r`, `<`, `_`, `é`) or a name (`Left Right Up Down Tab Enter Esc Backspace Delete Space Home End Shift F1`…`F12`; `Shift` alone is pressed and released: it ends a selection rectangle, K11), modifiers joined with `+` (`shift+Left`, `cmd+z`). An uppercase letter implies Shift. The AZERTY number row without Shift is typed by its characters (`& é " ' ( è ç à`): each is its physical digit key with that text. With `--layout`, printable keys are sent as macOS sends them on a US QWERTY, German QWERTZ or French AZERTY keyboard (Shift where the layout needs it, the physical key code). A key bound to a toolbar button (`F5`, `cmd+,`) goes through Qt's shortcut map and triggers it, as a real key does. Gives the canvas focus first; returns `kbd state` |
+| `ui type <key> [key ...] [--layout us\|de\|fr]` | Real key presses on the canvas, as typed: a character (`r`, `<`, `_`, `é`) or a name (`Left Right Up Down Tab Enter Esc Backspace Delete Space Home End Shift F1`…`F12`; `Shift` alone is pressed and released: it ends a selection rectangle, K11), modifiers joined with `+` (`shift+Left`, `cmd+z`). An uppercase letter implies Shift. The AZERTY number row without Shift is typed by its characters (`& é " ' ( è ç à`): each is its physical digit key with that text. With `--layout`, printable keys are sent as macOS sends them on a US QWERTY, German QWERTZ or French AZERTY keyboard (Shift where the layout needs it, the physical key code). A key bound to a toolbar button (`F5`, `cmd+,`) goes through Qt's shortcut map and triggers it, as a real key does. Gives the canvas focus first; returns `kbd state`. `--window` (last): the keys go to the widget that has the focus, or the window when none, and the canvas focus is left as it is: the simulation keys (Space, Esc, arrows while the canvas has no focus) |
 | `ui toolbar` | The circuit toolbar's buttons: `text`, `tooltip` (with the key in this platform's notation: `⌘,` on macOS, `Ctrl+,` elsewhere), `shortcut` (the key bound to it, native text; empty when the canvas reads the key), `enabled`, `checked` (toggles) |
 | `ui mouse <x,y>` | Move the mouse (no button) to a scene position over the canvas; returns `kbd state` |
 | `ui drag <x1,y1> <x2,y2>` | Drag with the left mouse button between two scene positions (press, moves in 8 px steps, release); returns `kbd state` |
@@ -630,7 +632,7 @@ The groups follow the Settings dialog:
 |---|---|
 | app | `language`, `fontScale`, `fontName`, `userPath` |
 | circuit | `drawGrid`, `showScroll`, `animate`, `fps`, `autoBackup` |
-| simulation | `speed`, `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps`, `supplyRamp`, `noise`, `noiseBW`, `noiseScale`, `noiseSeed`, `noiseStart`, `noiseStop`, `noiseOff` |
+| simulation | `speed`, `skipInterval`, `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps`, `supplyRamp`, `noise`, `noiseBW`, `noiseScale`, `noiseSeed`, `noiseStart`, `noiseStop`, `noiseOff` |
 
 - Simulation settings are saved with the circuit.
 - `logVerbose` (Messages pane: Log: Verbose) also shows debug logs, the lines

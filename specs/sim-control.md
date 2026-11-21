@@ -1,7 +1,8 @@
 # Simulation control: keys, skip, speed, history and snapshots
 
-Status: **all decisions taken** (D1–D15, user, 2026-11-21; Decision log §9). Phase 1 and the
-speed lock are ready to build; phases 2 and 3 are studies.
+Status: **phase 1 built** on `feature/sim-control` (2026-11-21), §3.1–3.8; differences from
+this text are noted in place. All decisions taken (D1–D15, Decision log §9). The speed lock
+(§3.9) is next; phases 2 and 3 are studies.
 
 Goal: control a running simulation the way you control a media player or a scope: play/pause,
 stop and skip forward from the keyboard, set the skip interval and the speed by typing, and
@@ -65,11 +66,13 @@ canvas does not have focus, i.e. after a start, until the canvas is given focus 
 
 - While the simulation is running or paused, a **window-level key filter** (an event filter on
   `MainWindow`, installed at start and removed at stop) handles Space, Esc and the arrows when
-  the focused widget is neither the canvas nor a text field (a property field, the code editor,
-  a search box, an editable combo such as the speed or skip box: the same test as
-  `CircuitView::enterEvent`).
+  the focused widget is neither the canvas nor a widget that uses these keys itself: a text
+  field (a property field, the code editor, a search box), a list or tree (the component list,
+  the file browser), an editable combo such as the speed or skip box
+  (`CircuitWidget::keysToSim`).
 - At start, the canvas is cleared of focus (`clearFocus()`) and the keyboard cursor is hidden.
-  A canvas mode in progress (wire drawing, network walk, value editing) is ended.
+  A canvas mode in progress (wire drawing, network walk, value editing) is **not** ended yet
+  (left out of phase 1): it waits until the canvas gets the focus back.
 - While running or paused, the canvas does not take focus when the mouse merely enters it
   (`CircuitView::enterEvent` checks the state); otherwise moving the mouse over the circuit
   would end the simulation keys at once. A **click** on the canvas gives it focus (keyboard
@@ -81,8 +84,8 @@ canvas does not have focus, i.e. after a start, until the canvas is given focus 
   simulation keys are active again; the status line says "Keys: simulation". So from a
   selected part it is Esc, Esc. That Esc never stops the simulation: only an Esc while the
   canvas has no focus does.
-- The toolbar shows which one has the keys (e.g. the skip box framed while the simulation
-  keys are active), so a key press is never a surprise.
+- The toolbar shows which one has the keys: the skip box has a blue frame while the simulation
+  keys are active (`updtKeyOwner`, on every focus change).
 - F5 (start/stop) and F6 (pause/resume) are window shortcuts and work whatever has focus (D2).
 - At stop, the filter is removed and the canvas gets focus again if the mouse is over it.
 
@@ -112,7 +115,7 @@ Simulation keys (canvas not focused, §3.1); F5 and F6 work everywhere:
 ### 3.3 Skip interval
 
 - Values: **`1 step`** (the next event timestamp, solved), then a 1–2–5 ladder from **1 ps** to
-  **1 min** (1 ps, 2 ps, 5 ps, 10 ps … 500 ms, 1 s, 2 s, 5 s, 10 s, 20 s, 30 s, 1 min), 41 values
+  **1 min** (1 ps, 2 ps, 5 ps, 10 ps … 500 ms, 1 s, 2 s, 5 s, 10 s, 20 s, 30 s, 1 min), 43 values
   plus `1 step`.
 - ↑ makes it larger, ↓ smaller. Factors (D5):
 
@@ -171,14 +174,23 @@ Everything the keys do has a CLI command (CLI.md, Simulation):
 | `sim skip --back [<time>\|step]` | Phase 2 |
 | `sim step` | One solver step (= `sim skip step`) |
 | `settings set skipInterval <time>\|step` | The toolbar skip box |
-| `ui key space\|esc\|up\|right …` | (exists as `ui type`?) to test the key routing in the GUI |
+| `ui type <keys> --window` | Real key presses to the focused widget (the window when none), the canvas focus left as it is: tests the key routing |
+| `sim status` | gets `skipping: true` while a skip is not done (it pauses at its end, then waits one frame) |
+
+A run starts at t = 1 ps (`Simulator::resetSim`), so the reactive parts' events fall on
+1 ps + k·step. A skip is measured from the real start time, as `sim run --for` is: `sim skip
+1ms` from stopped lands on 1 ms + 1 ps. Measured from 0 it stopped 1 ps before an event, one
+reactive step behind `sim run --for` (found by the test).
 
 ### 3.7 Tests (phase 1)
 
-- `tests/` script: `sim skip 1ms` from paused lands on t + 1 ms exactly; `sim step` lands on the
-  next event time of a 555 astable; `skipInterval` saved and reloaded; ladder rounding with
-  each modifier; speed box parsing (`25%`, `3ms/s`, garbage).
-- GUI: key routing with focus on the canvas, on a property field, in the code editor.
+`tests/regress/test_simctl_skip.py` (28 checks): exact landing of `sim skip` from stopped, by the
+interval and with `--count`; `sim step` on the next event; a skip and `sim run --for` give the
+same capacitor voltage bit for bit; 10 ms at a set speed of 1 µs/s skipped in 0.1 s of wall
+time; `skipInterval` saved and reopened; every key (Space ×3, ↑ ↓ with each modifier, → ⇧→,
+Esc, → from stopped), Space ignored while the canvas has the focus, Esc on an idle canvas handing
+the keys back. Still by hand: typing in the speed and skip boxes, the blue frame, the Settings
+dialog note.
 
 ### 3.8 Simulation settings changed during a run
 
