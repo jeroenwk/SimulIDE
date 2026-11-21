@@ -92,3 +92,11 @@ void DAC::setNumInps( int inputs )
     IoComponent::setNumInps( inputs, "D" );
     IoComponent::setNumOuts( 1, "Out" );
 }
+
+void DAC::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_maxVolt );
+    s.io( m_maxValue );
+    s.io( m_val );
+}

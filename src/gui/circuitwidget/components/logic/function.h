@@ -16,6 +16,10 @@ class QGraphicsProxyWidget;
 class Function : public IoComponent, public ScriptModule
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        // Covered when every script global is of a type scriptGlobals() handles (as ScriptCpu)
+        virtual bool hasSimState() override { return typeid( *this ) == typeid( Function ) && unsupportedGlobals().isEmpty(); }
+        virtual QString noSimStateWhy() override { QStringList u = unsupportedGlobals(); return u.isEmpty() ? "" : "script variables of a type keyframes can't hold: "+u.join(", "); }
         Function( QString type, QString id );
         ~Function();
 

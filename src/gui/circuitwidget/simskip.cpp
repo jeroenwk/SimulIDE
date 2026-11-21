@@ -82,7 +82,7 @@ QString SimSkip::startBack( uint64_t span, int count )
     if( !h->enabled() ) return "history is off (settings history)";
     if( !h->usable() )
     {
-        if( !h->missing().isEmpty() ) return "no history for this circuit: "+h->missing().join(", ")+" can't be saved yet";
+        if( !h->missing().isEmpty() ) return "going back is off for this circuit: "+SimHistory::blockers( sim->elementList() );
         return "no history: "+h->lastError();
     }
     if( h->count() == 0 ) return "no keyframe yet";

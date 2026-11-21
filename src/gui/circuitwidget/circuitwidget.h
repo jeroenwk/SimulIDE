@@ -49,6 +49,8 @@ class CircuitWidget : public QWidget
         void syncTimebase( uint64_t psPerSec );   // Show the simulation speed in the toolbar
         void syncSkip( uint64_t ps );             // Show the skip interval in the toolbar (0 = 1 step)
         QToolBar* simToolBar() { return &m_simToolBar; }
+        void updtBackAvail( bool announce );
+        void backOffWarning( QString block );    // ⏮ greyed out where going back is off; announce: warn in Messages
         void skipFollowSpeed();                   // From the set speed (specs/sim-control.md §3.3)
         void skipForSpeed( double psPerSec, bool hysteresis );   // From a speed: set or real
         void setSkipInterval( uint64_t ps );      // Set it (toolbar, keys): saved with the circuit

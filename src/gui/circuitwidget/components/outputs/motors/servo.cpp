@@ -202,3 +202,14 @@ void Servo::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
 
     Component::paintSelected( p );
 }
+
+void Servo::simState( StateIO& s )   // Not its position: integrated per GUI frame (display)
+{
+    LogicComponent::simState( s );
+    s.io( m_targetPos );
+    s.io( m_speed );
+    s.io( m_minPulse );
+    s.io( m_maxPulse );
+    s.io( m_minAngle );
+    s.io( m_pulseStart );
+}

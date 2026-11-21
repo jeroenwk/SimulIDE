@@ -13,6 +13,8 @@ class LibraryItem;
 class DAC : public LogicComponent
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( DAC )
         DAC( QString type, QString id );
         ~DAC();
 

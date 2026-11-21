@@ -17,6 +17,9 @@ class QSignalMapper;
 class Esp01 : public Component, public UsartModule, public eElement
 {
     public:
+        // Real TCP sockets: what comes in from the network can't be replayed (specs/sim-control.md §4.8)
+        virtual bool hasSimState() override { return false; }
+        virtual QString noSimStateWhy() override { return "real network sockets: data from outside can't be replayed"; }
         Esp01( QString type, QString id );
         ~Esp01();
 

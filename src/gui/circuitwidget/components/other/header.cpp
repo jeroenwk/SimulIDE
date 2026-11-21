@@ -83,3 +83,9 @@ void Header::updatePixmap()
         default: break;
     }
 }
+
+void Header::simState( StateIO& s )
+{
+    ConnBase::simState( s );
+    s.io( m_pointDown );
+}

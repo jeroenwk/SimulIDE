@@ -95,3 +95,8 @@ void Socket::updatePixmap()
         default: break;
     }
 }
+
+void Socket::simState( StateIO& s )
+{
+    ConnBase::simState( s );
+}

@@ -633,24 +633,27 @@ placed alone in a running circuit, then `sim history` → `missing`; library ite
 `lib list`). A circuit with one of these refuses ← / `sim skip --back` and names the class; it
 runs as before.
 
-No state code yet:
+State code added for all of them the same day (they were in none of the repos' circuits, so
+the survey of the circuits had missed them): ADC; DAC (DAC, DAC7621, DAC8562); DS18B20; the
+scripted **Function** (Function, 74HC40102, 74HC40103, 74XX381, 74XX382, AD7224, CD4009, CD4010,
+TL494: its script globals, as the script CPU's, so it is refused if a global has a type
+`scriptGlobals()` doesn't handle); Header and Socket (`ConnBase`); I2CMaster (its transfer: the
+bytes to write, read and their ACKs); KY023 joystick; Servo (not its position: integrated per
+GUI frame, display); TouchPad. Each is checked alone in a running circuit
+(`test_simctl_history_parts.py`, 86 checks).
 
-| Element class | Library items |
-|---|---|
-| `ADC` | ADC |
-| `DAC` | DAC, DAC7621, DAC8562 |
-| `Ds18b20` | DS18B20 |
-| `Esp01` | Esp01 |
-| `Function` (scripted logic function) | Function, 74HC40102, 74HC40103, 74XX381, 74XX382, AD7224, CD4009, CD4010, TL494 |
-| `Header` | Header |
-| `I2CMaster` | I2CMaster |
-| `KY023` | KY023 (joystick) |
-| `Servo` | Servo |
-| `Socket` | Socket |
-| `TouchPad` | TouchPadR |
+Refused on purpose (the only library items left): `SerialPort` (a real port) and `Esp01` (real
+TCP sockets): data from outside can't be replayed; `AudioOut` (paced by the sound card's
+buffer).
 
-Refused on purpose: `SerialPort` (SerialPort: a real port, data from outside can't be replayed)
-and `AudioOut` (AudioOut: paced by the sound card's buffer).
+**Telling the user** (user, 2026-11-21): when a circuit that can't go back is opened, Messages
+gets a warning naming each part and why ("Going back in time is off for this circuit: AudioOut ×1
+(paced by the sound card, in real time). The circuit runs as before; ← and ⏮ work in circuits
+without these parts."); each ← or ⏮ repeats it, and `sim skip --back` answers the same. The ⏮
+button is greyed out with the reason in its tooltip (also when history is off in the settings),
+checked again at each start (`CircuitWidget::updtBackAvail`). The reasons come from the parts
+(`eElement::noSimStateWhy()`: a real port or network, the sound card, script variables of a type
+keyframes can't hold; otherwise "no state code yet"), gathered by `SimHistory::blockers()`.
 
 Covered, but the replay is not exact:
 

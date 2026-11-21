@@ -21,6 +21,7 @@ class SerialPort : public Component, public UsartModule, public eElement
     public:
         // A real port: what comes in from outside can't be replayed (specs/sim-control.md §4.8)
         virtual bool hasSimState() override { return false; }
+        virtual QString noSimStateWhy() override { return "a real serial port: data from outside can't be replayed"; }
         SerialPort( QString type, QString id );
         ~SerialPort();
         

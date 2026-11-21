@@ -34,6 +34,8 @@ struct I2cTransfer
 class I2CMaster : public IoComponent, public TwiModule
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( I2CMaster )
         I2CMaster( QString type, QString id );
         ~I2CMaster();
 

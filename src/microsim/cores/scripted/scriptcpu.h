@@ -28,6 +28,7 @@ class ScriptCpu : public ScriptModule, public McuCpu
         // globals. Covered when every global is of a type scriptGlobals() handles
         virtual void simState( StateIO& s ) override;
         virtual bool hasSimState() override { return typeid( *this ) == typeid( ScriptCpu ) && unsupportedGlobals().isEmpty(); }
+        virtual QString noSimStateWhy() override { QStringList u = unsupportedGlobals(); return u.isEmpty() ? "" : "script variables of a type keyframes can't hold: "+u.join(", "); }
 
         virtual void initialize() override;
         virtual void voltChanged() override;

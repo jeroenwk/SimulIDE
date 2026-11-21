@@ -20,6 +20,7 @@ fuse, varistor, bridge, the buck with three AngelScript cores, LED strip, scope)
   paused at t0: back to t0 + 1 ms gives v_C = 10(1 − e⁻¹) (the click replayed), back to before t0
   gives the switch open, its button too, and v_C = 0; the scope has no sample after the
   restored time.
+- A circuit that can't go back: a warning in Messages at load and at each ←, ⏮ greyed out.
 - A circuit with a part that has no exact replay (the audio output, paced by the sound card): going back is refused, naming it.
 """
 import os
@@ -131,10 +132,43 @@ def test_back_switch(sim):
     c("sim", "stop")
 
 
+def test_off_warning(sim):
+    """A circuit that can't go back: a warning in Messages when it loads, again at each ←, and ⏮
+    greyed out with the reason in its tooltip; a circuit that can: ⏮ enabled"""
+    c = sim.cli
+    ex = os.path.join(HERE, "..", "..", "resources", "examples")
+    def warnings():
+        m = c("messages")
+        lines = m["lines"] if isinstance(m, dict) else m
+        return [l for l in lines if "Going back in time is off for this circuit" in l]
+    def back_btn():
+        return [a for a in c("ui", "toolbar") if a["text"] == "Skip Back"][0]
+    c("circuit", "open", os.path.abspath(os.path.join(ex, "Outputs", "Audio", "audio.sim1")), "--discard")
+    w = warnings()
+    sim.check("off: warning at load, naming the part and why", 1 if w and "AudioOut" in w[-1] and "sound card" in w[-1] else 0, 1,
+              absolute=0, note=(w[-1] if w else "none")[:140])
+    c("sim", "start")
+    time.sleep(0.3)
+    b = back_btn()
+    sim.check("off: ⏮ greyed out", 0 if b["enabled"] else 1, 1, absolute=0)
+    sim.check("off: ⏮ tooltip says why", 1 if "AudioOut" in b["tooltip"] else 0, 1, absolute=0, note=b["tooltip"][-80:])
+    n = len(warnings())
+    c("ui", "focus", "none")
+    c("ui", "type", "Left", "--window")
+    sim.check("off: ← repeats the warning", len(warnings()) - n, 1, absolute=0)
+    c("sim", "stop")
+    c("circuit", "open", os.path.abspath(os.path.join(ex, "Active", "SCR.sim1")), "--discard")
+    c("sim", "start")
+    time.sleep(0.3)
+    sim.check("on: ⏮ enabled for a circuit that can go back", 1 if back_btn()["enabled"] else 0, 1, absolute=0)
+    c("sim", "stop")
+
+
 def test_all(sim):
     test(sim)
     test_back_board(sim)
     test_back_switch(sim)
+    test_off_warning(sim)
 
 
 def test(sim):

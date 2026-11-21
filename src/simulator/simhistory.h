@@ -9,8 +9,10 @@
 #include <deque>
 #include <QString>
 #include <QStringList>
+#include <QList>
 
 class Simulator;
+class eElement;
 
 // A keyframe each frame, written as raw bytes into one arena allocated once (a ring: when the
 // arena is full the oldest keyframes are overwritten). Taking one copies the simulator core,
@@ -31,7 +33,10 @@ class SimHistory
         void stop();                                 // Keyframes dropped (a stop)
         void end( QString why );                     // History over for this run (an edit): why in lastError()
         bool usable() { return m_enabled && m_usable && !m_ended; }
-        QStringList missing() { return m_missing; }  // "Class ×n" without simState
+        QStringList missing() { return m_missing; }
+        // The parts of a circuit that keep it from going back, with why ("" when none):
+        // "SerialPort ×1 (a real serial port: …); Function ×2 (no state code yet)"
+ static QString blockers( const QList<eElement*>& elements );  // "Class ×n" without simState
 
         // GUI timer, worker idle at a solved step
         // replace: a keyframe at the same time is taken again (a change while paused, by the CLI)

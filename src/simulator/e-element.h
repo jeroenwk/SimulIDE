@@ -46,6 +46,8 @@ class eElement
         virtual void simState( StateIO& s );
         void pinCurrents( StateIO& s );   // The exact currents its model publishes on its pins (trueCurrent)
         virtual bool hasSimState() { return typeid( *this ) == typeid( eElement ); }
+        // Why it isn't in keyframes, for the warning (specs/sim-control.md §4.8): "" = no state code yet
+        virtual QString noSimStateWhy() { return ""; }
         // After a keyframe was loaded (GUI thread, worker idle): bring widgets and displays in
         // line with the restored state (a switch's button, a scope trace cut back)
         virtual void stateRestored(){;}

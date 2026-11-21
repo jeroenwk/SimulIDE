@@ -4,6 +4,7 @@
 
 #include <QElapsedTimer>
 #include <QHash>
+#include <QMap>
 #include <QDebug>
 #include <cstdlib>
 #include <cxxabi.h>
@@ -14,6 +15,7 @@
 #include "simulator.h"
 #include "e-element.h"
 #include "mainwindow.h"
+#include "circuitwidget.h"
 #include <QSettings>
 
 SimHistory* SimHistory::self()
@@ -35,6 +37,7 @@ void SimHistory::setEnabled( bool on )
         MainWindow::self()->settings()->setValue("Simulation/history", on );
         MainWindow::self()->settings()->sync();
     }
+    if( CircuitWidget::self() ) CircuitWidget::self()->updtBackAvail( false );
 }
 
 void SimHistory::setBudget( uint64_t bytes )
@@ -201,3 +204,25 @@ void SimHistory::truncateAfter( uint64_t t )
         m_keys.pop_back();
     }
 }
+
+QString SimHistory::blockers( const QList<eElement*>& elements )
+{
+    QMap<QString, int> count;
+    QMap<QString, QString> why;
+    for( eElement* el : elements )
+    {
+        if( el->hasSimState() ) continue;
+        QString n = className( el );
+        count[n]++;
+        QString w = el->noSimStateWhy();
+        if( !why.contains( n ) || why[n].isEmpty() ) why[n] = w;
+    }
+    QStringList out;
+    for( auto it = count.begin(); it != count.end(); ++it )
+    {
+        QString w = why.value( it.key() );
+        out << it.key()+" ×"+QString::number( it.value() )+" ("+( w.isEmpty() ? "no state code yet" : w )+")";
+    }
+    return out.join("; ");
+}
+

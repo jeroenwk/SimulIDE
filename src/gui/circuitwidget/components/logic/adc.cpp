@@ -73,3 +73,10 @@ void ADC::setNumOutputs( int outs )
     IoComponent::setNumOuts( outs, "D" );
     IoComponent::setNumInps( 1, "In" );
 }
+
+void ADC::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_maxVolt );
+    s.io( m_maxValue );
+}

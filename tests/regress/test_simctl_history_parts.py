@@ -61,8 +61,30 @@ def roundtrip(sim, name, path, noise=False):
     c("sim", "stop")
 
 
+# Library items in none of the repos' circuits: each placed alone, run, back, compared
+ALONE = ["ADC", "DAC", "DAC7621", "DS18B20", "Function", "74HC40103", "CD4009", "TL494", "Header",
+         "I2CMaster", "KY023", "Servo", "Socket", "TouchPadR"]
+
+
+def alone(sim, name):
+    c = sim.cli
+    c("circuit", "new", "--discard")
+    c("comp", "add", name, "--label", "Z1", "--at", "0,0")
+    c("sim", "start")
+    h = c("sim", "history")
+    sim.check("%s alone: usable" % name, 1 if h["usable"] else 0, 1, absolute=0, note=", ".join(h.get("missing", [])))
+    for i in range(6):
+        c("sim", "skip", "1ms", timeout=60)
+    k = c("sim", "history", "check", "--span", "1ms", "--points", "3", "--ago", "4ms", timeout=300)
+    sim.check("%s alone: identical after going back" % name, 1 if k["ok"] else 0, 1, absolute=0,
+              note="differ %s" % k.get("differ", []))
+    c("sim", "stop")
+
+
 def test(sim):
     sim.cli("settings", "set", "history", "true")
+    for name in ALONE:
+        alone(sim, name)
     sim.cli("settings", "set", "runSeed", "4321")
     for name, path in CIRCUITS:
         roundtrip(sim, name, path)

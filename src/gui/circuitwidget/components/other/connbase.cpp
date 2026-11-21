@@ -137,3 +137,9 @@ void ConnBase::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidg
     }
     Component::paintSelected( p );
 }
+
+void ConnBase::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_size );
+}

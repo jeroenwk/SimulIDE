@@ -48,6 +48,7 @@
 #include "about.h"
 #include "utils.h"
 #include "simskip.h"
+#include "simhistory.h"
 #include "cliapi.h"
 
 // The speed and skip boxes (specs/sim-control.md §3.5): editable combos, the list for presets,
@@ -714,6 +715,7 @@ bool CircuitWidget::newCircuit()
     Circuit::self()->setAutoBck( MainWindow::self()->autoBck() );
 
     m_curCirc = "";
+    updtBackAvail( false );
     Simulator::self()->addToUpdateList( &m_outPane );
 
     MainWindow::self()->setFile( tr("New Circuit"));
@@ -779,6 +781,7 @@ void CircuitWidget::loadCirc( QString path )
         showDescription();
         updateNoise();   // The noise button follows the file
         updateLock();
+        updtBackAvail( true );   // A warning when going back is off for it
 }   }
 
 void CircuitWidget::printDescription()
@@ -850,6 +853,7 @@ void CircuitWidget::powerCircOn()
     setSimExpanded( true );
     m_infoWidget->setSimState( InfoWidget::shownRunning );
     Simulator::self()->startSim();
+    updtBackAvail( false );              // Parts added since the load
     m_skipPreset = 0;                    // The interval as it is; the real speed moves it (§3.3)
     m_circView.clearFocus();             // The simulation keys work (specs/sim-control.md §3.1)
     updtKeyOwner();
@@ -1160,9 +1164,36 @@ void CircuitWidget::skipBack( int count )
 {
     Simulator* sim = Simulator::self();
     if( !sim ) return;
+    QString block = SimHistory::blockers( sim->elementList() );
+    if( !block.isEmpty() ){ backOffWarning( block ); return; }   // Again at each ←, as at load
     QString err = SimSkip::self()->startBack( sim->skipInterval(), count );
     if( !err.isEmpty() && err.startsWith("busy") ) return;
     if( !err.isEmpty() ) qInfo().noquote() << "Back: "+err;
+}
+
+void CircuitWidget::backOffWarning( QString block )
+{
+    qWarning().noquote() << "[history] Going back in time is off for this circuit: "+block
+                          +". The circuit runs as before; ← and ⏮ work in circuits without these parts.";
+}
+
+// Going back needs every part's state in the keyframes (specs/sim-control.md §4.8): ⏮ is greyed
+// out, with the reason in its tooltip, when history is off or a part can't be saved
+void CircuitWidget::updtBackAvail( bool announce )
+{
+    Simulator* sim = Simulator::self();
+    if( !sim || !skipBackAct ) return;
+    QString tip = tr("Pause and go back by the skip interval (keyframes of the run)");
+    QString block;
+    bool on = SimHistory::self()->enabled();
+    if( !on ) tip += "\n\n"+tr("History is off (Settings → Simulation).");
+    else{
+        block = SimHistory::blockers( sim->elementList() );
+        if( !block.isEmpty() ) tip += "\n\n"+tr("Off for this circuit: %1").arg( block );
+    }
+    skipBackAct->setEnabled( on && block.isEmpty() );
+    skipBackAct->setToolTip( tip+"  (←)" );
+    if( announce && on && !block.isEmpty() ) backOffWarning( block );
 }
 
 // The skip interval follows the speed (specs/sim-control.md §3.3): a tenth of the first speed in
