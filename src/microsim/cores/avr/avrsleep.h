@@ -24,6 +24,8 @@ enum sleepMode_t{
 class AvrSleep : public McuSleep
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrSleep )
         AvrSleep( eMcu* mcu, QString name );
         ~AvrSleep();
 

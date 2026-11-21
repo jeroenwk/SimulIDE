@@ -22,6 +22,7 @@ class CpuBase : public CoreBase
         virtual ~CpuBase();
 
         virtual void reset() override;
+        virtual void coreState( StateIO& s ) override;
 
         uint8_t* getStatus() { return m_STATUS; }  // Used my Monitor: All CPUs must use m_STATUS
 

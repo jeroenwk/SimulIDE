@@ -18,3 +18,10 @@ void McuPrescaled::setPrescIndex( uint16_t p )
     m_prIndex = p;
     m_prescaler = m_prescList.at( m_prIndex );
 }
+
+void McuPrescaled::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    s.io( m_prIndex );
+    s.io( m_prescaler );
+}

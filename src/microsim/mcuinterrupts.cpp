@@ -256,3 +256,53 @@ void Interrupts::remFromPending( Interrupt* remInt )
         preInt = posInt;
         posInt = posInt->m_nextInt;
 }   }
+
+void Interrupt::intState( StateIO& s )
+{
+    s.io( m_enabled );
+    s.io( m_priority );
+    s.io( m_wakeup );
+    s.io( m_raised );
+    s.io( m_autoClear );
+    s.io( m_remember );
+    s.io( m_continuous );
+}
+
+void Interrupts::intState( StateIO& s, const std::vector<McuModule*>& modules )
+{
+    std::vector<Interrupt*> ints;                  // A fixed order: the hash isn't changed in a run
+    for( Interrupt* i : m_intList ) ints.push_back( i );
+    auto idx = [&]( Interrupt* p ) -> int32_t {
+        if( !p ) return -1;
+        for( size_t k=0; k<ints.size(); ++k ) if( ints[k] == p ) return k;
+        return -1;
+    };
+    auto ptr = [&]( int32_t k ) -> Interrupt* { return ( k >= 0 && k < (int32_t)ints.size() ) ? ints[k] : nullptr; };
+    auto ioPtr = [&]( Interrupt*& p ){ int32_t k = s.saving() ? idx( p ) : -1; s.io( k ); if( !s.saving() ) p = ptr( k ); };
+    auto ioMods = [&]( QList<McuModule*>& list ){
+        uint32_t n = list.size();
+        s.io( n );
+        if( !s.saving() ) list.clear();
+        for( uint32_t k=0; k<n; ++k ){
+            int32_t m = -1;
+            if( s.saving() ) for( size_t j=0; j<modules.size(); ++j ) if( modules[j] == list.at( k ) ){ m = j; break; }
+            s.io( m );
+            if( !s.saving() && m >= 0 && m < (int32_t)modules.size() ) list.append( modules[m] );
+        }
+    };
+    uint32_t n = ints.size();
+    s.io( n );
+    if( n != ints.size() ){ s.fail(); return; }
+    s.io( m_reti );
+    s.io( m_enabled );
+    ioPtr( m_active );
+    ioPtr( m_pending );
+    ioPtr( m_running );
+    for( Interrupt* i : ints )
+    {
+        i->intState( s );
+        ioPtr( i->m_nextInt );
+        ioMods( i->m_callBacks );
+        ioMods( i->m_exitCallBacks );
+    }
+}

@@ -27,3 +27,15 @@ void McuDac::initialize()
     m_vRefP = 0;
     m_vRefN = 0;
 }
+
+void McuDac::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_enabled );
+    s.io( m_outVoltEn );
+    s.io( m_outVolt );
+    s.io( m_vRefP );
+    s.io( m_vRefN );
+    s.io( m_outVal );
+}

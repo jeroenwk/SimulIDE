@@ -20,6 +20,8 @@ class AvrTimer : public McuTimer
     friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrTimer )
         AvrTimer( eMcu* mcu, QString name );
         ~AvrTimer();
 
@@ -54,6 +56,8 @@ class AvrTimer : public McuTimer
 class AvrTimer8bit : public AvrTimer
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrTimer8bit )
         AvrTimer8bit( eMcu* mcu, QString name );
         ~AvrTimer8bit();
 
@@ -67,6 +71,8 @@ class AvrTimer8bit : public AvrTimer
 class AvrTimer800 : public AvrTimer8bit
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrTimer800 )
         AvrTimer800( eMcu* mcu, QString name );
         ~AvrTimer800();
 };
@@ -74,6 +80,8 @@ class AvrTimer800 : public AvrTimer8bit
 class AvrTimer801 : public McuTimer
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrTimer801 )
         AvrTimer801( eMcu* mcu, QString name );
         ~AvrTimer801();
 
@@ -88,6 +96,8 @@ class AvrTimer801 : public McuTimer
 class AvrTimer810 : public AvrTimer
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrTimer810 )
         AvrTimer810( eMcu* mcu, QString name );
         ~AvrTimer810();
 
@@ -112,6 +122,8 @@ class AvrTimer810 : public AvrTimer
 class AvrTimer820 : public AvrTimer8bit
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrTimer820 )
         AvrTimer820( eMcu* mcu, QString name );
         ~AvrTimer820();
 };
@@ -119,6 +131,8 @@ class AvrTimer820 : public AvrTimer8bit
 class AvrTimer821 : public AvrTimer8bit
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrTimer821 )
         AvrTimer821( eMcu* mcu, QString name );
         ~AvrTimer821();
 
@@ -128,6 +142,8 @@ class AvrTimer821 : public AvrTimer8bit
 class AvrTimer822 : public AvrTimer821
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrTimer822 )
         AvrTimer822( eMcu* mcu, QString name );
         ~AvrTimer822();
 
@@ -149,6 +165,8 @@ class AvrTimer822 : public AvrTimer821
 class AvrTimer16bit : public AvrTimer
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrTimer16bit )
         AvrTimer16bit( eMcu* mcu, QString name );
         ~AvrTimer16bit();
 

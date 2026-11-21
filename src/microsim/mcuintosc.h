@@ -16,6 +16,8 @@ class McuIntOsc : public McuModule, public eElement
 {
         //friend class McuCreator;
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( McuIntOsc )
         McuIntOsc( eMcu* mcu, QString name );
         ~McuIntOsc();
 

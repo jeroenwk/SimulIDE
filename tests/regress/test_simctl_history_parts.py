@@ -1,6 +1,7 @@
 """Going back in time with the other part types (specs/sim-control.md §4.8): state code for the
 BJT, logic gates and buffers, flip-flops, counters, memory, the 555, relays, the transformer,
-sources, meters, switches, displays and the noise generator.
+sources, meters, switches, displays, the noise generator, and the AVR and PIC MCUs (core,
+interrupts, peripherals, ports).
 
 For each example circuit: history usable (no class missing), then `sim history check`: run on
 over three checkpoints, go back 4 ms to a keyframe, replay to the same checkpoints and compare
@@ -28,6 +29,12 @@ CIRCUITS = [
     ("LED matrix", EX + "/Outputs/Leds/led_matrix.sim1"),
     ("keypad", EX + "/Switches/keypad.sim1"),
     ("7490 counter, push", EX + "/Logic/7490_clock-2.sim1"),
+    ("Arduino: ADC, timers, PCD8544 (port input bits)", EX + "/Micro/Arduino/oscope8544/oscope8544.sim1"),
+    ("Arduino + DHT22 (pin callbacks switched on and off)", EX + "/Micro/Sensors/Arduino_DHT22/dht22_test.sim1"),
+    ("mega32 USART", EX + "/Micro/Avr/mega32/m32_usart/mega32_usart.sim1"),
+    ("tiny85 pin-change interrupt", EX + "/Micro/Avr/tiny85/tiny85_pcint/pcint_001.sim1"),
+    ("PIC 12F675 timer 1", EX + "/Micro/Pic/12F675/12F675_T1-XC8/12F675_T1-XC8.sim1"),
+    ("PIC 16F876 I2C LCD", EX + "/Micro/Pic/16F87x/16F876_I2C-Lcd/i2c-lcd.sim1"),
 ]
 
 

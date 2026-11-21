@@ -9,11 +9,17 @@
 #include <QStringList>
 #include <QHash>
 
+#include "simstate.h"
+
 class Display;
 
 class CoreBase
 {
     public:
+        // Keyframes (specs/sim-control.md §4.5): the core's own fields; its registers are in the
+        // MCU's data memory, saved by eMcu
+        virtual void coreState( StateIO& ) {}
+
         CoreBase();
         virtual ~CoreBase();
 

@@ -552,6 +552,26 @@ their own state) and reviewed; `sim history check` over all the circuits found w
   - Scherz 12.57b (switch debouncer with the T_AND ternary subcircuit) lands in another state
     after a replay, unexplained so far.
 
+**MCUs (2026-11-21)** [SIMULATED]: the AVR and PIC families. The core saves its own fields
+through `CoreBase::coreState()` (PC, return address; the PIC mid-range core also W, bank, its
+8-level stack and pointer; the registers are in the data memory `eMcu` already saves);
+`Interrupts::intState()` saves the global flag, the active / pending / running lists and each
+interrupt's flags and module callbacks as indices; the peripherals (timers, OC/IC/CCP units,
+ADC, comparator, EEPROM, watchdog, sleep, SPI, TWI, USART transmitter/receiver, internal
+oscillator, Vref, DAC, pins) were generated like the parts (their register bit masks are
+configuration). Found by the check:
+- A port's input bits (`McuPort::m_pinState`, read as PINx) are state, and ports aren't
+  elements: `eMcu` saves them (`portState`). Without it the Arduino scope example read a
+  different PINC after a restore.
+- A node's list of elements called on a voltage change (`eNode::m_voltChEl`) changes during a
+  run: a DHT22 stops listening while it answers. It is saved, in order (element pointers: they
+  live for the whole run).
+- More display state: the logic analyzer's frame counter.
+
+69 of the 88 MCU examples go back bit for bit; over all 773 circuits, 742 (was 143 before
+the part state code). `test_simctl_history_parts.py`: 44 checks, 21 circuits. Not done yet: 8051, 6502, Z80 and the ZX
+Spectrum ULA, the serial port (a real port: refused for now), scripted displays.
+
 Found on the way: the **first run after opening** `board_mains` differs from later runs (two
 skips of 200 ms after the first: same hash; the first: another), so some part keeps state
 across a stop and a start. It doesn't touch keyframes (they restore within a run); to chase.

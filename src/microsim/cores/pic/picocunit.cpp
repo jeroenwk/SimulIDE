@@ -170,3 +170,28 @@ PicPwmUnit01::PicPwmUnit01( eMcu* mcu, QString name )
 }
 PicPwmUnit01::~PicPwmUnit01( ){}
 
+void PicOcUnit::simState( StateIO& s )
+{
+    McuOcUnit::simState( s );
+    s.io( m_enhanced );
+    s.io( m_specEvent );
+    s.io( m_resetTimer );
+}
+
+void PicPwmUnit::simState( StateIO& s )
+{
+    McuOcUnit::simState( s );
+    s.io( m_enhanced );
+    s.io( m_cLow );
+    s.io( m_CCPRxL );
+}
+
+void PicPwmUnit00::simState( StateIO& s )
+{
+    PicPwmUnit::simState( s );
+}
+
+void PicPwmUnit01::simState( StateIO& s )
+{
+    PicPwmUnit::simState( s );
+}

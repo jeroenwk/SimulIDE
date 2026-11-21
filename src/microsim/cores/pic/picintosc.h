@@ -11,6 +11,8 @@
 class PicIntOsc : public McuIntOsc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicIntOsc )
         PicIntOsc( eMcu* mcu, QString name );
         ~PicIntOsc();
 
@@ -27,6 +29,8 @@ class PicIntOsc : public McuIntOsc
 class PicIntOsc00 : public PicIntOsc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicIntOsc00 )
         PicIntOsc00( eMcu* mcu, QString name );
         ~PicIntOsc00();
 
@@ -40,6 +44,8 @@ class PicIntOsc00 : public PicIntOsc
 class PicIntOsc01 : public PicIntOsc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicIntOsc01 )
         PicIntOsc01( eMcu* mcu, QString name );
         ~PicIntOsc01();
 
@@ -52,6 +58,8 @@ class PicIntOsc01 : public PicIntOsc
 class PicIntOsc02 : public PicIntOsc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicIntOsc02 )
         PicIntOsc02( eMcu* mcu, QString name );
         ~PicIntOsc02();
 

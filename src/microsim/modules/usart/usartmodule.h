@@ -116,6 +116,8 @@ class UartTR : public McuModule, public eElement
         friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( UartTR )
         UartTR( UsartModule* usart, eMcu* mcu, QString name );
         ~UartTR();
 

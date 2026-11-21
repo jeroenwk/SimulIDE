@@ -188,3 +188,9 @@ void AvrTwi::I2Cstop()
     if( m_mode != TWI_SLAVE ) return;
     if (m_addrMatch) setTwiState( TWI_SRX_STOP_RESTART );
 }
+
+void AvrTwi::simState( StateIO& s )
+{
+    McuTwi::simState( s );
+    s.io( m_bitRate );
+}

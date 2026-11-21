@@ -13,6 +13,8 @@ class eMcu;
 class AvrWdt : public McuWdt
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrWdt )
         AvrWdt( eMcu* mcu, QString name );
         ~AvrWdt();
 
@@ -46,6 +48,8 @@ class AvrWdt : public McuWdt
 class AvrWdt00 : public AvrWdt
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrWdt00 )
         AvrWdt00( eMcu* mcu, QString name );
         ~AvrWdt00();
 
@@ -62,6 +66,8 @@ class AvrWdt00 : public AvrWdt
 class AvrWdt01 : public AvrWdt
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrWdt01 )
         AvrWdt01( eMcu* mcu, QString name );
         ~AvrWdt01();
 

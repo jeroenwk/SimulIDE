@@ -324,4 +324,43 @@ PicAdc3::PicAdc3( eMcu* mcu, QString name )
 }
 PicAdc3::~PicAdc3(){}
 
+void PicAdc::simState( StateIO& s )
+{
+    McuAdc::simState( s );
+    s.io( m_mode );
+}
 
+void PicAdc00::simState( StateIO& s )
+{
+    PicAdc::simState( s );
+}
+
+void PicAdc01::simState( StateIO& s )
+{
+    PicAdc::simState( s );
+}
+
+void PicAdc1::simState( StateIO& s )
+{
+    PicAdc::simState( s );
+}
+
+void PicAdc10::simState( StateIO& s )
+{
+    PicAdc1::simState( s );
+}
+
+void PicAdc11::simState( StateIO& s )
+{
+    PicAdc1::simState( s );
+}
+
+void PicAdc20::simState( StateIO& s )
+{
+    PicAdc::simState( s );
+}
+
+void PicAdc3::simState( StateIO& s )
+{
+    PicAdc::simState( s );
+}

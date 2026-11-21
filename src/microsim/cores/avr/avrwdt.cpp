@@ -176,3 +176,20 @@ void AvrWdt01::updtPrescaler( uint8_t newWDTCSR )
 {
     setPrescIndex( getRegBitsVal( newWDTCSR, m_WDP02 ) );
 }
+
+void AvrWdt::simState( StateIO& s )
+{
+    McuWdt::simState( s );
+    s.io( m_allowChanges );
+    s.io( m_disabled );
+}
+
+void AvrWdt00::simState( StateIO& s )
+{
+    AvrWdt::simState( s );
+}
+
+void AvrWdt01::simState( StateIO& s )
+{
+    AvrWdt::simState( s );
+}

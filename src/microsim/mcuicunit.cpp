@@ -62,3 +62,15 @@ void McuIcUnit::enable( bool en )
     m_enabled = en;
     if( m_icPin ) m_icPin->changeCallBack( this, en );
 }
+
+void McuIcUnit::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_enabled );
+    s.io( m_inState );
+    s.io( m_mode );
+    s.io( m_fallingEdge );
+    s.io( m_prescaler );
+    s.io( m_counter );
+}

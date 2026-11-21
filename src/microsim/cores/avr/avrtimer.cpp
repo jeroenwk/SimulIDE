@@ -526,3 +526,53 @@ void AvrTimer16bit::setICRX( QString reg )
     /// Low byte triggers red/write operations
     /// watchRegNames( reg, R_WRITE, this, &AvrTimer16bit::ICRXLchanged, m_mcu );
 }
+
+void AvrTimer::simState( StateIO& s )
+{
+    McuTimer::simState( s );
+    s.io( m_wgmMode );
+    s.io( m_wgm10Val );
+    s.io( m_wgm32Val );
+}
+
+void AvrTimer8bit::simState( StateIO& s )
+{
+    AvrTimer::simState( s );
+}
+
+void AvrTimer16bit::simState( StateIO& s )
+{
+    AvrTimer::simState( s );
+    s.io( m_useICR );
+}
+
+void AvrTimer800::simState( StateIO& s )
+{
+    AvrTimer8bit::simState( s );
+}
+
+void AvrTimer801::simState( StateIO& s )
+{
+    McuTimer::simState( s );
+}
+
+void AvrTimer810::simState( StateIO& s )
+{
+    AvrTimer::simState( s );
+}
+
+void AvrTimer820::simState( StateIO& s )
+{
+    AvrTimer8bit::simState( s );
+}
+
+void AvrTimer821::simState( StateIO& s )
+{
+    AvrTimer8bit::simState( s );
+}
+
+void AvrTimer822::simState( StateIO& s )
+{
+    AvrTimer821::simState( s );
+    s.io( m_async );
+}

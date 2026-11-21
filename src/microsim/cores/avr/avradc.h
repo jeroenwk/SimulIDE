@@ -18,6 +18,8 @@ class McuOcUnit;
 class AvrAdc : public McuAdc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrAdc )
         AvrAdc( eMcu* mcu, QString name );
         ~AvrAdc();
 
@@ -74,6 +76,8 @@ class AvrAdc : public McuAdc
 class AvrAdc00 : public AvrAdc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrAdc00 )
         AvrAdc00( eMcu* mcu, QString name );
         ~AvrAdc00();
 
@@ -85,6 +89,8 @@ class AvrAdc00 : public AvrAdc
 class AvrAdc01 : public AvrAdc00
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrAdc01 )
         AvrAdc01( eMcu* mcu, QString name );
         ~AvrAdc01();
 
@@ -97,6 +103,8 @@ class AvrAdc01 : public AvrAdc00
 class AvrAdc02 : public AvrAdc00
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrAdc02 )
         AvrAdc02( eMcu* mcu, QString name );
         ~AvrAdc02();
 
@@ -107,6 +115,8 @@ class AvrAdc02 : public AvrAdc00
 class AvrAdc03 : public AvrAdc00
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrAdc03 )
         AvrAdc03( eMcu* mcu, QString name );
         ~AvrAdc03();
 
@@ -119,6 +129,8 @@ class AvrAdc03 : public AvrAdc00
 class AvrAdc04 : public AvrAdc03
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrAdc04 )
         AvrAdc04( eMcu* mcu, QString name );
         ~AvrAdc04();
 
@@ -133,6 +145,8 @@ class AvrAdc04 : public AvrAdc03
 class AvrAdc10 : public AvrAdc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrAdc10 )
         AvrAdc10( eMcu* mcu, QString name );
         ~AvrAdc10();
 
@@ -144,6 +158,8 @@ class AvrAdc10 : public AvrAdc
 class AvrAdc11 : public AvrAdc10
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrAdc11 )
         AvrAdc11( eMcu* mcu, QString name );
         ~AvrAdc11();
 
@@ -160,6 +176,8 @@ class AvrAdc11 : public AvrAdc10
 class AvrAdc20 : public AvrAdc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrAdc20 )
         AvrAdc20( eMcu* mcu, QString name );
         ~AvrAdc20();
 

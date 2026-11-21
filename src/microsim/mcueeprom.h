@@ -14,6 +14,8 @@ class McuEeprom : public McuModule, public eElement
         friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( McuEeprom )
         McuEeprom( eMcu* mcu, QString name );
         virtual ~McuEeprom();
 

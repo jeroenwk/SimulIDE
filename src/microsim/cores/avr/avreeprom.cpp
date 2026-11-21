@@ -99,3 +99,9 @@ void AvrEeprom::writeEeprom()
     Simulator::self()->addEvent( time, this ); // Shedule Write cycle end
 }
 
+void AvrEeprom::simState( StateIO& s )
+{
+    McuEeprom::simState( s );
+    s.io( m_nextCycle );
+    s.io( m_mode );
+}

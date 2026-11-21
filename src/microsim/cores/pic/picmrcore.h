@@ -15,6 +15,7 @@ enum {
 class PicMrCore : public McuCpu
 {
     public:
+        virtual void coreState( StateIO& s ) override;   // Keyframes: W, bank, stack
         PicMrCore( eMcu* mcu );
         ~PicMrCore();
 

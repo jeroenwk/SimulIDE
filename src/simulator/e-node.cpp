@@ -403,7 +403,29 @@ void eNode::simState( StateIO& s )
     for( Connection* c = m_firstAdmit;   c; c = c->next ) s.io( c->value );
     for( Connection* c = m_firstSingAdm; c; c = c->next ) s.io( c->value );
     for( Connection* c = m_firstCurrent; c; c = c->next ) s.io( c->value );
-    if( s.saving() ) return;
+
+    // Elements called when its voltage changes: parts turn this on and off as they work (a DHT22
+    // stops listening while it answers). In order (the call order). Pointers: elements live for
+    // the whole run, and an edit during the run ends the history (SimHistory::end)
+    uint32_t n = 0;
+    for( CallBackElement* cb = m_voltChEl; cb; cb = cb->next ) n++;
+    s.io( n );
+    if( s.saving() ){
+        for( CallBackElement* cb = m_voltChEl; cb; cb = cb->next ){ eElement* e = cb->element; s.raw( &e, sizeof( e ) ); }
+        return;
+    }
+    clearElmList( m_voltChEl );
+    m_voltChEl = nullptr;
+    CallBackElement* last = nullptr;
+    for( uint32_t k=0; k<n; ++k ){
+        eElement* e = nullptr;
+        s.raw( &e, sizeof( e ) );
+        if( s.overflow() || !e ) return;
+        CallBackElement* cb = new CallBackElement( e );
+        cb->next = nullptr;
+        if( last ) last->next = cb; else m_voltChEl = cb;
+        last = cb;
+    }
     m_admitChanged = true;
     m_currChanged  = true;
     m_changed = false;

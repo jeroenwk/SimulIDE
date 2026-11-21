@@ -77,3 +77,8 @@ void UartSr::startTransmission() // Data loaded to ShiftReg
         Simulator::self()->addEvent( m_period, this ); // Shedule next bit
     }
 }
+
+void UartSr::simState( StateIO& s )
+{
+    UartTR::simState( s );
+}

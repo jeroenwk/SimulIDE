@@ -103,3 +103,17 @@ void McuIntOsc::setPin( int n, McuPin* p )
     if( n < 2 ) return m_clkPin[n];
     return NULL;
 }*/
+
+void McuIntOsc::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_psInst );
+    s.io( m_multiplier );
+    s.io( m_intOscFreq );
+    s.io( m_configFreq );
+    s.io( m_extClock );
+    s.io( m_clkInIO );
+    s.io( m_clkOutIO );
+    s.io( m_clkOut );
+}

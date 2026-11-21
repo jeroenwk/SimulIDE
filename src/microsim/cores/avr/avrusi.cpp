@@ -235,3 +235,21 @@ void AvrUsi::setPins( QString pinStr ) // "DO,DI,USCK"
     m_DIbit = getRegBits( DIpin, m_mcu );
     m_CKbit = getRegBits( CKpin, m_mcu );
 }
+
+void AvrUsi::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_twi );
+    s.io( m_spi );
+    s.io( m_timer );
+    s.io( m_extClk );
+    s.io( m_usiClk );
+    s.io( m_clkEdge );
+    s.io( m_clkState );
+    s.io( m_sdaState );
+    s.io( m_DoState );
+    s.io( m_mode );
+    s.io( m_clockMode );
+    s.io( m_counter );
+}

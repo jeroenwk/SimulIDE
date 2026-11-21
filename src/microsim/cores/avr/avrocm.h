@@ -13,6 +13,8 @@ class AvrOcm : public McuOcm
     friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrOcm )
         AvrOcm( eMcu* mcu, QString name);
         ~AvrOcm();
 

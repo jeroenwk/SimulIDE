@@ -11,6 +11,8 @@
 class PicComp : public McuComp
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicComp )
         PicComp( eMcu* mcu, QString name );
         ~PicComp();
 
@@ -31,6 +33,8 @@ class PicComp : public McuComp
 class PicComp0 : public PicComp
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicComp0 )
         PicComp0( eMcu* mcu, QString name );
         ~PicComp0();
 
@@ -46,6 +50,8 @@ class PicComp0 : public PicComp
 class PicComp01 : public PicComp0
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicComp01 )
         PicComp01( eMcu* mcu, QString name );
         ~PicComp01();
 
@@ -56,6 +62,8 @@ class PicComp01 : public PicComp0
 class PicComp02 : public PicComp0
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicComp02 )
         PicComp02( eMcu* mcu, QString name );
         ~PicComp02();
 
@@ -66,6 +74,8 @@ class PicComp02 : public PicComp0
 class PicComp03 : public PicComp0
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicComp03 )
         PicComp03( eMcu* mcu, QString name );
         ~PicComp03();
 
@@ -77,6 +87,8 @@ class PicComp03 : public PicComp0
 class PicComp1 : public PicComp
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicComp1 )
         PicComp1( eMcu* mcu, QString name );
         ~PicComp1();
         virtual void configureA( uint8_t newCMxCON0 ) override;
@@ -91,6 +103,8 @@ class PicComp1 : public PicComp
 class PicComp11 : public PicComp1
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicComp11 )
         PicComp11( eMcu* mcu, QString name );
         ~PicComp11();
 
@@ -102,6 +116,8 @@ class PicComp11 : public PicComp1
 class PicComp12 : public PicComp1
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicComp12 )
         PicComp12( eMcu* mcu, QString name );
         ~PicComp12();
 
@@ -114,6 +130,8 @@ class PicComp12 : public PicComp1
 class PicComp20 : public PicComp
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicComp20 )
         PicComp20( eMcu* mcu, QString name );
         ~PicComp20();
 

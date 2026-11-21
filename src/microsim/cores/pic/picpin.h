@@ -17,6 +17,8 @@ class PicPin : public McuPin
     friend class McuPort;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicPin )
         PicPin( McuPort* port, int i, QString id , Component* mcu );
         ~PicPin();
 

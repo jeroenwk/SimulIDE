@@ -103,3 +103,9 @@ void PicSpi::sleep( int mode )
     else             resumeEvents();
 }
 
+void PicSpi::simState( StateIO& s )
+{
+    McuSpi::simState( s );
+    s.io( m_clkPol );
+    s.io( m_clkPha );
+}

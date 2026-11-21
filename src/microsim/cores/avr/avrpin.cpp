@@ -26,3 +26,8 @@ void AvrPin::ConfExtInt( uint8_t bits )
     m_extInt->setContinuous( m_extIntTrigger == pinLow );
     voltChanged();
 }
+
+void AvrPin::simState( StateIO& s )
+{
+    McuPin::simState( s );
+}

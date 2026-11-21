@@ -16,3 +16,14 @@ McuWdt::McuWdt( eMcu* mcu, QString name )
     m_wdtFuse  = false;
 }
 McuWdt::~McuWdt(){}
+
+void McuWdt::simState( StateIO& s )
+{
+    McuPrescaled::simState( s );
+    eElement::simState( s );
+    s.io( m_wdtFuse );
+    s.io( m_ovfInter );
+    s.io( m_ovfReset );
+    s.io( m_ovfPeriod );
+    s.io( m_clkPeriod );
+}

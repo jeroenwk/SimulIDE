@@ -233,3 +233,27 @@ void McuTimer::enableExtClock( bool en )
         m_clkState = m_clockPin->getInpState();
     }
 }
+
+void McuTimer::simState( StateIO& s )
+{
+    McuPrescaled::simState( s );
+    eElement::simState( s );
+    s.io( m_number );
+    s.io( m_scale );
+    s.io( m_circTime );
+    s.io( m_timeOffset );
+    s.io( m_running );
+    s.io( m_bidirec );
+    s.io( m_reverse );
+    s.io( m_extClock );
+    s.io( m_prescVal );
+    s.io( m_countVal );
+    s.io( m_countStart );
+    s.io( m_maxCount );
+    s.io( m_ovfMatch );
+    s.io( m_ovfPeriod );
+    s.io( m_ovfCycle );
+    s.io( m_mode );
+    s.io( m_clkEdge );
+    s.io( m_clkState );
+}

@@ -6,6 +6,8 @@
 #ifndef MCUPRESCALED_H
 #define MCUPRESCALED_H
 
+
+#include "simstate.h"
 #include "mcumodule.h"
 
 class McuPrescaled : public McuModule
@@ -13,6 +15,7 @@ class McuPrescaled : public McuModule
         friend class McuCreator;
 
     public:
+        void simState( StateIO& s );   // Keyframes (specs/sim-control.md §4.5)
         McuPrescaled( eMcu* mcu, QString name );
         virtual ~McuPrescaled();
 

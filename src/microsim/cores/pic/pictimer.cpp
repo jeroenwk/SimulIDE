@@ -245,3 +245,28 @@ void PicTimer161::configureClock()
 
 }
 
+void PicTimer::simState( StateIO& s )
+{
+    McuTimer::simState( s );
+}
+
+void PicTimer0::simState( StateIO& s )
+{
+    PicTimer8bit::simState( s );
+}
+
+void PicTimer160::simState( StateIO& s )
+{
+    PicTimer16bit::simState( s );
+}
+
+void PicTimer161::simState( StateIO& s )
+{
+    PicTimer16bit::simState( s );
+}
+
+void PicTimer2::simState( StateIO& s )
+{
+    PicTimer8bit::simState( s );
+    s.io( m_ps );
+}

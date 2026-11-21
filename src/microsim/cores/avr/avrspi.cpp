@@ -125,3 +125,9 @@ void AvrSpi::updateSpeed()
     uint64_t div = m_speed2x ? 4 : 2;
     m_clockPeriod = m_mcu->psInst()*m_prescaler/div;
 }
+
+void AvrSpi::simState( StateIO& s )
+{
+    McuSpi::simState( s );
+    s.io( m_speed2x );
+}

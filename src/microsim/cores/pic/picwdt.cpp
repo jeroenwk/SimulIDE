@@ -116,3 +116,19 @@ void PicWdt01::configureA( uint8_t newWDTCON ) // WDTCON Written
     setPrescIndex( getRegBitsVal(  newWDTCON, m_WDTPS ) );
     m_ovfPeriod = m_clkPeriod*m_prescaler;
 }
+
+void PicWdt::simState( StateIO& s )
+{
+    McuWdt::simState( s );
+    s.io( m_wdtSoft );
+}
+
+void PicWdt00::simState( StateIO& s )
+{
+    PicWdt::simState( s );
+}
+
+void PicWdt01::simState( StateIO& s )
+{
+    PicWdt::simState( s );
+}

@@ -29,3 +29,9 @@ void McuSpi::initialize()
 {
     SpiModule::setMode(  mode );
 }*/
+
+void McuSpi::simState( StateIO& s )
+{
+    McuPrescaled::simState( s );
+    SpiModule::simState( s );
+}

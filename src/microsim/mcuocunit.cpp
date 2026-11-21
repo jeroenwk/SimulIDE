@@ -115,3 +115,17 @@ void McuOcUnit::ocrWriteH( uint8_t val )
     m_comMatch = (m_comMatch & 0x00FF) | (uint16_t)val<<8;
     //sheduleEvents( m_timer->ovfMatch(), m_timer->getCount() );
 }
+
+void McuOcUnit::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_comAct );
+    s.io( m_tovAct );
+    s.io( m_enabled );
+    s.io( m_ctrlPin );
+    s.io( m_mode );
+    s.io( m_comMatch );
+    s.io( m_extMatch );
+    s.io( m_pinSet );
+}

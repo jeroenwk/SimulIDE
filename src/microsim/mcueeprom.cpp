@@ -46,3 +46,9 @@ void McuEeprom::addrWriteH( uint8_t val )
     if( m_addressL ) m_address = (val << 8) + *m_addressL;
 }
 
+void McuEeprom::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_address );
+}

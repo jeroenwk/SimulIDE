@@ -19,6 +19,8 @@ class IoPin;
 class SpiModule : public eClockedDevice
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( SpiModule )
         SpiModule( QString name );
         ~SpiModule();
 

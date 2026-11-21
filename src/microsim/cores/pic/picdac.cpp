@@ -105,3 +105,12 @@ void PicDac::callBack() // Called by FVR
 {
     updtOutVolt();
 }
+
+void PicDac::simState( StateIO& s )
+{
+    McuDac::simState( s );
+    s.io( m_useFVR );
+    s.io( m_usePinP );
+    s.io( m_usePinN );
+    s.io( m_daclps );
+}

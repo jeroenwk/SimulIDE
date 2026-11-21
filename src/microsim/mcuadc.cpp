@@ -73,3 +73,21 @@ void McuAdc::specialConv()
 {
     qDebug() << "McuAdc::specialConv Error";
 }
+
+void McuAdc::simState( StateIO& s )
+{
+    McuPrescaled::simState( s );
+    eElement::simState( s );
+    s.io( m_enabled );
+    s.io( m_converting );
+    s.io( m_leftAdjust );
+    s.io( m_adcClock );
+    s.io( m_adcValue );
+    s.io( m_maxValue );
+    s.io( m_convTime );
+    s.io( m_channel );
+    s.io( m_chOffset );
+    s.io( m_fixedVref );
+    s.io( m_vRefP );
+    s.io( m_vRefN );
+}

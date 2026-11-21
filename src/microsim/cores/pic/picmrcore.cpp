@@ -364,3 +364,12 @@ void PicMrCore::decode( uint16_t instr )
         }
     }
 }
+
+void PicMrCore::coreState( StateIO& s )
+{
+    McuCpu::coreState( s );
+    s.io( m_WregHidden );
+    s.io( m_bank );
+    s.io( m_stack );
+    s.io( m_sp );
+}

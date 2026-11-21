@@ -21,6 +21,8 @@ class McuTimer : public McuPrescaled, public eElement
         friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( McuTimer )
         McuTimer( eMcu* mcu, QString name );
         ~McuTimer();
 

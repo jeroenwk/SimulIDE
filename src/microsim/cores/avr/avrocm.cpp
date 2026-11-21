@@ -23,3 +23,8 @@ void AvrOcm::OutputOcm() //Set Ocm output from OCnB1 & OCnB2
     if( m_mode ) m_oPin->scheduleState( m_state1 || m_state2, 0 );
     else         m_oPin->scheduleState( m_state1 && m_state2, 0 );
 }
+
+void AvrOcm::simState( StateIO& s )
+{
+    McuOcm::simState( s );
+}

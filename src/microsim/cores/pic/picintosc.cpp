@@ -139,3 +139,24 @@ void PicIntOsc02::configureA( uint8_t newOSCCON )
     m_mcu->setFreq( freq );
     m_psInst = m_mcu->psInst()/2;
 }
+
+void PicIntOsc::simState( StateIO& s )
+{
+    McuIntOsc::simState( s );
+    s.io( m_cfgWordCtrl );
+}
+
+void PicIntOsc00::simState( StateIO& s )
+{
+    PicIntOsc::simState( s );
+}
+
+void PicIntOsc01::simState( StateIO& s )
+{
+    PicIntOsc::simState( s );
+}
+
+void PicIntOsc02::simState( StateIO& s )
+{
+    PicIntOsc::simState( s );
+}

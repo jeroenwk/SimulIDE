@@ -11,6 +11,7 @@
 class Pic14eInterrupt : public PicInterrupt
 {
     public:
+        virtual void intState( StateIO& s ) override;
         Pic14eInterrupt( QString name, uint16_t vector, eMcu* mcu );
         ~Pic14eInterrupt();
 

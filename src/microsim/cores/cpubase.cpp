@@ -22,3 +22,10 @@ void CpuBase::reset()
 {
     m_PC = 0;
 }
+
+void CpuBase::coreState( StateIO& s )
+{
+    s.io( m_retCycles );
+    s.io( m_PC );
+    s.io( m_RET_ADDR );
+}

@@ -37,3 +37,8 @@ void PicPin::setAnalog( bool an )
         voltChanged(); // Update input state
     }
 }
+
+void PicPin::simState( StateIO& s )
+{
+    McuPin::simState( s );
+}

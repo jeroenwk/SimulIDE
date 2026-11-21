@@ -18,6 +18,8 @@ class AvrUsi : public McuModule, public eElement
     friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrUsi )
         AvrUsi( eMcu* mcu, QString name );
         ~AvrUsi();
 

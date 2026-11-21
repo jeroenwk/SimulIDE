@@ -91,3 +91,11 @@ void PicCcpUnit::setPin( McuPin* pin )
     m_comUnit->m_ocPin = pin;
     m_pwmUnit->m_ocPin = pin;
 }
+
+void PicCcpUnit::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_mode );
+    s.io( m_ccpMode );
+}

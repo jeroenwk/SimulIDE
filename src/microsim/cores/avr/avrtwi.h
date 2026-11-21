@@ -15,6 +15,8 @@ class eMcu;
 class AvrTwi : public McuTwi
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrTwi )
         AvrTwi( eMcu* mcu, QString name );
         ~AvrTwi();
 

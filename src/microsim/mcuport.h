@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "mcumodule.h"
+#include "simstate.h"
 #include "mcupin.h"
 
 class Mcu;
@@ -22,6 +23,7 @@ class McuPort : public McuModule
         friend class McuPorts;
 
     public:
+        void portState( StateIO& s ) { s.io( m_pinState ); s.io( m_intMask ); }   // Keyframes: not an element, saved by eMcu
         McuPort( eMcu* mcu, QString name );
         ~McuPort();
 
