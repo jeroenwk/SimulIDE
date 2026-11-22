@@ -11,6 +11,7 @@
 #include "circuitwidget.h"
 #include "simhistory.h"
 #include "infowidget.h"
+#include "triggers.h"
 
 SimSkip* SimSkip::self()
 {
@@ -61,6 +62,7 @@ QString SimSkip::start( uint64_t span, int count )
     }
     sim->setStopAt( m_target );
     sim->setFastRun( true );
+    m_trigCount = Triggers::self() ? Triggers::self()->stopCount() : 0;
 
     m_active = true;
     m_waitFrame = -1;
@@ -112,6 +114,7 @@ QString SimSkip::startBack( uint64_t span, int count )
 QString SimSkip::backTo( uint64_t target )
 {
     Simulator* sim = Simulator::self();
+    sim->setTrigQuiet( target );              // The replay up to the target does not fire triggers
     uint64_t k = SimHistory::self()->restore( sim, target );
     if( !k ){ m_back = false; return "no keyframe at or before "+Simulator::siStr( target*1e-12, "s" ); }
     SimHistory::self()->truncateAfter( k );   // Going on from here: the old future is recomputed
@@ -140,6 +143,7 @@ void SimSkip::stepBack()
     uint64_t now = sim->circTime();
     if( now <= SimHistory::self()->firstTime()+1 ){ backTo( now ); return; }   // The history starts here
     uint64_t probe = now-1;
+    sim->setTrigQuiet( probe );               // Replays don't fire triggers
     uint64_t k = SimHistory::self()->restore( sim, probe );
     if( !k ){ finish( false, "no keyframe before "+Simulator::siStr( now*1e-12, "s" ) ); return; }
     auto land = [this]()
@@ -174,11 +178,15 @@ void SimSkip::poll()
 
     if( m_waitFrame < 0 )
     {
-        if( sim->isPaused() )            // Paused by someone else (F6, the CLI): the skip ends there
+        if( sim->isPaused() )            // Paused by someone else (F6, the CLI, a trigger): the skip ends there
         {
             sim->setStopAt( 0 );
             sim->setFastRun( false );
-            finish( false, "skip cancelled at "+Simulator::siStr( sim->circTime()*1e-12, "s" ) );
+            Triggers* tr = Triggers::self();
+            if( tr && tr->stopCount() != m_trigCount && !tr->lastStopText().isEmpty() )
+                finish( true, "stopped by trigger "+tr->lastStopText() );    // Like a breakpoint (§8): not an error
+            else
+                finish( false, "skip cancelled at "+Simulator::siStr( sim->circTime()*1e-12, "s" ) );
             return;
         }
         if( sim->circTime() < m_target ){ progress(); return; }
@@ -229,6 +237,7 @@ void SimSkip::finish( bool ok, QString msg )
     m_poll.stop();
     m_active = false;
     m_waitFrame = -1;
+    if( Simulator::self() && !( ok && m_then ) ) Simulator::self()->setTrigQuiet( 0 );   // Replays done
     if( ok && m_then )                 // A phase of a longer move (a step back): on to the next one
     {
         auto next = m_then;

@@ -34,6 +34,7 @@
 #include "shield.h"
 #include "linker.h"
 #include "tunnel.h"
+#include "triggers.h"
 
 Circuit* Circuit::m_pSelf = NULL;
 
@@ -41,6 +42,8 @@ Circuit::Circuit( qreal x, qreal y, qreal width, qreal height, CircuitView*  par
        : QGraphicsScene( x, y, width, height, parent )
 {
     m_simulator = new Simulator();
+    m_triggers  = new Triggers();
+    m_simulator->setSimWatch( m_triggers );
     Tunnel::clearTunnels();
 
     setObjectName( "Circuit" );
@@ -88,7 +91,8 @@ Circuit::Circuit( qreal x, qreal y, qreal width, qreal height, CircuitView*  par
 
 Circuit::~Circuit()
 {
-    delete m_simulator;
+    delete m_simulator;   // Waits for the worker: the triggers' checks are no longer used
+    delete m_triggers;
 
     m_bckpTimer.stop();
     m_undoStack.clear();
@@ -165,6 +169,7 @@ void Circuit::loadCircuit( QString fileName )
     QString doc = fileToString( fileName, "Circuit::loadCircuit" );
     m_description = descriptionFromDoc( doc );
     loadStrDoc( doc );
+    m_triggers->fromDoc( doc );
 
     m_busy = false;
     m_loading = false;
@@ -581,6 +586,7 @@ QString Circuit::circuitToString()
     for( Component* comp : m_compList ) circuit += comp->toString();
     for( Node* node      : m_nodeList ) circuit += node->toString();
     for( Connector* conn : m_connList ) circuit += conn->toString();
+    circuit += m_triggers->toXml();
     circuit += "\n</circuit>";
 
     if( m_board && m_board->m_boardMode ) m_board->setBoardMode( true );
@@ -913,6 +919,7 @@ void Circuit::restoreState()
         bool structural = false;
         for( compChange& c : step.compChanges )
         {
+            if( c.component == "__triggers__" ) continue;   // Applied at the next frame
             CompBase* comp = m_compMap.value( c.component );
             ComProperty* p = comp ? comp->property( c.property ) : nullptr;
             if( c.property == COMP_STATE_NEW || !p || (p->flags() & propNoCopy) ) { structural = true; break; }
@@ -932,6 +939,13 @@ void Circuit::restoreState()
         QString propName   = cChange->property;
         QString propVal    = m_undo ? cChange->undoValue : cChange->redoValue;
         CompBase* comp     = m_compMap.value( cChange->component );             /// qDebug() << "Circuit::restoreState"<< cChange->component << propName << comp;
+
+        if( cChange->component == "__triggers__" )   // The circuit's triggers (Triggers::edited)
+        {
+            if( m_undo && cChange->redoValue.isEmpty() ) cChange->redoValue = m_triggers->toXml()+" ";
+            m_triggers->restoreXml( propVal );
+            continue;
+        }
 
         if( propName == COMP_STATE_NEW )  // Create/Remove Item
         {

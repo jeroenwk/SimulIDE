@@ -221,6 +221,7 @@ bool SimHistory::loadKey( Simulator* sim, const uint8_t* buf, size_t size, uint6
     for( eElement* el : sim->elementList() )
         if( ScriptCpu* cpu = dynamic_cast<ScriptCpu*>( el ) ) cpu->statusRewind( time );
     if( EventLog::self() ) EventLog::self()->rewound();
+    if( sim->simWatch() ) sim->simWatch()->restored();   // Triggers: hits after this time go
     return true;
 }
 

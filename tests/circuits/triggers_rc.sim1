@@ -1,0 +1,37 @@
+<circuit version="1.1.0-SR2" rev="261122" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="WaveGen" CircId="WaveGen-1" mainComp="false" Show_id="false" Show_Val="false" Pos="0,0" rotation="0" hflip="1" vflip="1" label="W" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" labelAuto="true" Out="true" Running="true" Wave_Type="Square" Freq="50 Hz" Phase="0 _º" Steps="100 _Steps" Duty="50 _%" Always_On="true" Bipolar="false" Floating="false" Semi_Ampli="5 V" Mid_Volt="5 V" Out_Imped="0 Ω" />
+
+<item itemtype="Resistor" CircId="Resistor-2" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="80,0" rotation="0" hflip="1" vflip="1" label="R1" idLabPos="-16,-24" labelrot="0" valLabPos="-8,8.5" valLabRot="0" labelAuto="true" Resistance="1 kΩ" Cp="0 pF" />
+
+<item itemtype="Capacitor" CircId="Capacitor-3" mainComp="false" ShowProp="Capacitance" Show_id="false" Show_Val="true" Pos="160,48" rotation="90" hflip="1" vflip="1" label="C1" idLabPos="-16,-24" labelrot="0" valLabPos="-7.5,12" valLabRot="0" labelAuto="true" Capacitance="1 µF" Resistance="1 µΩ" InitVolt="0 V" MaxVolt="0 V" ChargeScale="0 V" LogCharge="false" ReaStep="0 ns" />
+
+<item itemtype="Ground" CircId="Ground-4" mainComp="false" Show_id="false" Show_Val="false" Pos="160,120" rotation="0" hflip="1" vflip="1" label="G" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Oscope" CircId="Oscope-5" mainComp="false" Show_id="false" Show_Val="false" Pos="400,48" rotation="0" hflip="1" vflip="1" label="Scope" idLabPos="-90,-100" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Basic_X="135 _px" Basic_Y="135 _px" BufferSize="600000" connectGnd="true" InputImped="10 MΩ" TimDiv="1000000000" TimPos="0,0,0,0," VolDiv="1,1,1,1," Tunnels=",,,," Trigger="4" Filter="0.1 V" AutoSC="4" Tracks="1" HideCh="false,false,false,false," VolPos="0,0,0,0," TrigAuto="true" TrigLevel="0 V" />
+
+<item itemtype="Node" CircId="Node-6" mainComp="false" Pos="160,0" />
+
+<item itemtype="Node" CircId="Node-8" mainComp="false" Pos="48,0" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Capacitor-3-lPin" endpinid="Node-6-1" pointList="160,32,160,0" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="Resistor-2-rPin" endpinid="Node-6-0" pointList="96,0,160,0" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Node-6-2" endpinid="Oscope-5-Pin0" pointList="160,0,312,0" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Capacitor-3-rPin" endpinid="Ground-4-Gnd" pointList="160,64,160,104" />
+
+<item itemtype="Connector" uid="Connector-11" startpinid="Oscope-5-Pin1" endpinid="Node-8-1" pointList="312,32,280,32,280,144,48,144,48,0" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="WaveGen-1-outnod" endpinid="Node-8-0" pointList="16,0,48,0" />
+
+<item itemtype="Connector" uid="Connector-13" startpinid="Node-8-2" endpinid="Resistor-2-lPin" pointList="48,0,64,0" />
+
+<triggers>
+<trigger id="1" armed="1" pause="1" mode="single" name="tau"><cond sig="volt" comp="Capacitor-3" pin="lPin" edge="rise" level="6.3212"/></trigger>
+<trigger id="2" armed="1" mode="normal"><cond sig="volt" comp="Capacitor-3" pin="lPin" ref="rPin" window="out" low="2" high="8"/></trigger>
+<trigger id="3" armed="1" mode="normal"><cond sig="curr" comp="Resistor-2" pin="lPin" edge="either" level="0"/></trigger>
+</triggers>
+
+</circuit>

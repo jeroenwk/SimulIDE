@@ -66,6 +66,7 @@ class SimSkip : public QObject, public Updatable
         std::function<void()> m_then; // Next phase when this one ends (internal: no Done call)
         bool     m_announced = false;  // A long skip: its start was logged
         int64_t  m_waitFrame = -1;   // Paused at the end: the frame count to wait past
+        int      m_trigCount = 0;    // Triggers::stopCount() at the start: a change = stopped by a trigger
         uint64_t m_frames = 0;
         QTimer   m_poll;
         QElapsedTimer m_wall;

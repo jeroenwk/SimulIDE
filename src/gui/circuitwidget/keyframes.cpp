@@ -144,8 +144,10 @@ QString KeyFrames::electricalHash()
     static const QRegularExpression first("^\\s*<circuit[^>]*>");
     static const QRegularExpression attr("\\s(Pos|rotation|hflip|vflip|idLabPos|labelrot|valLabPos|valLabRot|"
                                          "Show_id|Show_Val|ShowProp|label|pointList|mainComp)=\"[^\"]*\"");
+    static const QRegularExpression trig("<triggers>.*</triggers>\\s*", QRegularExpression::DotMatchesEverythingOption );
     xml.remove( first );
     xml.remove( attr );
+    xml.remove( trig );     // A trigger edit is not a change of the circuit (specs/triggers.html §10)
     QByteArray b = xml.toUtf8();
     uint64_t h = 1469598103934665603ull;
     for( char c : b ){ h ^= (uint8_t)c; h *= 1099511628211ull; }
