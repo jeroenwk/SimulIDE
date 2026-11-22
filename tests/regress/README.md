@@ -38,6 +38,7 @@ Whole-library checks that find a class of bugs in one run; each finding is a `FI
 | `sweeps/sweep.py extremes` | NaN / huge voltages, hangs, crashes with numeric properties at 0 and −1 | BH-025..031 |
 | `sweeps/sweep.py examples` | examples that fail to load, crash, hang or log solver faults in 20 ms | |
 | `sweeps/shadowed_members.py` | data members redeclared in a derived class, hiding the base one (static, instant) | BH-005 |
+| `sweeps/history_fresh.py [--xproc] [--reopen] [--warm T] [--span T]` | saved key frames that don't load the same (specs/sim-control.md §5.1): `--fresh` check per circuit (save, stop, start, load, replay), `--reopen` with the file loaded again; `--xproc`: each circuit run in two processes side by side, full saved state compared (pointers, hash orders, uninitialized bytes in keyframes) | QHash order of MCU interrupts and ports |
 | `sweeps/cli_fuzz.py` | CLI crashes or hangs with odd argument values (empty, 0, -1, 1e400, abc, unknown refs) over every command form (~4 min) | none yet (clean 2026-11-09) |
 
 A finding is a candidate, not a bug: check it against the code's intent before writing a test.

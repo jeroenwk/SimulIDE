@@ -230,6 +230,17 @@ void CliApi::registerView()
         return saveImage( img, outFile( c, "window-"+part ) );
     });
 
+    add("view keyframes", "view keyframes [tab|split]", "Show the Key frames pane (specs/sim-control.md §5.1): in the "
+        "bottom tabs (tab) or beside them, next to Messages (split, remembered). Without an argument: where it is.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QString where = c.argOr( 0, "");
+        if( where == "split" || where == "tab" ) CircuitWidget::self()->setKeyFramesSplit( where == "split" );
+        else if( !where.isEmpty() ) throw CliError("view keyframes [tab|split]");
+        CircuitWidget::self()->showKeyFrames();
+        return QJsonObject{ {"keyframes", CircuitWidget::self()->keyFramesSplit() ? "split" : "tab"} };
+    });
+
     add("messages", "messages [--last N] [--grep TEXT]",
         "Text of the Messages pane, one line per entry (with Log: Verbose off, debug logs are not in it; "
         "settings set logVerbose=true shows them). --last keeps the last N lines, --grep the lines that contain TEXT.",

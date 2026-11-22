@@ -422,8 +422,10 @@ void ScriptCpu::statusRewind( uint64_t time )
 {
     QMutexLocker lock( &m_statusLock );
     StateLog::rewindList( m_stHistory, m_stText, m_stLevel, time );
-    m_stPeakText.clear();
-    m_stPeakLevel = -1;
+    m_stPeakText  = m_stText;        // Shown at once, as it is at that time
+    m_stPeakLevel = m_stLevel;
+    m_stShowText  = m_stText;
+    m_stShowLevel = m_stLevel;
     m_stHold = 0;
 }
 
@@ -670,6 +672,7 @@ void ScriptCpu::simState( StateIO& s )
     s.io( m_PC );
     s.io( m_RET_ADDR );
     s.io( m_stLevel );
+    s.ioString( m_stText );          // The state shown after a jump, also in another run (§5.1)
     s.io( m_stPeakLevel );
     s.io( m_stShowLevel );
     s.io( m_stHold );

@@ -48,6 +48,8 @@
 #include "about.h"
 #include "utils.h"
 #include "simskip.h"
+#include "keyframes.h"
+#include "keyframepane.h"
 #include "simhistory.h"
 #include "cliapi.h"
 
@@ -234,6 +236,12 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     updateRecentFileActions();
     createToolBars();
 
+    m_keyPane = new KeyFramePane( this, saveKeyAct );    // Key frames: a tab after Messages, or a split beside the tabs
+    m_bottomTabs->insertTab( m_bottomTabs->indexOf( m_msgWidget )+1, m_keyPane, tr("Key frames") );
+    connect( m_keyPane, &KeyFramePane::splitToggled, this, [this]( bool on ){ setKeyFramesSplit( on ); } );
+    setKeyFramesSplit( MainWindow::self()->settings()->value("Circuit/keyFramesSplit", false ).toBool() );
+    m_bottomTabs->setCurrentWidget( m_msgWidget );
+
     m_lastCircDir = MainWindow::self()->settings()->value("lastCircDir").toByteArray();
     if( m_lastCircDir.isEmpty() )
     {
@@ -301,6 +309,7 @@ void CircuitWidget::createActions()
         Circuit* c = Circuit::self();
         undoAct->setEnabled( c && c->canUndo() );
         redoAct->setEnabled( c && c->canRedo() );
+        updtKeyFrameAct();
     });
     undoTimer->start( 200 );
 
@@ -335,8 +344,20 @@ void CircuitWidget::createActions()
 
     pauseSimAct = new QAction( QIcon(":/simpause.svg"),tr("Pause Simulation"), this);
     pauseSimAct->setStatusTip(tr("Pause Simulation"));
-    connect( pauseSimAct, &QAction::triggered,
-             this, &CircuitWidget::pauseCirc, Qt::UniqueConnection );
+    connect( pauseSimAct, &QAction::triggered, this, [this]()
+    {
+        Simulator* sim = Simulator::self();
+        if( sim && sim->isPaused() && playRange() ) return;   // Resume with key frames selected: their range
+        pauseCirc();
+    });
+
+    saveKeyAct = new QAction( QIcon(":/keyframesave.svg"),tr("Save Key Frame"), this);
+    saveKeyAct->setStatusTip(tr("Keep the paused state as a key frame next to the circuit (Key frames tab)"));
+    saveKeyAct->setShortcut( QKeySequence( Qt::CTRL | Qt::Key_K ) );   // ⌘K on macOS
+    saveKeyAct->setShortcutContext( Qt::WindowShortcut );
+    saveKeyAct->setEnabled( false );
+    addAction( saveKeyAct );
+    connect( saveKeyAct, &QAction::triggered, this, [this](){ saveKeyFrame(); } );
 
     currentFlowAct = new QAction( QIcon(":/currentflow.svg"),tr("Show Current Flow"), this);
     currentFlowAct->setStatusTip(tr("Show current flowing through the wires as moving dots"));
@@ -570,7 +591,8 @@ void CircuitWidget::createToolBars()
     m_simToolBar.addAction( powerCircAct );
     m_simToolBar.addAction( pauseSimAct );
     m_simToolBar.addAction( skipFwdAct );
-    m_simRunItems << skipBackAct << pauseSimAct << skipFwdAct;
+    m_simToolBar.addAction( saveKeyAct );
+    m_simRunItems << skipBackAct << pauseSimAct << skipFwdAct << saveKeyAct;
 
     QLabel* timeLabel = new QLabel( this );            // Simulation time, next to the run buttons
     QFont tf = timeLabel->font();
@@ -819,6 +841,7 @@ void CircuitWidget::printDescription()
 void CircuitWidget::showDescription()
 {
     m_scriptPane->refresh();                     // Scripts next to this circuit
+    KeyFrames::self()->reload();                 // Key frames next to it
     m_descWidget->showCircuit();                 // The Messages tab stays in front: it prints the description too
 }
 
@@ -850,14 +873,94 @@ void CircuitWidget::saveCirc( QString file )
         MainWindow::self()->setFile( file.split("/").last() );
         MainWindow::self()->settings()->setValue( "lastCircDir", m_lastCircDir );
         updateRecentFiles();
+        KeyFrames::self()->followCircuit();      // Saved under another name: the key frames next to it
     }
     else qDebug() << "\nError Saving Circuit:\n" << file;
+}
+
+// Saved key frames (specs/sim-control.md §5.1) ------------------------------------
+
+void CircuitWidget::updtKeyFrameAct()
+{
+    if( !saveKeyAct ) return;
+    QString why = KeyFrames::self()->whyNotSave();
+    saveKeyAct->setEnabled( why.isEmpty() );
+    QString tip = tr("Save Key Frame: keep the paused state, with a description (⌘K)");
+    if( !why.isEmpty() ) tip += "\n\n"+why;
+    if( saveKeyAct->toolTip() != tip ) saveKeyAct->setToolTip( tip );
+}
+
+void CircuitWidget::saveKeyFrame()
+{
+    QString err;
+    int n = KeyFrames::self()->save( "", &err );
+    if( !n ){ qWarning().noquote() << "[keyframes] Key frame not saved: "+err; return; }
+    showKeyFrames();
+    m_keyPane->editNew( n );
+}
+
+// Space: cancel a skip; start, pause or resume; with 2+ key frames selected, play their range
+void CircuitWidget::togglePlay()
+{
+    Simulator* sim = Simulator::self();
+    if( !sim ) return;
+    bool running = sim->isRunning();
+    if( SimSkip::self()->active() ) SimSkip::self()->cancel();
+    else if( ( !running || sim->isPaused() ) && playRange() ) ;
+    else if( !running ) powerCircOn();
+    else pauseCirc();                           // Pauses or resumes
+}
+
+bool CircuitWidget::playRange()
+{
+    if( !m_keyPane || KeyFrames::self()->busy() || SimSkip::self()->active() ) return false;
+    int from = 0, to = 0;
+    if( !m_keyPane->rangeSelection( &from, &to ) ) return false;
+    QString err = KeyFrames::self()->playRange( from, to );
+    if( !err.isEmpty() ) qWarning().noquote() << "[keyframes] "+err;
+    return true;
+}
+
+void CircuitWidget::showKeyFrames()
+{
+    if( m_keySplit ) m_keyPane->show();
+    else m_bottomTabs->setCurrentWidget( m_keyPane );
+    QList<int> sizes = m_mainSplitter->sizes();          // The bottom pane folded away: open it
+    if( sizes.size() == 2 && sizes.at( 1 ) < 60 ) m_mainSplitter->setSizes( { sizes.at( 0 )+sizes.at( 1 )-160, 160 } );
+}
+
+void CircuitWidget::setKeyFramesSplit( bool split )
+{
+    m_keySplit = split;
+    int tab = m_bottomTabs->indexOf( m_keyPane );
+    if( split && tab >= 0 )
+    {
+        bool wasFront = m_bottomTabs->currentWidget() == m_keyPane;
+        m_bottomTabs->removeTab( tab );
+        if( wasFront || m_bottomTabs->currentWidget() != m_descWidget ) m_bottomTabs->setCurrentWidget( m_msgWidget );   // Messages beside it
+        m_panelSplitter->addWidget( m_keyPane );         // Beside the tabs
+        m_keyPane->show();
+        QTimer::singleShot( 0, this, [this]()            // Once laid out: 40 % of the width, at least 400 px
+        {
+            int w = m_panelSplitter->width();
+            if( w < 600 || !m_keySplit ) return;
+            int kw = qMax( 400, w*4/10 );
+            m_panelSplitter->setSizes( { 0, w-kw, kw } );
+        });
+    }
+    else if( !split && tab < 0 )
+    {
+        m_bottomTabs->insertTab( m_bottomTabs->indexOf( m_msgWidget )+1, m_keyPane, tr("Key frames") );
+        m_bottomTabs->setCurrentWidget( m_keyPane );
+    }
+    m_keyPane->setSplit( split );
+    MainWindow::self()->settings()->setValue( "Circuit/keyFramesSplit", split );
 }
 
 void CircuitWidget::powerCirc()
 {
     if( Simulator::self()->isPaused() )          powerCircOff();
-    else if( powerCircAct->iconText() == "Off" ) powerCircOn();
+    else if( powerCircAct->iconText() == "Off" ){ if( !playRange() ) powerCircOn(); }
     else if( powerCircAct->iconText() == "On" )  powerCircOff();
 }
 
@@ -911,6 +1014,7 @@ void CircuitWidget::powerCircOff()
     EventLog::self()->stop();
     StatusView::self()->clear();
     Circuit::self()->update();
+    updtKeyFrameAct();
 }
 
 void CircuitWidget::powerCircDebug()
@@ -966,6 +1070,7 @@ void CircuitWidget::pauseCirc()
         // The power icon stays on: paused is not stopped (the circuit keeps its state)
         powerCircAct->setText(tr("Stop Simulation (resets to 0 s)"));
         m_infoWidget->setSimState( InfoWidget::shownPaused );
+        updtKeyFrameAct();                 // ⌘K at once, not at the next poll
     }
     else if( Simulator::self()->isPaused() )
     {
@@ -977,6 +1082,7 @@ void CircuitWidget::pauseCirc()
         powerCircAct->setIconText("On");
         powerCircAct->setText(tr("Stop Simulation"));
         m_infoWidget->setSimState( InfoWidget::shownRunning );
+        updtKeyFrameAct();
     }
 }
 
@@ -1151,9 +1257,7 @@ bool CircuitWidget::simKey( QKeyEvent* ev )
         case Qt::Key_Space:
             if( mods ) return false;
             if( ev->isAutoRepeat() ) return true;
-            if( SimSkip::self()->active() ) SimSkip::self()->cancel();
-            else if( !running ) powerCircOn();
-            else pauseCirc();                       // Pauses or resumes
+            togglePlay();
             return true;
         case Qt::Key_Escape:
             if( mods ) return false;

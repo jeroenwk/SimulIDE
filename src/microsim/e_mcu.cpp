@@ -37,6 +37,14 @@ eMcu::eMcu( Mcu* comp, QString id )
 
     m_freq = 0;
     m_cPerInst = 1;
+    m_cPerTick = 1;      // These were left uninitialized: an MCU clocked from a pin (freq 0, the Z80)
+    m_psInst = 0;        // saved whatever the memory held in its key frames (specs/sim-control.md §5.1)
+    m_psTick = 0;
+    m_cycle  = 0;
+    cyclesDone = 0;
+    m_state  = mcuStopped;
+    m_clkState = false;
+    m_isCpuRead = false;
 
     m_wordSize  = 2;
     m_flashSize = 0;
@@ -296,6 +304,8 @@ void eMcu::simState( StateIO& s )
     if( !m_eeprom.isEmpty() ) s.raw( m_eeprom.data(), m_eeprom.size()*sizeof( int ) );
     if( m_cpu ) m_cpu->coreState( s );          // PC, return address (registers: in m_dataMem)
     m_interrupts.intState( s, m_modules );
-    for( McuPort* port : m_mcuPorts ) port->portState( s );   // Their input bits (PINx): not elements
+    QStringList ports = m_mcuPorts.keys();     // By name: a QHash's order differs between processes
+    ports.sort();
+    for( const QString& p : ports ) m_mcuPorts.value( p )->portState( s );   // Their input bits (PINx): not elements
     for( McuModule* m : m_modules ) if( !dynamic_cast<eElement*>( m ) ) m->moduleState( s );
 }

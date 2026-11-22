@@ -4,9 +4,10 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <atomic>
-#include <QSet>
+#include <QList>
 
 #include "statelog.h"
+#include "simstate.h"
 
 uint64_t StateLog::nextSeq()
 {
@@ -15,16 +16,31 @@ uint64_t StateLog::nextSeq()
 }
 
 static QMutex s_allLock;
-static QSet<StateLog*> s_all;     // Every log, subcircuit parts included
+static QList<StateLog*> s_all;    // Every log, subcircuit parts included, in creation order (keyframes)
 
-StateLog::StateLog()  { QMutexLocker l( &s_allLock ); s_all.insert( this ); }
-StateLog::~StateLog() { QMutexLocker l( &s_allLock ); s_all.remove( this ); }
+StateLog::StateLog()  { QMutexLocker l( &s_allLock ); s_all.append( this ); }
+StateLog::~StateLog() { QMutexLocker l( &s_allLock ); s_all.removeOne( this ); }
+
+void StateLog::ioAll( StateIO& s )
+{
+    QMutexLocker l( &s_allLock );
+    uint32_t n = s_all.size();
+    s.io( n );
+    if( !s.saving() && n != (uint32_t)s_all.size() ){ s.fail(); return; }
+    for( StateLog* log : s_all )
+    {
+        QMutexLocker lock( &log->m_lock );
+        s.ioString( log->m_text );
+        s.io( log->m_level );
+    }
+}
 
 void StateLog::rewindList( QList<Event>& h, QString& text, int& level, uint64_t time )
 {
     while( !h.isEmpty() && h.last().time > time ) h.removeLast();
-    if( h.isEmpty() ){ text.clear(); level = -1; }
-    else             { text = h.last().text; level = h.last().level; }
+    bool same = h.isEmpty() ? ( level < 0 ) : ( h.last().text == text && h.last().level == level );
+    if( !same && level >= 0 ) h.append( { time, text, level, nextSeq() } );
+    else if( !same ){ text = h.last().text; level = h.last().level; }   // No state loaded: the history's
 }
 
 void StateLog::rewind( uint64_t time )

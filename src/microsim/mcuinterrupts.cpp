@@ -270,8 +270,12 @@ void Interrupt::intState( StateIO& s )
 
 void Interrupts::intState( StateIO& s, const std::vector<McuModule*>& modules )
 {
-    std::vector<Interrupt*> ints;                  // A fixed order: the hash isn't changed in a run
-    for( Interrupt* i : m_intList ) ints.push_back( i );
+    // By name: a QHash's order is fixed in a process but differs between processes (Qt seeds it),
+    // and a saved key frame loads in another (specs/sim-control.md §5.1)
+    std::vector<Interrupt*> ints;
+    QStringList names = m_intList.keys();
+    names.sort();
+    for( const QString& n : names ) ints.push_back( m_intList.value( n ) );
     auto idx = [&]( Interrupt* p ) -> int32_t {
         if( !p ) return -1;
         for( size_t k=0; k<ints.size(); ++k ) if( ints[k] == p ) return k;

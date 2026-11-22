@@ -66,6 +66,12 @@ const QList<Shortcut>& Shortcuts::all()
         { "Simulation", "Skip forward 5× / 10× / 100× the skip interval", "Shift+Right / Opt+Right / Shift+Opt+Right", "Canvas without focus" },
         { "Simulation", "Pause and go back by the skip interval (Shift/Opt: 5×/10×/100×), with the keyframes of the run", "Left", "Canvas without focus" },
         { "Simulation", "Give the keys back to the simulation", "Esc", "Simulation on, canvas focused, nothing selected or in progress" },
+        // Saved key frames (specs/sim-control.md §5.1)
+        { "Simulation", "Save a key frame of the paused state (Key frames tab), then type its description", "Cmd+K", "Simulation paused, circuit saved" },
+        { "Simulation", "Key frames list: go to the key frame (Up / Down go along), Shift / Cmd select several", "Click", "Key frames tab" },
+        { "Simulation", "Key frames list: play from the earliest selected key frame to the latest", "Space / F5 / F6", "Two or more key frames selected" },
+        { "Simulation", "Key frames list: edit the description", "Enter / double-click", "Key frames tab" },
+        { "Simulation", "Key frames list: delete the selected key frames (asks first)", "Backspace", "Key frames tab" },
         { "Simulation", "Transient noise (toggle)", "F12", "" },
         { "File", "Export as image (PNG, SVG)", "Cmd+P", "" },
         { "File", "Settings", "Cmd+,", "" },

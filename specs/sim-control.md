@@ -1,8 +1,9 @@
 # Simulation control: keys, skip, speed, history and snapshots
 
 Status: **phase 1 merged** (main b0096de, 2026-11-21), §3.1–3.8; **speed lock merged**
-(main 7a697b7, §3.9); phase 2 started on `feature/sim-history` (§4.7: determinism measured); differences from this text are noted in place. All decisions
-taken (D1–D15, Decision log §9). Phases 2 and 3 are studies.
+(main 7a697b7, §3.9); **phase 2 merged** (main b1472ec, §4); **phase 3 saved key frames built** on
+`feature/sim-keyframes` (§5.1; triggers §5.2 later). Differences from this text are noted in place.
+Decisions D1–D17 (Decision log §9).
 
 Goal: control a running simulation the way you control a media player or a scope: play/pause,
 stop and skip forward from the keyboard, set the skip interval and the speed by typing, and
@@ -729,19 +730,104 @@ interval dipped for a second; the window now starts at the first frame (`m_speed
 
 ## 5. Phase 3: saved snapshots and triggers
 
-### 5.1 Snapshots
+### 5.1 Saved key frames (requirements: user, 2026-11-22)
 
-A snapshot is one keyframe written to a file, so a state can be opened and inspected later:
-the meters, part states, current flow and charge views show that moment, and the simulation
-can be resumed from it.
+A **saved key frame** is one keyframe of the run (§4.8) written to a file with a time and a
+description, so a state can be found again, shown and resumed from in a later session. The
+spec's earlier word "snapshot" is this. Triggers (§5.2) are a later phase.
 
-- Only for circuits that have a history (§4.6).
-- File: `<circuit>.snap/<name>.snap1` in a folder next to the `.sim1` (D10), holding the
-  keyframe, the simulated time, the simulation settings, a hash of the circuit (a snapshot of a
-  different circuit is refused, or opened with a warning), and a note.
-- `sim snapshot save [name]`, `sim snapshot open <name>`, a Snapshots list in the GUI.
-- Uses: show a fault state to someone, skip a long start-up (a supply warming up, an MCU
-  booting) every time, start a regression test from a known state.
+Requirements:
+
+1. A **Key frames** tab in the bottom pane, which can also be placed as a split pane beside
+   the tabs, so it is seen next to Messages.
+2. It lists the key frames saved for the circuit: time and description (later more: size, …).
+3. Clicking one jumps the simulation to it; a stopped simulation starts, paused there, and the
+   whole simulation bar (second toolbar row) opens.
+4. While paused, a toolbar button and **⌘K** (Ctrl+K) save a key frame: it is added to the
+   list, its row selected and its description being edited.
+5. Delete with the context menu or Backspace, after a confirmation.
+6. A filter row at the top finds a key frame quickly.
+7. Shift (and ⌘) select several; Delete then deletes them all. With several selected, starting
+   the simulation **plays the range** (decided 2026-11-22): it jumps to the earliest selected
+   key frame, runs at the set speed and pauses at the latest one.
+
+Design:
+
+- **Only where going back works** (§4.6, §4.8): the button is greyed out with the reason in
+  its tooltip when history is off, a part blocks it, the simulation isn't paused, a skip is
+  running or the circuit has never been saved (the files go next to it).
+- **Files** (D10): `<circuit>.keyframes/<n>.kf1` beside the `.sim1`, one file each: a magic
+  line, a JSON header (format version, time, description, saved at, state size, layout
+  signature, electrical hash, simulation settings) and the keyframe bytes. Editing the
+  description rewrites the header. The pane reads the folder when a circuit is opened.
+- **Portable bytes**: a keyframe of the ring holds two process-bound values — the elements
+  a node calls on a voltage change (`eNode::m_voltChEl`, pointers) and the 6502's routine of
+  the current cycle (`m_EXEC`, a member-function pointer). Both are now written as indices
+  (element `simIndex`; for the 6502, "none / BRK / decoded from IR", decoded again on load), so
+  the same bytes load in another run and another process.
+- **Same circuit**: the *layout signature* (each element's class and id in order, the node
+  count) must match, or the key frame is refused with a message; the element markers of
+  `simCore` catch the rest. The *electrical hash* (the circuit file without positions,
+  rotations, labels and wire points) and the settings that change results (step size, reactive
+  step, non-linear limit, noise) differ → it loads, with a warning in Messages naming what
+  changed.
+- **Jump**: pause (or start and pause at once), load the bytes (`SimHistory::load`, the same
+  path as a restore: `syncAfterRestore`, `stateRestored`, part states rewound), drop the ring
+  (its keyframes may be another past) and take a keyframe there, so ← works from it on. The
+  displays get a frame, as after a skip.
+- **Range play**: from play / Space / F6 while two or more rows are selected: jump to the
+  earliest, then run with `setStopAt( latest )` at the set speed, pause there and keep the
+  selection, so play again replays it. A plain click clears the multi-selection.
+- **Pane** (`KeyFramePane`, `src/gui/circuitwidget/keyframepane.*`): filter line (time and
+  description, as typed), the list (Time, Description, Saved, Size; sorted by time), a ⧉ button
+  that moves the pane between the tabs and a split beside them (remembered:
+  `Circuit/keyFramesSplit`). Description: double-click or Enter edits it. Context menu: Go to,
+  Edit description, Delete…, Show folder.
+- **CLI**: `sim keyframe [list]`, `sim keyframe save [--note TEXT]`, `sim keyframe open <n>`,
+  `sim keyframe note <n> TEXT`, `sim keyframe delete <n>…` (no confirmation),
+  `sim keyframe play <a> <b>`.
+- **Tests**: `tests/regress/test_simctl_keyframes.py`: save at t₁, run on to t₂ and hash; a new
+  headless process opens the circuit and the key frame, runs to t₂: the same hash bit for bit
+  (circuits with node callbacks, and the 6502); a changed part value gives the warning; another
+  circuit's key frame is refused.
+
+**Built (2026-11-22, `feature/sim-keyframes`)** [SIMULATED]: `KeyFrames` (`keyframes.*`: files,
+open, range play), `KeyFramePane` (`keyframepane.*`), the ◆+ button and ⌘K in the simulation
+bar (greyed out with the reason), `sim keyframe …`, `view keyframes [tab|split]`.
+`test_simctl_keyframes.py`: 64 checks, 6 circuits (with board_mains' part states) (555, Arduino + DHT22, 6502, the ternary
+AND debouncer, PIC 16F887 CCP): saved, opened in the same run and **in a new process**, run on:
+node voltages and every element's state identical to the bit; description, a changed part
+(warning), another circuit (refused), range play, delete.
+
+What a key frame needed beyond the ring of §4.8 — state that never changes *within* a run, so
+going back never saw it, but does change between processes or runs:
+- **Pointers** in the bytes: a node's callback list (`eNode::m_voltChEl`) and the 6502's routine
+  of the current cycle (`m_EXEC`) are now indices / a code (§5.1 design).
+- **Hash order**: `Interrupts::intState` numbered the interrupts, and `eMcu` the ports, in the
+  order of a `QHash`, which Qt seeds per process: in another process index k named another
+  interrupt (the DHT22 Arduino ran on with the wrong timer flags). Now by name.
+- **Uninitialized fields** saved as they were: `eReactive` (`m_curSource`, `m_volt`, `m_tStep`,
+  `m_timeStep`) in a junction capacitance that is off held whatever the memory had (a path
+  string): harmless for the run, but noise in the checks. Initialized.
+
+- **Part states (badges)** (found by the user on board_mains, 2026-11-22): a keyframe held the
+  script cores' state levels but not their texts; after a load the state was rewound through this
+  run's history, so a key frame **ahead** of the history (jumping forward) or opened after a new
+  start showed the wrong state, or none. Now the state texts are in the keyframe (`ScriptCpu`, and
+  every `StateLog` of the built-in parts, in a `STAT` section after the core, in creation order);
+  the rewind keeps the loaded state and records it at the key frame's time when the history
+  doesn't already end there. Key frame file format 2; format-1 files are refused ("save it again").
+- More uninitialized fields found by the cross-process sweep: the HD44780's CGRAM (old heap
+  pointers in it), `Potentiometer::m_voltOut`, `eMcu` timing fields of a pin-clocked MCU (the Z80),
+  the TWI module's flags (AIP31068), and the WS2812's colours saved as `QColor` bytes (padding):
+  now RGBA words. Sweep after these: 775 of 781 circuits save the same bytes in two processes;
+  left: DS1307 (its real-time clock: wall time, correct to differ), two PIC 12F675 and the 16F690
+  (an INTCON flag: MCU state left from earlier runs, task first-run-mcu), the ZX Spectrum screen
+  buffer and the ILI9341 (not yet looked at); Scherz 3.91e too slow for the sweep.
+
+Checks for this: `sim history check --fresh` (save, stop, start, load, replay) and `--reopen`
+(the file loaded again first), and the sweep `tests/regress/sweeps/history_fresh.py` (`--xproc`:
+each circuit run in two processes side by side, full saved state compared).
 
 ### 5.2 Triggers
 
@@ -766,7 +852,7 @@ specs/scope-trigger-level.md).
 1b. Speed lock (3.9). One PR. Built (`feature/sim-speedlock`).
 2. Phase 2: state API on a first set of parts with `sim history check`, keyframes, replay and
    skip back; then the remaining circuit part classes (not MCUs, §4.6).
-3. Phase 3: snapshot files, then triggers (with the scope redesign).
+3. Phase 3: saved key frames (§5.1, `feature/sim-keyframes`), then triggers (with the scope redesign).
 
 ## 7. Risks
 
@@ -800,7 +886,9 @@ All three settled while building phase 1 (2026-11-21):
 | D7 | A skip runs as fast as possible, not at the set speed | yes |
 | D8 | ⏮ ⏭ buttons in the toolbar | yes |
 | D9 | Resuming from the past discards the recorded future (no branches) | yes |
-| D10 | Snapshots in a folder next to the circuit | yes |
+| D10 | Snapshots in a folder next to the circuit | yes (`<circuit>.keyframes/`) |
+| D16 | Several key frames selected, then play | **play the range**: earliest to latest, pause there (2026-11-22) |
+| D17 | Shortcut to save a key frame | **⌘K** (Ctrl+K) |
 | — | Going back: full snapshot per step, deltas, or keyframes + replay (§4.2)? | **a snapshot every frame** + replay |
 | D12 | History and snapshots for all parts, or limited? | **limited to circuits**: no MCUs, script parts or outside links (§4.6) |
 | D11 | Once the canvas has focus while running, how do the simulation keys come back without stopping? | **Esc on the canvas** when nothing is in progress and nothing is selected (§3.1) |

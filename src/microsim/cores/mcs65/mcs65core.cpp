@@ -754,5 +754,18 @@ void Mcs65Cpu::simState( StateIO& s )
     s.io( m_tHR );
     s.io( m_tHA );
     s.io( m_tHW );
-    s.raw( &m_EXEC, sizeof( m_EXEC ) );   // The routine of the current cycle (valid for the run)
+    // The routine of the current cycle, as a code: a member-function pointer is an address of
+    // this process, and a saved key frame loads in another (specs/sim-control.md §5.1).
+    // 0 none, 1 BRK (an interrupt or opcode 0), 2 what decode() gives for m_IR
+    uint8_t exec = !m_EXEC ? 0 : ( m_EXEC == &Mcs65Cpu::BRK ) ? 1 : 2;
+    s.io( exec );
+    if( s.saving() ) return;
+    if     ( exec == 0 ) m_EXEC = NULL;
+    else if( exec == 1 ) m_EXEC = &Mcs65Cpu::BRK;
+    else if( exec == 2 ){                     // decode() also sets these: keep the saved values
+        cpuState_t st = m_state; addrMode_t am = m_aMode; uint8_t af = m_aFlags; int8_t isr = m_isrSource;
+        decode();
+        m_state = st; m_aMode = am; m_aFlags = af; m_isrSource = isr;
+    }
+    else s.fail();
 }

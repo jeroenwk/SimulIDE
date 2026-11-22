@@ -412,23 +412,25 @@ void eNode::simState( StateIO& s )
     for( Connection* c = m_firstCurrent; c; c = c->next ) s.io( c->value );
 
     // Elements called when its voltage changes: parts turn this on and off as they work (a DHT22
-    // stops listening while it answers). In order (the call order). Pointers: elements live for
-    // the whole run, and an edit during the run ends the history (SimHistory::end)
+    // stops listening while it answers). In order (the call order), as indices in the
+    // simulator's element list: a saved key frame loads in another run or process
+    // (specs/sim-control.md §5.1). An element outside the list (-1) can't be restored
     uint32_t n = 0;
     for( CallBackElement* cb = m_voltChEl; cb; cb = cb->next ) n++;
     s.io( n );
     if( s.saving() ){
-        for( CallBackElement* cb = m_voltChEl; cb; cb = cb->next ){ eElement* e = cb->element; s.raw( &e, sizeof( e ) ); }
+        for( CallBackElement* cb = m_voltChEl; cb; cb = cb->next ){ int32_t i = cb->element->simIndex; s.io( i ); }
         return;
     }
+    const QList<eElement*>& list = Simulator::self()->elementList();
     clearElmList( m_voltChEl );
     m_voltChEl = nullptr;
     CallBackElement* last = nullptr;
     for( uint32_t k=0; k<n; ++k ){
-        eElement* e = nullptr;
-        s.raw( &e, sizeof( e ) );
-        if( s.overflow() || !e ) return;
-        CallBackElement* cb = new CallBackElement( e );
+        int32_t i = -1;
+        s.io( i );
+        if( s.overflow() || i < 0 || i >= list.size() ){ s.fail(); return; }
+        CallBackElement* cb = new CallBackElement( list.at( i ) );
         cb->next = nullptr;
         if( last ) last->next = cb; else m_voltChEl = cb;
         last = cb;

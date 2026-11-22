@@ -140,7 +140,7 @@ void SimHistory::capture( Simulator* sim, bool replace )
     {
         if( m_head >= m_arenaSize ) m_head = 0;
         StateIO s( m_arena+m_head, m_arenaSize-m_head );
-        if( !sim->simCore( s ) )
+        if( !saveAll( sim, s ) )
         {
             m_skipped++;
             m_error = sim->coreError();
@@ -180,28 +180,86 @@ uint64_t SimHistory::restore( Simulator* sim, uint64_t t, QString keepClass )
             StateIO k( kept.data(), kept.size() );
             for( eElement* el : keep ) el->simState( k );
         }
-        StateIO s( m_arena+it->off, it->size, false );
-        if( !sim->simCore( s ) || s.overflow() )
-        {
-            m_error = "keyframe at "+QString::number( it->time )+" ps does not load (state layout differs)";
-            qWarning().noquote() << "[history]" << m_error;
-            return 0;
-        }
-        if( !keep.isEmpty() )
-        {
+        auto keepThem = [&](){
+            if( keep.isEmpty() ) return;
             StateIO k( kept.data(), kept.size(), false );
             for( eElement* el : keep ) el->simState( k );
-        }
-        sim->setLastEventTime( it->time );
-        sim->syncAfterRestore();
-        for( eElement* el : sim->elementList() ) el->stateRestored();
-        StateLog::rewindAll( it->time );           // Part states: as they were then (badges, Messages)
-        for( eElement* el : sim->elementList() )
-            if( ScriptCpu* cpu = dynamic_cast<ScriptCpu*>( el ) ) cpu->statusRewind( it->time );
-        if( EventLog::self() ) EventLog::self()->rewound();
+        };
+        if( !loadKey( sim, m_arena+it->off, it->size, it->time, keepThem ) ) return 0;
         return it->time;
     }
     return 0;
+}
+
+// The simulation state, then the part states (badges) of the built-in parts: StateLog belongs to
+// the GUI component, not to an element. Saves or loads, as s does
+bool SimHistory::saveAll( Simulator* sim, StateIO& s )
+{
+    if( !sim->simCore( s ) ) return false;
+    if( !s.mark( 0x54415453 ) ) return false;                  // STAT
+    StateLog::ioAll( s );
+    return true;
+}
+
+// Keyframe bytes into the running circuit (worker idle, paused), and what follows a restore:
+// the matrix from the restored stamps, parts told, part states and the event log rewound
+bool SimHistory::loadKey( Simulator* sim, const uint8_t* buf, size_t size, uint64_t time,
+                          std::function<void()> afterLoad )
+{
+    StateIO s( buf, size, false );
+    if( !saveAll( sim, s ) || s.overflow() )
+    {
+        m_error = "keyframe at "+QString::number( time )+" ps does not load (state layout differs)";
+        qWarning().noquote() << "[history]" << m_error;
+        return false;
+    }
+    if( afterLoad ) afterLoad();
+    sim->setLastEventTime( time );
+    sim->syncAfterRestore();
+    for( eElement* el : sim->elementList() ) el->stateRestored();
+    StateLog::rewindAll( time );               // Part states: as they were then (badges, Messages)
+    for( eElement* el : sim->elementList() )
+        if( ScriptCpu* cpu = dynamic_cast<ScriptCpu*>( el ) ) cpu->statusRewind( time );
+    if( EventLog::self() ) EventLog::self()->rewound();
+    return true;
+}
+
+QByteArray SimHistory::saveBytes( Simulator* sim, QString* error )
+{
+    QByteArray b;
+    for( int cap = 256*1024; cap <= 256*1024*1024; cap *= 4 )
+    {
+        b.resize( cap );
+        StateIO s( (uint8_t*)b.data(), (size_t)cap );
+        if( !saveAll( sim, s ) ){ if( error ) *error = sim->coreError(); return QByteArray(); }
+        if( s.overflow() ) continue;
+        b.resize( (int)s.size() );
+        return b;
+    }
+    if( error ) *error = "the state is larger than 256 MB";
+    return QByteArray();
+}
+
+QString SimHistory::loadBytes( Simulator* sim, const QByteArray& bytes, uint64_t time )
+{
+    m_error.clear();
+    if( !loadKey( sim, (const uint8_t*)bytes.constData(), (size_t)bytes.size(), time ) )
+        return "the key frame does not load into this circuit (its state layout differs)";
+    stop();                                    // The ring's keyframes may be another past
+    m_ended = false;
+    capture( sim, true );                      // Going back works from here on
+    return "";
+}
+
+// Which elements, in which order, and how many nodes: a keyframe loads only into the same
+QString SimHistory::layoutSignature( Simulator* sim )
+{
+    uint64_t h = 1469598103934665603ull;
+    auto add = [&h]( const QByteArray& b ){ for( char c : b ){ h ^= (uint8_t)c; h *= 1099511628211ull; } h ^= 0xff; h *= 1099511628211ull; };
+    add( QByteArray::number( sim->eNodeCount() ) );
+    for( eElement* el : sim->elementList() ) add( ( className( el )+" "+el->getId() ).toUtf8() );
+    return QString::number( (qulonglong)h, 16 )+"/"+QString::number( sim->elementList().size() )
+          +"/"+QString::number( sim->eNodeCount() );
 }
 
 void SimHistory::truncateAfter( uint64_t t )

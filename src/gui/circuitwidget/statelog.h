@@ -38,7 +38,13 @@ class StateLog
         // state is the last one left, so the replay reports them again. Worker idle
         void rewind( uint64_t time );
         static void rewindAll( uint64_t time );
+        // text / level: the state loaded from the keyframe. The history after `time` is dropped; when
+        // what is left doesn't end in that state (a saved key frame opened in another run, or ahead
+        // of this run's history), the state is recorded at `time`. specs/sim-control.md §5.1
         static void rewindList( QList<Event>& h, QString& text, int& level, uint64_t time );
+
+        // Keyframes: every log's current state, in creation order (the same for the same circuit)
+        static void ioAll( class StateIO& s );
 
         StateLog();
         ~StateLog();
