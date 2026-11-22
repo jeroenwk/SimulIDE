@@ -380,7 +380,7 @@ Removing wires around a junction works as in the GUI:
 
 ### Triggers
 
-Circuit triggers (specs/triggers.html): they watch the running simulation and act at the solved step where their condition is met. They are saved with the circuit (`<triggers>` in the .sim1) and every edit is one undo step. Built so far (phase 3b steps 1–2): voltages, currents and part states; pause, key frame (also Δ before), count. AND and the Triggers tab follow.
+Circuit triggers (specs/triggers.html): they watch the running simulation and act at the solved step where their condition is met. They are saved with the circuit (`<triggers>` in the .sim1) and every edit is one undo step. Built so far (phase 3b steps 1–3): voltages, currents and part states; pause, key frame (also Δ before), count; the Triggers pane. The part properties tab, AND and node picking follow.
 
 | Command | |
 |---|---|
@@ -389,6 +389,7 @@ Circuit triggers (specs/triggers.html): they watch the running simulation and ac
 | `trigger set <id> [--watch W --cond C] [--pause\|--pause=0] [--mode …] [--holdoff T] [--max N] [--hyst V] [--name TEXT]` | Change a trigger (a new watch needs its condition). Applied at the next frame of a run; its hits stay unless its signal changed |
 | `trigger arm <id>…` / `trigger disarm <id>…` | Arm or disarm |
 | `trigger del <id>…` | Delete (no question; `undo` brings them back) |
+| `view triggers [tab\|split] [--edit ID \| --new \| --close]` | Show the Triggers pane: a bottom tab after Key frames, or beside the tabs (`split`, remembered as `Circuit/triggersSplit`). `--edit ID` / `--new` open the trigger editor (the same dialog as a double-click or +; `capture window dialog Trigger` shows it); `--close` cancels open editors |
 | `trigger hits [<id>]` | Each trigger with `times_ps`, the times of its hits in this run. Hits are cleared at a start; going back (`sim skip --back`, a key frame) removes the hits after the time gone back to, and the replay to that time does not fire; a single trigger whose hit is removed is armed again |
 
 A pause trigger also ends a skip at its step: the reply's `note` is "stopped by trigger … at …". Messages gets "Trigger: C1 pin 1 ↑ 6.3212 V at 1 ms (paused)" for a pause, and one summary line per count-only trigger at each pause and stop ("…: 10 hits, the last at 100 ms").

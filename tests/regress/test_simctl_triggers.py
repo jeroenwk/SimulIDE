@@ -135,6 +135,18 @@ def test(sim):
 
     keyframes(sim, os.path.dirname(path))
     states(sim)
+    pane(sim)
+
+
+def pane(sim):
+    """Step 3: the Triggers pane, in the tabs or beside them; the editor opens (headless closes it)."""
+    c = sim.cli
+    sim.check("view triggers split", 1 if c("view", "triggers", "split")["triggers"] == "split" else 0, 1, absolute=0)
+    sim.check("view triggers tab", 1 if c("view", "triggers", "tab")["triggers"] == "tab" else 0, 1, absolute=0)
+    c("trigger", "add", "MT7833A-1:pwm", "change")
+    c("view", "triggers", "--edit", "4")
+    c("view", "triggers", "--new")
+    sim.check("the editor opened and closed: the triggers unchanged", len(c("trigger", "list")), 4, absolute=0)
 
 
 def keyframes(sim, folder):

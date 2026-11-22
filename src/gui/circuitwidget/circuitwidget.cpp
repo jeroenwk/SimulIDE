@@ -50,6 +50,7 @@
 #include "simskip.h"
 #include "keyframes.h"
 #include "keyframepane.h"
+#include "triggerpane.h"
 #include "simhistory.h"
 #include "cliapi.h"
 
@@ -240,6 +241,11 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     m_bottomTabs->insertTab( m_bottomTabs->indexOf( m_msgWidget )+1, m_keyPane, tr("Key frames") );
     connect( m_keyPane, &KeyFramePane::splitToggled, this, [this]( bool on ){ setKeyFramesSplit( on ); } );
     setKeyFramesSplit( MainWindow::self()->settings()->value("Circuit/keyFramesSplit", false ).toBool() );
+    m_trigPane = new TriggerPane( this );                // Triggers: a tab after Key frames, or a split (specs/triggers.html §3)
+    m_bottomTabs->insertTab( m_bottomTabs->indexOf( m_msgWidget )+( m_keySplit ? 1 : 2 ), m_trigPane, tr("Triggers") );
+    connect( m_trigPane, &TriggerPane::splitToggled, this, [this]( bool on ){ setTriggersSplit( on ); } );
+    connect( m_trigPane, &TriggerPane::wantShown, this, [this](){ showTriggers( false ); } );
+    setTriggersSplit( MainWindow::self()->settings()->value("Circuit/triggersSplit", false ).toBool() );
     m_bottomTabs->setCurrentWidget( m_msgWidget );
 
     m_lastCircDir = MainWindow::self()->settings()->value("lastCircDir").toByteArray();
@@ -264,6 +270,7 @@ void CircuitWidget::clear()
     }
     m_circView.clear();
     m_infoWidget->clearLastRun();
+    if( m_trigPane ) m_trigPane->follow();       // The new circuit's triggers
 }
 
 void CircuitWidget::createActions()
@@ -842,6 +849,7 @@ void CircuitWidget::showDescription()
 {
     m_scriptPane->refresh();                     // Scripts next to this circuit
     KeyFrames::self()->reload();                 // Key frames next to it
+    if( m_trigPane ) m_trigPane->follow();       // Its triggers
     m_descWidget->showCircuit();                 // The Messages tab stays in front: it prints the description too
 }
 
@@ -929,6 +937,51 @@ void CircuitWidget::showKeyFrames()
     if( sizes.size() == 2 && sizes.at( 1 ) < 60 ) m_mainSplitter->setSizes( { sizes.at( 0 )+sizes.at( 1 )-160, 160 } );
 }
 
+void CircuitWidget::showTriggers( bool front )
+{
+    if( m_trigSplit ) m_trigPane->show();
+    else if( front || m_bottomTabs->currentWidget() != m_msgWidget ) m_bottomTabs->setCurrentWidget( m_trigPane );
+    QList<int> sizes = m_mainSplitter->sizes();
+    if( front && sizes.size() == 2 && sizes.at( 1 ) < 60 ) m_mainSplitter->setSizes( { sizes.at( 0 )+sizes.at( 1 )-160, 160 } );
+}
+
+void CircuitWidget::sizeSplits()   // The panes beside the tabs: 40 % of the width together, at least 400 px each
+{
+    QTimer::singleShot( 0, this, [this]()
+    {
+        int w = m_panelSplitter->width();
+        int n = ( m_keySplit ? 1 : 0 )+( m_trigSplit ? 1 : 0 );
+        if( w < 600 || !n ) return;
+        int each = qMax( 400, w*4/10/n );
+        QList<int> sizes = { 0, w-each*n };
+        for( int i=2; i<m_panelSplitter->count(); ++i ) sizes.append( each );
+        m_panelSplitter->setSizes( sizes );
+    });
+}
+
+void CircuitWidget::setTriggersSplit( bool split )
+{
+    m_trigSplit = split;
+    int tab = m_bottomTabs->indexOf( m_trigPane );
+    if( split && tab >= 0 )
+    {
+        bool wasFront = m_bottomTabs->currentWidget() == m_trigPane;
+        m_bottomTabs->removeTab( tab );
+        if( wasFront ) m_bottomTabs->setCurrentWidget( m_msgWidget );
+        m_panelSplitter->addWidget( m_trigPane );
+        m_trigPane->show();
+        sizeSplits();
+    }
+    else if( !split && tab < 0 )
+    {
+        int after = m_keySplit ? m_bottomTabs->indexOf( m_msgWidget ) : m_bottomTabs->indexOf( m_keyPane );
+        m_bottomTabs->insertTab( after+1, m_trigPane, tr("Triggers") );
+        m_bottomTabs->setCurrentWidget( m_trigPane );
+    }
+    m_trigPane->setSplit( split );
+    MainWindow::self()->settings()->setValue( "Circuit/triggersSplit", split );
+}
+
 void CircuitWidget::setKeyFramesSplit( bool split )
 {
     m_keySplit = split;
@@ -938,15 +991,9 @@ void CircuitWidget::setKeyFramesSplit( bool split )
         bool wasFront = m_bottomTabs->currentWidget() == m_keyPane;
         m_bottomTabs->removeTab( tab );
         if( wasFront || m_bottomTabs->currentWidget() != m_descWidget ) m_bottomTabs->setCurrentWidget( m_msgWidget );   // Messages beside it
-        m_panelSplitter->addWidget( m_keyPane );         // Beside the tabs
+        m_panelSplitter->insertWidget( 2, m_keyPane );   // Beside the tabs (before Triggers when it is there too)
         m_keyPane->show();
-        QTimer::singleShot( 0, this, [this]()            // Once laid out: 40 % of the width, at least 400 px
-        {
-            int w = m_panelSplitter->width();
-            if( w < 600 || !m_keySplit ) return;
-            int kw = qMax( 400, w*4/10 );
-            m_panelSplitter->setSizes( { 0, w-kw, kw } );
-        });
+        sizeSplits();
     }
     else if( !split && tab < 0 )
     {

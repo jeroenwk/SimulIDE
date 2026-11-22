@@ -19,6 +19,10 @@
 #include "clirefs.h"
 #include "mainwindow.h"
 #include "circuitwidget.h"
+#include "triggerpane.h"
+#include "triggereditor.h"
+#include <QApplication>
+#include "triggers.h"
 #include "circuitview.h"
 #include "circuit.h"
 #include "component.h"
@@ -239,6 +243,33 @@ void CliApi::registerView()
         else if( !where.isEmpty() ) throw CliError("view keyframes [tab|split]");
         CircuitWidget::self()->showKeyFrames();
         return QJsonObject{ {"keyframes", CircuitWidget::self()->keyFramesSplit() ? "split" : "tab"} };
+    });
+
+    add("view triggers", "view triggers [tab|split] [--edit ID | --new | --close]", "Show the Triggers pane (specs/triggers.html §3): "
+        "in the bottom tabs (tab) or beside them (split, remembered). --edit ID / --new: also open the trigger editor "
+        "(a dialog: capture window dialog Trigger to see it; headless closes it at once); --close: cancel open editors.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        if( c.has("close") ){
+            int n = 0;
+            for( QWidget* w : QApplication::topLevelWidgets() )
+                if( TriggerDialog* d = qobject_cast<TriggerDialog*>( w ) ){ if( d->isVisible() ){ d->reject(); n++; } }
+            if( TriggerPane::self() ) for( TriggerDialog* d : TriggerPane::self()->findChildren<TriggerDialog*>() )
+                if( d->isVisible() ){ d->reject(); n++; }
+            return QJsonObject{ {"closed", n} };
+        }
+        QString where = c.argOr( 0, "");
+        if( where == "split" || where == "tab" ) CircuitWidget::self()->setTriggersSplit( where == "split" );
+        else if( !where.isEmpty() ) throw CliError("view triggers [tab|split]");
+        CircuitWidget::self()->showTriggers();
+        if( c.has("edit") ){
+            int id = c.opt("edit").toInt();
+            if( !Triggers::self() || !Triggers::self()->find( id ) ) throw CliError("no trigger "+c.opt("edit"));
+            TriggerPane::self()->selectId( id );
+            TriggerPane::self()->edit( id );
+        }
+        else if( c.has("new") ) TriggerPane::self()->addNew();
+        return QJsonObject{ {"triggers", CircuitWidget::self()->triggersSplit() ? "split" : "tab"} };
     });
 
     add("messages", "messages [--last N] [--grep TEXT]",
