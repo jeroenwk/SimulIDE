@@ -78,3 +78,8 @@ void ScriptTwi::sendByte( uint8_t data )
 
     masterWrite( data, isAddr, write );         /// Write data or address to Slave
 }
+
+void ScriptTwi::simState( StateIO& s )
+{
+    McuTwi::simState( s );
+}

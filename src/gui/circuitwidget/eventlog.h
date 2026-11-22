@@ -82,6 +82,9 @@ class EventLog : public Updatable
         };
 
         void partEvents( Component* comp, bool silent=false );  // silent: catch up without lines
+    public:
+        void rewound();                   // Gone back in time: states as they are now, capacitors sampled afresh
+    private:
         void capEvents( CapacitorBase* cap, uint64_t now, bool fresh );
         void capPoint( CapacitorBase* cap, Track& tr, uint64_t t, double v );
         void emitLine( Component* comp, QString kind, const Line& line );

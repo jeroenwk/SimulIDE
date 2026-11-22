@@ -15,6 +15,8 @@
 class FuseHeat
 {
     public:
+        void simState( class StateIO& s );   // Keyframes: the two temperatures and the constants
+
         FuseHeat();
 
         void setParams( double C1, double G1, double C2, double G2 );

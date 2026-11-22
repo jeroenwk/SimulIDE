@@ -16,6 +16,8 @@ class LibraryItem;
 class Stepper : public LinkerComponent, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Stepper )
         Stepper( QString type, QString id );
         ~Stepper();
 

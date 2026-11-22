@@ -13,6 +13,8 @@ class LibraryItem;
 class ShiftReg : public LogicComponent
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( ShiftReg )
         ShiftReg( QString type, QString id );
         ~ShiftReg();
 

@@ -50,6 +50,9 @@ class eMcu : public DataSpace, public eIou
         eMcu( Mcu* comp, QString id );
         ~eMcu();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( eMcu )
+
  static eMcu* self() { return m_pSelf; }
 
         virtual void stamp() override;

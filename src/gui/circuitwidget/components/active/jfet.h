@@ -14,6 +14,8 @@ class LibraryItem;
 class Jfet : public Component, public eJfet
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Jfet )
         Jfet( QString type, QString id );
         ~Jfet();
 

@@ -42,3 +42,8 @@ void Amperimeter::updateStep()
 }   }
 
 double Amperimeter::instant() { return current(); }
+
+void Amperimeter::simState( StateIO& s )
+{
+    Meter::simState( s );
+}

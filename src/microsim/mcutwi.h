@@ -17,6 +17,8 @@ class McuTwi : public McuPrescaled, public TwiModule
         friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( McuTwi )
         McuTwi( eMcu* mcu, QString name );
         ~McuTwi();
 

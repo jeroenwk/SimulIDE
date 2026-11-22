@@ -120,3 +120,12 @@ void BinCounter::useSetPin( bool set )
     m_setPin->setVisible( set );
     setSrInv( m_resetInv );
 }
+
+void BinCounter::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_Counter );
+    s.io( m_TopValue );
+    s.io( m_resetInv );
+    s.io( m_pinSet );
+}

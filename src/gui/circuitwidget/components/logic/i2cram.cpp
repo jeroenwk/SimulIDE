@@ -205,3 +205,14 @@ void I2CRam::slotShowTable()
     else               m_memTable->setWindowTitle( "I2C RAM: "+m_idLabel->toPlainText() );
     m_memTable->setData( &m_ram );
 }
+
+void I2CRam::simState( StateIO& s )
+{
+    IoComponent::simState( s );
+    TwiModule::simState( s );
+    s.io( m_size );
+    s.io( m_addrPtr );
+    s.io( m_phase );
+    s.io( m_persistent );
+    s.ioVector( m_ram );
+}

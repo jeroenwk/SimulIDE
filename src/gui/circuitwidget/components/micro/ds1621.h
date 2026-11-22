@@ -14,6 +14,8 @@ class LibraryItem;
 class DS1621 : public IoComponent, public TwiModule
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( DS1621 )
         DS1621( QString type, QString id );
         ~DS1621();
         

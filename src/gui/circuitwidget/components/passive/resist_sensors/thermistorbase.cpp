@@ -58,3 +58,8 @@ void ThermistorBase::setMaxVal( double max )
     updtValue();
 }
 
+void ThermistorBase::simState( StateIO& s )
+{
+    VarResBase::simState( s );
+    s.io( m_ptc );
+}

@@ -18,6 +18,8 @@ class PicMssp : public McuModule, public eElement
     friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicMssp )
         PicMssp( eMcu* mcu, QString name, int type );
         ~PicMssp();
 

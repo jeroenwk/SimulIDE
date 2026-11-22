@@ -13,6 +13,7 @@ eClockedDevice::eClockedDevice( QString id )
               : eElement( id )
 {
     m_clock   = false;
+    m_clkState = Clock_Low;     // Was left unset
     m_clkPin  = NULL;
     m_trigger = Clock;
 }
@@ -20,6 +21,7 @@ eClockedDevice::~eClockedDevice(){}
 
 void eClockedDevice::stamp()
 {
+    m_clkState = Clock_Low;     // Not the last run's
     if( m_clkPin ){
         m_clock = m_clkPin->inverted();
         m_clkPin->changeCallBack( this );
@@ -95,4 +97,12 @@ void eClockedDevice::setTrigger( trigger_t trigger )
 void eClockedDevice::remove()
 {
     if( m_clkPin) m_clkPin->removeConnector();
+}
+
+void eClockedDevice::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_clock );
+    s.io( m_clkState );
+    s.io( m_trigger );
 }

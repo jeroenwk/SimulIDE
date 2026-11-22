@@ -203,3 +203,15 @@ QString CapacitorBase::gaugeText( int mode )
     else if( mode == ChargeView::labelPercent ) return pct;
     return ChargeView::voltStr( v )+" · "+pct;
 }
+
+void CapacitorBase::simState( StateIO& s )
+{
+    eReactive::simState( s );
+    s.io( m_plateVolt );
+    s.io( m_capacitance );
+    s.io( m_maxVolt );
+    s.io( m_chargeScale );
+    s.io( m_logCharge );
+    s.io( m_nextSample );
+    s.io( m_heldVolt );
+}

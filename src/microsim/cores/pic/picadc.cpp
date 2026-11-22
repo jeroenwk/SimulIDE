@@ -39,6 +39,8 @@ PicAdc::~PicAdc(){}
 void PicAdc::initialize()
 {
     McuAdc::initialize();
+    m_mode = 0xFF;   // No mode yet: the reset value of ADCON1 is applied (all analog on the
+                     // 16F87x), on every run; the last run's mode skipped it, the constructor's 0 too
     m_pRefPin = m_refPin.at(0);
     if( m_refPin.size() > 1 ) m_nRefPin = m_refPin.at(1);
 }
@@ -324,4 +326,43 @@ PicAdc3::PicAdc3( eMcu* mcu, QString name )
 }
 PicAdc3::~PicAdc3(){}
 
+void PicAdc::simState( StateIO& s )
+{
+    McuAdc::simState( s );
+    s.io( m_mode );
+}
 
+void PicAdc00::simState( StateIO& s )
+{
+    PicAdc::simState( s );
+}
+
+void PicAdc01::simState( StateIO& s )
+{
+    PicAdc::simState( s );
+}
+
+void PicAdc1::simState( StateIO& s )
+{
+    PicAdc::simState( s );
+}
+
+void PicAdc10::simState( StateIO& s )
+{
+    PicAdc1::simState( s );
+}
+
+void PicAdc11::simState( StateIO& s )
+{
+    PicAdc1::simState( s );
+}
+
+void PicAdc20::simState( StateIO& s )
+{
+    PicAdc::simState( s );
+}
+
+void PicAdc3::simState( StateIO& s )
+{
+    PicAdc::simState( s );
+}

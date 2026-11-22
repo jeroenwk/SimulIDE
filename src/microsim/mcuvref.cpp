@@ -33,3 +33,12 @@ void McuVref::addCallBack( McuModule* mod, bool call ) // Add Modules to be call
     { if( !m_callBacks.contains( mod ) ) m_callBacks.append( mod ); }
     else m_callBacks.removeAll( mod );
 }
+
+void McuVref::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_enabled );
+    s.io( m_mode );
+    s.io( m_vref );
+}

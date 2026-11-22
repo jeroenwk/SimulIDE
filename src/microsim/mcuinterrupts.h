@@ -11,6 +11,8 @@
 #include <map>
 
 #include "mcutypes.h"
+#include "simstate.h"
+#include <vector>
 
 class eMcu;
 class Interrupts;
@@ -20,6 +22,7 @@ class IoPin;
 class Interrupt
 {
         friend class McuCreator;
+        friend class Interrupts;
 
     public:
         Interrupt( QString name, uint16_t vector, eMcu* mcu );
@@ -43,6 +46,8 @@ class Interrupt
         void setAutoClear( bool a ) { m_autoClear = a; }
         void setContinuous( bool c ); // Pin INT
         bool isContinuous() { return m_continuous; }
+
+        virtual void intState( StateIO& s );   // Keyframes: flags (the callbacks: Interrupts::intState)
 
         void callBack( McuModule* mod, bool call );
         void exitCallBack( McuModule* mod, bool call );
@@ -96,6 +101,10 @@ class Interrupts
         void remove();
         void resetInts();
         void writeGlobalFlag( uint8_t flag );
+
+        // Keyframes: the global flag, the active / pending / running lists (as indices) and each
+        // interrupt's flags and module callbacks (indices into the MCU's modules)
+        void intState( StateIO& s, const std::vector<McuModule*>& modules );
 
         void addToPending( Interrupt* newInt );
         void remFromPending( Interrupt* remInt );

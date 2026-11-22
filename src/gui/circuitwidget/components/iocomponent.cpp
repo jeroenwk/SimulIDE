@@ -483,3 +483,27 @@ void IoComponent::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget
 
     Component::paintSelected( p );
 }
+
+void IoComponent::simState( StateIO& s )
+{
+    s.io( m_outValue );
+    s.io( m_nextOutVal );
+    s.io( m_jitter );
+    s.io( m_propDelay );
+    s.io( m_timeLH );
+    s.io( m_timeHL );
+    s.io( m_propSize );
+    s.io( m_inHighV );
+    s.io( m_inLowV );
+    s.io( m_ouHighV );
+    s.io( m_ouLowV );
+    s.io( m_inImp );
+    s.io( m_ouImp );
+    s.io( m_openCol );
+    s.io( m_invOutputs );
+    s.io( m_invInputs );
+    s.io( m_width );
+    s.io( m_height );
+    s.ioQueue( m_outQueue );
+    s.ioQueue( m_timeQueue );
+}

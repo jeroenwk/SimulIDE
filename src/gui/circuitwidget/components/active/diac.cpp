@@ -185,3 +185,13 @@ void Diac::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
 
     Component::paintSelected( p );
 }
+
+void Diac::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_resOn );
+    s.io( m_resOff );
+    s.io( m_brkVolt );
+    s.io( m_holdCurr );
+    s.io( m_state );
+}

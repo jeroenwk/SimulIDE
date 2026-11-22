@@ -93,3 +93,7 @@ void UartTx::sendBit()
     if( m_period ) Simulator::self()->addEvent( m_period, this ); // Shedule next bit
 }
 
+void UartTx::simState( StateIO& s )
+{
+    UartTR::simState( s );
+}

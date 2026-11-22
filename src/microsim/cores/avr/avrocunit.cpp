@@ -38,3 +38,8 @@ void AvrOcUnit::setPinSate( bool state, uint64_t time )
     }
     else if( m_ocm ) m_ocm->setState( this, state );
 }
+
+void AvrOcUnit::simState( StateIO& s )
+{
+    McuOcUnit::simState( s );
+}

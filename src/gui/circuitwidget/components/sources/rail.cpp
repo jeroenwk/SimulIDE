@@ -128,3 +128,10 @@ void Rail::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* 
 
     Component::paintSelected( p );
 }
+
+void Rail::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_volt );
+    s.io( m_rampK );
+}

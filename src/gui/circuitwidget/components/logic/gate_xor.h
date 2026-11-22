@@ -14,6 +14,8 @@ class LibraryItem;
 class XorGate : public Gate
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( XorGate )
         XorGate( QString type, QString id );
         ~XorGate();
 

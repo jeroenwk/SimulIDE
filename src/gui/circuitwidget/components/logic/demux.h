@@ -13,6 +13,8 @@ class LibraryItem;
 class Demux : public LogicComponent
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Demux )
         Demux( QString type, QString id );
         ~Demux();
 

@@ -26,6 +26,8 @@
 class ULA_ZX48k : public CpuBase, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( ULA_ZX48k )
         ULA_ZX48k( eMcu* mcu );
         ~ULA_ZX48k();
 

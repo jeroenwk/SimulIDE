@@ -282,3 +282,50 @@ void PicComp20::configureB( uint8_t newCMxCON1 )
 {
 
 }
+
+void PicComp::simState( StateIO& s )
+{
+    McuComp::simState( s );
+    s.io( m_inv );
+}
+
+void PicComp0::simState( StateIO& s )
+{
+    PicComp::simState( s );
+    s.io( m_cis );
+}
+
+void PicComp01::simState( StateIO& s )
+{
+    PicComp0::simState( s );
+}
+
+void PicComp02::simState( StateIO& s )
+{
+    PicComp0::simState( s );
+}
+
+void PicComp03::simState( StateIO& s )
+{
+    PicComp0::simState( s );
+}
+
+void PicComp1::simState( StateIO& s )
+{
+    PicComp::simState( s );
+}
+
+void PicComp11::simState( StateIO& s )
+{
+    PicComp1::simState( s );
+}
+
+void PicComp12::simState( StateIO& s )
+{
+    PicComp1::simState( s );
+}
+
+void PicComp20::simState( StateIO& s )
+{
+    PicComp::simState( s );
+}

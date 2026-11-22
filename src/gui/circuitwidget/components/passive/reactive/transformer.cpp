@@ -562,3 +562,13 @@ void Transformer::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QW
 // ┏━VVVV--- ePin ------
 // ┃
 // ┗━VVVV━━⚫ Pin3 -- eNode
+
+void Transformer::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_lenght );
+    s.io( m_baseInd );
+    s.io( m_coupCoeff );
+    s.io( m_reacStep );
+    s.io( m_currentScale );
+}   // Not m_shownRef: display state, taken each frame (snapCurrents)

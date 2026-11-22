@@ -17,6 +17,8 @@ class McuAdc : public McuPrescaled, public eElement
         friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( McuAdc )
         McuAdc( eMcu* mcu, QString name );
         ~McuAdc();
 

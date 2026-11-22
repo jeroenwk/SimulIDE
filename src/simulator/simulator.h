@@ -125,6 +125,12 @@ class Simulator : public QObject
         uint64_t lockMaxStep() { return m_lockMaxStep ? m_lockMaxStep : 100*m_reactStep; }
         void setLockMaxStep( uint64_t ps );
         int stepScale() { return m_stepScale; }
+        uint32_t nlBudget() { return m_nlBudget; }
+        QStringList eventQueue( int max=200 ) {    // "id@time", in order (CLI sim hash --elements)
+            QStringList l; int n = 0;
+            for( eElement* e = m_firstEvent; e && n < max; e = e->nextEvent, ++n )
+                l << e->getId()+"@"+QString::number( e->eventTime );
+            return l; }
         uint64_t lockedStep();     // The reactive step in use now (reactStep × scale, capped)
         bool lockLimited() { return m_lockLimit; }   // Can't keep up even at the limit (or no steps to coarsen)
         bool lockUsedThisRun() { return m_lockMaxScale > 1; }
@@ -165,6 +171,25 @@ class Simulator : public QObject
         void addToElementList( eElement* el );
         void remFromElementList( eElement* el );
         
+        int eNodeCount() { return m_eNodeList.size(); }
+        const QList<eNode*>& eNodeList() { return m_eNodeList; }
+
+        // Keyframes (specs/sim-control.md §4.5): save or load the simulator core, every node and
+        // every element, and the event queue. Worker idle. Saving returns false when the step is
+        // not solved or an event belongs to an element outside the list
+        bool simCore( class StateIO& s );
+        void syncAfterRestore();     // After simCore() loaded a keyframe: the matrix takes its stamps, the voltages stay
+        QString coreError() { return m_coreError; }   // Why simCore() refused (saving)
+        // Time of the last event run (a solved step), for one step back. Worker idle
+        uint64_t lastEventTime() { return m_lastEvent; }
+        void setLastEventTime( uint64_t t ) { m_lastEvent = t; }
+
+        // Run seed (specs/sim-control.md §4.4): std::srand() at each start, so the parts that
+        // use rand() (flip-flop start states, random WaveGen, dynamic RAM contents) repeat when
+        // the same seed is used again (a replay). setRunSeed(0): a new seed at each start
+        uint32_t runSeed() { return m_runSeed; }           // Of the current (or last) run
+        uint32_t runSeedSet() { return m_runSeedSet; }
+        void setRunSeed( uint32_t s ) { m_runSeedSet = s; }
         double eNodeVolt( int n ) { return ( n > 0 && n <= m_eNodeList.size() ) ? m_eNodeList.at( n-1 )->getVolt() : 0; } // Node 0 = ground
 
         void addToUpdateList( Updatable* el );
@@ -241,6 +266,7 @@ class Simulator : public QObject
         uint64_t m_runEnd = 0;    // Simulated time the current frame's run goes up to
         bool m_resumeRun = false; // The next run goes on to m_runEnd (resumeWorker)
         QList<eElement*> m_startSettle;
+        QString m_coreError;
         void startSettle();
 
         QList<eElement*> m_elementList;
@@ -287,6 +313,7 @@ class Simulator : public QObject
         uint64_t m_lastStep;
         uint64_t m_refTime;
         uint64_t m_lastRefT;
+        bool     m_speedBase = false;  // Start the real-speed window at the next frame
         uint64_t m_loopTime;
         uint64_t m_guiTime;
         uint64_t m_updtTime;
@@ -302,6 +329,9 @@ class Simulator : public QObject
         void startNoise();
         void stopNoise();
 
+        uint64_t m_lastEvent = 0;
+        uint32_t m_runSeed = 0;
+        uint32_t m_runSeedSet = 0;
         bool     m_speedLock   = false;
         uint64_t m_lockMaxStep = 0;
         int      m_stepScale   = 1;

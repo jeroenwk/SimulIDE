@@ -93,3 +93,16 @@ void eCoil::addIductor( eCoil* coil, double g )
 // ┏━-ePin0-eNode0-VVVV-━━⚫ Pin0 -- eNode
 // ┃
 // ┗━-ePin1-eNode1-VVVV-━━⚫ Pin1 -- eNode
+
+void eCoil::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( index );
+    s.io( sign );
+    s.io( size );
+    s.io( relation );
+    s.io( inductance );
+    s.io( m_currSource );
+    m_resistor0.simState( s );
+    m_resistor1.simState( s );
+}

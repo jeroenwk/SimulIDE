@@ -300,3 +300,9 @@ QString Mcs65Interface::getStrInst( uint8_t IR ) // Called by Mcu Monitor to get
     }
     return "Not Implemented";
 }
+
+void Mcs65Interface::simState( StateIO& s )
+{
+    eElement::simState( s );
+    CpuBase::coreState( s );   // Not in an eMcu: its PC here
+}

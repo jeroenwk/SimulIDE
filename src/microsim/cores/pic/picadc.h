@@ -18,6 +18,8 @@ class PicTimer16bit;
 class PicAdc : public McuAdc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicAdc )
         PicAdc( eMcu* mcu, QString name );
         ~PicAdc();
 
@@ -48,6 +50,8 @@ class PicAdc : public McuAdc
 class PicAdc00 : public PicAdc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicAdc00 )
         PicAdc00( eMcu* mcu, QString name );
         ~PicAdc00();
 
@@ -62,6 +66,8 @@ class PicAdc00 : public PicAdc
 class PicAdc01 : public PicAdc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicAdc01 )
         PicAdc01( eMcu* mcu, QString name );
         ~PicAdc01();
 
@@ -76,6 +82,8 @@ class PicAdc01 : public PicAdc
 class PicAdc1 : public PicAdc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicAdc1 )
         PicAdc1( eMcu* mcu, QString name );
         ~PicAdc1();
 
@@ -94,6 +102,8 @@ class PicAdc1 : public PicAdc
 class PicAdc10 : public PicAdc1
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicAdc10 )
         PicAdc10( eMcu* mcu, QString name );
         ~PicAdc10();
 
@@ -105,6 +115,8 @@ class PicAdc10 : public PicAdc1
 class PicAdc11 : public PicAdc1
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicAdc11 )
         PicAdc11( eMcu* mcu, QString name );
         ~PicAdc11();
 
@@ -118,6 +130,8 @@ class PicVrefE;
 class PicAdc20 : public PicAdc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicAdc20 )
         PicAdc20( eMcu* mcu, QString name );
         ~PicAdc20();
 
@@ -135,6 +149,8 @@ class PicAdc20 : public PicAdc
 class PicAdc3 : public PicAdc
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicAdc3 )
         PicAdc3( eMcu* mcu, QString name );
         ~PicAdc3();
 

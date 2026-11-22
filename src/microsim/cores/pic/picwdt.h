@@ -11,6 +11,8 @@
 class PicWdt : public McuWdt
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicWdt )
         PicWdt( eMcu* mcu, QString name );
         ~PicWdt();
 
@@ -30,6 +32,8 @@ class PicWdt : public McuWdt
 class PicWdt00 : public PicWdt
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicWdt00 )
         PicWdt00( eMcu* mcu, QString name );
         ~PicWdt00();
 
@@ -43,6 +47,8 @@ class PicWdt00 : public PicWdt
 class PicWdt01 : public PicWdt
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicWdt01 )
         PicWdt01( eMcu* mcu, QString name );
         ~PicWdt01();
 

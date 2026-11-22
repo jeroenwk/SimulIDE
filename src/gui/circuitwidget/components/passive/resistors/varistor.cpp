@@ -212,3 +212,17 @@ void Varistor::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w
     p->drawLine( QPointF(-5, 7 ), QPointF( 7,-7 ) );
     Component::paintSelected( p );
 }
+
+void Varistor::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_volt1mA );
+    s.io( m_clampVolt );
+    s.io( m_clampCurr );
+    s.io( m_maxCurr );
+    s.io( m_alpha );
+    s.io( m_gLeak );
+    s.io( m_volt );
+    s.io( m_firstIter );
+    s.io( m_state );
+}

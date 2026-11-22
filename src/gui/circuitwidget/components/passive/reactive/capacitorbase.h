@@ -19,6 +19,9 @@ class CapacitorBase : public Reactive, public GaugeOwner
         CapacitorBase( QString type, QString id );
         ~CapacitorBase();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( CapacitorBase )
+
         virtual void setCurrentValue( double c ) override;
         virtual void updateStep() override;
 

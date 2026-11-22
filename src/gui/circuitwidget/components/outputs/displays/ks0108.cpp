@@ -278,3 +278,22 @@ void Ks0108::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget
 
     Component::paintSelected( p );
 }
+
+void Ks0108::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_input );
+    s.io( m_addrX1 );
+    s.io( m_addrY1 );
+    s.io( m_addrX2 );
+    s.io( m_addrY2 );
+    s.io( m_startLin );
+    s.io( m_csActLow );
+    s.io( m_Cs1 );
+    s.io( m_Cs2 );
+    s.io( m_dispOn );
+    s.io( m_lastScl );
+    s.io( m_reset );
+    s.io( m_Write );
+    s.io( m_aDispRam );
+}

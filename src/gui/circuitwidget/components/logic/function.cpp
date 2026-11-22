@@ -397,3 +397,10 @@ void Function::onbuttonclicked( int  i )
         m_compiled = false;
     }
 }
+
+void Function::simState( StateIO& s )
+{
+    IoComponent::simState( s );
+    s.io( m_compiled );
+    scriptGlobals( s );   // The script's variables (as ScriptCpu)
+}

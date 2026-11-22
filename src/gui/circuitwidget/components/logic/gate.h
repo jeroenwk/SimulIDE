@@ -13,6 +13,8 @@ class IoPin;
 class Gate : public LogicComponent
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Gate )
         Gate( QString type, QString id, int inputs );
         ~Gate();
 

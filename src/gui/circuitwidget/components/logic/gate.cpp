@@ -113,3 +113,11 @@ void Gate::setNumInputs( int inputs )
     m_outPin[0]->setY( 0 );
     m_area = QRect( -11, -4*m_inPin.size(), 19, 4*2*m_inPin.size() );
 }
+
+void Gate::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_initState );
+    s.io( m_settling );
+    s.io( m_minInputs );
+}

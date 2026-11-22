@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "e-node.h"
+#include "simstate.h"
 #include "pin.h"
 #include "e-pin.h"
 #include "connector.h"
@@ -318,6 +319,13 @@ void eNode::clear()
 QList<int> eNode::getConnections()
 { return m_nodeList; }
 
+QStringList eNode::callbackIds()
+{
+    QStringList l;
+    for( CallBackElement* cb = m_voltChEl; cb; cb = cb->next ) l << cb->element->getId();
+    return l;
+}
+
 void eNode::voltChangedCallback( eElement* el )
 {
     CallBackElement* changed = m_voltChEl;
@@ -394,4 +402,39 @@ void eNode::clearConnList( Connection* first )
         first = first->next;
         delete del;
     }
+}
+
+void eNode::simState( StateIO& s )
+{
+    s.io( m_volt );
+    for( Connection* c = m_firstAdmit;   c; c = c->next ) s.io( c->value );
+    for( Connection* c = m_firstSingAdm; c; c = c->next ) s.io( c->value );
+    for( Connection* c = m_firstCurrent; c; c = c->next ) s.io( c->value );
+
+    // Elements called when its voltage changes: parts turn this on and off as they work (a DHT22
+    // stops listening while it answers). In order (the call order). Pointers: elements live for
+    // the whole run, and an edit during the run ends the history (SimHistory::end)
+    uint32_t n = 0;
+    for( CallBackElement* cb = m_voltChEl; cb; cb = cb->next ) n++;
+    s.io( n );
+    if( s.saving() ){
+        for( CallBackElement* cb = m_voltChEl; cb; cb = cb->next ){ eElement* e = cb->element; s.raw( &e, sizeof( e ) ); }
+        return;
+    }
+    clearElmList( m_voltChEl );
+    m_voltChEl = nullptr;
+    CallBackElement* last = nullptr;
+    for( uint32_t k=0; k<n; ++k ){
+        eElement* e = nullptr;
+        s.raw( &e, sizeof( e ) );
+        if( s.overflow() || !e ) return;
+        CallBackElement* cb = new CallBackElement( e );
+        cb->next = nullptr;
+        if( last ) last->next = cb; else m_voltChEl = cb;
+        last = cb;
+    }
+    m_admitChanged = true;
+    m_currChanged  = true;
+    m_changed = false;
+    changed();
 }

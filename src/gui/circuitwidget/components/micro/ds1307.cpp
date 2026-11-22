@@ -206,3 +206,13 @@ void DS1307::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget
 
     Component::paintSelected( p );
 }
+
+void DS1307::simState( StateIO& s )
+{
+    TwiModule::simState( s );
+    s.io( m_timeUpdtd );
+    s.io( m_addrPtr );
+    s.io( m_data );
+    s.io( m_phase );
+    m_clock.simState( s );
+}

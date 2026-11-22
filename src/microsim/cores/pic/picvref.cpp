@@ -124,3 +124,17 @@ double PicVrefE::getDacVref()
     if( m_enabled ) return m_dacVref;
     else            return 0;
 }
+
+void PicVref::simState( StateIO& s )
+{
+    McuVref::simState( s );
+    s.io( m_vrr );
+    s.io( m_vroe );
+}
+
+void PicVrefE::simState( StateIO& s )
+{
+    McuVref::simState( s );
+    s.io( m_adcVref );
+    s.io( m_dacVref );
+}

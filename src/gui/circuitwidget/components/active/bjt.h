@@ -14,6 +14,8 @@ class LibraryItem;
 class BJT : public Component, public eBJT
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( BJT )
         BJT( QString type, QString id );
         ~BJT();
         

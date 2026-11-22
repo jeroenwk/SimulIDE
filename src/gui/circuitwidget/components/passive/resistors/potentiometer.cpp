@@ -104,7 +104,16 @@ void Potentiometer::updateStep()
 {
     if( !m_needUpdate ) return;
     m_needUpdate = false;
+    applyRes();
 
+    if( m_propDialog ) m_propDialog->updtValues();
+    else setValLabelText( getPropStr( showProp() ) );
+}
+
+// The two halves from m_res1; unchanged values are not stamped again (a value applied from the
+// simulation is not re-applied at the next frame)
+void Potentiometer::applyRes()
+{
     double res1 = m_res1; // BH-002: exact value, the dial only has 1000 steps
     double res2 = m_resist-res1;
 
@@ -116,11 +125,8 @@ void Potentiometer::updateStep()
         res2 = 1e-6;
         res1 = m_resist-res2;
     }
-    m_resA.setRes( res1 );
-    m_resB.setRes( res2 );
-
-    if( m_propDialog ) m_propDialog->updtValues();
-    else setValLabelText( getPropStr( showProp() ) );
+    if( m_resA.admit() != 1/res1 ) m_resA.setRes( res1 );
+    if( m_resB.admit() != 1/res2 ) m_resB.setRes( res2 );
 }
 
 double Potentiometer::getVal() { return m_res1; }
@@ -155,7 +161,12 @@ void Potentiometer::setRes( double res ) // Called when property resistance is c
 void Potentiometer::setLinkedValue( double v, int i )
 {
     if( i ) setRes( v );
-    else Dialed::setLinkedValue( v, i );
+    else{
+        Dialed::setLinkedValue( v, i );
+        // Set from the simulation (a script, a linked part): applied now, not at the next GUI
+        // frame, so the result doesn't depend on when frames fall (a replay gives the same)
+        if( Simulator::self()->isRunning() ) applyRes();   // The label follows at the frame
+    }
 }
 
 void Potentiometer::updateProxy()
@@ -179,3 +190,25 @@ void Potentiometer::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidg
 
     Component::paintSelected( p );
 }
+
+void Potentiometer::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_resist );
+    s.io( m_voltOut );
+    s.io( m_res1 );
+    s.io( m_setFromCode );
+    m_resA.simState( s );
+    m_resB.simState( s );
+}
+
+// After a keyframe is restored: the dial back to the restored value. The dial signals only a
+// change, so a dial left at the later value would swallow the same value set again by the
+// replay (a script's I2C byte) and the resistance would not follow
+void Potentiometer::stateRestored()
+{
+    m_setFromCode = true;
+    m_dialW.setValue( qRound( m_res1*1000/m_resist ) );
+    m_setFromCode = false;
+}
+

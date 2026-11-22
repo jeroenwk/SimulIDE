@@ -302,3 +302,30 @@ void Hd44780_Base::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidge
     }
     Component::paintSelected( p );
 }
+
+void Hd44780_Base::simState( StateIO& s )
+{
+    s.io( m_DDram );
+    s.io( m_CGram );
+    s.io( m_rows );
+    s.io( m_cols );
+    s.io( m_imgWidth );
+    s.io( m_imgHeight );
+    s.io( m_cursPos );
+    s.io( m_shiftPos );
+    s.io( m_direction );
+    s.io( m_shiftDisp );
+    s.io( m_dispOn );
+    s.io( m_cursorOn );
+    s.io( m_cursorBlink );
+    s.io( m_dataLength );
+    s.io( m_lineLength );
+    s.io( m_DDaddr );
+    s.io( m_CGaddr );
+    s.io( m_nibble );
+    s.io( m_input );
+    s.io( m_lastClock );
+    s.io( m_writeDDRAM );
+    s.io( m_blinking );
+    s.io( m_lastCircTime );
+}

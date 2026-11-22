@@ -46,6 +46,8 @@ class Transformer : public Component, public eElement
         };
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Transformer )
         Transformer( QString type, QString id );
         ~Transformer();
 

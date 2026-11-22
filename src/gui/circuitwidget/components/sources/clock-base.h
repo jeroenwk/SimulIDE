@@ -14,6 +14,9 @@ class ClockBase : public FixedVolt
         ClockBase( QString type, QString id );
         ~ClockBase();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( ClockBase )
+
         virtual bool setPropStr( QString prop, QString val ) override;
 
         virtual void stamp() override;

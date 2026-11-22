@@ -221,3 +221,22 @@ void McuPin::registerScript( asIScriptEngine* engine )
                                    , asMETHODPR( McuPin, changeCallBack, (eElement*, bool), void)
                                    , asCALL_THISCALL );
 }
+
+void McuPin::simState( StateIO& s )
+{
+    IoPin::simState( s );
+    s.io( m_extIntTrigger );
+    s.io( m_number );
+    s.io( m_isAnalog );
+    s.io( m_isOut );
+    s.io( m_outMask );
+    s.io( m_inpMask );
+    s.io( m_puMask );
+    s.io( m_openColl );
+    s.io( m_changeCB );
+    s.io( m_outCtrl );
+    s.io( m_dirCtrl );
+    s.io( m_portState );
+    s.io( m_portMode );
+    s.io( m_pinMask );
+}

@@ -185,3 +185,12 @@ void DcMotor::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
     }
     Component::paintSelected( p );
 }
+
+void DcMotor::simState( StateIO& s )   // Not the angle and speed: summed per GUI frame (display)
+{
+    eResistor::simState( s );
+    s.io( m_rpm );
+    s.io( m_LastVolt );
+    s.io( m_voltNom );
+    s.io( m_motStPs );
+}

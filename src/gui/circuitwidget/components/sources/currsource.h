@@ -14,6 +14,8 @@ class Pin;
 class CurrSource : public VarSource
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( CurrSource )
         CurrSource( QString type, QString id );
         ~CurrSource();
 

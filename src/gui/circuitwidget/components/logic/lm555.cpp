@@ -118,6 +118,7 @@ void Lm555::initialize()
     clearStates();
     m_voltNeg = 0;
     m_voltPos = 0;
+    m_output->setOutHighV( 5-1.3 );   // As built: not the last run's level (the first run differed)
 
     if( !Simulator::self()->isRunning() ) return;
     m_thrEnode = m_cv->getEnode();               // Control Voltage Pin
@@ -216,4 +217,18 @@ void Lm555::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
     p->drawArc( boundingRect().width()/2-6, -4, 8, 8, 0, -2880 /* -16*180 */ );
 
     Component::paintSelected( p );
+}
+
+void Lm555::simState( StateIO& s )
+{
+    eElement::simState( s );
+    m_resA.simState( s );
+    m_resB.simState( s );
+    m_resD.simState( s );
+    s.io( m_voltPos );
+    s.io( m_voltNeg );
+    s.io( m_cmos );
+    s.io( m_propDelay );
+    s.io( m_outState );
+    s.io( m_reset );
 }

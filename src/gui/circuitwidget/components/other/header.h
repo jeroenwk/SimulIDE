@@ -13,6 +13,8 @@ class LibraryItem;
 class Header : public ConnBase
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Header )
         Header( QString type, QString id );
         ~Header();
 

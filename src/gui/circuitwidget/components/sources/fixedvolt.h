@@ -22,6 +22,9 @@ class FixedVolt : public Component, public eElement
         FixedVolt( QString type, QString id );
         ~FixedVolt();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( FixedVolt )
+
         // K7: typed values set the Voltage (not shown by default: an empty ShowProp is
         // not saved, so a shown default would show up on every older circuit)
         QString valueProperty() override { return "Voltage"; }

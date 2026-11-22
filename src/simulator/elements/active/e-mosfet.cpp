@@ -159,3 +159,17 @@ void eMosfet::updateValues()
     qDebug() << "[eMosfet] updateValues Threshold" << m_threshold << "depletion" << m_depletion
              << "Gth" << m_Gth << "kRDSon" << m_kRDSon;
 }
+
+void eMosfet::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_accuracy );
+    s.io( m_lastCurrent );
+    s.io( m_threshold );
+    s.io( m_kRDSon );
+    s.io( m_RDSon );
+    s.io( m_gateV );
+    s.io( m_Gth );
+    s.io( m_Pchannel );
+    s.io( m_depletion );
+}

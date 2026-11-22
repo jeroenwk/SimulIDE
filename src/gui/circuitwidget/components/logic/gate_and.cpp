@@ -69,3 +69,8 @@ void AndGate::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w 
 
     Component::paintSelected( p );
 }
+
+void AndGate::simState( StateIO& s )
+{
+    Gate::simState( s );
+}

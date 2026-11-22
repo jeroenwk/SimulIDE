@@ -20,6 +20,8 @@ class eSource;
 class TwiModule : public eClockedDevice
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( TwiModule )
         TwiModule( QString name );
         ~TwiModule();
 

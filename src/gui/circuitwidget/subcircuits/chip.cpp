@@ -345,3 +345,9 @@ void Chip::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
     }
     Component::paintSelected( p );
 }
+
+void Chip::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_initialized );
+}

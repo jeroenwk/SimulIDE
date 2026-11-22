@@ -24,6 +24,9 @@ class PlotBase : public Component, public ScriptModule
         PlotBase( QString type, QString id );
         ~PlotBase();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PlotBase )
+
         virtual bool setPropStr( QString prop, QString val ) override;
 
         int baSizeX() { return m_baSizeX; }

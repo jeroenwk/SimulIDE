@@ -141,7 +141,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `wire list` | Wires and the pins they join |
 | `wire remove <wire> ...` | Remove wires. Prints the removed uids and any merged wires |
 | `wire style <wire> ... [--color C\|none] [--band C\|none] [--opacity 0..100] [--width W\|default]` | Wire colours ([specs/wire-colors.md](../specs/wire-colors.md)): line colour, and a translucent band behind the wire (default 6 px, 50 %). One undo step; without options prints them. `wire list` shows `color`, `bandColor`, `bandWidth` when set |
-| `wire current [wire ...]` | Current through wires (A), signed from the `from` pin to the `to` pin. Works paused. `flag` marks shared (`approximate`) or non-conserving (`inconsistent`) results |
+| `wire current [wire ...]` | Current through wires (A), signed from the `from` pin to the `to` pin. Works paused. `flag` marks shared (`approximate`) or non-conserving (`inconsistent`) results. With currentFlow on: `level` and `dots` (`forward`, `backward` for a moment after going back in time, `still`) |
 
 - `comp move`, `comp rotate` and `comp flip` also print the new pin positions.
 
@@ -367,9 +367,11 @@ Removing wires around a junction works as in the GUI:
 | `sim start` / `sim stop` | Power the circuit on or off |
 | `sim pause` / `sim resume` | |
 | `sim run --for <time>` | Run for an exact span of simulated time, then pause. Replies when done |
+| `sim hash [--elements] [--dump ID]` | Bit-exact hash of every node voltage at the current time, with the time and the node count: two runs to the same time compare equal only when they computed the same. `--elements`: also the full state hash (`state`) and one hash per element (`class id:hash` of its saved state), to name the part that differs between two runs; `--dump ID`: that element's saved state bytes in hex |
+| `sim history [sizes \| check …]` | Keyframes of the run (specs/sim-control.md §4.8, `settings history`): count, span, bytes, capture time (mean, max), classes without state support (`missing`). `sizes`: bytes per class. `check [--span T] [--points N] [--ago T] [--keep CLASS]`: from now, skip to N checkpoints recording the node and state hashes, restore the keyframe T before now, skip to them again: `ok` when all are identical; `--keep CLASS` is a negative control (that class keeps its present state), `differ` names the elements that differ |
 | `sim status` | State, simulated time, target and actual speed; `skipping: true` while a skip is not done; with the speed lock on (or used this run) `speedLock` {`on`, `scale`, `step`, `max_step`, `limited`} and a `note` once it coarsened the reactive step |
-| `sim skip [<time>\|step] [--count N]` | Pause and skip forward by a span (`5us`, `2.5ms`, `1min`), or by the skip interval (`settings skipInterval`) without one, as fast as the computer can whatever the set speed, then pause; replies after one frame with `from`, `skipped` and `note`. `step` = to the next solver event. `--count N`: N times as far (N solver steps). Starts a stopped simulation (a run starts at 1 ps, so `sim skip 1ms` from stopped lands on 1 ms + 1 ps, as `sim run --for`). The → key and the toolbar's ⏭ do the same (specs/sim-control.md) |
-| `sim step [--count N]` | One solver step: run the next pending event time, solve and pause (`sim skip step`) |
+| `sim skip [<time>\|step] [--count N] [--back]` | Pause and skip forward by a span (`5us`, `2.5ms`, `1min`), or by the skip interval (`settings skipInterval`) without one, as fast as the computer can whatever the set speed, then pause; replies after one frame with `from`, `skipped` and `note`. `step` = to the next solver event. `--count N`: N times as far (N solver steps). Starts a stopped simulation (a run starts at 1 ps, so `sim skip 1ms` from stopped lands on 1 ms + 1 ps, as `sim run --for`). The → key and the toolbar's ⏭ do the same (specs/sim-control.md). `--back`: go back as far with the keyframes of the run (`settings history`): the last keyframe at or before the target is restored, the rest is replayed, then it pauses; `skipped` is negative; ← and ⏮ do the same. A circuit with a part that can't be saved refuses, naming each part and why ("going back is off for this circuit: …"; `sim history` → `missing`) |
+| `sim step [--count N] [--back]` | One solver step: run the next pending event time, solve and pause (`sim skip step`); `--back`: as many solver steps back, onto the earlier step times |
 | `sim speed [percent]` | Target speed in % of real time |
 | `noise sources` | The transient noise sources of the running circuit: part, type, kind (thermal / shot / channel), nodes, spectral density `psd` (A²/Hz) and the `rms` current per update. See [NOISE.md](NOISE.md) |
 | `sim average --for <time> <pin\|comp> ...` | Run for a span, then pause, and give the time-weighted mean, RMS, min and max over every converged solver step: the voltage at a pin (`R1.lPin`), or for a two-pin part (`R1`, `C1`, `L1`) the voltage across it (pin 0 − pin 1) and the current into pin 0; a meter (`Amperimeter`, `Voltimeter`) the same between its two terminals (its current, the voltage across it). On a fresh run the unsolved start (before the first solved step) is kept out of min and max. Exact for switching waveforms; a mean of `scope data` samples is not, since they sit on a fixed time grid. A logic output with no wire (an unused Q̄) is read at every solved step; another pin with nothing connected is refused |
@@ -429,6 +431,7 @@ the pause.
 | `ui mouse <x,y>` | Move the mouse (no button) to a scene position over the canvas; returns `kbd state` |
 | `ui drag <x1,y1> <x2,y2>` | Drag with the left mouse button between two scene positions (press, moves in 8 px steps, release); returns `kbd state` |
 | `ui click <x,y> [--cmd] [--double]` | Left click at a scene position on the canvas, as the mouse does (on empty canvas: clears the selection, places the keyboard cursor; `--cmd` holds Cmd: on a wire, corner or dot it starts network mode there, and in network mode marks / unmarks a wire; `--double` adds a double click: with `--cmd` on a wire, its net is marked); returns `kbd state` |
+| `ui click --widget messages\|toolbar` | Press and release on Messages or the simulation toolbar, as the mouse does: takes the keyboard focus from the canvas; returns `kbd state` |
 | `ui focus canvas\|none` | Give the canvas keyboard focus or take it away |
 
 These commands work on any part with on-screen controls, including push
@@ -632,7 +635,7 @@ The groups follow the Settings dialog:
 |---|---|
 | app | `language`, `fontScale`, `fontName`, `userPath` |
 | circuit | `drawGrid`, `showScroll`, `animate`, `fps`, `autoBackup` |
-| simulation | `speed`, `skipInterval`, `speedLock` (hold the set speed by coarsening the reactive step, specs/sim-control.md §3.9), `speedLockMaxStep` (its limit, 0 = 100 × `reactStep`), `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps`, `supplyRamp`, `noise`, `noiseBW`, `noiseScale`, `noiseSeed`, `noiseStart`, `noiseStop`, `noiseOff` |
+| simulation | `speed` (also sets `skipInterval` to a tenth of a second at that speed, `1 step` kept), `skipInterval`, `history` (keyframes every frame, on by default), `historyBudget` (MB, default 256), `runSeed` (rand() seed at each start, 0 = new), `speedLock` (hold the set speed by coarsening the reactive step, specs/sim-control.md §3.9), `speedLockMaxStep` (its limit, 0 = 100 × `reactStep`), `stepSize`, `stepsPerSec` (read only), `reactStep`, `nlSteps`, `slopeSteps`, `supplyRamp`, `noise`, `noiseBW`, `noiseScale`, `noiseSeed`, `noiseStart`, `noiseStop`, `noiseOff` |
 
 - Simulation settings are saved with the circuit.
 - `logVerbose` (Messages pane: Log: Verbose) also shows debug logs, the lines

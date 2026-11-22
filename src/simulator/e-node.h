@@ -18,6 +18,7 @@ class eNode
         ~eNode();
 
         QString itemId() { return m_id; }
+        QStringList callbackIds();      // Elements called when its voltage changes, in order (CLI)
 
         void addEpin( ePin* epin );
         void remEpin( ePin* epin );
@@ -45,6 +46,7 @@ class eNode
 
         double getVolt() { return m_volt; }
         void   setVolt( double volt );
+        void   restoreVolt( double v ) { m_volt = v; }   // A keyframe's voltage: no callbacks (Simulator::syncAfterRestore)
         //bool voltchanged() { return m_voltChanged; }
         //void setVoltChanged( bool changed ){ m_voltChanged = changed; }
 
@@ -64,6 +66,10 @@ class eNode
         bool   hasStamps( ePin* epin );   // epin stamped anything here (false: passive pin)
 
         QList<int> getConnections();
+
+        // Keyframes (specs/sim-control.md §4.5): the voltage and every stamped value; loading
+        // marks the node changed, so the next solve restamps the matrix from them
+        void simState( class StateIO& s );
 
         eNode* nextCH;
 

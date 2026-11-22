@@ -463,3 +463,36 @@ void eBJT::getModels() // Static: resources/data/bjts.model
     m_names.append( "Custom" );
     qDebug() << "[eBJT] getModels:" << m_bjts.size() << "models from" << modelsFile;
 }
+
+void eBJT::simState( StateIO& s )
+{
+    eElement::simState( s );
+    pinCurrents( s );
+    s.io( m_applying );
+    s.io( m_va );
+    s.io( m_baseCurr );
+    s.io( m_voltBE );
+    s.io( m_voltBC );
+    s.io( m_gain );
+    s.io( m_vt );
+    s.io( m_satCur );
+    s.io( m_vCrit );
+    s.io( m_rgain );
+    s.io( m_fgain );
+    s.io( m_PNP );
+    s.io( m_gmin );
+    s.io( m_gminDropped );
+    s.io( m_bvceo );
+    s.io( m_voltCE );
+    s.io( m_bdOfset );
+    s.io( m_bdCrit );
+    s.io( m_bdCurr );
+    s.io( m_bvebo );
+    s.io( m_voltEB );
+    s.io( m_ebOfset );
+    s.io( m_ebCurr );
+    m_cje.simState( s );
+    m_cjc.simState( s );
+    m_BEjunction.simState( s );
+    m_BCjunction.simState( s );
+}

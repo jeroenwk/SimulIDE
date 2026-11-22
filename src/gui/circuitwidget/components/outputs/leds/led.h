@@ -14,6 +14,8 @@ class LibraryItem;
 class Led : public LedBase, public Linker
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Led )
         Led( QString type, QString id );
         ~Led();
 

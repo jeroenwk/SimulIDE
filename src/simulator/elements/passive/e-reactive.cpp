@@ -129,3 +129,19 @@ void eReactive::updtReactStep()
     m_running = false;
     Simulator::self()->cancelEvents( this );
 }
+
+void eReactive::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_value );
+    s.io( m_InitCurr );
+    s.io( m_curSource );
+    s.io( m_InitVolt );
+    s.io( m_volt );
+    s.io( m_tStep );
+    s.io( m_reacStep );
+    s.io( m_timeStep );
+    s.io( m_running );
+    s.io( m_fineStep );
+    s.io( m_stepScale );
+}

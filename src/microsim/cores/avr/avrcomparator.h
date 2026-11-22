@@ -12,6 +12,8 @@
 class AvrComp : public McuComp
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AvrComp )
         AvrComp( eMcu* mcu, QString name );
         ~AvrComp();
 

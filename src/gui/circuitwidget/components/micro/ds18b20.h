@@ -17,6 +17,8 @@ class IoPin;
 class Ds18b20 : public Component , public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Ds18b20 )
         Ds18b20( QString type, QString id );
         ~Ds18b20();
 

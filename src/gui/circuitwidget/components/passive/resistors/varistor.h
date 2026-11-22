@@ -21,6 +21,9 @@ class Varistor : public Comp2Pin, public eResistor
         Varistor( QString type, QString id );
         ~Varistor();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Varistor )
+
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 

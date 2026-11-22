@@ -8,6 +8,7 @@
 #include <QStandardPaths>
 #include <QtGui>
 #include <QFileInfo>
+#include <QDateTime>
 #include <QFileOpenEvent>
 #include <QTimer>
 
@@ -95,6 +96,10 @@ QString langFile( QString locale )
     return langF;
 }
 
+#ifdef Q_OS_MAC
+void uiMacTitleNote( void* nsView, const char* text );   // uitheme_mac.mm
+#endif
+
 int main( int argc, char *argv[] )
 {
     // Client mode: "simulide cli <command>" talks to a running SimulIDE, no GUI here
@@ -124,7 +129,7 @@ int main( int argc, char *argv[] )
 
     QApplication app( argc, argv );
 
-    QSettings settings( QStandardPaths::standardLocations( QStandardPaths::DataLocation).first()+"/simulide.ini",  QSettings::IniFormat, 0l );
+    QSettings settings( MainWindow::configDir()+"/simulide.ini",  QSettings::IniFormat, 0l );
 
     QString locale = QLocale::system().name();
     if( settings.contains( "language" ) ) locale = settings.value( "language" ).toString();
@@ -194,6 +199,16 @@ int main( int argc, char *argv[] )
     if( !headless )
     {
         window.show();
+        {   // The build time (the executable's), right in the title bar: which build is this
+            QDateTime b = QFileInfo( QCoreApplication::applicationFilePath() ).lastModified();
+            QString note = "built "+( b.date() == QDate::currentDate() ? b.toString("HH:mm")
+                                                                    : b.toString("d MMM yyyy HH:mm") );
+#ifdef Q_OS_MAC
+            uiMacTitleNote( (void*)window.winId(), note.toUtf8().constData() );
+#else
+            Q_UNUSED( note )
+#endif
+        }
         QTimer::singleShot( 0, [](){               // The canvas starts with the keyboard: the
             if( CircuitView* v = CircuitView::self() ) v->setFocus( Qt::OtherFocusReason ); // cursor
         });                                        // cross shows and keys work at once

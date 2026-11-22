@@ -45,3 +45,13 @@ void McuOcm::setState( McuOcUnit* oc, bool s ) // OC units call at state changes
     OutputOcm();
 }
 
+void McuOcm::simState( StateIO& s )
+{
+    McuPrescaled::simState( s );
+    eElement::simState( s );
+    s.io( m_state1 );
+    s.io( m_state2 );
+    s.io( m_oc1Active );
+    s.io( m_oc2Active );
+    s.io( m_mode );
+}

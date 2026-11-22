@@ -183,3 +183,18 @@ void UartTR::setPins( QList<IoPin*> pinList )
     m_pinList = pinList;
     m_ioPin = pinList.at(0);
 }
+
+void UartTR::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_buffer );
+    s.io( m_data );
+    s.io( m_frame );
+    s.io( m_framesize );
+    s.io( m_currentBit );
+    s.io( m_bit9 );
+    s.io( m_state );
+    s.io( m_enabled );
+    s.io( m_period );
+}

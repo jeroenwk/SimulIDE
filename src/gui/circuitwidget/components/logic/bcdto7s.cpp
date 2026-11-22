@@ -73,3 +73,8 @@ void BcdTo7S::voltChanged()
     m_nextOutVal = m_digit;
     scheduleOutPuts( this );
 }
+
+void BcdTo7S::simState( StateIO& s )
+{
+    BcdBase::simState( s );
+}

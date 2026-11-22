@@ -150,3 +150,12 @@ void UartRx::setRxFlags()
     if( m_interrupt ) m_interrupt->raise();
 }
 
+void UartRx::simState( StateIO& s )
+{
+    UartTR::simState( s );
+    s.io( m_startHigh );
+    s.io( m_ignoreData );
+    s.io( m_fifo );
+    s.io( m_fifoP );
+    s.io( m_fifoSize );
+}

@@ -199,3 +199,10 @@ void KeyPad::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget
 
     Component::paintSelected( p );
 }
+
+void KeyPad::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_rows );
+    s.io( m_cols );
+}

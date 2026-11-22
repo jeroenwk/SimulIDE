@@ -16,6 +16,7 @@ McuOcUnit::McuOcUnit( eMcu* mcu, QString name )
     m_ocPin = NULL;
     m_ocm = NULL;
     m_ocPinInv = NULL;
+    m_pinSet = false;
 }
 McuOcUnit::~McuOcUnit( ){}
 
@@ -23,6 +24,7 @@ void McuOcUnit::initialize()
 {
     m_comMatch = 0;
     m_extMatch = 0;
+    m_pinSet = false;              // Not the last run's (nor garbage: the constructor left it unset)
     m_ocPin->controlPin( false, false );
 
     clear();
@@ -114,4 +116,18 @@ void McuOcUnit::ocrWriteH( uint8_t val )
 {
     m_comMatch = (m_comMatch & 0x00FF) | (uint16_t)val<<8;
     //sheduleEvents( m_timer->ovfMatch(), m_timer->getCount() );
+}
+
+void McuOcUnit::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_comAct );
+    s.io( m_tovAct );
+    s.io( m_enabled );
+    s.io( m_ctrlPin );
+    s.io( m_mode );
+    s.io( m_comMatch );
+    s.io( m_extMatch );
+    s.io( m_pinSet );
 }

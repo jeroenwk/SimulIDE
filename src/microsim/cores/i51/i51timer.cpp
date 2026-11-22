@@ -158,3 +158,10 @@ void I51Timer::doUpdateEnable()
     // getVoltage is only called when m_trEnabled is true and m_gate is true
     McuTimer::enable( m_trEnabled && ( !m_gate || ( m_gatePin->getVoltage() > 2.5 ) ) );
 }
+
+void I51Timer::simState( StateIO& s )
+{
+    McuTimer::simState( s );
+    s.io( m_gate );
+    s.io( m_trEnabled );
+}

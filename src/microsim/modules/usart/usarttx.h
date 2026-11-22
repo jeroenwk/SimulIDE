@@ -11,6 +11,8 @@
 class UartTx : public UartTR
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( UartTx )
         UartTx( UsartModule* usart, eMcu* mcu, QString name );
         ~UartTx();
 

@@ -158,3 +158,31 @@ void Strain::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget
 
     Component::paintSelected( p );
 }
+
+void Strain::simState( StateIO& s )
+{
+    VarResBase::simState( s );
+    s.io( m_step );
+    s.io( m_last_step );
+    s.io( m_new_resist );
+    s.io( m_last_resist );
+    s.io( m_tau );
+    s.io( m_t0_tau );
+    s.io( m_r0 );
+    s.io( m_coef_poisson );
+    s.io( m_cste_bridgman );
+    s.io( m_k_long );
+    s.io( m_k );
+    s.io( m_coef_transverse );
+    s.io( m_ref_temp );
+    s.io( m_temp );
+    s.io( m_young_modulus );
+    s.io( m_h_body );
+    s.io( m_w_body );
+    s.io( m_section_body );
+    s.io( m_delta_r );
+    s.io( m_alpha_r );
+    s.io( m_lambda_j );
+    s.io( m_lambda_s );
+    s.io( m_delta_r_t );
+}

@@ -286,3 +286,21 @@ void TouchPad::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidg
     Component::paintSelected( p );
 }
 
+void TouchPad::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_transparent );
+    s.io( m_width );
+    s.io( m_height );
+    s.io( m_xPos );
+    s.io( m_yPos );
+    s.io( m_RxMin );
+    s.io( m_RxMax );
+    s.io( m_RyMin );
+    s.io( m_RyMax );
+    m_resXA.simState( s );
+    m_resXB.simState( s );
+    m_resYA.simState( s );
+    m_resYB.simState( s );
+    m_resTouch.simState( s );
+}

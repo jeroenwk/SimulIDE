@@ -15,6 +15,8 @@ class IoPin;
 class Aip31068_i2c : public Hd44780_Base, public TwiModule
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Aip31068_i2c )
         Aip31068_i2c( QString type, QString id );
         ~Aip31068_i2c();
         

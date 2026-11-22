@@ -15,6 +15,8 @@ class LibraryItem;
 class VoltReg : public Component, public eResistor
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( VoltReg )
         VoltReg( QString type, QString id );
         ~VoltReg();
         

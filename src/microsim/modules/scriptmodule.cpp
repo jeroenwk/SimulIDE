@@ -6,6 +6,7 @@
 #include <QDebug>
 
 #include "scriptmodule.h"
+#include "simstate.h"
 #include "scriptstdstring.h"
 #include "scriptarray.h"
 #include "mainwindow.h"
@@ -206,4 +207,58 @@ void ScriptModule::printError( asIScriptContext* context ) // The execution didn
         qDebug() << "desc:" << context->GetExceptionString();
     }
     else qDebug() << "The script ended for some unforeseen reason:" << m_status;
+}
+
+// Bytes of a global of a primitive or enum type, 0 = not one; -1 = a std::string; -2 = a handle
+static int globalKind( asIScriptEngine* engine, int typeId )
+{
+    if( typeId & asTYPEID_OBJHANDLE ) return -2;
+    switch( typeId ){
+        case asTYPEID_BOOL: case asTYPEID_INT8:  case asTYPEID_UINT8:  return 1;
+        case asTYPEID_INT16: case asTYPEID_UINT16:                     return 2;
+        case asTYPEID_INT32: case asTYPEID_UINT32: case asTYPEID_FLOAT: return 4;
+        case asTYPEID_INT64: case asTYPEID_UINT64: case asTYPEID_DOUBLE: return 8;
+    }
+    asITypeInfo* ti = engine->GetTypeInfoById( typeId );
+    if( !ti ) return 0;
+    if( ti->GetFlags() & asOBJ_ENUM ) return 4;
+    if( QString( ti->GetName() ) == "string" ) return -1;
+    return 0;
+}
+
+QStringList ScriptModule::unsupportedGlobals()
+{
+    QStringList bad;
+    if( !m_asModule ) return bad;
+    for( asUINT i=0; i<m_asModule->GetGlobalVarCount(); ++i )
+    {
+        const char* name = nullptr; int typeId = 0; bool isConst = false;
+        m_asModule->GetGlobalVar( i, &name, nullptr, &typeId, &isConst );
+        if( isConst ) continue;
+        if( globalKind( m_aEngine, typeId ) == 0 )
+            bad << QString( name )+" ("+QString( m_aEngine->GetTypeDeclaration( typeId ) )+")";
+    }
+    return bad;
+}
+
+void ScriptModule::scriptGlobals( StateIO& s )
+{
+    if( !m_asModule ) return;
+    for( asUINT i=0; i<m_asModule->GetGlobalVarCount(); ++i )
+    {
+        int typeId = 0; bool isConst = false;
+        m_asModule->GetGlobalVar( i, nullptr, nullptr, &typeId, &isConst );
+        if( isConst ) continue;
+        void* addr = m_asModule->GetAddressOfGlobalVar( i );
+        int kind = globalKind( m_aEngine, typeId );
+        if( kind > 0 ) s.raw( addr, kind );
+        else if( kind == -1 )                        // std::string: length, then the bytes
+        {
+            std::string* str = (std::string*)addr;
+            uint32_t n = (uint32_t)str->size();
+            s.io( n );
+            if( !s.saving() ){ if( n > 1000000 ){ s.fail(); return; } str->resize( n ); }
+            if( n ) s.raw( &(*str)[0], n );
+        }
+    }
 }

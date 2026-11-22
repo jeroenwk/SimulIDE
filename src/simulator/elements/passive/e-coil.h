@@ -13,6 +13,8 @@ class eNode;
 class eCoil : public eResistor
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( eCoil )
         eCoil( int i, int s, int t, double h, double r, QString id );
         ~eCoil();
 

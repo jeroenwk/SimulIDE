@@ -191,3 +191,12 @@ void Triac::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w )
 
     Component::paintSelected( p );
 }
+
+void Triac::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_gateRes );
+    s.io( m_trigCurr );
+    s.io( m_holdCurr );
+    s.io( m_state );
+}

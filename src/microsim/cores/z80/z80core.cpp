@@ -2212,3 +2212,59 @@ void Z80Core::setProducer( QString producer )
 void Z80Core::setCmos( bool cmos ) { m_cmos = cmos; }// Setter for CMOS or NMOS version
 void Z80Core::setIoWait( bool ioWait ) { m_ioWait = !ioWait; } // Setter for single wait I/O operation
 void Z80Core::setIntVector( bool intVector ) { m_intVector = intVector; } // Setter for force interrupt vector 0xff
+
+void Z80Core::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_producer );
+    s.io( m_cmos );
+    s.io( m_ioWait );
+    s.io( m_intVector );
+    s.io( sm_autoWait );
+    s.io( sm_waitTState );
+    s.io( sWait );
+    s.io( sBusReq );
+    s.io( sBusAck );
+    s.io( mc_busOp );
+    s.io( m_lastBusOp );
+    s.io( m_nextClock );
+    s.io( highImpedanceBus );
+    s.io( m_delay );
+    s.io( NMIFF );
+    s.io( sLastNMI );
+    s.io( sNMI );
+    s.io( sInt );
+    s.io( sDI );
+    s.io( sDO );
+    s.io( sAO );
+    s.io( regs );
+    s.io( regsAlt );
+    s.io( regA );
+    s.io( regAAlt );
+    s.io( regFAlt );
+    s.io( regI );
+    s.io( regR );
+    s.io( IFF1 );
+    s.io( IFF2 );
+    s.io( mc_TStates );
+    s.io( mc_MCycles );
+    s.io( mc_StateMachine );
+    s.io( mc_prefix );
+    s.io( m_iSet );
+    s.io( XYState );
+    s.io( m_iReg );
+    s.io( intMode );
+    s.io( rstCount );
+    s.io( normalReset );
+    s.io( specialReset );
+    s.io( sm_TState );
+    s.io( sm_lastTState );
+    s.io( sm_TStatesAfterInt );
+    s.io( sm_MCycle );
+    s.io( sm_PreXYMCycle );
+    s.io( sm_M1CycleType );
+    s.io( regF );
+    s.io( regWZ );
+    s.io( regSP );
+    CpuBase::coreState( s );   // Not in an eMcu: its PC here
+}

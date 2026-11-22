@@ -54,3 +54,8 @@ void FlipFlopT::calcOutput()
     bool T = m_inPin[0]->getInpState();
     if( T ) m_nextOutVal = m_outPin[1]->getOutState()? 1:2; // !Q state = Toggle
 }
+
+void FlipFlopT::simState( StateIO& s )
+{
+    FlipFlopBase::simState( s );
+}

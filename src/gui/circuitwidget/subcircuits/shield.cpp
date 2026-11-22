@@ -137,3 +137,8 @@ void ShieldSubc::contextMenu( QGraphicsSceneContextMenuEvent* event, QMenu* menu
         SubCircuit::contextMenu( event, menu );
     }
 }
+
+void ShieldSubc::simState( StateIO& s )
+{
+    BoardSubc::simState( s );
+}

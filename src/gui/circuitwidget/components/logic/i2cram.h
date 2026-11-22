@@ -15,6 +15,8 @@ class LibraryItem;
 class I2CRam : public IoComponent, public TwiModule, public MemData
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( I2CRam )
         I2CRam( QString type, QString id );
         ~I2CRam();
 

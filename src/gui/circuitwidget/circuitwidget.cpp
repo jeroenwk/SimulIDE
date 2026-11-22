@@ -32,7 +32,9 @@
 #include <QLabel>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
+#include <cmath>
 #include "circuitwidget.h"
+#include "keyboardcontroller.h"
 #include "keytext.h"
 #include "instrumentview.h"
 #include "exportdialog.h"
@@ -46,6 +48,7 @@
 #include "about.h"
 #include "utils.h"
 #include "simskip.h"
+#include "simhistory.h"
 #include "cliapi.h"
 
 // The speed and skip boxes (specs/sim-control.md §3.5): editable combos, the list for presets,
@@ -326,8 +329,9 @@ void CircuitWidget::createActions()
     skipFwdAct->setStatusTip(tr("Pause and skip forward by the skip interval"));
     connect( skipFwdAct, &QAction::triggered, this, [this](){ skipForward( 1 ); } );
 
-    skipBackAct = new QAction( QIcon(":/simskipback.svg"),tr("Skip Back (not yet: needs the history, phase 2)"), this);
-    skipBackAct->setEnabled( false );
+    skipBackAct = new QAction( QIcon(":/simskipback.svg"),tr("Skip Back"), this);
+    skipBackAct->setStatusTip(tr("Pause and go back by the skip interval (keyframes of the run)"));
+    connect( skipBackAct, &QAction::triggered, this, [this](){ skipBack( 1 ); } );
 
     pauseSimAct = new QAction( QIcon(":/simpause.svg"),tr("Pause Simulation"), this);
     pauseSimAct->setStatusTip(tr("Pause Simulation"));
@@ -493,6 +497,7 @@ void CircuitWidget::createToolBars()
         if( ps == 0 ) return;                          // The "custom" entry
         Cli::setSimSpeed( ps );                        // Adjusts the step size if needed
         Circuit::self()->setChanged();                 // Speed is saved in the circuit
+        skipFollowSpeed();
         m_timebase->lineEdit()->clearFocus();
     });
     connect( m_timebase->lineEdit(), &QLineEdit::returnPressed, [this]()   // A typed speed
@@ -507,6 +512,7 @@ void CircuitWidget::createToolBars()
         }
         QString note = Cli::setSimSpeed( ps );
         Circuit::self()->setChanged();
+        skipFollowSpeed();
         m_timebase->setBad( false );
         m_timebase->lineEdit()->clearFocus();
         if( !note.isEmpty() ) qInfo().noquote() << "Speed:" << note;
@@ -573,6 +579,22 @@ void CircuitWidget::createToolBars()
     timeLabel->setContentsMargins( 6*MainWindow::self()->fontScale(), 0, 0, 0 );
     m_simRunItems << m_simToolBar.addWidget( timeLabel );
     m_infoWidget->setToolbarTime( timeLabel );
+
+    QToolButton* closeBar = new QToolButton( this );   // Stopped: closes the row (a start opens it again)
+    closeBar->setObjectName("simBarClose");
+    closeBar->setText("×");
+    closeBar->setAutoRaise( true );
+    closeBar->setFocusPolicy( Qt::NoFocus );
+    closeBar->setCursor( Qt::PointingHandCursor );
+    QFont cf = closeBar->font();
+    cf.setPixelSize( 14*MainWindow::self()->fontScale() );
+    closeBar->setFont( cf );
+    closeBar->setStyleSheet("#simBarClose { color: rgba(128,128,128,0.55); border: none; padding: 0 4px; }"
+                            "#simBarClose:hover { color: rgba(128,128,128,1.0); }");
+    closeBar->setToolTip( tr("Close the simulation bar (it opens again when the simulation starts)") );
+    connect( closeBar, &QToolButton::clicked, this, [this](){ setSimExpanded( false ); } );
+    m_simCloseAct = m_simToolBar.addWidget( closeBar );
+    m_simCloseAct->setVisible( false );
     m_simRunItems << m_simToolBar.addSeparator();//..........................
     // No status block: the time's colour gives the state (green running, light grey paused),
     // other status messages go to Messages (setMsg)
@@ -630,10 +652,20 @@ void CircuitWidget::setSimExpanded( bool on )
 {
     m_simExpanded = on;
     for( QAction* a : m_simRunItems ) a->setVisible( on );
+    updtSimClose();
     updateNoise();                    // The NOISE badge follows the bar
     updateLock();
     m_toolRows = 0;                   // Lay out again
     layoutToolBars();
+}
+
+// The × after the time: only while stopped with the bar open
+void CircuitWidget::updtSimClose()
+{
+    if( !m_simCloseAct ) return;
+    Simulator* sim = Simulator::self();
+    bool stopped = !sim || !sim->isRunning();
+    m_simCloseAct->setVisible( m_simExpanded && stopped );
 }
 
 void CircuitWidget::layoutToolBars()
@@ -670,6 +702,18 @@ bool CircuitWidget::eventFilter( QObject* obj, QEvent* ev )
         if( w->window() == window() && simKey( static_cast<QKeyEvent*>( ev ) ) ) return true;
         return false;
     }
+    if( ev->type() == QEvent::MouseButtonPress && obj->isWidgetType()
+     && ( m_circView.hasFocus() || KeyboardController::self()->focused() ) )   // Headless: the flag
+    {
+        // A click anywhere else in the window (toolbar, Messages, a panel) takes the keyboard
+        // from the canvas (specs/sim-control.md §3.1); a widget that takes focus gets it next
+        QWidget* w = static_cast<QWidget*>( obj );
+        if( w->window() == window() && w != &m_circView && !m_circView.isAncestorOf( w ) )
+        {
+            m_circView.clearFocus();
+            KeyboardController::self()->setFocused( false );
+        }
+    }
     if( obj == m_toolRow && ev->type() == QEvent::Resize ) layoutToolBars();
     else if( ( obj == &m_circToolBar || obj == &m_simToolBar ) && ev->type() == QEvent::LayoutRequest )
         QTimer::singleShot( 0, this, [this](){ layoutToolBars(); } );   // After the bar's own layout
@@ -697,6 +741,7 @@ bool CircuitWidget::newCircuit()
     Circuit::self()->setAutoBck( MainWindow::self()->autoBck() );
 
     m_curCirc = "";
+    updtBackAvail( false );
     Simulator::self()->addToUpdateList( &m_outPane );
 
     MainWindow::self()->setFile( tr("New Circuit"));
@@ -762,6 +807,7 @@ void CircuitWidget::loadCirc( QString path )
         showDescription();
         updateNoise();   // The noise button follows the file
         updateLock();
+        updtBackAvail( true );   // A warning when going back is off for it
 }   }
 
 void CircuitWidget::printDescription()
@@ -833,6 +879,9 @@ void CircuitWidget::powerCircOn()
     setSimExpanded( true );
     m_infoWidget->setSimState( InfoWidget::shownRunning );
     Simulator::self()->startSim();
+    updtSimClose();                      // Running: no ×
+    updtBackAvail( false );              // Parts added since the load
+    m_skipPreset = 0;                    // The interval as it is; the real speed moves it (§3.3)
     m_circView.clearFocus();             // The simulation keys work (specs/sim-control.md §3.1)
     updtKeyOwner();
 }
@@ -856,7 +905,7 @@ void CircuitWidget::powerCircOff()
     m_infoWidget->setRate( 0, 0 );
     m_infoWidget->setSimState( InfoWidget::shownStopped );
     updtKeyOwner();
-    setSimExpanded( false );
+    updtSimClose();                    // The bar stays open; its × closes it
     CurrentFlow::self()->clear();
     ChargeView::self()->clear();
     EventLog::self()->stop();
@@ -881,6 +930,7 @@ void CircuitWidget::powerCircDebug()
     ChargeView::self()->attach();
     m_infoWidget->setSimState( InfoWidget::shownPaused );
     Simulator::self()->startSim( true );
+    updtSimClose();
 }
 
 void CircuitWidget::pauseDebug()
@@ -1062,7 +1112,7 @@ void CircuitWidget::updateRecentFileActions()
 
 // Simulation keys (specs/sim-control.md §3.1–3.2). They act when the keyboard focus is in none
 // of the widgets that use these keys themselves: the canvas (keyboard editor, D1), a text field,
-// a list or tree, an editable combo. At a start the canvas gives up the focus; a click gives it
+// a list or tree while stopped, an editable combo. At a start the canvas gives up the focus; a click gives it
 // back, Esc on an idle canvas hands the keys to the simulation again (D11)
 bool CircuitWidget::keysToSim()
 {
@@ -1070,10 +1120,14 @@ bool CircuitWidget::keysToSim()
     QWidget* f = QApplication::focusWidget();
     if( !f ) return true;
     if( f == &m_circView || m_circView.isAncestorOf( f ) ) return false;
-    if( qobject_cast<QLineEdit*>( f ) || qobject_cast<QTextEdit*>( f ) || qobject_cast<QPlainTextEdit*>( f )
-     || qobject_cast<QAbstractSpinBox*>( f ) || qobject_cast<QAbstractItemView*>( f ) ) return false;
+    if( QPlainTextEdit* t = qobject_cast<QPlainTextEdit*>( f ) ) return t->isReadOnly();   // Messages: not typing
+    if( QTextEdit* t = qobject_cast<QTextEdit*>( f ) ) return t->isReadOnly();
+    if( qobject_cast<QLineEdit*>( f ) || qobject_cast<QAbstractSpinBox*>( f ) ) return false;
     if( QComboBox* c = qobject_cast<QComboBox*>( f ) ) if( c->isEditable() ) return false;
     if( EditorWindow::self() && EditorWindow::self()->isAncestorOf( f ) ) return false;
+    // A list or tree (the parts list, the file browser) keeps its arrows while stopped; running
+    // or paused, a part picked in it doesn't take the simulation keys (user, 2026-11-21)
+    if( qobject_cast<QAbstractItemView*>( f ) ) return Simulator::self() && Simulator::self()->isRunning();
     return true;
 }
 
@@ -1119,8 +1173,7 @@ bool CircuitWidget::simKey( QKeyEvent* ev )
             if( !SimSkip::self()->active() ) skipForward( factor );   // Repeats during a skip are dropped
             return true;
         case Qt::Key_Left:
-            if( ev->isAutoRepeat() ) return true;
-            qInfo().noquote() << tr("Going back in time needs the history (not yet: specs/sim-control.md phase 2)");
+            if( !SimSkip::self()->active() ) skipBack( factor );      // Held down: steps back as fast as it lands
             return true;
     }
     return false;
@@ -1133,6 +1186,73 @@ void CircuitWidget::skipForward( int count )
     QString err = SimSkip::self()->start( sim->skipInterval(), count );
     if( !err.isEmpty() && err.startsWith("busy") ) return;
     if( !err.isEmpty() ) qInfo().noquote() << "Skip: "+err;
+}
+
+void CircuitWidget::skipBack( int count )
+{
+    Simulator* sim = Simulator::self();
+    if( !sim ) return;
+    QString block = SimHistory::blockers( sim->elementList() );
+    if( !block.isEmpty() ){ backOffWarning( block ); return; }   // Again at each ←, as at load
+    QString err = SimSkip::self()->startBack( sim->skipInterval(), count );
+    if( !err.isEmpty() && err.startsWith("busy") ) return;
+    if( !err.isEmpty() ) qInfo().noquote() << "Back: "+err;
+}
+
+void CircuitWidget::backOffWarning( QString block )
+{
+    qWarning().noquote() << "[history] Going back in time is off for this circuit: "+block
+                          +". The circuit runs as before; ← and ⏮ work in circuits without these parts.";
+}
+
+// Going back needs every part's state in the keyframes (specs/sim-control.md §4.8): ⏮ is greyed
+// out, with the reason in its tooltip, when history is off or a part can't be saved
+void CircuitWidget::updtBackAvail( bool announce )
+{
+    Simulator* sim = Simulator::self();
+    if( !sim || !skipBackAct ) return;
+    QString tip = tr("Pause and go back by the skip interval (keyframes of the run)");
+    QString block;
+    bool on = SimHistory::self()->enabled();
+    if( !on ) tip += "\n\n"+tr("History is off (Settings → Simulation).");
+    else{
+        block = SimHistory::blockers( sim->elementList() );
+        if( !block.isEmpty() ) tip += "\n\n"+tr("Off for this circuit: %1").arg( block );
+    }
+    skipBackAct->setEnabled( on && block.isEmpty() );
+    skipBackAct->setToolTip( tip+"  (←)" );
+    if( announce && on && !block.isEmpty() ) backOffWarning( block );
+}
+
+// The skip interval follows the speed (specs/sim-control.md §3.3): a tenth of the first speed in
+// the speed list at or below it (25 ms/s -> 10 ms/s -> 1 ms; 1 s/s -> 100 ms; 1 µs/s -> 100 ns).
+// Below the list: its decade
+static double speedPreset( double psPerSec )
+{
+    static const double list[] = { 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 5e11, 1e12, 2e12, 5e12, 1e13 };
+    double p = 0;
+    for( double v : list ) if( v <= psPerSec*1.000001 ) p = v;
+    if( p == 0 ) p = std::pow( 10, std::floor( std::log10( std::max( psPerSec, 10.0 ) ) ) );
+    return p;
+}
+
+void CircuitWidget::skipForSpeed( double psPerSec, bool hysteresis )
+{
+    Simulator* sim = Simulator::self();
+    if( !sim || sim->skipInterval() == 0 ) return;     // 1 step is kept
+    if( hysteresis && m_skipPreset == 0 ) m_skipPreset = speedPreset( sim->psPerSec() );   // Run start: from the set speed
+    double p = speedPreset( psPerSec );
+    bool atSet = psPerSec >= sim->psPerSec()*0.999;  // Keeping up again: straight back to the set speed's
+    if( hysteresis && !atSet && m_skipPreset > 0 && p > m_skipPreset && psPerSec < p*1.1 ) p = m_skipPreset;
+    if( p == m_skipPreset && hysteresis ) return;      // Unchanged: a value set by hand stays
+    m_skipPreset = p;
+    uint64_t v = SimSkip::nextInterval( (uint64_t)p, -1, 10 );
+    if( v != sim->skipInterval() ) sim->setSkipInterval( v );   // Not an edit: the file stays unmodified
+}
+
+void CircuitWidget::skipFollowSpeed()
+{
+    if( Simulator::self() ) skipForSpeed( Simulator::self()->psPerSec(), false );
 }
 
 void CircuitWidget::setSkipInterval( uint64_t ps )
@@ -1231,6 +1351,9 @@ void CircuitWidget::showRealSpeed( double realPsPerSec )
     if( !m_timebase ) return;
     QString text = ( realPsPerSec > 0 ) ? InfoWidget::speedText( realPsPerSec ) : "";
     m_timebase->setOverride( text );
+    Simulator* sim = Simulator::self();     // Running (not paused, not skipping): follow the real speed
+    if( sim && sim->isRunning() && !sim->isPaused() && !SimSkip::self()->active() )
+        skipForSpeed( realPsPerSec > 0 ? realPsPerSec : sim->psPerSec(), true );
     QString tip = tr("Simulation speed: simulated time per real second.\n"
                      "1 s/s is real time. Faster than the computer can manage\n"
                      "runs as fast as it can (see Real Speed).");

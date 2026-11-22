@@ -17,6 +17,10 @@ class SwitchBase : public MechContact
         SwitchBase( QString type, QString id );
         ~SwitchBase();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( SwitchBase )
+        virtual void stateRestored() override;   // The button shows the restored position
+
         virtual void initialize() override;
         virtual void updateStep() override;
         virtual void runEvent() override;

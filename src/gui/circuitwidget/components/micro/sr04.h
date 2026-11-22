@@ -15,6 +15,8 @@ class IoPin;
 class SR04 : public Component, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( SR04 )
         SR04( QString type, QString id );
         ~SR04();
 

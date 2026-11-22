@@ -19,6 +19,8 @@ class McuPin : public IoPin
     friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( McuPin )
         McuPin( McuPort* port, int i, QString id, Component* mcu );
         ~McuPin();
 

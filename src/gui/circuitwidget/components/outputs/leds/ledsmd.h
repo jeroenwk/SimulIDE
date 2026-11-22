@@ -11,6 +11,8 @@
 class LedSmd : public LedBase
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( LedSmd )
         LedSmd( QString type, QString id, QRectF area, ePin* pin0=NULL, ePin* pin1=NULL );
         ~LedSmd();
 

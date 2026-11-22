@@ -45,3 +45,8 @@ void Capacitor::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* 
 
     Component::paintSelected( p );
 }
+
+void Capacitor::simState( StateIO& s )
+{
+    CapacitorBase::simState( s );
+}

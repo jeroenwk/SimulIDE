@@ -145,3 +145,12 @@ void VarSource::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWid
 
     Component::paintSelected( p );
 }
+
+void VarSource::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_maxValue );
+    s.io( m_minValue );
+    s.io( m_outValue );
+    s.io( m_setFromCode );
+}

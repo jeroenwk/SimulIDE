@@ -450,3 +450,54 @@ void AvrAdc20::updtVref()
 
     m_vRefP = m_aRefPin->getVoltage();
 }
+
+void AvrAdc::simState( StateIO& s )
+{
+    McuAdc::simState( s );
+    s.io( m_acme );
+    s.io( m_autoTrigger );
+    s.io( m_freeRunning );
+    s.io( m_initCycles );
+    s.io( m_refSelect );
+    s.io( m_trigger );
+}
+
+void AvrAdc00::simState( StateIO& s )
+{
+    AvrAdc::simState( s );
+}
+
+void AvrAdc01::simState( StateIO& s )
+{
+    AvrAdc00::simState( s );
+}
+
+void AvrAdc02::simState( StateIO& s )
+{
+    AvrAdc00::simState( s );
+}
+
+void AvrAdc03::simState( StateIO& s )
+{
+    AvrAdc00::simState( s );
+}
+
+void AvrAdc04::simState( StateIO& s )
+{
+    AvrAdc03::simState( s );
+}
+
+void AvrAdc10::simState( StateIO& s )
+{
+    AvrAdc::simState( s );
+}
+
+void AvrAdc11::simState( StateIO& s )
+{
+    AvrAdc10::simState( s );
+}
+
+void AvrAdc20::simState( StateIO& s )
+{
+    AvrAdc::simState( s );
+}

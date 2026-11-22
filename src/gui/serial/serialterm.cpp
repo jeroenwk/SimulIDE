@@ -229,3 +229,14 @@ void SerialTerm::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget*
 
     Component::paintSelected( p );
 }
+
+void SerialTerm::simState( StateIO& s )   // Its UART sender and receiver are elements of their own
+{
+    eElement::simState( s );             // Not m_receiving: the Rx LED's blink, reset when painted
+    s.io( m_sending );
+    uint32_t n = m_uartData.size();      // Typed bytes waiting to be sent
+    s.io( n );
+    if( !s.saving() ) m_uartData.resize( n );
+    if( n ) s.raw( m_uartData.data(), n );
+}
+

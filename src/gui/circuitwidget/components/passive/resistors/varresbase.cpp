@@ -108,3 +108,22 @@ void VarResBase::updateProxy()
 {
     m_proxy->setPos( QPoint(-m_dialW.width()/2, 7) );
 }
+
+void VarResBase::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_value );
+    s.io( m_setFromCode );
+    s.io( m_minVal );
+    s.io( m_maxVal );
+    s.io( m_step );
+}
+
+void VarResBase::stateRestored()   // As Potentiometer::stateRestored()
+{
+    if( m_maxVal <= m_minVal ) return;
+    m_setFromCode = true;
+    m_dialW.setValue( qRound( ( m_value-m_minVal )*1000/( m_maxVal-m_minVal ) ) );
+    m_setFromCode = false;
+}
+

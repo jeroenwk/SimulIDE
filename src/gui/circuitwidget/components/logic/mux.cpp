@@ -177,3 +177,9 @@ void Mux::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* w
 
     Component::paintSelected( p );
 }
+
+void Mux::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_addrBits );
+}

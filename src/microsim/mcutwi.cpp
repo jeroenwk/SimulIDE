@@ -27,3 +27,8 @@ void McuTwi::initialize()
     updateFreq();
 }
 
+void McuTwi::simState( StateIO& s )
+{
+    McuPrescaled::simState( s );
+    TwiModule::simState( s );
+}

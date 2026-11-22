@@ -34,6 +34,9 @@ class DataChannel : public eElement, public Updatable
         DataChannel( PlotBase* plotBase, QString id );
         ~DataChannel();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( DataChannel )
+
         virtual void stamp() override;
 
         virtual void setFilter( double f ) {;}

@@ -63,3 +63,8 @@ void VoltSource::updateStep()
         if( m_propDialog ) m_propDialog->updtValues();
         m_changed = false;
 }   }
+
+void VoltSource::simState( StateIO& s )
+{
+    VarSource::simState( s );
+}

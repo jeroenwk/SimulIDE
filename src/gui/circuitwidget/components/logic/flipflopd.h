@@ -13,6 +13,8 @@ class LibraryItem;
 class FlipFlopD : public FlipFlopBase
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( FlipFlopD )
         FlipFlopD( QString type, QString id );
         ~FlipFlopD();
 

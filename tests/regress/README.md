@@ -1,6 +1,6 @@
 # Regression tests
 
-One test per bug, written to **fail on the buggy code and pass with the fix**. Every test starts its own headless SimulIDE on a private socket (it never touches a GUI that is open), drives it through the CLI with `tools/simctl.py`, and checks values with `sim.check`.
+One test per bug, written to **fail on the buggy code and pass with the fix**. Every test starts its own headless SimulIDE on a private socket (it never touches a GUI that is open), drives it through the CLI with `tools/simctl.py`, and checks values with `sim.check`. Its settings are a private copy of the user's settings folder (`SIMULIDE_CONFIG_DIR`, set by `harness.py`; `tests/cli/smoke.sh` does the same), so a test may change any setting without touching the user's `simulide.ini`.
 
 ```sh
 tests/regress/run.sh            # all tests

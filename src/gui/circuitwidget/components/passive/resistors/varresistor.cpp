@@ -72,3 +72,8 @@ void VarResistor::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget
 
     Component::paintSelected( p );
 }
+
+void VarResistor::simState( StateIO& s )
+{
+    VarResBase::simState( s );
+}

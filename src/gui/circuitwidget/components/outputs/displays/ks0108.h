@@ -15,6 +15,8 @@ class LibraryItem;
 class Ks0108 : public Component, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Ks0108 )
         Ks0108( QString type, QString id );
         ~Ks0108();
         

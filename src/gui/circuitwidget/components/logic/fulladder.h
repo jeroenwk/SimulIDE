@@ -13,6 +13,8 @@ class LibraryItem;
 class FullAdder : public LogicComponent
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( FullAdder )
         FullAdder( QString type, QString id );
         ~FullAdder();
 

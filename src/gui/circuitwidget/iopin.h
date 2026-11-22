@@ -30,6 +30,9 @@ class IoPin : public Pin, public eElement
         IoPin( int angle, const QPoint pos, QString id, int index, Component* parent, pinMode_t mode=source );
         ~IoPin();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( IoPin )
+
         virtual void initialize() override;
         virtual void stamp() override;
         virtual void updateStep() override;

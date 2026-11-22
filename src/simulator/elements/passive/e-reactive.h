@@ -14,6 +14,9 @@ class eReactive : public eResistor
         eReactive( QString id );
         ~eReactive();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( eReactive )
+
         virtual void stamp() override;
         virtual void voltChanged() override;
         virtual void runEvent() override;

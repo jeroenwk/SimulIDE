@@ -17,6 +17,9 @@ class SubCircuit : public Chip
         SubCircuit( QString type, QString id, QString device );
         ~SubCircuit();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( SubCircuit )
+
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 

@@ -376,3 +376,17 @@ void Csource::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w 
     }
     Component::paintSelected( p );
 }
+
+void Csource::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_volt );
+    s.io( m_curr );
+    s.io( m_gain );
+    s.io( m_accuracy );
+    s.io( m_lastIn );
+    s.io( m_lastOut );
+    s.io( m_controlPins );
+    s.io( m_currSource );
+    s.io( m_currControl );
+}

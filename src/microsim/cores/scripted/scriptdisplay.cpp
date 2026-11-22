@@ -116,3 +116,8 @@ void ScriptDisplay::setData( CScriptArray* data )
         }
     }
 }
+
+void ScriptDisplay::simState( StateIO& s )
+{
+    Display::simState( s );
+}

@@ -24,6 +24,14 @@ fi
 
 SOCK="simulide-test-$$"
 TMP=$(mktemp -d)
+# A copy of the user's settings: the server never writes the real ones (MainWindow::configDir)
+if [ -z "${SIMULIDE_CONFIG_DIR:-}" ]; then
+    mkdir -p "$TMP/config"
+    for d in "$HOME/Library/Application Support/simulide" "$HOME/.local/share/simulide"; do
+        [ -d "$d" ] && { cp "$d"/*.ini "$TMP/config/" 2>/dev/null; break; }
+    done
+    export SIMULIDE_CONFIG_DIR="$TMP/config"
+fi
 PASS=0
 FAIL=0
 

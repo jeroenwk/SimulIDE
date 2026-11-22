@@ -232,3 +232,9 @@ void PicTwi::sleep( int mode )
     if( m_sleeping ) pauseEvents();
     else             resumeEvents();
 }
+
+void PicTwi::simState( StateIO& s )
+{
+    McuTwi::simState( s );
+    s.io( m_bitRate );
+}

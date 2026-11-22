@@ -17,6 +17,9 @@ class LedBase : public Component, public eLed
     public:
         LedBase( QString type, QString id );
         ~LedBase();
+
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( LedBase )
         
         enum ledColor_t {
             yellow = 0,
@@ -34,7 +37,7 @@ class LedBase : public Component, public eLed
         double peakCurrentRating() { return m_peakLimit; }   // IFP (A), 0 = none
         void setPeakCurrentRating( double c ) { m_peakLimit = c > 0 ? c : 0; }
 
-        double avgCurrent()  { return m_avgCur; }    // I through a 100 ms low-pass (vs Max Current, IF)
+        double avgCurrent();                          // The low-pass now (the stored one runs to the last solved step)    // I through a 100 ms low-pass (vs Max Current, IF)
         double peakCurrent() { return m_peakCur; }   // Largest I of a solved step since the start
 
         bool grounded() { return m_grounded; }
@@ -54,7 +57,9 @@ class LedBase : public Component, public eLed
         int m_region;            // Part state: -1 none, 0 off, 1 on, 2 over current (average),
                                  // 3 peak (a step above Peak Current)
         void average( uint64_t t );
-        void setRegion( uint64_t t );   // Part state from the held current and the average
+        double avgAt( uint64_t t );    // The low-pass advanced to t, not stored: a GUI frame must not
+                                       // split the integration (keyframes replay it bit for bit)
+        void setRegion( uint64_t t, double avg, bool step );   // Part state from the held current and the average
 
         double   m_peakLimit;    // Peak Current rating, IFP (A), 0 = none
         double   m_stepCur;      // I of the last solved step, held since m_lastT

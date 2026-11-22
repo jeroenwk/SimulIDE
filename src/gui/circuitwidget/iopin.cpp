@@ -52,8 +52,12 @@ void IoPin::initialize()
     m_steps = Simulator::self()->slopeSteps();
 
     m_inpState  = false;
+    m_inpVolt   = 0;        // Not the last run's input voltage
     m_outState  = false;
     m_nextState = false;
+    // The output voltage stamped until the owner sets a state: the one of the state above (a source
+    // pin is always on), not the level the last run ended with (the first run after opening differed)
+    m_outVolt = ( m_pinMode == source ) ? m_outHighV : ( m_pinMode > input ) ? m_outLowV : 0;
 }
 
 void IoPin::stamp()
@@ -73,8 +77,12 @@ void IoPin::updateStep()
 
     if( m_stateZ ) m_pinState = undef_state;
     else{
-        bool state = IoPin::getInpState();
-        if( m_inverted ) state = !state;
+        // Read only: the pin colour must not touch the simulation's input state (m_inpState
+        // hysteresis, m_inpVolt), or a run depends on when GUI frames fall (keyframes, §4.4)
+        double volt = getVoltage();
+        bool state = m_inpState;
+        if     ( volt > m_inpHighV ) state = true;
+        else if( volt < m_inpLowV )  state = false;
         switch( m_pinMode ) // Pin colors in animation
         {
             case undef_mode: m_pinState = undef_state; break;
@@ -347,4 +355,32 @@ void IoPin::registerScript( asIScriptEngine* engine )
     engine->RegisterObjectMethod("IoPin", "bool isConnected()"
                                    , asMETHODPR( IoPin, isConnected, (), bool)
                                    , asCALL_THISCALL );
+}
+
+void IoPin::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_inpHighV );
+    s.io( m_inpLowV );
+    s.io( m_outHighV );
+    s.io( m_outLowV );
+    s.io( m_outVolt );
+    s.io( m_vddAdmit );
+    s.io( m_gndAdmit );
+    s.io( m_vddAdmEx );
+    s.io( m_gndAdmEx );
+    s.io( m_inputImp );
+    s.io( m_outputImp );
+    s.io( m_openImp );
+    s.io( m_admit );
+    s.io( m_inpState );
+    s.io( m_inpVolt );
+    s.io( m_outState );
+    s.io( m_stateZ );
+    s.io( m_nextState );
+    s.io( m_skipStamp );
+    s.io( m_steps );
+    s.io( m_timeRis );
+    s.io( m_timeFal );
+    s.io( m_pinMode );
 }

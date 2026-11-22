@@ -140,3 +140,11 @@ void LogicComponent::setInputImp( double imp )
     if( m_clkPin) m_clkPin->setInputImp( imp );
     Simulator::self()->resumeSim();
 }
+
+void LogicComponent::simState( StateIO& s )
+{
+    IoComponent::simState( s );
+    eClockedDevice::simState( s );
+    s.io( m_outEnable );
+    s.io( m_tristate );
+}

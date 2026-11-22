@@ -43,3 +43,8 @@ void eIou::createWatcher( CpuBase* cpu )
 {
     if( !m_watcher ) m_watcher = new Watcher( NULL, cpu );
 }
+
+void eIou::simState( StateIO& s )
+{
+    eElement::simState( s );
+}

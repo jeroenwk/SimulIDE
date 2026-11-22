@@ -724,3 +724,35 @@ void  Mcs65Cpu::BXX() /// +1 cycle same page +2 different page
     uint8_t flagVal = STATUS( bit ) ? 1 : 0;
     if( flagVal == m_u8Tmp1 ) m_PC += (int8_t)m_op0;
 }
+
+void Mcs65Cpu::simState( StateIO& s )
+{
+    Mcs65Interface::simState( s );
+    s.io( m_debugPC );
+    s.io( m_nextClock );
+    s.io( m_halt );
+    s.io( m_nmiState );
+    s.io( m_isrSource );
+    s.io( m_cycle );
+    s.io( m_P );
+    s.io( m_SP );
+    s.io( m_Ac );
+    s.io( m_IR );
+    s.io( m_rX );
+    s.io( m_rY );
+    s.io( m_state );
+    s.io( m_nextState );
+    s.io( m_Isr );
+    s.io( m_aMode );
+    s.io( m_aFlags );
+    s.io( m_u8Tmp0 );
+    s.io( m_u8Tmp1 );
+    s.io( m_op0 );
+    s.io( m_opAddr );
+    s.io( m_busAddr );
+    s.io( m_dataMode );
+    s.io( m_tHR );
+    s.io( m_tHA );
+    s.io( m_tHW );
+    s.raw( &m_EXEC, sizeof( m_EXEC ) );   // The routine of the current cycle (valid for the run)
+}

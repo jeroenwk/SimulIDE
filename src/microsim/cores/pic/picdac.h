@@ -16,6 +16,8 @@ class PicVrefE;
 class PicDac:  public McuDac
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicDac )
         PicDac( eMcu* mcu, QString name );
         ~PicDac();
 

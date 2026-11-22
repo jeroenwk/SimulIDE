@@ -13,6 +13,8 @@ class LibraryItem;
 class BcdToDec : public LogicComponent
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( BcdToDec )
         BcdToDec( QString type, QString id );
         ~BcdToDec();
 

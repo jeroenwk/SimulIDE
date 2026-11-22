@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include "lachannel.h"
+#include "tunnel.h"
 #include "plotdisplay.h"
 #include "simulator.h"
 #include "pin.h"
@@ -36,6 +37,18 @@ void LaChannel::stamp()    // Called at Simulation Start
     DataChannel::stamp();
     m_analizer->conditonMet( m_channel, C_LOW );
     addReading( 0 );
+
+    // A channel joined by its tunnel name (no wire): listen from the start. LAnalizer::updateStep
+    // did it at a screen update, so when it began listening depended on when frames fell, and a
+    // replay after going back listened earlier than the first pass (16F887 CCP example)
+    if( !m_pin->isBus() && !m_pin->connector() && !m_chTunnel.isEmpty() )
+    {
+        eNode* enode = Tunnel::getEnode( m_chTunnel );
+        if( enode ){
+            m_pin->setEnode( enode );
+            enode->voltChangedCallback( this );
+        }
+    }
 
     if( m_pin->isBus() )
     {
@@ -135,3 +148,21 @@ void LaChannel::voltChanged()
     }
 }
 
+void LaChannel::simState( StateIO& s )   // A display, as the scope channel: not in a keyframe
+{
+    DataChannel::simState( s );
+}
+
+void LaChannel::stateRestored()            // The trace cut back to the restored time
+{
+    uint64_t now = Simulator::self()->circTime();
+    int size = m_buffer.size();
+    int i = m_bufferCounter;
+    for( int n=0; n<size && m_time[i] > now; ++n )
+    {
+        m_time[i] = 0;
+        m_buffer[i] = 0;
+        if( --i < 0 ) i = size-1;
+    }
+    m_bufferCounter = i;
+}

@@ -39,3 +39,27 @@ void uiMacObserve( std::function<void()> onChange ) // System light/dark switch
         addObserverForName:@"AppleInterfaceThemeChangedNotification" object:nil
         queue:[NSOperationQueue mainQueue] usingBlock:^( NSNotification* ){ cb(); }];
 }
+
+// A small grey text at the right end of the title bar (the build time)
+void uiMacTitleNote( void* nsView, const char* text )
+{
+    NSView* view = (__bridge NSView*)nsView;
+    NSWindow* win = view.window;
+    if( !win ) return;
+    for( NSTitlebarAccessoryViewController* a in win.titlebarAccessoryViewControllers )
+        if( [a.identifier isEqualToString:@"buildNote"] ){ [(NSTextField*)a.view.subviews.firstObject setStringValue:@(text)]; return; }
+
+    NSTextField* label = [NSTextField labelWithString:@(text)];
+    label.font = [NSFont systemFontOfSize:[NSFont smallSystemFontSize]];
+    label.textColor = NSColor.secondaryLabelColor;
+    [label sizeToFit];
+    CGFloat h = 32;   // The title bar's height: the text centred on the title
+    NSView* box = [[NSView alloc] initWithFrame:NSMakeRect( 0, 0, label.frame.size.width+12, h )];
+    label.frame = NSMakeRect( 0, ( h-label.frame.size.height )/2, label.frame.size.width, label.frame.size.height );
+    [box addSubview:label];
+    NSTitlebarAccessoryViewController* acc = [[NSTitlebarAccessoryViewController alloc] init];
+    acc.identifier = @"buildNote";
+    acc.view = box;
+    acc.layoutAttribute = NSLayoutAttributeRight;
+    [win addTitlebarAccessoryViewController:acc];
+}

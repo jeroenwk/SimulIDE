@@ -11,6 +11,8 @@
 class PicTimer : public McuTimer
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicTimer )
         PicTimer( eMcu* mcu, QString name );
         ~PicTimer();
 
@@ -39,6 +41,8 @@ class PicTimer8bit : public PicTimer
 class PicTimer0 : public PicTimer8bit
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicTimer0 )
         PicTimer0( eMcu* mcu, QString name );
         ~PicTimer0();
 
@@ -56,6 +60,8 @@ class PicTimer0 : public PicTimer8bit
 class PicTimer2 : public PicTimer8bit
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicTimer2 )
         PicTimer2( eMcu* mcu, QString name );
         ~PicTimer2();
 
@@ -100,6 +106,8 @@ class PicTimer16bit : public PicTimer
 class PicTimer160 : public PicTimer16bit
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicTimer160 )
         PicTimer160( eMcu* mcu, QString name );
         ~PicTimer160();
 
@@ -110,6 +118,8 @@ class PicTimer160 : public PicTimer16bit
 class PicTimer161 : public PicTimer16bit
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicTimer161 )
         PicTimer161( eMcu* mcu, QString name );
         ~PicTimer161();
 

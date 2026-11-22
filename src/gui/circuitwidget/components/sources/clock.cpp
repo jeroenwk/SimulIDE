@@ -82,3 +82,8 @@ void Clock::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
 
     Component::paintSelected( p );
 }
+
+void Clock::simState( StateIO& s )
+{
+    ClockBase::simState( s );
+}

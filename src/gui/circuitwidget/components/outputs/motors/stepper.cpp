@@ -100,6 +100,9 @@ Stepper::~Stepper(){}
 
 void Stepper::stamp()
 {
+    m_ang  = 0;      // Each run from the start position: the last run's left the first run
+    m_Ppos = 4;      // different from the next ones (as setSteps does)
+    update();
     eNode* enode = m_pinCo.getEnode();// Register for changes callback
     if( enode )
     {
@@ -240,4 +243,19 @@ void Stepper::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
     p->drawEllipse(-25,-25, 50, 50);
 
     Component::paintSelected( p );
+}
+
+void Stepper::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_steps );
+    s.io( m_res );
+    s.io( m_ang );
+    s.io( m_stpang );
+    s.io( m_Ppos );
+    s.io( m_bipolar );
+    m_resA1.simState( s );
+    m_resA2.simState( s );
+    m_resB1.simState( s );
+    m_resB2.simState( s );
 }

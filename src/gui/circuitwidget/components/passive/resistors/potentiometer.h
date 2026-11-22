@@ -15,6 +15,8 @@ class LibraryItem;
 class Potentiometer : public Dialed, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Potentiometer )
         Potentiometer( QString type, QString id );
         ~Potentiometer();
 
@@ -23,6 +25,8 @@ class Potentiometer : public Dialed, public eElement
 
         virtual void initialize() override;
         virtual void updateStep() override;
+        void applyRes();
+        virtual void stateRestored() override;   // The dial shows the restored value
         virtual void dialChanged( int val ) override;
 
         double getVal();

@@ -289,3 +289,24 @@ void DS1621::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget
 
     Component::paintSelected( p );
 }
+
+void DS1621::simState( StateIO& s )
+{
+    IoComponent::simState( s );
+    TwiModule::simState( s );
+    s.io( m_convert );
+    s.io( m_oneShot );
+    s.io( m_outPol );
+    s.io( m_writeByte );
+    s.io( m_command );
+    s.io( m_config );
+    s.io( m_tempCount );
+    s.io( m_tempSlope );
+    s.io( m_tempInc );
+    s.io( m_temp );
+    s.io( m_tempReg );
+    s.io( m_Th );
+    s.io( m_ThReg );
+    s.io( m_Tl );
+    s.io( m_TlReg );
+}

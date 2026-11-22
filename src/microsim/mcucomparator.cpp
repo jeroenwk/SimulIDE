@@ -31,3 +31,14 @@ void McuComp::callBackDoub( double vref ) // Called from Vref module
     m_vref = vref;
     if( m_enabled ) voltChanged();
 }
+
+void McuComp::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_fixVref );
+    s.io( m_enabled );
+    s.io( m_compOut );
+    s.io( m_vref );
+    s.io( m_mode );
+}

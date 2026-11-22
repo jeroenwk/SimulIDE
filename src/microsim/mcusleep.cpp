@@ -26,3 +26,10 @@ void McuSleep::callBack()
     qDebug() << "McuSleep Exit Sleep\n";
     m_mcu->sleep( false );
 }
+
+void McuSleep::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_enabled );
+}

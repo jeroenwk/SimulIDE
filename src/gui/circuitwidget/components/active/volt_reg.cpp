@@ -178,3 +178,14 @@ void VoltReg::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 
     Component::paintSelected( p );
 }
+
+void VoltReg::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_vRef );
+    s.io( m_drop );
+    s.io( m_iAdj );
+    s.io( m_lastCurrent );
+    s.io( m_connected );
+    s.io( m_region );
+}

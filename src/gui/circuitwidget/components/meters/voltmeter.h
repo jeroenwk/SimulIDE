@@ -13,6 +13,8 @@ class LibraryItem;
 class Voltimeter : public Meter
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Voltimeter )
         Voltimeter( QString type, QString id );
         ~Voltimeter();
 

@@ -420,3 +420,12 @@ uint64_t LAnalizer::getGcd( uint64_t a, uint64_t b )  // Greatest Common Denomin
 
     return a;
 }
+
+void LAnalizer::simState( StateIO& s )   // Not m_updtCount: counts GUI frames (display)
+{
+    PlotBase::simState( s );
+    s.io( m_voltDiv );
+    s.io( m_thresholdR );
+    s.io( m_thresholdF );
+    s.io( m_timePos );
+}

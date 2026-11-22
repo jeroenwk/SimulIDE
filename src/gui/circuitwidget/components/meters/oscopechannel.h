@@ -17,6 +17,10 @@ class OscopeChannel : public DataChannel
         OscopeChannel( Oscope* oscope, QString id );
         ~OscopeChannel();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( OscopeChannel )
+        virtual void stateRestored() override;   // The trace is cut back to the restored time
+
         virtual void initialize() override;
         virtual void updateStep() override;
         virtual void voltChanged() override;

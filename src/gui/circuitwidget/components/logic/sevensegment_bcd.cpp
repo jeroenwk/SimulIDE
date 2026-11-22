@@ -173,3 +173,10 @@ void SevenSegmentBCD::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWi
     };
     Component::paintSelected( p );
 }
+
+void SevenSegmentBCD::simState( StateIO& s )
+{
+    BcdBase::simState( s );
+    s.io( m_showEnablePin );
+    s.io( m_showDotPin );
+}

@@ -15,6 +15,8 @@ class Pin;
 class Max72xx_matrix : public LogicComponent
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Max72xx_matrix )
         Max72xx_matrix( QString type, QString id );
         ~Max72xx_matrix();
 

@@ -11,6 +11,8 @@
 class PicVref : public McuVref
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicVref )
         PicVref( eMcu* mcu, QString name );
         ~PicVref();
 
@@ -33,6 +35,8 @@ class PicVref : public McuVref
 class PicVrefE : public McuVref
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicVrefE )
         PicVrefE( eMcu* mcu, QString name );
         ~PicVrefE();
 

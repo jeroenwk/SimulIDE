@@ -19,6 +19,8 @@ class IoPin;
 class Ssd1306 : public Component, public TwiModule
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Ssd1306 )
         Ssd1306( QString type, QString id );
         ~Ssd1306();
 

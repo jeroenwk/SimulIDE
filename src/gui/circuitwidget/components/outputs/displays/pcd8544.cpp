@@ -237,3 +237,19 @@ void Pcd8544::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 
     Component::paintSelected( p );
 }
+
+void Pcd8544::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_bPD );
+    s.io( m_bV );
+    s.io( m_bH );
+    s.io( m_bD );
+    s.io( m_bE );
+    s.io( m_lastScl );
+    s.io( m_addrX );
+    s.io( m_addrY );
+    s.io( m_inBit );
+    s.io( m_cinBuf );
+    s.io( m_aDispRam );
+}

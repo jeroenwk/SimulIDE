@@ -34,3 +34,9 @@ void McuModule::sleep( int mode )
 {
     if( m_interrupt ) m_interrupt->raise();
 }*/
+
+void McuModule::simState( StateIO& s )
+{
+    s.io( m_sleepMode );
+    s.io( m_sleeping );
+}

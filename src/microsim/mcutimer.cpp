@@ -54,6 +54,7 @@ void McuTimer::initialize()
 
     //m_clkSrc  = clkMCU;
     m_clkEdge = 1;
+    m_clkState = false;   // Last level of the clock pin: not the last run's (its first edge was missed or counted)
 
     m_scale = m_prescaler*m_mcu->psInst();
 }
@@ -230,6 +231,34 @@ void McuTimer::enableExtClock( bool en )
 
     if( m_clockPin ){
         m_clockPin->changeCallBack( this, en );
-        m_clkState = m_clockPin->getInpState();
+        // At the start (the MCU reset, from Mcu::stamp) the pin may not be stamped yet: it still
+        // has the mode the load or the last run left (source, output...), so reading it gave a
+        // random start level (887 CCP: the first run differed). Every node starts at 0 V: low.
+        if( Simulator::self()->simState() == SIM_STARTING ) m_clkState = false;
+        else m_clkState = m_clockPin->getInpState();
     }
+}
+
+void McuTimer::simState( StateIO& s )
+{
+    McuPrescaled::simState( s );
+    eElement::simState( s );
+    s.io( m_number );
+    s.io( m_scale );
+    s.io( m_circTime );
+    s.io( m_timeOffset );
+    s.io( m_running );
+    s.io( m_bidirec );
+    s.io( m_reverse );
+    s.io( m_extClock );
+    s.io( m_prescVal );
+    s.io( m_countVal );
+    s.io( m_countStart );
+    s.io( m_maxCount );
+    s.io( m_ovfMatch );
+    s.io( m_ovfPeriod );
+    s.io( m_ovfCycle );
+    s.io( m_mode );
+    s.io( m_clkEdge );
+    s.io( m_clkState );
 }

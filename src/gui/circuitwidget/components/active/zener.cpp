@@ -32,3 +32,8 @@ Zener::Zener( QString type, QString id )
                            , this, &Diode::model, &Diode::setModel, 0,"enum" ) );
 }
 Zener::~Zener(){}
+
+void Zener::simState( StateIO& s )
+{
+    Diode::simState( s );
+}

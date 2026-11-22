@@ -272,3 +272,14 @@ void AudioOut::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w
     }
     Component::paintSelected( p );
 }
+
+void AudioOut::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_frequency );
+    s.io( m_impedance );
+    s.io( m_dataSize );
+    s.io( m_dataCount );
+    s.io( m_started );
+    s.io( m_buzzer );
+}

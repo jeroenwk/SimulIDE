@@ -14,6 +14,8 @@ class LibraryItem;
 class AndGate : public Gate
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( AndGate )
         AndGate( QString type, QString id );
         ~AndGate();
         

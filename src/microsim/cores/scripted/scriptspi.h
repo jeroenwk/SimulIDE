@@ -15,6 +15,8 @@ class asIScriptFunction;
 class ScriptSpi : public McuSpi, public ScriptPerif
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( ScriptSpi )
         ScriptSpi( eMcu* mcu, QString name );
         ~ScriptSpi();
 

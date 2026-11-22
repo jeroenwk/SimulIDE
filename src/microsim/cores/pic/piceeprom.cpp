@@ -104,3 +104,10 @@ void PicEeprom::configureB( uint8_t newEECON2 )
     Simulator::self()->addEvent( time, this ); // Shedule Write cycle end
 }*/
 
+void PicEeprom::simState( StateIO& s )
+{
+    McuEeprom::simState( s );
+    s.io( m_nextCycle );
+    s.io( m_writeEnable );
+    s.io( m_wrMask );
+}

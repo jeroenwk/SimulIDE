@@ -1,7 +1,7 @@
 # Simulation control: keys, skip, speed, history and snapshots
 
-Status: **phase 1 merged** (main b0096de, 2026-11-21), §3.1–3.8; **speed lock built** on
-`feature/sim-speedlock` (§3.9); differences from this text are noted in place. All decisions
+Status: **phase 1 merged** (main b0096de, 2026-11-21), §3.1–3.8; **speed lock merged**
+(main 7a697b7, §3.9); phase 2 started on `feature/sim-history` (§4.7: determinism measured); differences from this text are noted in place. All decisions
 taken (D1–D15, Decision log §9). Phases 2 and 3 are studies.
 
 Goal: control a running simulation the way you control a media player or a scope: play/pause,
@@ -67,16 +67,26 @@ canvas does not have focus, i.e. after a start, until the canvas is given focus 
 - While the simulation is running or paused, a **window-level key filter** (an event filter on
   `MainWindow`, installed at start and removed at stop) handles Space, Esc and the arrows when
   the focused widget is neither the canvas nor a widget that uses these keys itself: a text
-  field (a property field, the code editor, a search box), a list or tree (the component list,
-  the file browser), an editable combo such as the speed or skip box
+  field (a property field, the code editor, a search box), a list or tree while stopped (the
+  component list, the file browser: running or paused, they leave these keys to the simulation,
+  user 2026-11-21), an editable combo such as the speed or skip box
   (`CircuitWidget::keysToSim`).
 - At start, the canvas is cleared of focus (`clearFocus()`) and the keyboard cursor is hidden.
   A canvas mode in progress (wire drawing, network walk, value editing) is **not** ended yet
   (left out of phase 1): it waits until the canvas gets the focus back.
-- While running or paused, the canvas does not take focus when the mouse merely enters it
-  (`CircuitView::enterEvent` checks the state); otherwise moving the mouse over the circuit
-  would end the simulation keys at once. A **click** on the canvas gives it focus (keyboard
-  editor keys again).
+- The canvas never takes focus when the mouse merely enters it, in any state (user,
+  2026-11-21; before, it did while stopped): only a **click** on the canvas gives it focus
+  (keyboard editor keys again).
+- A **click anywhere else** in the window (the toolbar and its buttons, Messages, a panel)
+  takes the focus from the canvas (`CircuitWidget::eventFilter`, on the mouse press); a widget
+  that takes focus itself (a text field) gets it. A read-only text such as Messages does not
+  keep the simulation keys from working (`keysToSim`); Messages is read-only (select and copy
+  only), it was an editable text and kept the keys. A click on a part's line in Messages selects
+  the part and moves the view only when the part is out of sight (before: always centred).
+- The canvas accepts **no touch events** (`WA_AcceptTouchEvents` off): on a Mac trackpad a finger
+  resting over the canvas is a touch, which Qt treats as a click for the focus, so the canvas took
+  the keys while the pointer only passed over it. Pinch zoom and scrolling are gesture and wheel
+  events and still work.
 - **Esc hands the keys back** (D11): on the canvas while running or paused, Esc first does what
   it does today (`KeyboardController::escKey`, `Circuit::keyPressEvent`): ends a link or a wire
   being drawn, leaves network mode or a value edit, clears the selection. When none of these
@@ -87,7 +97,7 @@ canvas does not have focus, i.e. after a start, until the canvas is given focus 
 - The toolbar shows which one has the keys: the skip box has a blue frame while the simulation
   keys are active (`updtKeyOwner`, on every focus change).
 - F5 (start/stop) and F6 (pause/resume) are window shortcuts and work whatever has focus (D2).
-- At stop, the filter is removed and the canvas gets focus again if the mouse is over it.
+- At stop, the filter is removed; the canvas gets focus again only with a click.
 
 ### 3.2 Keys
 
@@ -131,6 +141,16 @@ Simulation keys (canvas not focused, §3.1); F5 and F6 work everywhere:
 - An interval shorter than the step size is allowed and shown with a note ("1 ps < step 1 µs:
   skips to the next step"); the skip always ends on a solved step.
 - Saved with the circuit, as the speed is (`skipInterval` in the simulation settings) (D6).
+- **Follows the speed** (user, 2026-11-21): the interval is a tenth of the first speed in the speed
+  list at or below the speed reached: 1 µs/s → 100 ns, 1 ms/s → 100 µs, 25 ms/s (10 ms/s) → 1 ms,
+  1 s/s → 100 ms. Set when the speed is set (toolbar, `sim speed`, `settings set speed`), and
+  while running (not paused, not skipping) from the **real speed** when it is below the set speed
+  (the orange speed, speed lock off): board_mains set to 1 s/s but reaching 25 ms/s gets 1 ms. A
+  10 % margin before moving up a list step keeps it from flipping; once it keeps up again it goes
+  straight back to the set speed's interval. The real speed is measured from the run's start and
+  from a resume (it used to count the idle time before, so a run read as far too slow: 1 ps). It changes only when that list
+  step changes, so a value set by hand (↑ / ↓, the box) stays until then. A run starts from the
+  interval as it is (the one saved with the circuit). `1 step` is kept.
 
 ### 3.4 Skip forward
 
@@ -151,12 +171,13 @@ the meters, scope and part views show the new state.
 
 Layout (user, 2026-11-21, built):
 
-- **Stopped**: one row, the editing bar, then only the play button; the Info menu at the right
-  end. Speed, skip, the other run buttons and the time are hidden.
+- **Stopped, before the first start or after ×**: one row, the editing bar, then only the play
+  button; the Info menu at the right end. Speed, skip, the other run buttons and the time are hidden.
 - **Running, paused or debugging**: always two rows, even when one would fit. The first is the
   editing bar with the Info menu at its right end; the second is the simulation bar:
-  `[speed ▾] [skip ▾] ⏮ ⏹ ⏯ ⏭  time  [NOISE]`. A stop (not a pause) collapses it again
-  (`CircuitWidget::setSimExpanded`).
+  `[speed ▾] [skip ▾] ⏮ ⏹ ⏯ ⏭  time  [NOISE]`. A stop keeps it open (user, 2026-11-22): a
+  faint × after the time, shown only while stopped, collapses it (`CircuitWidget::setSimExpanded`,
+  `updtSimClose`); the next start opens it again.
 - **No status block**: the time's colour gives the state, green running, light grey paused.
   Other status messages (`CircuitWidget::setMsg`: simulator warnings and errors) go to
   Messages, once per run; answers to a key or a typed value (a refused skip, a speed that
@@ -390,6 +411,322 @@ the outside world (a serial port, a real clock) has **no history**: ⏮ and ← 
 Messages names the parts that prevent it, and skip forward works as in phase 1. MCUs and
 script parts can get the state API later, part by part, without changing this design.
 
+### 4.7 Measured: determinism and replay speed (2026-11-21)
+
+**Determinism** [SIMULATED]: 11 circuits were each run to the same time by four routes (frames
+at 100 % speed, a skip, frames at 10 %, a skip again), and every node voltage was compared bit
+for bit (`sim hash`, FNV-1a over the doubles): RC (AoE 1.33), 555 astable, inverter ring,
+7490 BCD counter, Wien bridge, Schmitt relaxation oscillator, SCR, Johnson counter, Arduino
+serial echo, Z80 mini, 6502 Ben Eater.
+
+- First pass: 9 of 11 identical. The 7490 and the Johnson counter differed **even between two
+  skips**: flip-flops draw a random start state with `std::rand()` when noise is off
+  (`flipflopbase.cpp`), and `rand()` was never seeded per run (also random WaveGen, dynamic RAM).
+- With a **run seed** (`std::srand` at each start; `settings runSeed`, `sim status` → `seed`):
+  **11 of 11 identical**, the three MCU circuits included. So the frame boundaries, the
+  speed and fast run don't change what is computed; the seed and the inputs are all a replay
+  needs.
+
+**Replay speed** (a 5 s skip from stopped, this M1) [SIMULATED]: 3× real time (Z80) to 40×
+(RC, 7490); 555, Wien, Schmitt, Arduino 7–10×. Going back by replaying from the start
+costs t / (3…40): instant for the slow speeds used to watch a circuit (1 min at 1 ms/s is
+60 ms simulated), 1.5–20 s after a minute at real time.
+
+**Consequence for the plan**: replay from the start needs no state API at all, only the
+seeds and the input journal, and it works for **every** circuit, MCUs and script parts
+included (they are deterministic too). Keyframes (§4.3, the state API) then only make it
+faster. Proposed order:
+
+- **2a. Replay from the start.** Run seed and noise seed kept per run; the input journal
+  (§4.3) for live property changes (generic, at `setPropStr`) and the interactive parts
+  (switch, push, DIP switch, keypad, variable sources, clock button), each stamped with the
+  frame time at which `updateStep()` applies it; an input the journal can't record (a part
+  without the hook, a real serial port) ends the history, as an edit does. ← and ⏮ replay to
+  the target as a skip (Esc cancels, progress in the time label); `sim skip --back`,
+  `sim history` (span, journal), `sim history check` (round trip with `sim hash`).
+- **2b. Keyframes** with the state API (§4.5) for the common parts, to make ← take ≤ 50 ms;
+  a circuit with a part that has no state API keeps 2a (slower, still exact).
+
+### 4.8 Keyframes proven on board_mains (2026-11-21) [SIMULATED]
+
+Decided with the user: keyframes first (replay from the start is too slow for `board_mains`:
+it runs at 25–60 ms/s, so going back from 10 s would replay for 3–7 minutes), and the cost of
+taking them must be proven on `board_mains` before anything else.
+
+**What was built** (branch `feature/sim-history`):
+- `StateIO` (`simstate.h`): one `simState( StateIO& )` per class reads or writes its fields, the
+  same list both ways; raw bytes straight into a preallocated arena, no allocation per keyframe;
+  a marker before each element catches a save and a load that drift apart. `SIM_STATE( Class )`
+  declares a class covered; a subclass that doesn't is reported missing.
+- Generic layers: the simulator core (time, non-linear budget, speed-lock factor), every node's
+  voltage and stamped values (admittances, currents: the matrix is rebuilt from them), the
+  event queue in order (element index + time), and the **AngelScript globals** of script parts
+  (numbers, bools, enums, strings, read through the module API: no per-script code).
+- Per class: the 27 classes of `board_mains` (R, C, L, diode, zener, junction cap, varistor,
+  fuse with its heat model, switch, WaveGen, LED strip, ammeter, battery, current source,
+  MOSFET, op amp, MCU pins and ports, the scripted MCU and core, subcircuit, scope).
+- `SimHistory`: a ring of keyframes in one arena (256 MB default, `settings historyBudget`),
+  one per frame taken in the GUI timer after `holdWorker()` (a solved step; a frame whose step
+  isn't solved is skipped), restore = the last keyframe at or before t.
+- CLI: `settings history` (on by default since going back was built), `sim history` (count, span, bytes,
+  capture time mean/max, missing classes), `sim history sizes` (bytes per class),
+  `sim history check [--span] [--points] [--back] [--keep CLASS]`, `sim hash`, `settings runSeed`.
+
+**Rule found: display state is not in a keyframe.** Fields summed or reset at each GUI frame (LED
+brightness, the scope's measurements and trace, the coil colour) depend on when frames fall, not
+on the simulation, and never feed the circuit: they carry on from their present value. Two
+reports were frame-dependent and are fixed: the diode's and LED's 100 ms current average
+(`current_avg`, OVER) was advanced to each frame's time, splitting the integration differently
+in each run; the stored average now follows the solved steps only, and frames and readers
+compute it up to now without storing it.
+
+**Results** (`tests/regress/test_simctl_history.py`, and a proof script run on this M1):
+
+| | Measured |
+|---|---|
+| Keyframe | 17.6 KB (34 MCU pins 5.5 KB, 21 junction caps 3.4 KB: mostly constants; can shrink) |
+| Taking one | 15 µs mean, 34 µs max, every frame (20/s): 0.03 % of the 50 ms frame |
+| Speed, history off vs on | 42.97 vs 42.94 ms/s over 6 × 10 s each, alternating: −0.07 % (sd 0.2–0.5 %, noise); a second run −0.11 % |
+| Memory | 350 KB/s of wall time: 256 MB holds 12 min, i.e. 30 s of `board_mains` time at 43 ms/s; 10 s back = 70 MB |
+| Restoring one | 7–15 µs |
+| Round trip (`sim history check`) | at 26 ms (start-up, 10 ms back), 198 ms (40 ms back), 445 ms (200 ms back), 589 ms (5 ms back): at 5 checkpoints each, every node voltage **and** every element's saved state identical to the bit |
+| Negative control (`--keep`) | keeping the inductor, diodes, zener, varistor or the script cores at their present state: node voltages differ; keeping the fuse, meters, LED strip, op amp, junction caps: their state differs. So the check sees state that is not restored |
+
+**Going back (built 2026-11-21)**: ← / ⏮ / `sim skip --back` restore the last keyframe at or
+before now − interval and replay the rest as a skip (fast run), then pause; one solver step back
+(`sim step --back`, the "1 step" interval) replays to now − 1 ps, reads when the last step ran
+(`Simulator::lastEventTime`) and replays again onto it. Keyframes after the restored one are
+dropped (the future is recomputed as it runs on). Measured on `board_mains` [SIMULATED]: back
+10 ms lands on the earlier time with the same state hash it had there, forward again gives the
+same hash as the first time, steps back land on the earlier 50 ns step times.
+
+- **Inputs need no journal** while there is a keyframe every frame: a click sets a part's
+  pending fields (e.g. `m_closed`, `m_changed`), which are saved, and `updateStep()` applies them
+  right after the frame's keyframe, so a replay applies them at the same time. A CLI command that
+  changes the running circuit (`comp set`, `ui click`, `serial send`, …) takes a keyframe right
+  after it (`CliApi::exec`), as it acts between frames. A property changed in the GUI dialog
+  between two frames is the one case still missed (up to one frame) — the journal of §4.3 is
+  for that, and for thinned keyframes.
+- `eElement::stateRestored()` after a load: a switch's button follows the restored contact; a
+  scope channel drops its samples after the restored time (the trace is cut back).
+- An edit that adds or removes an element during the run ends the history for the run
+  (Messages: "History: the circuit changed during the run …").
+- History is on by default (a user setting, `Simulation/history`); a circuit with a part
+  without state code keeps running as before, and ← says which parts.
+
+**More part types (2026-11-21)** [SIMULATED]: state code for every non-MCU part found in the 773
+circuits of the repos (books, YouTube, led_driver, samples, the shipped examples, test circuits):
+BJT, JFET, SCR, triac, diac, UJT/PUT, voltage and current regulators, the logic family
+(`IoComponent` with its queues of pending outputs, gates, buffers, flip-flops, latches,
+counters, mux/demux, shift registers, BCD decoders, adders), memories (`ioVector` of the RAM),
+the 555, relays, push buttons, DIP switches, keypad, potentiometers and sensors (LDR,
+thermistor, RTD, strain gauge), the transformer and its coils, sources, rails, clocks, probes,
+voltmeter, frequency meter, logic analyzer, lamp, DC motor, stepper, LED displays and matrices,
+HD44780/SSD1306/PCD8544/KS0108/ILI9341 displays (their RAM), WS2812, MAX72xx, I2C parts and the
+DS1307/DS1621/DHT22/SR04/KY040 modules, and the **noise engine** (each source's random
+generator and normal distribution, copied as bytes, so a noisy run replays the same numbers).
+Most field lists were generated from the headers (plain values, fixed arrays, members with
+their own state) and reviewed; `sim history check` over all the circuits found what was missing.
+
+- Found that way: the models that publish exact pin currents (`ePin::trueCurrent`: BJT, JFET,
+  current regulator, op amp) keep them on the pins, which keyframes didn't hold; the noise
+  read them, so a noisy BJT circuit diverged after a restore. `eElement::pinCurrents()` saves
+  them. More display state left out: the lamp's brightness, the DC motor's angle and speed, the
+  frequency meter's averaged period (all summed or reset per GUI frame).
+- A skip that lands takes a keyframe where it pauses: a skip shorter than a frame left none,
+  and the places skipped to are quick to come back to.
+- **Result**: 659 of the 773 circuits go back bit for bit (`sim history check`: 6 × 1 ms run,
+  back 4 ms, 3 checkpoints, every node and every element's state identical), against 143
+  before. `tests/regress/test_simctl_history_parts.py`: 15 shipped examples covering the new
+  classes, plus a BJT oscillator with noise on. 106 circuits are refused: all but one hold an
+  MCU (AVR, PIC, 8051, …: their peripherals and cores are the next step); one has a
+  `SubPackage` (the package editor).
+  *(Later the same day: state code for the MCUs and the remaining parts, 757 of 773; the
+  tables below are the current state.)*
+- **Known limits** (circuits that run but can't replay exactly; `sim history` says why where it
+  can):
+  - A **meter's output pin** (ammeter, voltmeter `outnod`) was set once per GUI frame
+    (`Meter::updateStep`), so the circuit depended on when frames fell and a replay differed
+    where that output fed something. *Fixed 2026-11-22*: when the pin is wired, the output is
+    set by an event at the step where the reading changed (Mean/RMS: also at each block end),
+    solved at that same time; an unwired pin is still set per frame, at no cost
+    (`tests/regress/test_meter_output.py`).
+  - **Steps that don't converge** (the UJT relaxation oscillator of Duncan 56.4, the centre-tap
+    rectifier of Duncan 40.3): a step that iterates past its limit can be cut by the 50 ms
+    wall-time guard (`breakStep`), so the run itself isn't repeatable; where no step is ever
+    complete at a frame, no keyframe is taken (`sim history` error: "the step was not solved").
+  - The **audio output** is paced by the sound card's buffer: refused (`hasSimState` false).
+  - ~~Scherz 12.57b (switch debouncer with the T_AND ternary subcircuit) lands in another state
+    after a replay~~: fixed 2026-11-22, see below.
+
+**MCUs (2026-11-21)** [SIMULATED]: the AVR and PIC families. The core saves its own fields
+through `CoreBase::coreState()` (PC, return address; the PIC mid-range core also W, bank, its
+8-level stack and pointer; the registers are in the data memory `eMcu` already saves);
+`Interrupts::intState()` saves the global flag, the active / pending / running lists and each
+interrupt's flags and module callbacks as indices; the peripherals (timers, OC/IC/CCP units,
+ADC, comparator, EEPROM, watchdog, sleep, SPI, TWI, USART transmitter/receiver, internal
+oscillator, Vref, DAC, pins) were generated like the parts (their register bit masks are
+configuration). Found by the check:
+- A port's input bits (`McuPort::m_pinState`, read as PINx) are state, and ports aren't
+  elements: `eMcu` saves them (`portState`). Without it the Arduino scope example read a
+  different PINC after a restore.
+- A node's list of elements called on a voltage change (`eNode::m_voltChEl`) changes during a
+  run: a DHT22 stops listening while it answers. It is saved, in order (element pointers: they
+  live for the whole run).
+- More display state: the logic analyzer's frame counter.
+
+The AVR circuits completed (2026-11-21): the serial terminal (its typed bytes waiting to be sent),
+the scripted I2C and SPI modules (their script globals are the script CPU's), and the real
+serial port refused (data from outside can't be replayed). Found: a **potentiometer set from
+the simulation** (a script's I2C byte, a linked part) only took its new value at the next GUI
+frame, so the circuit depended on when frames fell; it is now applied at once (`applyRes`, the
+label still follows at the frame). And a dial is GUI state that signals only a change: after a
+restore it still showed the later value and swallowed the same value set again by the replay,
+so `stateRestored()` moves the potentiometer's and the variable resistors' dials back. All 51
+AVR circuits of the repos now go back bit for bit, except those with a real serial port or
+the audio output (refused).
+
+The other families (2026-11-21): the **8051** (its core is an element; found: the instruction
+bytes already fetched, `m_readOp`, are state), the **Z80** (its register structs are plain
+values; `Z80RegPair` only refers into `regs[]`), the **ZX Spectrum ULA** (with its 448 × 312
+screen buffer), the **6502** (the routine of the current cycle is a member-function pointer,
+valid for the run, copied as bytes), the **scripted display** (its picture), and the package
+editor (`SubPackage`). The standalone CPUs (Z80, 6502, ULA) save their PC themselves, as no
+eMcu does it for them. MCU modules that are not elements (USART register front ends, ports)
+get `McuModule::moduleState()`, called by `eMcu` (the 8051 USART's baud counter). The logic
+analyzer's channels are display state like the scope's: not in a keyframe, their trace cut
+back on a restore (`LaChannel::stateRestored`).
+
+After these, every circuit of the repos is covered except those with a real serial port or the
+audio output (8, refused on purpose): **757 of the 773 go back bit for bit** (143 before the
+part state code); the other 8 are the known limits above. `test_simctl_history_parts.py`: 44 checks, 21 circuits. 
+*Sweep of 2026-11-22* [SIMULATED], after the first-run fixes and `syncAfterRestore` (below):
+**762 of 774** (one circuit more in the repos); the triac, `board_mains_reference`, the UJT
+oscillator of Duncan 56.4 and Scherz 12.57b now replay bit for bit. Left: npn-curve and the
+PIC 16F887 CCP example (table), Duncan 40.3 (no keyframe) and Scherz 3.91e (check over 120 s).
+Then the same day: the 16F887 CCP example goes back bit for bit too. Its logic analyzer has
+channels joined by tunnel name, and they started listening to their node at a screen update
+(`LAnalizer::updateStep`), so later in the replay than in the first pass, or the other way; they
+now listen from the start (`LaChannel::stamp`). Found with `sim hash --elements`, which now also
+gives one hash per node, the event queue and the iteration budget; `--dump` takes a node and
+lists its callbacks. Scherz 3.91e goes back bit for bit with shorter spans. Duncan 40.3: its two
+diodes never converge (every step taken after 1000 iterations), a solver question of its own.
+
+**Circuits that don't go back yet** (2026-11-21, `sim history check` over the 773 circuits of the
+repos: 6 × 1 ms run, back 4 ms, 3 checkpoints). Paths from `~/perso/electronics/`.
+
+Refused on purpose (← names the part; the circuit runs as before):
+
+| Circuit | Part | Why |
+|---|---|---|
+| `SimulIDE/resources/examples/Micro/Arduino/Serial_Port_connection/analog_serial.sim1` | SerialPort | a real port: data from outside can't be replayed |
+| `SimulIDE/resources/examples/Micro/Arduino/Serial_Port_connection/barGraph_serial.sim1` | SerialPort | same |
+| `SimulIDE/resources/examples/Micro/Peripherals/serial port/arduino_serial_echo.sim1` | SerialPort | same |
+| `SimulIDE/resources/examples/Micro/mcs-65/micro-kim-1/micro-kim-1.sim1` | SerialPort | same |
+| `SimulIDE/resources/examples/Micro/Arduino/arduino_music/arduino_music.sim1` | AudioOut | paced by the sound card's buffer (wall time) |
+| `SimulIDE/resources/examples/Micro/Pic/16F88x/16F886_Song/song.sim1` | AudioOut | same |
+| `SimulIDE/resources/examples/Outputs/Audio/audio.sim1` | AudioOut | same |
+| `SimulIDE/resources/examples/Outputs/Audio/resonator.sim1` | AudioOut | same |
+
+Go back, but the replay differs (what differs, then the cause):
+
+| Circuit | Differs | Cause |
+|---|---|---|
+| `SimulIDE/resources/examples/Active/BJT/npn-curve.sim1` | (2026-11-22: no keyframe at the checked times: steps not solved when the frames fall) | a meter's output pin was set once per GUI frame (`Meter::updateStep`) and feeds the curve tracer's scope. *Fixed the same day*: set in simulation time, goes back bit for bit |
+
+No result:
+
+| Circuit | Why |
+|---|---|
+| `books/duncan/fig40_3_centre_tap_rectifier.sim1` | diode D1 never converges, so no step is complete at a frame and no keyframe is taken (`sim history`: "the step was not solved") |
+| `books/scherz/fig3_91e_coax_highpass.sim1` | slow (20 s of wall time per simulated ms), so the 1 ms check took over 120 s; with 50 µs spans it goes back bit for bit (2026-11-22) |
+
+**Parts that break going back** (2026-11-21: each of the 569 items of the component library
+placed alone in a running circuit, then `sim history` → `missing`; library item names as in
+`lib list`). A circuit with one of these refuses ← / `sim skip --back` and names the class; it
+runs as before.
+
+State code added for all of them the same day (they were in none of the repos' circuits, so
+the survey of the circuits had missed them): ADC; DAC (DAC, DAC7621, DAC8562); DS18B20; the
+scripted **Function** (Function, 74HC40102, 74HC40103, 74XX381, 74XX382, AD7224, CD4009, CD4010,
+TL494: its script globals, as the script CPU's, so it is refused if a global has a type
+`scriptGlobals()` doesn't handle); Header and Socket (`ConnBase`); I2CMaster (its transfer: the
+bytes to write, read and their ACKs); KY023 joystick; Servo (not its position: integrated per
+GUI frame, display); TouchPad. Each is checked alone in a running circuit
+(`test_simctl_history_parts.py`, 86 checks).
+
+Refused on purpose (the only library items left): `SerialPort` (a real port) and `Esp01` (real
+TCP sockets): data from outside can't be replayed; `AudioOut` (paced by the sound card's
+buffer).
+
+**Telling the user** (user, 2026-11-21): when a circuit that can't go back is opened, Messages
+gets a warning naming each part and why ("Going back in time is off for this circuit: AudioOut ×1
+(paced by the sound card, in real time). The circuit runs as before; ← and ⏮ work in circuits
+without these parts."); each ← or ⏮ repeats it, and `sim skip --back` answers the same. The ⏮
+button is greyed out with the reason in its tooltip (also when history is off in the settings),
+checked again at each start (`CircuitWidget::updtBackAvail`). The reasons come from the parts
+(`eElement::noSimStateWhy()`: a real port or network, the sound card, script variables of a type
+keyframes can't hold; otherwise "no state code yet"), gathered by `SimHistory::blockers()`.
+
+Covered, but the replay is not exact:
+
+| Part | When |
+|---|---|
+| ~~Ammeter, voltmeter (`Meter`: Amperimeter, Voltimeter)~~ | ~~their output pin (`outnod`) takes the shown value once per GUI frame~~: fixed 2026-11-22, the wired output follows the reading in simulation time |
+| Any part whose model doesn't converge in a circuit (seen: the UJT in Duncan 56.4, a diode in Duncan 40.3) | a step cut by the 50 ms wall-time guard makes the run itself unrepeatable; no keyframe while no step is complete |
+
+Found on the way: the **first run after opening** `board_mains` differs from later runs (two
+skips of 200 ms after the first: same hash; the first: another), so some part keeps state
+across a stop and a start. It doesn't touch keyframes (they restore within a run).
+
+**A restore no longer re-solves the step (2026-11-22)** [SIMULATED]: Scherz 12.57b went back
+with every element's state and every node voltage identical, then replayed differently. Loading
+a keyframe marks every node changed (the matrix must take the restored stamps), and the
+simulator then solved the restored step again: in this static circuit (no event pending) the
+diodes and zeners of the ternary AND settled on another point within their 10 mV tolerance than
+the first pass, so the replay went on from other voltages. `Simulator::syncAfterRestore()` now
+stamps and solves the matrix for its factors, puts the keyframe's voltages back and drops what
+that solve queued: the step stays the solved one. `test_simctl_history_parts.py` has the
+circuit (copy in `tests/circuits/history_ternary_and_debouncer.sim1`).
+
+**Fixed (2026-11-22)** [SIMULATED]: every run now starts from the same state. Found with
+`sim hash --elements` (one hash per element) and a dump of every element's state just before
+the first step, run 1 against run 2 with the seeds fixed (`runSeed`, `noiseSeed`; flip-flops
+and noise are random on purpose otherwise). What differed, and the fix:
+
+- `eElement::m_changed` was never initialized (garbage in run 1); cleared at each start, and the
+  parts that need it set it in `initialize`/`stamp` (BJT, JFET, clocks, controlled sources, and
+  now the diode: it linearized at the first step only after a load).
+- `IoPin`: the output voltage stamped before the owner sets a state was the last run's level
+  (`m_outVolt`; now the level of the reset state), the input voltage too, and its per-frame
+  colour update wrote the simulation's input state (`getInpState`: hysteresis, `m_inpVolt`),
+  so a run depended on when GUI frames fell.
+- Left from the last run: a meter's output reading, `eDiode::m_voltSolved`, the wave
+  generator's time and next step, the clock's start time and output level, the 555's output
+  high level (set from the supply), the stepper's rotor position, the DHT22's last edge time,
+  the clocked devices' clock state, the MCU compare unit's pin level, the CPU's return address.
+- PIC ADC (`PicAdc00/01`): the pin mode was applied only when ADCON1's mode changed, from a
+  cached mode not reset at start: run 1 left the ADC pins digital after reset (the constructor's
+  mode 0 hid the reset write), later runs analog as the datasheet says (PCFG = 0: all analog).
+  Now every run applies the reset value.
+- The noise source's normal distribution had an uninitialized cache (no effect, but the state
+  hash differed).
+- An MCU timer's external clock level (`McuTimer::enableExtClock`): the reset writes OPTION from
+  `Mcu::stamp`, possibly before the clock pin's own stamp, so the pin still had the mode the load
+  or the last run left and the start level was random (887 CCP, about every other suite run,
+  depending on the circuits run before). Now low during the start, as every node is at 0 V.
+
+Sweep of the 753 circuits of the repos (run 1 ms, stop, run 1 ms; seeds fixed): node voltages
+the same in all of them (3 too slow for the 120 s limit); the full saved state the same in 695.
+The other 55 differ only in state that changed no voltage within that millisecond: inside MCUs
+(AVR, PIC, 8051, Z80: a pin's last read input voltage, open-collector admittances of I2C pins,
+module bytes) — left for now. `tests/regress/test_first_run_same.py`: board_mains, the precision
+rectifier, the triac, the SCR and the PIC 16F887 CCP example, full state bit for bit.
+
+The first real-speed reading after a start or a resume was about one frame short (947 ms/s at
+real time, 20 fps: the window started in `startSim`, the worker one frame later), so the skip
+interval dipped for a second; the window now starts at the first frame (`m_speedBase`).
+
 ## 5. Phase 3: saved snapshots and triggers
 
 ### 5.1 Snapshots
@@ -441,10 +778,14 @@ specs/scope-trigger-level.md).
 
 ## 8. Open points to check in the code
 
-- Why the canvas keeps focus today at start, and which widget takes it (the run button?).
-- The range `Cli::setSimSpeed()` accepts, and how the real-speed override behaves in an
-  editable combo.
-- Whether `sim run --for` runs at the set speed or as fast as it can (decides how §3.4 reuses it).
+All three settled while building phase 1 (2026-11-21):
+
+- ~~Why the canvas keeps focus at start~~: it took focus on hover and from trackpad touches;
+  now only on a click, and a start clears it (§3.1).
+- ~~The speed range and the real-speed override~~: the toolbar box shows the real speed as an
+  override text in orange while slower than set (`TimebaseBox::setOverride`), §3.3.
+- ~~Whether `sim run --for` runs at the set speed~~: a skip doesn't reuse it; it runs as fast as
+  it can (D7, `SimSkip`).
 
 ## 9. Decision log
 

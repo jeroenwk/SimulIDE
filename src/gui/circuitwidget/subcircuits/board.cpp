@@ -39,3 +39,7 @@ QString BoardSubc::toString()
     return toStr;
 }
 
+void BoardSubc::simState( StateIO& s )
+{
+    SubCircuit::simState( s );
+}

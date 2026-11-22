@@ -13,6 +13,8 @@ class PicEeprom : public McuEeprom
         friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicEeprom )
         PicEeprom( eMcu* mcu, QString name );
         ~PicEeprom();
 

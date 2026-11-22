@@ -117,8 +117,15 @@ void CurrentFlow::updateStep()
 
     if( !m_enabled ) return;
     bool moving = sim->simState() >= SIM_WAITING;      // Paused: dots stay where they are
-    updateScale( moving ? dt : 0 );
-    advance( moving ? dt : 0 );
+    bool back = now < m_revUntil;                      // Going back: they run backwards
+    updateScale( moving || back ? dt : 0 );
+    advance( back ? -dt : moving ? dt : 0 );
+}
+
+void CurrentFlow::rewindCue( int ms )
+{
+    qint64 until = m_clock.nsecsElapsed()+(qint64)ms*1000000;
+    if( until > m_revUntil ) m_revUntil = until;
 }
 
 void CurrentFlow::advance( double dt )

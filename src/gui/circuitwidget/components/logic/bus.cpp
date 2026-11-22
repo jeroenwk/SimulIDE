@@ -135,3 +135,11 @@ void Bus::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* w
 
     Component::paintSelected( p );
 }
+
+void Bus::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_height );
+    s.io( m_numLines );
+    s.io( m_startBit );
+}

@@ -329,3 +329,19 @@ void Memory::slotShowTable()
     else               m_memTable->setWindowTitle( "RAM: "+idLabel() );
     m_memTable->setData( &m_ram, m_dataBytes );
 }
+
+void Memory::simState( StateIO& s )
+{
+    IoComponent::simState( s );
+    eElement::simState( s );
+    s.io( m_addrBits );
+    s.io( m_dataBits );
+    s.io( m_dataBytes );
+    s.io( m_address );
+    s.io( m_oe );
+    s.io( m_we );
+    s.io( m_cs );
+    s.io( m_persistent );
+    s.io( m_asynchro );
+    s.ioVector( m_ram );
+}

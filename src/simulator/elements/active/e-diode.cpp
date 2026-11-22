@@ -35,10 +35,13 @@ eDiode::~eDiode(){}
 void eDiode::stamp()
 {
     m_converged = true;
+    m_changed = true;   // Linearize at the first step, as after a load (eBJT, eJfet: initialize);
+                        // left false by a previous run, the first run after opening differed
     m_step    = 0;      // Iteration damping (gmin) from a previous run
     m_gminDropped = false;
     m_admit   = m_bAdmit;
     m_voltPN  = 0;
+    m_voltSolved = 0;
     m_current = 0;
 
     eResistor::stamp();
@@ -244,3 +247,24 @@ void eDiode::setModelData( diodeData_t data )
     if( data.surgeCur > 0 ) m_surgeCur = data.surgeCur;
 }
 
+void eDiode::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_converged );
+    s.io( m_gminDropped );
+    s.io( m_vt );
+    s.io( m_satCur );
+    s.io( m_emCoef );
+    s.io( m_vScale );
+    s.io( m_vdCoef );
+    s.io( m_vzCoef );
+    s.io( m_zOfset );
+    s.io( m_vCriti );
+    s.io( m_vzCrit );
+    s.io( m_bkDown );
+    s.io( m_maxCur );
+    s.io( m_surgeCur );
+    s.io( m_voltPN );
+    s.io( m_voltSolved );
+    s.io( m_bAdmit );
+}

@@ -675,3 +675,9 @@ void Mcu::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* w
         else                      p->drawRoundedRect( m_area.width()/2-2, -1, 4, 4 , 2, 2);
 }   }
 
+void Mcu::simState( StateIO& s )
+{
+    Chip::simState( s );
+    s.io( m_resetPol );
+    s.io( m_extFreq );
+}

@@ -19,6 +19,13 @@ class ScriptModule : public eElement
         ScriptModule( QString name );
         ~ScriptModule();
 
+        // Keyframes (specs/sim-control.md §4.5): the script's global variables, read or written
+        // through AngelScript's module API: numbers, bools, enums and strings; handles (IoPin@)
+        // are left as they are (set once at load). unsupportedGlobals(): "name (type)" of the
+        // others (arrays, objects): with any, the part has no history
+        void scriptGlobals( StateIO& s );
+        QStringList unsupportedGlobals();
+
         virtual int compileScript();
 
         virtual void setScriptFile( QString scriptFile, bool compile=true );

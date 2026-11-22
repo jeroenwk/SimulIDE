@@ -80,3 +80,8 @@ AvrSleep00::AvrSleep00( eMcu* mcu, QString name )
 }
 AvrSleep::~AvrSleep(){}
 */
+
+void AvrSleep::simState( StateIO& s )
+{
+    McuSleep::simState( s );
+}

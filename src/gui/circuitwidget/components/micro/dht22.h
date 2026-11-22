@@ -17,6 +17,8 @@ class IoPin;
 class Dht22 : public Component , public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Dht22 )
         Dht22( QString type, QString id );
         ~Dht22();
 

@@ -12,3 +12,8 @@ PicSleep::PicSleep( eMcu* mcu, QString name )
     m_sleepMode = 1;
 }
 PicSleep::~PicSleep(){}
+
+void PicSleep::simState( StateIO& s )
+{
+    McuSleep::simState( s );
+}

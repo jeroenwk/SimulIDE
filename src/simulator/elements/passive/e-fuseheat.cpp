@@ -7,6 +7,7 @@
 #include <algorithm>
 
 #include "e-fuseheat.h"
+#include "simstate.h"
 
 FuseHeat::FuseHeat()
 {
@@ -95,4 +96,10 @@ double FuseHeat::timeToLevel( double u, double level ) const
         else                lo = mid;
     }
     return hi;
+}
+
+void FuseHeat::simState( StateIO& s )
+{
+    s.io( m_C1 ); s.io( m_G1 ); s.io( m_C2 ); s.io( m_G2 ); s.io( m_kss );
+    s.io( m_l ); s.io( m_v ); s.io( m_vi ); s.io( m_th ); s.io( m_ph );
 }

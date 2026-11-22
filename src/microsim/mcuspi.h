@@ -17,6 +17,8 @@ class McuSpi : public McuPrescaled, public SpiModule
         friend class McuCreator;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( McuSpi )
         McuSpi( eMcu* mcu, QString name );
         ~McuSpi();
 

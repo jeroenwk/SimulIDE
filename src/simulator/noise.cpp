@@ -164,7 +164,7 @@ void eNoise::collect()
         int n = index.value( key, 0 );
         index[key] = n+1;
 
-        Src* src = new Src;
+        Src* src = new Src();     // Value-initialized: the normal distribution's unused cache is zeroed (not garbage in keyframes)
         src->s = s;
         src->pa = new ePin( "Noise-"+key+"-"+QString::number(n)+"a", 0 );
         src->pb = new ePin( "Noise-"+key+"-"+QString::number(n)+"b", 1 );
@@ -313,3 +313,30 @@ QList<eNoise::SrcInfo> eNoise::info()
     }
     return l;
 }
+
+// The window state, and each source's random generator and last current: a replay draws the
+// same numbers. The generators are plain values (mt19937_64: its words and index; the normal
+// distribution: its parameters and the spare value), copied as bytes
+void eNoise::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_seed );
+    s.io( m_hold );
+    s.io( m_gain );
+    s.io( m_startMapped );
+    int st = m_state.load();             s.io( st );
+    uint64_t fa = m_firstActive.load(); s.io( fa );
+    uint64_t la = m_lastActive.load();  s.io( la );
+    if( !s.saving() ){ m_state = st; m_firstActive = fa; m_lastActive = la; }
+    uint32_t n = m_src.size();
+    s.io( n );
+    if( n != m_src.size() ){ s.fail(); return; }
+    for( Src* src : m_src )
+    {
+        s.raw( &src->rng, sizeof( src->rng ) );
+        s.raw( &src->nd, sizeof( src->nd ) );
+        s.io( src->last );
+        s.io( src->lastPsd );
+    }
+}
+

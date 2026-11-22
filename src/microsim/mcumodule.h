@@ -6,6 +6,8 @@
 #ifndef MCUMODULE_H
 #define MCUMODULE_H
 
+
+#include "simstate.h"
 #include <QString>
 
 #include "mcutypes.h"
@@ -18,6 +20,9 @@ class McuModule
         friend class McuCreator;
 
     public:
+        void simState( StateIO& s );   // Keyframes (specs/sim-control.md §4.5)
+        // A module that is not an element (ports, USART register front ends): saved by eMcu
+        virtual void moduleState( StateIO& s ) { McuModule::simState( s ); }
         McuModule( eMcu* mcu, QString name );
         virtual ~McuModule();
 

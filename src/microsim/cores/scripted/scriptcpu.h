@@ -24,6 +24,12 @@ class ScriptCpu : public ScriptModule, public McuCpu
         ScriptCpu( eMcu* mcu );
         ~ScriptCpu();
 
+        // Keyframes (specs/sim-control.md §4.5): CPU fields, the shown state and the script's
+        // globals. Covered when every global is of a type scriptGlobals() handles
+        virtual void simState( StateIO& s ) override;
+        virtual bool hasSimState() override { return typeid( *this ) == typeid( ScriptCpu ) && unsupportedGlobals().isEmpty(); }
+        virtual QString noSimStateWhy() override { QStringList u = unsupportedGlobals(); return u.isEmpty() ? "" : "script variables of a type keyframes can't hold: "+u.join(", "); }
+
         virtual void initialize() override;
         virtual void voltChanged() override;
         virtual void runEvent() override;
@@ -45,6 +51,7 @@ class ScriptCpu : public ScriptModule, public McuCpu
         typedef StateLog::Event StatusEvent;          // seq: unique, rising, shared with built-in parts' states
         QList<StatusEvent> statusHistory();           // State changes since the start (thread safe)
         StatusEvent status();                         // Current state, not the one held on screen
+        void statusRewind( uint64_t time );           // Going back: the changes after `time` dropped
 
         void addCpuReg( string name, string type );
         void addCpuVar( string name, string type );

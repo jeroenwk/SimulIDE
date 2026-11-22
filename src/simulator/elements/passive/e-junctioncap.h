@@ -21,6 +21,9 @@ class eJunctionCap : public eReactive
         eJunctionCap( QString id );
         ~eJunctionCap();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( eJunctionCap )
+
         // The part's pins the junction sits between, read at each start (P-type parts swap them)
         void setPins( std::function<std::pair<ePin*,ePin*>()> f ) { m_pins = f; }
 

@@ -12,10 +12,12 @@
 
 class ePin;
 struct NoiseSrc;
+#include "simstate.h"
 
 class eElement
 {
     public:
+        void clearChanged() { m_changed = false; }   // Each start: from a known state (parts that need it set it in initialize/stamp)
         eElement( QString id );
         virtual ~eElement();
 
@@ -39,6 +41,18 @@ class eElement
         // each with its spectral density at the operating point of the moment. None by default
         virtual void noiseSources( QList<NoiseSrc>& ){;}
 
+        // Keyframes (specs/sim-control.md §4.5): read or write this element's state, the fields
+        // that change during a run (simstate.h). Overrides call their base first. hasSimState():
+        // this exact class saves everything it needs (SIM_STATE); false = no history support
+        virtual void simState( StateIO& s );
+        void pinCurrents( StateIO& s );   // The exact currents its model publishes on its pins (trueCurrent)
+        virtual bool hasSimState() { return typeid( *this ) == typeid( eElement ); }
+        // Why it isn't in keyframes, for the warning (specs/sim-control.md §4.8): "" = no state code yet
+        virtual QString noSimStateWhy() { return ""; }
+        // After a keyframe was loaded (GUI thread, worker idle): bring widgets and displays in
+        // line with the restored state (a switch's button, a scope trace cut back)
+        virtual void stateRestored(){;}
+
         virtual void setNumEpins( int n );
 
         virtual ePin* getEpin( int num );
@@ -61,6 +75,7 @@ class eElement
 
         eElement* nextSettled = nullptr;
         uint64_t  settledGen  = 0;     // Simulator::m_settledGen when last added
+        int       simIndex    = -1;    // Place in the simulator's element list (keyframes), set at start
 
     protected:
         uint64_t m_pendingTime;
@@ -69,7 +84,7 @@ class eElement
 
         QString m_elmId;
 
-        bool m_changed;
+        bool m_changed = false;   // Was left uninitialized: the first run after opening read garbage
         double m_step;
 };
 #endif

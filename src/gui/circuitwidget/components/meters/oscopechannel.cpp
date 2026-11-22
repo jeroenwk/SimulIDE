@@ -322,3 +322,27 @@ void OscopeChannel::setFilter( double f )
 
     m_filter = f;
 }
+
+void OscopeChannel::simState( StateIO& s )   // A display: nothing of it is in a keyframe (its trace,
+{                                          // measurements and triggers follow the GUI frames and never
+    DataChannel::simState( s );              // feed the circuit; the trace is cut back on its own)
+}
+
+// Samples later than the restored time are dropped: walking back from the newest, each one
+// gets time 0, which the display reads as the end of the trace (older than its start)
+void OscopeChannel::stateRestored()
+{
+    uint64_t now = Simulator::self()->circTime();
+    int size = m_buffer.size();
+    int i = m_bufferCounter;
+    for( int n=0; n<size && m_time[i] > now; ++n )
+    {
+        m_time[i] = 0;
+        m_buffer[i] = 0;
+        if( --i < 0 ) i = size-1;
+    }
+    m_bufferCounter = i;
+    m_trigIndex = i;
+    m_slotStart = m_time[i] ? m_time[i] : now;
+    m_simTime = (uint64_t)-1;        // No settled step pending: the next one starts the edges again
+}

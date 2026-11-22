@@ -74,3 +74,10 @@ void PicMssp::configureA( uint8_t SSPCON )
     }
 }
 
+void PicMssp::simState( StateIO& s )
+{
+    McuModule::simState( s );
+    eElement::simState( s );
+    s.io( m_mode );
+    s.io( m_enabled );
+}

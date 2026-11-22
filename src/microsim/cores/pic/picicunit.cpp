@@ -26,3 +26,8 @@ void PicIcUnit::configure( uint8_t CCPxM ) // CCPxM0,CCPxM1,CCPxM2,CCPxM3
         case 7: m_prescaler = 16;            // Rising Edge, Presc = 16
     }
 }
+
+void PicIcUnit::simState( StateIO& s )
+{
+    McuIcUnit::simState( s );
+}

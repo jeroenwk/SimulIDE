@@ -23,6 +23,9 @@ class SimSkip : public QObject, public Updatable
         // Skip count × span (span 0: count solver steps). Starts a stopped simulation (from 0),
         // resumes a paused one. Returns "" when started, else why not (busy, debugger, no event)
         QString start( uint64_t span, int count=1 );
+        // Back by count × span (span 0: count solver steps) with the keyframes (§4.3): restore the
+        // last one at or before the target, run on to it as fast as it can, pause. "" or why not
+        QString startBack( uint64_t span, int count=1 );
         void cancel();                            // Pause where it is
         bool active() { return m_active; }
 
@@ -47,6 +50,8 @@ class SimSkip : public QObject, public Updatable
     private:
         SimSkip();
         void poll();
+        QString backTo( uint64_t target );   // Restore at or before target, then run to it
+        void stepBack();                     // One of the steps of a step back
         void finish( bool ok, QString msg );
         void progress();
 
@@ -55,6 +60,10 @@ class SimSkip : public QObject, public Updatable
         uint64_t m_target = 0;
         uint64_t m_span   = 0;
         int      m_stepsLeft = 0;    // Solver steps still to do (span 0)
+        bool     m_back = false;     // Going back: m_backFrom is where it started
+        uint64_t m_backFrom = 0;
+        int      m_backSteps = 0;    // Solver steps still to go back
+        std::function<void()> m_then; // Next phase when this one ends (internal: no Done call)
         bool     m_announced = false;  // A long skip: its start was logged
         int64_t  m_waitFrame = -1;   // Paused at the end: the frame count to wait past
         uint64_t m_frames = 0;

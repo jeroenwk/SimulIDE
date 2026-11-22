@@ -150,3 +150,14 @@ void LedStrip::drawForeground( QPainter* p )
         p->drawLine( x+4,-4, x+4, 4 );
     }
 }
+
+void LedStrip::simState( StateIO& s )
+{
+    LedBase::simState( s );
+    s.io( m_count );
+    s.io( m_strings );
+    s.io( m_ledVf );
+    s.io( m_ledRes );
+    s.io( m_ledImax );
+    s.io( m_ledIpeak );
+}

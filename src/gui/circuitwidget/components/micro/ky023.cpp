@@ -134,3 +134,10 @@ void KY023::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
 
     Component::paintSelected( p );
 }
+
+void KY023::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_changed );
+    s.io( m_closed );
+}

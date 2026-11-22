@@ -58,3 +58,9 @@ void BcdBase::voltChanged()
 
     m_digit = m_values[a*1+b*2+c*4+d*8];
 }
+
+void BcdBase::simState( StateIO& s )
+{
+    LogicComponent::simState( s );
+    s.io( m_digit );
+}

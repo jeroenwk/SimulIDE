@@ -63,3 +63,7 @@ void CurrSource::updateStep()
         m_changed = false;
 }   }
 
+void CurrSource::simState( StateIO& s )
+{
+    VarSource::simState( s );
+}

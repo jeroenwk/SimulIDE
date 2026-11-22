@@ -37,3 +37,11 @@ void Pic14eInterrupt::exitInt() // Restore context
     Interrupt::exitInt();
 }
 
+void Pic14eInterrupt::intState( StateIO& s )
+{
+    PicInterrupt::intState( s );
+    s.io( m_wRegSaved );
+    s.io( m_statusSaved );
+    s.io( m_bsrSaved );
+    s.io( m_pclathSaved );
+}

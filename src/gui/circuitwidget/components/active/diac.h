@@ -16,6 +16,8 @@ class eResistor;
 class Diac : public Component, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Diac )
         Diac( QString type, QString id );
         ~Diac();
 

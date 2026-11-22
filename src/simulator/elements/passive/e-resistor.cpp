@@ -78,3 +78,11 @@ void eResistor::updateVI()
     else m_current = 0;
 }
 
+
+void eResistor::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_admit );
+    s.io( m_current );
+    s.io( m_thermalNoise );
+}

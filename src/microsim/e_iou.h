@@ -22,6 +22,9 @@ class eIou : public eElement
         eIou( Mcu* comp, QString id );
         ~eIou();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( eIou )
+
         void reset();
 
         IoPort* getIoPort( QString name );

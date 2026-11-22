@@ -14,6 +14,8 @@ class LibraryItem;
 class Lamp : public Comp2Pin, public eResistor
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Lamp )
         Lamp( QString type, QString id );
         ~Lamp();
 

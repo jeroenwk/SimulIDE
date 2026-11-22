@@ -139,3 +139,11 @@ void Battery::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 
     Component::paintSelected( p );
 }
+
+void Battery::simState( StateIO& s )
+{
+    eResistor::simState( s );
+    s.io( m_volt );
+    s.io( m_connected );
+    s.io( m_rampK );
+}

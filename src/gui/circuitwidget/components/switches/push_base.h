@@ -11,6 +11,8 @@
 class PushBase : public SwitchBase
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PushBase )
         PushBase( QString type, QString id );
         ~PushBase();
 

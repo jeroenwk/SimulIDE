@@ -13,6 +13,8 @@ class LibraryItem;
 class ADC : public LogicComponent
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( ADC )
         ADC( QString type, QString id );
         ~ADC();
 

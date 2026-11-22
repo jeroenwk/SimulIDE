@@ -13,6 +13,8 @@ class LibraryItem;
 class Ldr : public VarResBase
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Ldr )
         Ldr( QString type, QString id );
         ~Ldr();
 

@@ -29,6 +29,8 @@
 class Z80Core : public CpuBase, public eElement
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Z80Core )
         Z80Core( eMcu* mcu );
         ~Z80Core();
 

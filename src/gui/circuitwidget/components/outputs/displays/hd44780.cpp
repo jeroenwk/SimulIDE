@@ -151,3 +151,9 @@ void Hd44780::showPins( bool show )
     
     for( int i=0; i<8; i++ ) m_dataPin[i]->setVisible( show );
 }
+
+void Hd44780::simState( StateIO& s )
+{
+    Hd44780_Base::simState( s );
+    eElement::simState( s );
+}

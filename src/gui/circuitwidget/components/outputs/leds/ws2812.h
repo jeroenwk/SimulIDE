@@ -14,6 +14,8 @@ class LibraryItem;
 class WS2812 : public Component, public eClockedDevice
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( WS2812 )
         WS2812( QString type, QString id );
         ~WS2812();
 

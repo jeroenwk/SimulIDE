@@ -29,3 +29,8 @@ void AvrIcUnit::configure( uint8_t val ) // ICES,ICNC
 
     /// TODO INCN
 }
+
+void AvrIcUnit::simState( StateIO& s )
+{
+    McuIcUnit::simState( s );
+}

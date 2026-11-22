@@ -551,3 +551,33 @@ void Ds18b20::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 
     Component::paintSelected( p );
 }
+
+void Ds18b20::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_state );
+    s.io( m_lastCommand );
+    s.io( m_lastIn );
+    s.io( m_write );
+    s.io( m_pullDown );
+    s.io( m_bitROM );
+    s.io( m_parPower );
+    s.io( m_alarm );
+    s.io( m_lastTime );
+    s.io( m_busyTime );
+    s.io( m_rxReg );
+    s.io( m_txReg );
+    s.io( m_lastBit );
+    s.io( m_bitSearch );
+    s.io( m_bitIndex );
+    s.io( m_pulse );
+    s.io( m_byte );
+    s.io( m_temp );
+    s.io( m_tempInc );
+    s.io( m_resolution );
+    s.io( m_scratchpad );
+    s.io( m_ROM );
+    s.io( m_TH );
+    s.io( m_TL );
+    s.io( m_CFG );
+}

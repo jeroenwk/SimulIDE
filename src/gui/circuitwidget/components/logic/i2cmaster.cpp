@@ -244,3 +244,24 @@ void I2CMaster::finish()
     m_xfer.done = true;
     I2CM_LOG << "done:" << m_xfer.log.join(" ") << ( m_xfer.error.isEmpty() ? "" : "error: "+m_xfer.error );
 }
+
+void I2CMaster::simState( StateIO& s )
+{
+    IoComponent::simState( s );
+    TwiModule::simState( s );
+    s.io( m_queued );
+    s.io( m_active );
+    s.io( m_stateSeen );
+    s.io( m_seenState );
+    s.io( m_step );
+    s.io( m_idx );
+    s.io( m_pullups );
+    s.io( m_xfer.addr );
+    s.io( m_xfer.nRead );
+    s.io( m_xfer.addrAckW );
+    s.io( m_xfer.addrAckR );
+    s.io( m_xfer.done );
+    { uint32_t n = m_xfer.write.size(); s.io( n ); if( !s.saving() ) m_xfer.write.clear(); for( uint32_t k=0; k<n; ++k ){ uint8_t v = s.saving() ? m_xfer.write.at( k ) : uint8_t(); s.io( v ); if( !s.saving() ) m_xfer.write.append( v ); } }
+    { uint32_t n = m_xfer.read.size(); s.io( n ); if( !s.saving() ) m_xfer.read.clear(); for( uint32_t k=0; k<n; ++k ){ uint8_t v = s.saving() ? m_xfer.read.at( k ) : uint8_t(); s.io( v ); if( !s.saving() ) m_xfer.read.append( v ); } }
+    { uint32_t n = m_xfer.writeAck.size(); s.io( n ); if( !s.saving() ) m_xfer.writeAck.clear(); for( uint32_t k=0; k<n; ++k ){ bool v = s.saving() ? m_xfer.writeAck.at( k ) : bool(); s.io( v ); if( !s.saving() ) m_xfer.writeAck.append( v ); } }
+}

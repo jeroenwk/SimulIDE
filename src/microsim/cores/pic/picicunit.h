@@ -14,6 +14,8 @@ class PicIcUnit : public McuIcUnit
     friend class PicCcpUnit;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicIcUnit )
         PicIcUnit( eMcu* mcu, QString name );
         virtual ~PicIcUnit();
 

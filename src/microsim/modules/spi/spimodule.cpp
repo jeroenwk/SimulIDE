@@ -172,3 +172,20 @@ void SpiModule::setMode( spiMode_t mode )
     if( m_dataOutPin && m_mode == SPI_MASTER ) m_dataOutPin->setOutState( true );
 }
 
+void SpiModule::simState( StateIO& s )
+{
+    eClockedDevice::simState( s );
+    s.io( m_clockPeriod );
+    s.io( m_lsbFirst );
+    s.io( m_toggleSck );
+    s.io( m_enabled );
+    s.io( m_useSS );
+    s.io( m_sampleEdge );
+    s.io( m_leadEdge );
+    s.io( m_tailEdge );
+    s.io( m_outBit );
+    s.io( m_inBit );
+    s.io( m_bitCount );
+    s.io( m_srReg );
+    s.io( m_mode );
+}

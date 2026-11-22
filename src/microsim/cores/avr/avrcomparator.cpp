@@ -123,3 +123,10 @@ void AvrComp::changeCallbacks()
     m_pinP->changeCallBack( this, m_enabled && (m_acie || m_acoe) );
     m_pinN->changeCallBack( this, m_enabled && (m_acie || m_acoe) );
 }
+
+void AvrComp::simState( StateIO& s )
+{
+    McuComp::simState( s );
+    s.io( m_acie );
+    s.io( m_acoe );
+}

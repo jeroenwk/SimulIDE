@@ -330,3 +330,23 @@ void eJfet::noiseSources( QList<NoiseSrc>& list )   // Channel thermal noise 4kT
     };
     list.append( s );
 }
+
+void eJfet::simState( StateIO& s )
+{
+    eElement::simState( s );
+    pinCurrents( s );
+    s.io( m_pChannel );
+    m_cgs.simState( s );
+    m_cgd.simState( s );
+    s.io( m_beta );
+    s.io( m_vto );
+    s.io( m_lambda );
+    s.io( m_satCur );
+    s.io( m_emCoef );
+    s.io( m_vt );
+    s.io( m_vCrit );
+    s.io( m_vgs );
+    s.io( m_vgd );
+    s.io( m_vds );
+    m_aux.simState( s );
+}

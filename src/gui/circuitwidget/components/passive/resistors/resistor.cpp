@@ -60,3 +60,8 @@ void Resistor::paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w
 
     Component::paintSelected( p );
 }
+
+void Resistor::simState( StateIO& s )
+{
+    eResistor::simState( s );
+}

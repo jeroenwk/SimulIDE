@@ -11,6 +11,8 @@
 class LogicSubc : public SubCircuit
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( LogicSubc )
         LogicSubc( QString type, QString id, QString device );
         ~LogicSubc();
 

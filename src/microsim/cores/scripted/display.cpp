@@ -145,3 +145,18 @@ void Display::paintEvent( QPaintEvent* )
             p.fillRect( QRectF( x*m_scale, y*m_scale, m_scale, m_scale ), QColor(m_data[x][y]) );
 }
 
+void Display::simState( StateIO& s )
+{
+    eElement::simState( s );
+    s.io( m_changed );
+    s.io( m_embed );
+    s.io( m_width );
+    s.io( m_height );
+    s.io( m_newWidth );
+    s.io( m_newHeight );
+    s.io( m_x );
+    s.io( m_y );
+    s.io( m_scale );
+    s.io( m_background );
+    for( std::vector<int>& row : m_data ) s.ioVector( row );   // The picture
+}

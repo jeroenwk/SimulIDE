@@ -38,6 +38,31 @@ import tempfile
 import time
 import traceback
 
+
+# The servers never write the user's settings: each test process gets a copy of the user's
+# settings folder (its .ini files, so tests see the same userPath, fonts...), and SimulIDE
+# reads SIMULIDE_CONFIG_DIR instead of the platform folder (MainWindow::configDir)
+USER_CONFIG = [os.path.expanduser("~/Library/Application Support/simulide"),   # macOS
+               os.path.expanduser("~/.local/share/simulide")]                    # Linux
+
+
+def private_config():
+    if os.environ.get("SIMULIDE_CONFIG_DIR"):
+        return os.environ["SIMULIDE_CONFIG_DIR"]
+    d = tempfile.mkdtemp(prefix="simulide-config-")
+    for src in USER_CONFIG:
+        if os.path.isdir(src):
+            for f in glob.glob(os.path.join(src, "*.ini")):
+                shutil.copy2(f, d)
+            break
+    os.environ["SIMULIDE_CONFIG_DIR"] = d
+    import atexit
+    atexit.register(shutil.rmtree, d, True)       # Made here: removed with the test process
+    return d
+
+
+private_config()
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
 sys.path.insert(0, os.path.join(ROOT, "tools"))

@@ -102,3 +102,8 @@ void Switch::paint( QPainter *p, const QStyleOptionGraphicsItem *option, QWidget
     Component::paint( p, option, widget );
     MechContact::paint( p, option, widget );
 }
+
+void Switch::simState( StateIO& s )
+{
+    SwitchBase::simState( s );
+}

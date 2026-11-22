@@ -15,6 +15,8 @@ class PicSpi : public McuSpi
     friend class PicMssp;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicSpi )
         PicSpi( eMcu* mcu, QString name );
         ~PicSpi();
 

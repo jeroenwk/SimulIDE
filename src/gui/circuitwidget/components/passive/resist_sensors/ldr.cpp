@@ -101,3 +101,10 @@ void Ldr::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* w
 
     Component::paintSelected( p );
 }
+
+void Ldr::simState( StateIO& s )
+{
+    VarResBase::simState( s );
+    s.io( m_r1 );
+    s.io( m_gamma );
+}

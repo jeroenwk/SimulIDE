@@ -51,3 +51,8 @@ void I51Pin::ConfExtInt( uint8_t bits )
     m_extInt->setAutoClear( fallEdge );
     voltChanged();
 }
+
+void I51Pin::simState( StateIO& s )
+{
+    McuPin::simState( s );
+}

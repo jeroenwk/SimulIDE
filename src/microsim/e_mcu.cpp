@@ -278,3 +278,24 @@ bool eMcu::setCfgWord( uint16_t addr, uint16_t data )
 McuVref* eMcu::vrefModule() { return m_vrefModule; }
 //McuSleep* eMcu::sleepModule() { return m_sleepModule; }
 
+void eMcu::simState( StateIO& s )
+{
+    eIou::simState( s );
+    s.io( cyclesDone );
+    s.io( m_state );
+    s.io( m_cycle );
+    s.io( m_vdd );
+    s.io( m_freq );
+    s.io( m_cPerInst );
+    s.io( m_cPerTick );
+    s.io( m_psInst );
+    s.io( m_psTick );
+    s.io( m_clkState );
+    s.io( m_isCpuRead );
+    if( !m_dataMem.empty() ) s.raw( m_dataMem.data(), m_dataMem.size() );
+    if( !m_eeprom.isEmpty() ) s.raw( m_eeprom.data(), m_eeprom.size()*sizeof( int ) );
+    if( m_cpu ) m_cpu->coreState( s );          // PC, return address (registers: in m_dataMem)
+    m_interrupts.intState( s, m_modules );
+    for( McuPort* port : m_mcuPorts ) port->portState( s );   // Their input bits (PINx): not elements
+    for( McuModule* m : m_modules ) if( !dynamic_cast<eElement*>( m ) ) m->moduleState( s );
+}

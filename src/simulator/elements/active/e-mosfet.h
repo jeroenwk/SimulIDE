@@ -15,6 +15,9 @@ class eMosfet : public eResistor
         eMosfet( QString id );
         ~eMosfet();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( eMosfet )
+
         virtual void initialize() override;
         virtual void stamp() override;
         virtual void voltChanged() override;

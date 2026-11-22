@@ -148,3 +148,10 @@ void I2CToParallel::writeByte()   // Writting to I2C from Parallel (master is re
 
     TwiModule::writeByte();
 }
+
+void I2CToParallel::simState( StateIO& s )
+{
+    IoComponent::simState( s );
+    TwiModule::simState( s );
+    s.io( m_portState );
+}

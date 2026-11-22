@@ -16,6 +16,9 @@ class elCapacitor : public CapacitorBase
         elCapacitor( QString type, QString id );
         ~elCapacitor();
 
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( elCapacitor )
+
  static Component* construct( QString type, QString id );
  static LibraryItem* libraryItem();
 

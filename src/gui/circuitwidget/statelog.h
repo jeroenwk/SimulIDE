@@ -34,6 +34,15 @@ class StateLog
 
         static uint64_t nextSeq();        // Shared by every log: changes of different parts sort in order
 
+        // Going back in time (specs/sim-control.md §4): the changes after `time` are dropped and the
+        // state is the last one left, so the replay reports them again. Worker idle
+        void rewind( uint64_t time );
+        static void rewindAll( uint64_t time );
+        static void rewindList( QList<Event>& h, QString& text, int& level, uint64_t time );
+
+        StateLog();
+        ~StateLog();
+
     private:
         QMutex m_lock;
         QString m_text;

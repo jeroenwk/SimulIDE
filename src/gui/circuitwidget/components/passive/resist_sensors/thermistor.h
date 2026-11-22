@@ -13,6 +13,8 @@ class LibraryItem;
 class Thermistor : public ThermistorBase
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( Thermistor )
         Thermistor( QString type, QString id );
         ~Thermistor();
 

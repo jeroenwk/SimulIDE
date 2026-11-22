@@ -15,6 +15,8 @@ class PicOcUnit : public McuOcUnit
         friend class PicCcpUnit;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicOcUnit )
         PicOcUnit( eMcu* mcu, QString name );
         ~PicOcUnit();
 
@@ -40,6 +42,8 @@ class PicPwmUnit : public McuOcUnit
         friend class PicCcpUnit;
 
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicPwmUnit )
         PicPwmUnit( eMcu* mcu, QString name );
         ~PicPwmUnit();
 
@@ -65,6 +69,8 @@ class PicPwmUnit : public McuOcUnit
 class PicPwmUnit00 : public PicPwmUnit
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicPwmUnit00 )
         PicPwmUnit00( eMcu* mcu, QString name );
         ~PicPwmUnit00();
 };
@@ -72,6 +78,8 @@ class PicPwmUnit00 : public PicPwmUnit
 class PicPwmUnit01 : public PicPwmUnit
 {
     public:
+        virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
+        SIM_STATE( PicPwmUnit01 )
         PicPwmUnit01( eMcu* mcu, QString name );
         ~PicPwmUnit01();
 };
