@@ -15,6 +15,7 @@
 #include <QTreeWidgetItemIterator>
 #include <QVBoxLayout>
 #include <QDebug>
+#include <cmath>
 
 #include "triggerpane.h"
 #include "triggereditor.h"
@@ -22,6 +23,7 @@
 #include "circuit.h"
 #include "circuitwidget.h"
 #include "component.h"
+#include "pin.h"
 #include "keyframes.h"
 #include "simhistory.h"
 #include "simskip.h"
@@ -477,4 +479,29 @@ void TriggerPane::splitSelected()
         if( m_trig->find( a ) && m_trig->find( a )->isAnd() && !ids.contains( a ) ) ids << a;
     }
     for( int a : ids ) m_trig->split( a );
+}
+
+void TriggerPane::addNode( Pin* onNet )   // §5: anchored on a pin of a part on that net
+{
+    if( !m_trig || !onNet ) return;
+    Pin* anchor = nullptr;
+    for( Pin* p : Triggers::netPins( onNet ) ){
+        Component* c = p->component();
+        if( !c || c->itemType() == "Node" || !Circuit::self()->compList()->contains( c ) ) continue;
+        anchor = p; break;
+    }
+    if( !anchor ){ qWarning().noquote() << "[triggers] "+tr("This wire connects no part: nothing to anchor a node trigger on"); return; }
+    Trigger t;
+    t.pause = true;
+    t.cond.node = anchor->component()->getUid()+":"+Triggers::pinName( anchor, anchor->component() );
+    t.cond.level = std::nan("");
+    CircuitWidget::self()->showTriggers();
+    TriggerDialog* d = new TriggerDialog( this, t, true );
+    d->setAttribute( Qt::WA_DeleteOnClose );
+    QPointer<Triggers> trig = m_trig;
+    connect( d, &QDialog::accepted, this, [this, d, trig](){
+        if( !trig ) return;
+        selectId( trig->add( d->editor()->trigger() ) );
+    });
+    d->open();
 }

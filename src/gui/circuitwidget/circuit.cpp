@@ -310,6 +310,7 @@ void Circuit::loadStrDoc( QString &doc )
                 }
             }
             else newUid = uid;
+            if( m_pasting && type != "Connector" ) m_pasteUids[uid] = newUid;   // Their triggers follow (§9)
 
             if( type == "Connector" )
             {
@@ -718,6 +719,11 @@ void Circuit::removeItems()                     // Remove Selected items
 void Circuit::removeComp( Component* comp )
 {
     //if( comp->parentItem() ) return; // subcircuit
+    if( !m_undo && !m_redo && !m_loading && !m_deleting && m_compList.contains( comp ) )   // Its triggers (D18):
+    {                                                                   // in the same undo step
+        QString undo = m_triggers->partRemoving( comp );
+        if( !undo.isEmpty() ) addCompChange( "__triggers__", "triggers", undo );
+    }
     m_compRemoved = false;
     comp->remove();
     if( !m_compRemoved ) return;
@@ -1035,8 +1041,10 @@ void Circuit::copy( QPointF eventpoint )
             if( !conlist.contains( con ) ) conlist.append( con );
     }   }
     QString circuit;
-    for( CompBase* comp : complist ) circuit += comp->toString();
+    QStringList uids;
+    for( CompBase* comp : complist ){ circuit += comp->toString(); uids << comp->getUid(); }
     for( CompBase* con  :  conlist ) circuit += con->toString();
+    circuit += m_triggers->copyXml( uids );   // Their own single-signal triggers (§9)
 
     QApplication::clipboard()->setText( circuit );
 }
@@ -1056,7 +1064,10 @@ void Circuit::paste( QPointF eventpoint )
     QString circuit = QApplication::clipboard()->text();
 
     beginUndoStep();
+    m_pasteUids.clear();
     loadStrDoc( circuit );
+    QString trigUndo = m_triggers->pasted( circuit, m_pasteUids );   // With the new parts' uids
+    if( !trigUndo.isEmpty() ) addCompChange( "__triggers__", "triggers", trigUndo );
     endUndoStep();
 
     m_pasting = false;

@@ -24,6 +24,9 @@ and diode pins by name (G-S, B-E, A->K), the scope's own trigger (fixed 5 V and 
 Step 5: AND - an event and qualifiers read as states at its step (current crossings only while C1
 is below 5 V: the rising edges), the event changed, a ↕ member only as the event, saved and
 reopened, split, undo, one member left becomes the row; a state qualifier (supply is ON).
+Step 6: deleting a part deletes its own triggers in the same undo step, moves a node trigger to
+another pin of the net (it fires there), leaves an AND's other member as the row; copying a part
+copies its own triggers (not ANDs); undo of either brings everything back.
 """
 import os
 import tempfile
@@ -143,6 +146,49 @@ def test(sim):
     pane(sim)
     parts(sim)
     combined(sim)
+    edits(sim)
+
+
+def edits(sim):
+    """Step 6: deleting a part (D18, §5) and copying it (§9)."""
+    c = sim.cli
+    build(c)
+    own = c("trigger", "add", "C1", "rise:5")["id"]
+    node = c("trigger", "add", "node:C1.lPin", "fall:5", "--pause", "--mode", "normal")["id"]
+    keep = c("trigger", "add", "R1:i", "rise:1mA")["id"]
+    m1 = c("trigger", "add", "C1", "rise:9")["id"]
+    m2 = c("trigger", "add", "W.outnod", "rise:5")["id"]
+    anded = c("trigger", "combine", str(m1), str(m2))["id"]
+    sim.check("node trigger: named by its anchor", 1 if c("trigger", "list")[1]["watches"] == "node at C1 pin 1" else 0, 1, absolute=0,
+              note=c("trigger", "list")[1]["watches"])
+    def defs():
+        strip = lambda r: {k: v for k, v in r.items() if k not in ("hits", "last")}
+        return [dict(strip(r), members=[strip(m) for m in r.get("members", [])]) for r in c("trigger", "list")]
+    before = defs()
+
+    c("comp", "remove", "C1")
+    rows = {r["id"]: r for r in c("trigger", "list")}
+    sim.check("part deleted: its own trigger goes", 0 if own in rows else 1, 1, absolute=0)
+    sim.check("part deleted: another part's trigger stays", 1 if keep in rows else 0, 1, absolute=0)
+    sim.check("part deleted: the node trigger moves to another pin of the net",
+              1 if node in rows and rows[node]["watches"] == "node at R1 pin 2" else 0, 1, absolute=0, note=str(rows.get(node)))
+    sim.check("part deleted: an AND left with one member becomes that row",
+              1 if anded not in rows and m2 in rows and "members" not in rows[m2] and rows[m2]["mode"] == "single" else 0, 1, absolute=0,
+              note=str(rows.get(m2)))
+    r = c("sim", "run", "--for", "20ms")
+    sim.check("the moved node trigger fires (R1 pin 2 follows the wave now)", secs(r["time_ps"]), 10e-3, absolute=STEP)
+    c("sim", "stop")
+    c("undo")
+    sim.check("undo: the part and all its triggers back", 1 if defs() == before else 0, 1, absolute=0, note=str(defs()))
+
+    new = c("comp", "copy", "C1", "--by", "0,160")
+    sim.check("copy: one new part", len(new), 1, absolute=0, note=str(new))
+    pasted = [r for r in c("trigger", "list") if new and r["watches"].split(" ")[0] != "C1" and r.get("condition") == "↑ 5 V"
+              and "pins 1–2" in r["watches"]]
+    sim.check("copy: its own trigger comes along, on the new part", len(pasted), 1, absolute=0, note=str(c("trigger", "list")))
+    sim.check("copy: not the AND (combinations are not copied)", len(c("trigger", "list")), len(before)+1, absolute=0)
+    c("undo")
+    sim.check("undo the paste: its trigger goes too", 1 if defs() == before else 0, 1, absolute=0)
 
 
 def combined(sim):

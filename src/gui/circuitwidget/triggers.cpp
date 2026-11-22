@@ -15,6 +15,7 @@
 #include "keyframes.h"
 #include "node.h"
 #include "pin.h"
+#include "connector.h"
 #include "e-node.h"
 #include "simulator.h"
 #include "simstate.h"
@@ -345,6 +346,11 @@ QString Triggers::watchText( const Trigger& t )
         Component* comp = compByUid( uid );
         Pin* p = findPin( uid, pin );
         if( !comp || !p ) return "node "+c.node;
+        for( Pin* q : netPins( p ) )                 // A tunnel on the net names it (§5)
+            if( q->component() && q->component()->itemType() == "Tunnel" ){
+                QString n = q->component()->getPropStr("Name");
+                if( !n.isEmpty() ) return "node "+n;
+            }
         return "node at "+compName( comp )+" "+pinLabel( comp, p );
     }
     Component* comp = compByUid( c.comp );
@@ -494,6 +500,13 @@ Trigger Triggers::asRow( const Trigger& m, const Trigger& from )
 int Triggers::remove( QList<int> ids )   // Rows, or members of an AND (§3: one left becomes the row)
 {
     QString undo = toXml();
+    int n = removeIds( ids );
+    if( n ) edited( undo );
+    return n;
+}
+
+int Triggers::removeIds( const QList<int>& ids )
+{
     int n = 0;
     for( int i=m_list.size()-1; i>=0; --i )
     {
@@ -510,8 +523,66 @@ int Triggers::remove( QList<int> ids )   // Rows, or members of an AND (§3: one
             for( Trigger& m : t.members ) if( !hasEvent ){ m.event = true; hasEvent = true; }
         }
     }
-    if( n ) edited( undo );
     return n;
+}
+
+QList<Pin*> Triggers::netPins( Pin* start )
+{
+    QList<Pin*> net, todo = { start };
+    while( !todo.isEmpty() )
+    {
+        Pin* p = todo.takeFirst();
+        if( !p || net.contains( p ) ) continue;
+        net.append( p );
+        if( Connector* con = p->connector() )
+            todo.append( con->startPin() == p ? con->endPin() : con->startPin() );
+        Component* c = p->component();
+        if( c && c->itemType() == "Node" ) for( Pin* q : c->getPins() ) todo.append( q );   // A junction
+    }
+    return net;
+}
+
+QString Triggers::partRemoving( Component* comp )
+{
+    QString uid = comp->getUid();
+    QString undo = toXml();
+    bool edits = false;
+    QList<int> gone;
+    auto visit = [&]( Trigger& t )
+    {
+        TrigCond& c = t.cond;
+        if( t.isAnd() ) return;
+        if( !c.node.isEmpty() )                    // A node: watched at another pin of the net (§5)
+        {
+            QString aUid, aPin;
+            splitNode( c.node, aUid, aPin );
+            if( aUid != uid ) return;
+            Pin* anchor = findPin( aUid, aPin );
+            Pin* next = nullptr;
+            if( anchor ) for( Pin* p : netPins( anchor ) ){
+                Component* pc = p->component();
+                if( !pc || pc == comp || pc->itemType() == "Node" ) continue;
+                if( !Circuit::self()->compList()->contains( pc ) ) continue;
+                next = p; break;
+            }
+            if( next ){
+                c.node = next->component()->getUid()+":"+pinName( next, next->component() );
+                TRIG_LOG << "node trigger" << t.id << "moved to" << c.node;
+            }else{
+                t.armed = false;
+                qWarning().noquote() << "[triggers] Trigger "+QString::number( t.id )+": its node has no other pin left, disarmed";
+            }
+            edits = true;
+            return;
+        }
+        if( c.comp == uid || c.refComp == uid ) gone.append( t.id );   // Its own pins or state: deleted with it (D18)
+    };
+    for( Trigger& t : m_list ){ visit( t ); for( Trigger& m : t.members ) visit( m ); }
+    if( !gone.isEmpty() ){ removeIds( gone ); edits = true; }
+    if( !edits ) return "";
+    m_dirty = true;
+    emit changed();
+    return undo.isEmpty() ? " " : undo;
 }
 
 QString Triggers::canCombine( QList<int> ids )
@@ -1326,4 +1397,55 @@ int Triggers::scopeTrigger( const QString& uid )
 {
     for( const Trigger& t : m_list ) if( t.cond.sig == "scope" && t.cond.comp == uid ) return t.id;
     return 0;
+}
+
+QString Triggers::copyXml( const QStringList& uids )
+{
+    QString x;
+    for( const Trigger& t : m_list )
+    {
+        if( t.isAnd() ) continue;                 // Combinations are not copied (§9)
+        const TrigCond& c = t.cond;
+        if( !c.node.isEmpty() ) continue;         // A node's trigger belongs to the net, not to the part
+        if( !uids.contains( c.comp ) ) continue;
+        if( !c.refComp.isEmpty() && !uids.contains( c.refComp ) ) continue;
+        x += trigXml( t, false );
+    }
+    return x.isEmpty() ? "" : "<triggers>\n"+x+"</triggers>\n";
+}
+
+QString Triggers::pasted( const QString& doc, const QHash<QString, QString>& uidMap )
+{
+    int start = doc.indexOf("<triggers>");
+    int end   = doc.indexOf("</triggers>", start );
+    if( start < 0 || end < 0 ) return "";
+    QDomDocument dom;
+    if( !dom.setContent( doc.mid( start, end+11-start ) ) ) return "";
+    QString undo = toXml();
+    int n = 0;
+    for( QDomElement e = dom.documentElement().firstChildElement("trigger"); !e.isNull(); e = e.nextSiblingElement("trigger") )
+    {
+        Trigger t = readXml( e, QList<Trigger>() );
+        if( t.isAnd() ) continue;
+        TrigCond& c = t.cond;
+        auto map = [&uidMap]( QString& uid ){ if( uidMap.contains( uid ) ) uid = uidMap.value( uid ); };
+        map( c.comp );
+        map( c.refComp );
+        if( !c.node.isEmpty() ){
+            QString u, p;
+            splitNode( c.node, u, p );
+            map( u );
+            c.node = u+":"+p;
+        }
+        if( !check( t ).isEmpty() ) continue;
+        t.id = m_nextId++;
+        t.hits.clear();
+        m_list.append( t );
+        n++;
+    }
+    if( !n ) return "";
+    m_dirty = true;
+    emit changed();
+    TRIG_LOG << n << "trigger(s) pasted";
+    return undo.isEmpty() ? " " : undo;
 }

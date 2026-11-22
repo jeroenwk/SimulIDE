@@ -100,7 +100,16 @@ class Triggers : public QObject, public SimWatch, public Updatable, public State
         bool setEvent( int andId, int memberId );
  static bool eventOnly( const TrigCond& c );        // ↕, any change, the scope: no state to read
         QString qualText( const Trigger& m );        // A member as a qualifier: "is above 10 V"
-        void touch() { m_dirty = true; emit changed(); }   // Something a trigger reads changed (the scope's setting)
+        void touch() { m_dirty = true; emit changed(); }
+        // A part is being deleted (its wires still attached): its own triggers go, node triggers
+        // anchored on it move to another pin of the net (D18, §5). Returns the undo XML when
+        // something changed ("" otherwise): the caller puts it in the deletion's undo step
+        QString partRemoving( Component* comp );
+        // Copy / paste (§9): the copied parts' own single-signal triggers (not ANDs), and pasting them
+        // onto the new parts (new ids, the same armed state). pasted() returns the undo XML or ""
+        QString copyXml( const QStringList& uids );
+        QString pasted( const QString& doc, const QHash<QString, QString>& uidMap );
+ static QList<Pin*> netPins( Pin* start );         // The pins on the same net (wires and junctions)   // Something a trigger reads changed (the scope's setting)
         int  scopeTrigger( const QString& uid );     // The scope's simulation trigger row (0: none)
 
         QString check( const Trigger& t );           // "" when every pin it names exists, else why not
@@ -197,6 +206,7 @@ class Triggers : public QObject, public SimWatch, public Updatable, public State
         struct Hit { int id; uint64_t time; double value; };
 
         void edited( const QString& undoXml );       // After a change: undo step, recompile
+        int  removeIds( const QList<int>& ids );     // remove() without the undo step
         void compile( bool derive );
         bool compileOne( const Trigger& t, Check& c );
         QString condXml( const TrigCond& c );

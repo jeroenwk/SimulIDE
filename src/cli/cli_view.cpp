@@ -245,9 +245,9 @@ void CliApi::registerView()
         return QJsonObject{ {"keyframes", CircuitWidget::self()->keyFramesSplit() ? "split" : "tab"} };
     });
 
-    add("view triggers", "view triggers [tab|split] [--edit ID | --new | --close]", "Show the Triggers pane (specs/triggers.html §3): "
+    add("view triggers", "view triggers [tab|split] [--edit ID | --new | --node PIN | --close]", "Show the Triggers pane (specs/triggers.html §3): "
         "in the bottom tabs (tab) or beside them (split, remembered). --edit ID / --new: also open the trigger editor "
-        "(a dialog: capture window dialog Trigger to see it; headless closes it at once); --close: cancel open editors.",
+        "(a dialog: capture window dialog Trigger to see it; headless closes it at once); --node PIN: the editor for that pin's node, as \"Trigger on this node…\" in a wire's menu; --close: cancel open editors.",
         []( CliCtx& c ) -> QJsonValue
     {
         if( c.has("close") ){
@@ -269,6 +269,7 @@ void CliApi::registerView()
             TriggerPane::self()->edit( id );
         }
         else if( c.has("new") ) TriggerPane::self()->addNew();
+        else if( c.has("node") ) TriggerPane::self()->addNode( CliRefs::pin( c.opt("node") ) );   // As a wire's menu
         return QJsonObject{ {"triggers", CircuitWidget::self()->triggersSplit() ? "split" : "tab"} };
     });
 

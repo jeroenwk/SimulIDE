@@ -116,6 +116,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `comp rotate <comp> [cw\|ccw\|180]` | Rotate |
 | `comp flip <comp> <h\|v>` | Flip |
 | `comp remove <comp> ...` | Remove parts and their wires |
+| `comp copy <comp> ... [--by dx,dy]` | Copy and paste parts as Edit → Copy / Paste (moved by dx,dy, default 0,80; their own triggers come along); replies with the new uids |
 | `comp link <comp> [target ...] [--clear]` | Links of a linker part (scripted core, MCU): the parts it drives, in order (index 0, 1, ... of `component.setLinkedValue` in a script). Targets are appended, `--clear` removes all first, no target lists them. Like the GUI's Link mode, not undoable |
 
 - `comp add` is atomic: if a property is invalid, nothing is added.
@@ -380,7 +381,7 @@ Removing wires around a junction works as in the GUI:
 
 ### Triggers
 
-Circuit triggers (specs/triggers.html): they watch the running simulation and act at the solved step where their condition is met. They are saved with the circuit (`<triggers>` in the .sim1) and every edit is one undo step. Built so far (phase 3b steps 1–5): voltages, currents, part states and the scope's own trigger; pause, key frame (also Δ before), count; AND; the Triggers pane and a Triggers tab in each part's properties (`view props <part> --tab Triggers`). Nodes from a wire's menu and part deletion follow.
+Circuit triggers (specs/triggers.html): they watch the running simulation and act at the solved step where their condition is met. They are saved with the circuit (`<triggers>` in the .sim1) and every edit is one undo step. Phase 3b steps 1–6: voltages, currents, part states and the scope's own trigger; pause, key frame (also Δ before), count; AND; the Triggers pane, a Triggers tab in each part's properties (`view props <part> --tab Triggers`) and "Trigger on this node…" in a wire's menu. Deleting a part deletes its own triggers in the same undo step; a node trigger (anchored on one pin of the net) moves to another pin of the net, or is disarmed with a line in Messages when none is left. Copying a part (Edit → Copy / Paste, `comp copy`) copies its own single-signal triggers, not ANDs or node triggers.
 
 | Command | |
 |---|---|

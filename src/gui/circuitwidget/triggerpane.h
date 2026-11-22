@@ -22,6 +22,7 @@ class QTreeWidgetItem;
 class QLabel;
 class QHBoxLayout;
 class Triggers;
+class Pin;
 
 class TriggerPane : public QWidget
 {
@@ -37,6 +38,7 @@ class TriggerPane : public QWidget
         void askDelete();
         void edit( int id );               // The editor dialog
         void addNew();                     // The editor with an empty watch
+        void addNode( Pin* onNet );        // The editor watching the node of that pin (a wire's menu, §5)
         void selectId( int id );
 
     signals:

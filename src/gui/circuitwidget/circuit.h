@@ -261,6 +261,7 @@ class Circuit : public QGraphicsScene
 
         Simulator* m_simulator;
         Triggers*  m_triggers;
+        QHash<QString, QString> m_pasteUids;   // Pasting: old uid -> new uid (their triggers follow)
 
         //--- Undo/Redo ----------------------------------
 
