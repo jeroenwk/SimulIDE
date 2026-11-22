@@ -16,7 +16,9 @@ Hd44780_Base::Hd44780_Base( QString type, QString id )
             , m_fontImg( ":font2.png" )
 {
     m_graphical = true;
-    
+    for( int& c : m_CGram ) c = 0;   // Was never initialized: a saved key frame held old memory (specs/sim-control.md §5.1)
+    for( int& c : m_DDram ) c = 32;
+
     m_rows = 2;
     m_cols = 16;
 

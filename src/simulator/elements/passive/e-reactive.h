@@ -54,17 +54,17 @@ class eReactive : public eResistor
         double m_value; // Capacitance or Inductance
 
         double m_InitCurr;
-        double m_curSource;
-
+        double m_curSource = 0;   // Initialized: a part that is off never sets them, and a saved key
+                                  // frame held whatever the memory had (specs/sim-control.md §5.1)
         double m_InitVolt;
-        double m_volt;
+        double m_volt = 0;
 
-        double m_tStep;
+        double m_tStep = 0;
 
         uint64_t m_reacStep;
-        uint64_t m_timeStep;
+        uint64_t m_timeStep = 0;
 
-        bool m_running;
+        bool m_running = false;
 };
 
 #endif

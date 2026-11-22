@@ -33,6 +33,14 @@ void TwiModule::initialize()
 
     m_lastSDA = true; // SDA High = inactive
     m_masterACK = true;
+    m_sdaState  = true;   // These were left uninitialized: saved key frames held old memory
+    m_isAddr    = false;  // (specs/sim-control.md §5.1)
+    m_write     = false;
+    m_sendACK   = false;
+    m_addrMatch = false;
+    m_bitPtr    = 0;
+    m_txReg     = 0;
+    m_rxReg     = 0;
 }
 
 void TwiModule::stamp()      // Called at Simulation Start

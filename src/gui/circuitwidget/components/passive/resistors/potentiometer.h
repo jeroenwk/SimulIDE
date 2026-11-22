@@ -44,7 +44,7 @@ class Potentiometer : public Dialed, public eElement
 
     private:
         double m_resist;
-        double m_voltOut;
+        double m_voltOut = 0;   // Was uninitialized: saved key frames held old memory (specs/sim-control.md §5.1)
         double m_res1;
         bool   m_setFromCode = false; // dial being moved by setVal(), not by the user
 

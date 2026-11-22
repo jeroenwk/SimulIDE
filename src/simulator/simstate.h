@@ -63,6 +63,18 @@ class StateIO
             if( n ) raw( v.data(), n*sizeof( T ) );
         }
 
+        // A QString: its length, then its UTF-16 code units (allocates when loading)
+        template<class S> void ioString( S& str )
+        {
+            uint32_t n = str.size();
+            io( n );
+            if( !m_saving ){
+                if( n > ( 1u<<20 ) || m_p+n*2 > m_end ){ m_over = true; return; }
+                str.resize( n );
+            }
+            if( n ) raw( (void*)str.data(), n*2 );
+        }
+
         inline void raw( void* v, size_t n )
         {
             if( m_p+n > m_end ){ m_over = true; return; }

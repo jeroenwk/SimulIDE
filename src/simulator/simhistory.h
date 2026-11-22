@@ -7,9 +7,11 @@
 
 #include <cstdint>
 #include <deque>
+#include <functional>
 #include <QString>
 #include <QStringList>
 #include <QList>
+#include <QByteArray>
 
 class Simulator;
 class eElement;
@@ -45,6 +47,13 @@ class SimHistory
         // keepClass (negative control of sim history check): elements of that class keep their
         // present state instead of the keyframe's
         uint64_t restore( Simulator* sim, uint64_t t, QString keepClass="" );
+        // Saved key frames (specs/sim-control.md §5.1): the present state as bytes (worker idle at
+        // a solved step; empty + error when not), and bytes loaded into the running circuit
+        // (paused): the ring is dropped and a keyframe taken there. Returns an error or ""
+ static QByteArray saveBytes( Simulator* sim, QString* error=nullptr );
+        QString loadBytes( Simulator* sim, const QByteArray& bytes, uint64_t time );
+ static QString layoutSignature( Simulator* sim );   // Element classes and ids in order, node count
+
         // Drop the keyframes after t (a resume from an earlier time: the old future is gone)
         void truncateAfter( uint64_t t );
 
@@ -83,6 +92,9 @@ class SimHistory
         double   m_maxNs    = 0;
 
         void dropOverlapping( uint64_t from, uint64_t to );
+ static bool saveAll( Simulator* sim, class StateIO& s );
+        bool loadKey( Simulator* sim, const uint8_t* buf, size_t size, uint64_t time,
+                      std::function<void()> afterLoad=nullptr );
 };
 
 #endif

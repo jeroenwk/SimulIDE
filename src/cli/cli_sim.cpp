@@ -14,6 +14,8 @@
 #include "simstate.h"
 
 #include <QJsonArray>
+#include "keyframes.h"
+#include "mainwindow.h"
 #include <QMap>
 #include <QElapsedTimer>
 #include <memory>
@@ -183,6 +185,8 @@ struct HistCheck
     QList<QStringList> elems1, elems2;
     uint64_t from = 0, keyTime = 0, back = 0;
     QString keep;
+    QByteArray fresh;              // --fresh: the state at the start, loaded after a stop and a new start
+    QString reopen;                // --reopen: the circuit file, loaded again before (a later session)
     double restoreUs = 0;
     int pass = 0;
     int next = 0;
@@ -196,7 +200,27 @@ static void histCheckStep( std::shared_ptr<HistCheck> hc )
         {
             QElapsedTimer t; t.start();
             uint64_t back = hc->back < hc->from ? hc->from-hc->back : 0;
-            uint64_t k = SimHistory::self()->restore( sim, back, hc->keep );
+            uint64_t k = 0;
+            if( !hc->fresh.isEmpty() )          // As a saved key frame opened later: a new run, then the bytes
+            {
+                CircuitWidget::self()->powerCircOff();
+                if( !hc->reopen.isEmpty() )
+                {
+                    uint64_t pps = sim->psPerSec(), step = sim->stepSize();   // The speed set by the caller, not the file's
+                    QString title = MainWindow::self()->windowTitle();        // Unsaved changes (the speed): no question
+                    if( title.endsWith('*') ) MainWindow::self()->setWindowTitle( title.left( title.size()-1 ) );
+                    CircuitWidget::self()->loadCirc( hc->reopen );
+                    Cli::setSimSpeed( pps, step, true );
+                }
+                CircuitWidget::self()->powerCircOn();
+                sim = Simulator::self();
+                if( !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
+                sim->holdWorker();
+                QString err = SimHistory::self()->loadBytes( sim, hc->fresh, hc->from );
+                if( !err.isEmpty() ){ hc->reply->fail( err ); return; }
+                k = hc->from;
+            }
+            else k = SimHistory::self()->restore( sim, back, hc->keep );
             hc->restoreUs = t.nsecsElapsed()/1e3;
             if( !k ){ hc->reply->fail("no keyframe at or before "+Cli::timeStr( hc->from )+": "+SimHistory::self()->lastError() ); return; }
             SimHistory::self()->truncateAfter( k );
@@ -261,12 +285,24 @@ static QJsonValue histCheck( CliCtx& c )
     int n = c.opt("points", "5").toInt( &ok );
     if( !ok || n < 1 || n > 1000 ) throw CliError("--points must be 1 … 1000");
     if( !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
-    if( SimHistory::self()->count() == 0 ) throw CliError("no keyframe yet: let it run a few frames");
+    if( !c.has("fresh") && !c.has("reopen") && SimHistory::self()->count() == 0 ) throw CliError("no keyframe yet: let it run a few frames");
     auto hc = std::make_shared<HistCheck>();
     hc->reply = c.defer();
     hc->from = sim->circTime();
     hc->back = c.has("ago") ? Cli::parseTime( c.opt("ago", "0") ) : 0;
     hc->keep = c.opt("keep", "");
+    if( c.has("reopen") )
+    {
+        hc->reopen = CircuitWidget::self()->curCirc();
+        if( hc->reopen.isEmpty() ) throw CliError("--reopen: the circuit has no file");
+    }
+    if( c.has("fresh") || c.has("reopen") )
+    {
+        QString err;
+        sim->holdWorker();
+        hc->fresh = SimHistory::saveBytes( sim, &err );
+        if( hc->fresh.isEmpty() ) throw CliError("the state can't be saved now: "+err );
+    }
     for( int i=1; i<=n; ++i ) hc->points.append( hc->from + span*(uint64_t)i/(uint64_t)n );
     histCheckStep( hc );
     return QJsonValue();
@@ -347,13 +383,18 @@ void CliApi::registerSim()
         return o;
     });
 
-    add("sim history", "sim history [sizes | check [--span T] [--points N] [--ago T] [--keep CLASS]]", "Keyframes of the run (specs/sim-control.md §4): "
+    add("sim history", "sim history [sizes | check [--span T] [--points N] [--ago T] [--keep CLASS] [--fresh | --reopen]]", "Keyframes of the run (specs/sim-control.md §4): "
         "on, usable, count, span, bytes, size of the last one, capture time (mean and max, µs), frames skipped, and "
         "the element classes without state support (missing: history is off for this circuit). check: round trip "
         "of the keyframes: from now, skip to N checkpoints over the span (default 5 ms, 5) recording sim hash at "
         "each, go back to the keyframe at or before now (--ago T: T before now), skip to the same checkpoints "
         "again: ok when every hash is the same (bit for bit). --keep CLASS (negative control): that class keeps "
-        "its present state instead of the keyframe's, so the check should fail when its state matters.",
+        "its present state instead of the keyframe's, so the check should fail when its state matters. "
+        "--fresh: as a saved key frame opened later (specs/sim-control.md §5.1): the state now is saved, the run "
+        "goes to the checkpoints, then the simulation is stopped and started again and the saved state loaded "
+        "before the second pass; it finds state a keyframe leaves out because it doesn't change within a run. "
+        "--reopen: the same, with the circuit file loaded again before the start (a key frame opened in a later "
+        "session: the first run after a load).",
         []( CliCtx& c ) -> QJsonValue
     {
         if( !c.pos.isEmpty() && c.pos.at( 0 ) == "check" ) return histCheck( c );
@@ -525,6 +566,82 @@ void CliApi::registerSim()
         int count = c.opt("count", "1").toInt( &ok );
         if( !ok || count < 1 || count > 1000000 ) throw CliError("--count must be 1 … 1000000");
         return skipCmd( c, 0, count, c.has("back") );
+    });
+
+    // Saved key frames (specs/sim-control.md §5.1): the states kept next to the circuit
+    auto kfJson = []( const KeyFrame& k ) -> QJsonObject {
+        return QJsonObject{ {"n", k.n}, {"time", Cli::timeStr( k.time )}, {"time_ps", QString::number( k.time )},
+                            {"note", k.note}, {"saved", k.saved.toString( Qt::ISODate )}, {"size", (double)k.size},
+                            {"file", k.file} };
+    };
+    add("sim keyframe", "sim keyframe [list | save [--note TEXT] | open N | note N TEXT | delete N… | play A B]",
+        "Saved key frames, kept in <circuit>.keyframes/ next to the circuit file. list (default): number, time, "
+        "description. save: the paused state (the circuit must have a file; its parts must support going back). "
+        "open N: go there, paused (starts a stopped simulation); refused for another circuit, a warning in "
+        "messages when parts or settings changed since. note N TEXT: its description. delete N…: no question asked. "
+        "play A B: open the earlier, run at the set speed, reply paused at the later.",
+        [kfJson]( CliCtx& c ) -> QJsonValue
+    {
+        KeyFrames* kf = KeyFrames::self();
+        kf->followCircuit();
+        QString sub = c.pos.isEmpty() ? "list" : c.pos.at( 0 );
+        auto num = [&c]( int i ) -> int {
+            bool ok = false;
+            int n = c.pos.value( i ).toInt( &ok );
+            if( !ok || n < 1 ) throw CliError("key frame number? "+c.pos.value( i ));
+            return n;
+        };
+        auto listJson = [kf, kfJson]() -> QJsonObject {
+            QJsonArray a;
+            for( const KeyFrame& k : kf->list() ) a.append( kfJson( k ) );
+            return QJsonObject{ {"folder", kf->folder()}, {"keyframes", a} };
+        };
+        if( sub == "list" ) return listJson();
+        if( sub == "save" )
+        {
+            QString err;
+            int n = kf->save( c.opt("note", ""), &err );
+            if( !n ) throw CliError( err );
+            return kfJson( *kf->find( n ) );
+        }
+        if( sub == "open" )
+        {
+            QString err = kf->open( num( 1 ) );
+            if( !err.isEmpty() ) throw CliError( err );
+            QJsonObject o = simStatus();
+            o["keyframe"] = kfJson( *kf->find( num( 1 ) ) );
+            return o;
+        }
+        if( sub == "note" )
+        {
+            QString err = kf->setNote( num( 1 ), QStringList( c.pos.mid( 2 ) ).join(" ") );
+            if( !err.isEmpty() ) throw CliError( err );
+            return kfJson( *kf->find( num( 1 ) ) );
+        }
+        if( sub == "delete" )
+        {
+            QList<int> ns;
+            for( int i=1; i<c.pos.size(); ++i ){ int n = num( i ); if( !kf->find( n ) ) throw CliError("no key frame "+QString::number( n )); ns << n; }
+            if( ns.isEmpty() ) throw CliError("sim keyframe delete N…");
+            QString err = kf->remove( ns );
+            if( !err.isEmpty() ) throw CliError( err );
+            return listJson();
+        }
+        if( sub == "play" )
+        {
+            QString err = kf->playRange( num( 1 ), num( 2 ) );
+            if( !err.isEmpty() ) throw CliError( err );
+            CliPendingPtr reply = c.defer();
+            auto conn = std::make_shared<QMetaObject::Connection>();
+            *conn = QObject::connect( kf, &KeyFrames::rangeEnded, [reply, conn]( bool reached )
+            {
+                QObject::disconnect( *conn );
+                if( reached ) reply->ok( simStatus() );
+                else reply->fail("range play ended before its last key frame");
+            });
+            return QJsonValue();
+        }
+        throw CliError("sim keyframe [list | save | open N | note N TEXT | delete N… | play A B]");
     });
 
     add("sim speed", "sim speed [percent]", "Get or set target simulation speed in % of real time (100 = real time).",

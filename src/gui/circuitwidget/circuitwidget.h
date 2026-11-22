@@ -57,6 +57,13 @@ class CircuitWidget : public QWidget
         void skipForward( int count );            // → / ⏭: pause and skip count × the interval
         void skipBack( int count );               // ← / ⏮: pause and go back count × the interval
         void simKeysBack();                       // Esc on an idle canvas: the simulation keys again
+        // Saved key frames (specs/sim-control.md §5.1)
+        void saveKeyFrame();                      // ⌘K / toolbar: save, show it in the pane, edit its description
+        bool playRange();                         // Play with 2+ key frames selected: true when it played the range
+        void togglePlay();                        // Space (also from the Key frames list)
+        void setKeyFramesSplit( bool split );     // The pane in the tabs or beside them
+        void showKeyFrames();                     // The pane in sight (its tab in front)
+        bool keyFramesSplit() { return m_keySplit; }
         // Running slower than the set speed: the speed box shows the real speed in orange (realPsPerSec 0: off)
         void showRealSpeed( double realPsPerSec );
         void syncCurrentFlow( bool on ) { if( currentFlowAct->isChecked() != on ) currentFlowAct->setChecked( on ); }
@@ -172,6 +179,10 @@ class CircuitWidget : public QWidget
         QAction* pauseSimAct;
         QAction* skipFwdAct = nullptr;
         QAction* skipBackAct = nullptr;
+        QAction* saveKeyAct = nullptr;
+        class KeyFramePane* m_keyPane = nullptr;
+        bool m_keySplit = false;
+        void updtKeyFrameAct();
         QAction* currentFlowAct;
         QAction* capChargeAct;
         QAction* partStatusAct;

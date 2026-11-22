@@ -243,5 +243,17 @@ void WS2812::simState( StateIO& s )
     s.io( m_newWord );
     s.io( m_lastTime );
     s.ioVector( m_rgb );
-    s.ioVector( m_led );
+    // The colours as RGBA words: a QColor's bytes include padding that isn't always written,
+    // and a saved key frame must be the same bytes in every process (specs/sim-control.md §5.1)
+    uint32_t n = m_led.size();
+    s.io( n );
+    if( !s.saving() ){
+        if( n > 1u<<20 ){ s.fail(); return; }
+        m_led.resize( n );
+    }
+    for( QColor& c : m_led ){
+        uint32_t rgba = s.saving() ? (uint32_t)c.rgba() : 0;
+        s.io( rgba );
+        if( !s.saving() ) c = QColor::fromRgba( rgba );
+    }
 }

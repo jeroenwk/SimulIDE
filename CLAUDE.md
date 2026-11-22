@@ -103,6 +103,10 @@ When the user wants to build or try circuits together, follow **`docs/COLLABORAT
 - Built-in parts (BJT, MOSFET, SCR, triac, diac, op amp, voltage regulator, diode, zener, LED, 555, relay, analog mux) report their operating state through a `StateLog` (`statelog.{h,cpp}`, the same event type and sequence as the scripted cores). The part calls `enableStates()` and lists `showStateProp()` (Show State) in its constructor. It asks for `Simulator::addToSettled(this)` in `voltChanged()` and calls `reportState()` in `stepSettled()`, which the simulator calls once the time step has converged, so the times are exact. A part that changes state in `runEvent()` (555, analog mux) reports there directly. Plan, rules (colours, hysteresis, model tolerances) and the remaining parts: `docs/PART_STATES.md`.
 - CLI: `read` (`status`, or `state` for built-in parts) and `status <comp>` (history), in `cli_measure.cpp`.
 
+### Saved key frames (`src/gui/circuitwidget/keyframes.*`, `keyframepane.*`, specs/sim-control.md §5.1)
+- A saved key frame is a keyframe of the run (`SimHistory::saveBytes`) in `<circuit>.keyframes/<n>.kf1` (magic, JSON header, state bytes). `KeyFrames` opens one (`SimHistory::loadBytes`: a stopped simulation is started and paused first), plays a range (`setStopAt`), and refuses another circuit (`layoutSignature`); `KeyFramePane` is the Key frames tab or split. CLI `sim keyframe …`, `view keyframes`.
+- Keyframe bytes must load in **another process**: no pointers (indices instead, e.g. `eNode` callbacks, the 6502's `m_EXEC`), no `QHash` iteration order (sorted by name), no uninitialized fields. `sim history check --fresh|--reopen` and `tests/regress/sweeps/history_fresh.py --xproc` find what breaks it.
+
 ### Log levels in Messages (`src/main.cpp` message handler)
 - Debug logs are `qDebug()` lines that start with a `[tag]` prefix (`[labels]`, `[ScopeTrig]`, ...). They always go to stderr, and to Messages only with Log: Verbose on (setting `logVerbose`, in the user settings).
 - Other `qDebug()` lines (upstream's messages for the user) and `qInfo()` are information and always shown.
