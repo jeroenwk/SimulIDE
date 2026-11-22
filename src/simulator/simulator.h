@@ -38,6 +38,10 @@ class SimWatch
         virtual void simStopped(){}   // GUI thread, in stopSim()
         virtual void stepDone(){}     // Worker, after each solved step (after the parts' stepSettled())
         virtual void restored(){}     // GUI thread, a keyframe was loaded (going back, a key frame)
+        // Keyframes: the watch's own state in a tagged section after the part states, saved only
+        // when it has any (so keyframes of circuits without triggers are as before)
+        virtual bool hasState() { return false; }
+        virtual void ioState( class StateIO& ){}
 };
 class eElement;
 class Socket;

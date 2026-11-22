@@ -6,6 +6,7 @@
 #include <QDebug>
 #include <QDomDocument>
 #include <QHash>
+#include <QPointer>
 
 #include "triggers.h"
 #include "circuit.h"
@@ -16,6 +17,13 @@
 #include "pin.h"
 #include "e-node.h"
 #include "simulator.h"
+#include "simstate.h"
+#include "simhistory.h"
+#include "simskip.h"
+#include "statusview.h"
+#include "subcircuit.h"
+#include "mcu.h"
+#include "scriptcpu.h"
 
 #define TRIG_LOG qDebug() << "[triggers]"
 
@@ -36,7 +44,8 @@ bool TrigCond::operator==( const TrigCond& o ) const
 {
     return sig == o.sig && comp == o.comp && pin == o.pin && refComp == o.refComp && ref == o.ref
         && node == o.node && kind == o.kind && edge == o.edge && outside == o.outside
-        && level == o.level && low == o.low && high == o.high && hyst == o.hyst;
+        && level == o.level && low == o.low && high == o.high && hyst == o.hyst
+        && block == o.block && from == o.from && to == o.to && change == o.change && sev == o.sev;
 }
 
 inline double Triggers::Check::value()
@@ -128,6 +137,9 @@ Pin* Triggers::findPin( const QString& uid, const QString& name )
     return nullptr;
 }
 
+static QString compName( Component* c );
+static QString pinLabel( Component* c, Pin* p );
+
 static void splitNode( const QString& node, QString& uid, QString& pin )
 {
     int i = node.lastIndexOf(':');
@@ -138,7 +150,22 @@ static void splitNode( const QString& node, QString& uid, QString& pin )
 QString Triggers::check( const Trigger& t )
 {
     const TrigCond& c = t.cond;
-    if( c.sig != "volt" && c.sig != "curr" ) return "unknown signal "+c.sig;
+    if( c.sig != "volt" && c.sig != "curr" && c.sig != "state" ) return "unknown signal "+c.sig;
+    if( c.sig == "state" )
+    {
+        Component* comp = compByUid( c.comp );
+        if( !comp ) return "no part "+c.comp;
+        if( !stateSource( comp, c.block ) )
+        {
+            QStringList b = stateBlocks( comp );
+            if( b.isEmpty() ) return compName( comp )+" reports no state";
+            for( QString& x : b ) if( x.isEmpty() ) x = "state";
+            return c.block.isEmpty() ? compName( comp )+" has no state of its own: blocks "+b.join(", ")
+                                     : "no block "+c.block+" on "+compName( comp )+": "+b.join(", ");
+        }
+        if( !c.change && c.sev < 0 && c.from.isEmpty() && c.to.isEmpty() ) return "no state condition";
+        return "";
+    }
     if( !c.node.isEmpty() )
     {
         QString uid, pin;
@@ -200,6 +227,12 @@ static QString timeFmt( uint64_t ps ) { return KeyFrames::timeText( ps ); }
 QString Triggers::watchText( const Trigger& t )
 {
     const TrigCond& c = t.cond;
+    if( c.sig == "state" )
+    {
+        Component* comp = compByUid( c.comp );
+        QString n = comp ? compName( comp ) : c.comp;
+        return c.block.isEmpty() ? n+" state" : n+" "+c.block+" (state)";
+    }
     if( !c.node.isEmpty() )
     {
         QString uid, pin;
@@ -239,6 +272,12 @@ QString Triggers::watchText( const Trigger& t )
 QString Triggers::condText( const Trigger& t )
 {
     const TrigCond& c = t.cond;
+    if( c.sig == "state" )
+    {
+        if( c.change ) return "any change";
+        if( c.sev >= 0 ) return "≥ "+levelName( c.sev );
+        return ( c.from.isEmpty() ? "any" : c.from )+" → "+( c.to.isEmpty() ? "any" : c.to );
+    }
     QString u = ( c.sig == "curr" ) ? "A" : "V";
     if( c.kind == "window" )
         return QString( c.outside ? "outside " : "inside " )+fmt( c.low, "" ).trimmed()+" … "+fmt( c.high, u );
@@ -350,6 +389,15 @@ static QString esc( const QString& s ) { return s.toHtmlEscaped(); }
 QString Triggers::condXml( const TrigCond& c )
 {
     QString x = "<cond sig=\""+c.sig+"\"";
+    if( c.sig == "state" )
+    {
+        x += " comp=\""+esc( c.comp )+"\"";
+        if( !c.block.isEmpty() ) x += " block=\""+esc( c.block )+"\"";
+        if( c.change ) x += " change=\"1\"";
+        else if( c.sev >= 0 ) x += " sev=\""+levelName( c.sev )+"\"";
+        else x += " from=\""+esc( c.from.isEmpty() ? "any" : c.from )+"\" to=\""+esc( c.to.isEmpty() ? "any" : c.to )+"\"";
+        return x+"/>";
+    }
     if( !c.node.isEmpty() ) x += " node=\""+esc( c.node )+"\"";
     else{
         x += " comp=\""+esc( c.comp )+"\" pin=\""+esc( c.pin )+"\"";
@@ -415,7 +463,16 @@ void Triggers::restoreXml( const QString& xml )
             c.ref     = ce.attribute("ref");
             if( c.ref == "gnd" ) c.ref.clear();
             c.node    = ce.attribute("node");
-            if( ce.hasAttribute("window") ){
+            if( c.sig == "state" ){
+                c.kind   = "state";
+                c.block  = ce.attribute("block");
+                c.change = ce.attribute("change") == "1";
+                c.sev    = ce.hasAttribute("sev") ? levelOf( ce.attribute("sev") ) : -1;
+                c.from   = ce.attribute("from");
+                c.to     = ce.attribute("to");
+                if( c.from.compare( "any", Qt::CaseInsensitive ) == 0 ) c.from.clear();
+                if( c.to.compare( "any", Qt::CaseInsensitive ) == 0 ) c.to.clear();
+            }else if( ce.hasAttribute("window") ){
                 c.kind = "window";
                 c.outside = ce.attribute("window") != "in";
                 c.low  = ce.attribute("low").toDouble();
@@ -455,12 +512,120 @@ void Triggers::clear()
 }
 
 //------------------------------------------------------------------------------------------------
+// Part states (§2): a built-in part's StateLog, a scripted core, or a block (core) of a subcircuit
+
+QString Triggers::levelName( int level )
+{
+    switch( level ){
+        case Component::stOff:   return "OFF";
+        case Component::stOn:    return "ON";
+        case Component::stWait:  return "WAIT";
+        case Component::stFault: return "FAULT";
+    }
+    return "";
+}
+
+int Triggers::levelOf( const QString& name )
+{
+    QString n = name.toUpper();
+    if( n == "OFF" ) return Component::stOff;
+    if( n == "ON" ) return Component::stOn;
+    if( n == "WAIT" ) return Component::stWait;
+    if( n == "FAULT" ) return Component::stFault;
+    return -1;
+}
+
+static const void* coreSource( Component* c )   // A scripted core (the blocks of a subcircuit, as the badges)
+{
+    if( Mcu* mcu = dynamic_cast<Mcu*>( c ) )
+        if( ScriptCpu* cpu = dynamic_cast<ScriptCpu*>( mcu->cpu() ) ) return cpu;
+    return nullptr;
+}
+
+static const void* ownSource( Component* c )
+{
+    if( StateLog* log = c->stateLogAny() ) return log;
+    if( Mcu* mcu = dynamic_cast<Mcu*>( c ) )
+        if( ScriptCpu* cpu = dynamic_cast<ScriptCpu*>( mcu->cpu() ) ) return cpu;
+    return nullptr;
+}
+
+const void* Triggers::stateSource( Component* comp, const QString& block )
+{
+    if( !comp ) return nullptr;
+    if( block.isEmpty() || block == "state" ) return ownSource( comp );
+    if( SubCircuit* sub = dynamic_cast<SubCircuit*>( comp ) )
+        for( Component* inner : *sub->compList() )
+            if( StatusView::blockName( inner ).compare( block, Qt::CaseInsensitive ) == 0 )
+                if( const void* s = coreSource( inner ) ) return s;
+    return nullptr;
+}
+
+QStringList Triggers::stateBlocks( Component* comp )
+{
+    QStringList l;
+    if( ownSource( comp ) ) l.append("");
+    if( SubCircuit* sub = dynamic_cast<SubCircuit*>( comp ) )
+        for( Component* inner : *sub->compList() )
+            if( coreSource( inner ) ) l.append( StatusView::blockName( inner ) );
+    return l;
+}
+
+static void currentState( const void* src, bool isLog, QString& text, int& level )
+{
+    StateLog::Event e = isLog ? ((StateLog*)src)->current() : ((ScriptCpu*)src)->status();
+    text = e.text;
+    level = e.level;
+}
+
+bool Triggers::Check::fireState( const Ev& e )
+{
+    QString prevText = curText;
+    int prevLevel = curLevel;
+    curText  = e.text;
+    curLevel = e.level;
+    if( change ) return true;
+    if( sev >= 0 ) return prevLevel < sev && e.level >= sev;
+    bool f = from.isEmpty() || prevText.compare( from, Qt::CaseInsensitive ) == 0;
+    bool t = to.isEmpty()   || e.text.compare( to, Qt::CaseInsensitive ) == 0;
+    return f && t;
+}
+
+void Triggers::stateReport( const void* source, const QString& text, int level, uint64_t time )   // Worker
+{
+    for( Check& c : m_checks )
+        if( c.state && c.src == source && !c.done ) c.pending.append({ text, level, time });
+}
+
+//------------------------------------------------------------------------------------------------
 // The run (§6, §10)
 
 bool Triggers::compileOne( const Trigger& t, Check& k )
 {
     const TrigCond& c = t.cond;
     if( !check( t ).isEmpty() ) return false;
+    k.id       = t.id;
+    k.pause    = t.pause;
+    k.keyframe = t.keyframe;
+    k.single   = t.single;
+    k.holdoff  = t.single ? 0 : t.holdoff;
+    k.max      = t.single ? 1 : t.max;
+    k.hits     = t.hits.size();
+    if( c.sig == "state" )
+    {
+        Component* comp = compByUid( c.comp );
+        k.state  = true;
+        k.src    = stateSource( comp, c.block );
+        k.change = c.change;
+        k.sev    = c.sev;
+        k.from   = c.from;
+        k.to     = c.to;
+        bool isLog = comp->stateLogAny() == k.src;   // A StateLog, else a scripted core
+        if( SubCircuit* sub = dynamic_cast<SubCircuit*>( comp ) )
+            for( Component* inner : *sub->compList() ) if( inner->stateLogAny() == k.src ) isLog = true;
+        currentState( k.src, isLog, k.curText, k.curLevel );
+        return k.src != nullptr;
+    }
     if( !c.node.isEmpty() ){
         QString uid, pin;
         splitNode( c.node, uid, pin );
@@ -469,7 +634,6 @@ bool Triggers::compileOne( const Trigger& t, Check& k )
         k.p0 = findPin( c.comp, c.pin );
         if( !c.ref.isEmpty() ) k.p1 = findPin( c.refComp.isEmpty() ? c.comp : c.refComp, c.ref );
     }
-    k.id      = t.id;
     k.curr    = c.sig == "curr";
     k.window  = c.kind == "window";
     k.edge    = c.edge;
@@ -479,11 +643,6 @@ bool Triggers::compileOne( const Trigger& t, Check& k )
     k.hi      = c.high;
     k.h       = c.hysteresis();
     if( k.window ) k.h = std::min( k.h, 0.25*( c.high-c.low ) );   // A narrow band keeps an inside
-    k.pause   = t.pause;
-    k.single  = t.single;
-    k.holdoff = t.single ? 0 : t.holdoff;
-    k.max     = t.single ? 1 : t.max;
-    k.hits    = t.hits.size();
     if( k.p0 ){
         k.n0 = k.p0->getEnode();
         k.n1 = k.p1 ? k.p1->getEnode() : nullptr;
@@ -497,6 +656,7 @@ void Triggers::compile( bool derive )
     QHash<int, Check> old;
     for( const Check& c : m_checks ) old.insert( c.id, c );
     m_checks.clear();
+    bool states = false;
     for( const Trigger& t : m_list )
     {
         if( !t.armed ) continue;
@@ -506,18 +666,30 @@ void Triggers::compile( bool derive )
             continue;
         }
         auto o = old.find( t.id );         // The same check as before (an edit of another row): keep its state
-        if( o != old.end() && o->p0 == k.p0 && o->p1 == k.p1 && o->curr == k.curr && o->window == k.window
+        if( !derive && o != old.end() && o->p0 == k.p0 && o->p1 == k.p1 && o->curr == k.curr && o->window == k.window
             && o->edge == k.edge && o->outside == k.outside && o->level == k.level && o->lo == k.lo
-            && o->hi == k.hi && o->h == k.h )
+            && o->hi == k.hi && o->h == k.h && o->src == k.src )
         {
             k.armR = o->armR; k.armF = o->armF; k.armW = o->armW;
             k.holdEnd = o->holdEnd;
+            k.pending = o->pending;
         }
+        if( derive )                       // A keyframe was loaded: its saved state, else from the values
+        {
+            auto l = m_loaded.find( t.id );
+            if( l != m_loaded.end() ){
+                k.armR = l->armR; k.armF = l->armF; k.armW = l->armW; k.holdEnd = l->holdEnd;
+                if( k.state ){ k.curText = l->text; k.curLevel = l->level; }
+            }
+            else if( !k.state ) k.needDerive = true;
+        }
+        if( k.state ) states = true;
         m_checks.append( k );
     }
-    if( derive ) m_derive = true;
+    m_loaded.clear();
+    StateLog::setWatch( states ? this : nullptr );
     if( m_sim ) m_sim->setWatching( !m_checks.isEmpty() );
-    TRIG_LOG << "compiled" << m_checks.size() << "check(s)" << ( derive ? "(sides from the values)" : "" );
+    TRIG_LOG << "compiled" << m_checks.size() << "check(s)" << ( derive ? "(state from the keyframe or the values)" : "" );
 }
 
 void Triggers::simStarted()
@@ -528,8 +700,11 @@ void Triggers::simStarted()
     m_checks.clear();
     m_fired.clear();
     m_countNew.clear();
-    m_derive = false;
+    m_loaded.clear();
+    m_firstDone = false;
     m_dirty = false;
+    m_keepUntil = 0;
+    m_preBusy = false;
     m_wasPaused = m_sim->isPaused();
     compile( false );
     emit changed();
@@ -539,35 +714,49 @@ void Triggers::simStopped()
 {
     updateStep();       // Hits of the last frame
     summary();
+    StateLog::setWatch( nullptr );
     m_checks.clear();
     m_fired.clear();
     m_dirty = false;
+}
+
+bool Triggers::hit( Check& c, uint64_t t, double v, bool quiet )
+{
+    if( quiet ) return false;
+    if( c.holdEnd && t < c.holdEnd ) return false;
+    c.hits++;
+    c.holdEnd = c.holdoff ? t+c.holdoff : 0;
+    if( c.max && c.hits >= c.max ) c.done = true;
+    m_fired.append({ c.id, t, v });
+    return c.pause || c.keyframe;            // A key frame is taken at this step too
 }
 
 void Triggers::stepDone()   // Worker: after each solved step
 {
     Simulator* sim = m_sim;
     uint64_t t = sim->circTime();
-    if( m_derive )      // The first step after a keyframe load: the sides from the values, no hits
-    {
-        m_derive = false;
-        for( Check& c : m_checks ) c.derive( c.value() );
-        return;
-    }
     bool quiet = t <= sim->trigQuiet();   // A replay of going back: track, don't fire
     bool stop = false;
     for( Check& c : m_checks )
     {
+        if( c.state )
+        {
+            for( const Check::Ev& e : c.pending )
+            {
+                if( c.done ) break;
+                bool first = c.curLevel < 0;          // Its first report is its start state
+                bool f = c.fireState( e );
+                if( f && m_firstDone && !first ) stop |= hit( c, e.time, e.level, quiet );   // Start states don't fire
+            }
+            c.pending.clear();
+            continue;
+        }
         if( c.done ) continue;
         double v = c.value();
-        if( !c.eval( v ) || quiet ) continue;
-        if( c.holdEnd && t < c.holdEnd ) continue;
-        c.hits++;
-        c.holdEnd = c.holdoff ? t+c.holdoff : 0;
-        if( c.max && c.hits >= c.max ) c.done = true;
-        m_fired.append({ c.id, t, v });
-        if( c.pause ) stop = true;
+        if( c.needDerive ){ c.needDerive = false; c.derive( v ); continue; }
+        if( c.eval( v ) ) stop |= hit( c, t, v, quiet );
     }
+    m_firstDone = true;
     if( stop ) sim->trigStop();
 }
 
@@ -579,6 +768,7 @@ void Triggers::updateStep()   // GUI thread, worker idle
     bool any = false;
     int stopId = -1;
     uint64_t stopTime = 0;
+    QList<int> keyIds;                       // Key frame actions of this step
     for( const Hit& h : m_fired )
     {
         Trigger* t = find( h.id );
@@ -591,6 +781,7 @@ void Triggers::updateStep()   // GUI thread, worker idle
                 t->selfDisarmedAt = h.time;
             }
         if( t->pause ){ stopId = t->id; stopTime = h.time; }
+        if( t->keyframe ) keyIds.append( t->id );
         if( t->pause || t->keyframe )
             qInfo().noquote() << "Trigger: "+describe( *t )+" at "+timeFmt( h.time )+( t->pause ? " (paused)" : "" );
         else m_countNew.append( t->id );
@@ -600,10 +791,17 @@ void Triggers::updateStep()   // GUI thread, worker idle
     if( sim->trigStopped() )
     {
         sim->clearTrigStop();
-        if( stopId >= 0 ){ m_stopId = stopId; m_stopTime = stopTime; }
-        m_stopCount++;
-        if( sim->isRunning() && !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
-        emit fired( m_stopId );
+        bool pausing = stopId >= 0;
+        if( pausing ){
+            m_stopId = stopId;
+            m_stopTime = stopTime;
+            m_stopCount++;
+        }
+        bool running = sim->isRunning() && !sim->isPaused();
+        for( int id : keyIds )
+            if( Trigger* t = find( id ) ) keyFrame( t, sim->circTime(), running && !pausing );
+        if( pausing && sim->isRunning() && !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
+        if( pausing ) emit fired( m_stopId );
     }
     if( m_dirty && sim->isRunning() ){ m_dirty = false; compile( false ); }
 
@@ -613,13 +811,85 @@ void Triggers::updateStep()   // GUI thread, worker idle
     if( any ) emit changed();
 }
 
+// §7: a key frame at the step that fired; with "before Δ", Δ earlier: back with the history (the
+// replay fires nothing), the key frame saved there, then forward again to the trigger's step (the
+// same computation, so the same state) and on as before
+void Triggers::keyFrame( Trigger* t, uint64_t hitTime, bool resumeAfter )
+{
+    QString note = t->name.isEmpty() ? describe( *t ) : t->name;
+    Simulator* sim = Simulator::self();
+    auto failed = [&]( QString why ){
+        qWarning().noquote() << "[triggers] Trigger "+describe( *t )+": no key frame ("+why+"), paused instead";
+        if( sim->isRunning() && !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
+    };
+    uint64_t before = t->before;
+    if( before && ( m_preBusy || SimSkip::self()->active() ) ){
+        qWarning().noquote() << "[triggers] Trigger "+describe( *t )+": a key frame −Δ is being made, this one is saved at the trigger";
+        before = 0;
+    }
+    if( before && !SimHistory::self()->usable() ){
+        qWarning().noquote() << "[triggers] Trigger "+describe( *t )+": no history (settings history), the key frame is saved at the trigger";
+        before = 0;
+    }
+    if( !before )
+    {
+        QString err;
+        if( !KeyFrames::self()->save( note, &err, true ) ) failed( err );
+        return;
+    }
+    uint64_t first = SimHistory::self()->firstTime();
+    uint64_t back = ( hitTime > first ) ? std::min( before, hitTime-first ) : 0;
+    if( back < before )
+        qInfo().noquote() << "Trigger: "+describe( *t )+": the history holds only "+timeFmt( back )+" before it";
+    if( back == 0 ){
+        QString err;
+        if( !KeyFrames::self()->save( note, &err, true ) ) failed( err );
+        return;
+    }
+    m_preBusy = true;
+    m_keepUntil = hitTime;
+    uint64_t stopAt = sim->stopAt();          // A sim run --for, a range play: their end, put back after
+    QString err = SimSkip::self()->startBack( back );
+    if( !err.isEmpty() ){ m_preBusy = false; m_keepUntil = 0; failed( err ); return; }
+    QPointer<Triggers> self( this );
+    SimSkip::self()->whenDone( [self, note, hitTime, resumeAfter, stopAt]( bool ok, QString msg )
+    {
+        if( !self ) return;
+        Simulator* sim = Simulator::self();
+        if( !ok ){
+            self->m_preBusy = false; self->m_keepUntil = 0;
+            qWarning().noquote() << "[triggers] key frame before the trigger: "+msg;
+            return;
+        }
+        QString err;
+        if( !KeyFrames::self()->save( note, &err, true ) )
+            qWarning().noquote() << "[triggers] key frame before the trigger: "+err;
+        sim->setTrigQuiet( hitTime );        // On to the trigger again, without firing on the way
+        err = SimSkip::self()->start( hitTime-sim->circTime() );
+        if( !err.isEmpty() ){
+            self->m_preBusy = false; self->m_keepUntil = 0;
+            qWarning().noquote() << "[triggers] back to the trigger: "+err;
+            return;
+        }
+        SimSkip::self()->whenDone( [self, resumeAfter, stopAt]( bool, QString )
+        {
+            if( !self ) return;
+            self->m_preBusy = false;
+            self->m_keepUntil = 0;
+            Simulator* sim = Simulator::self();
+            if( stopAt > sim->circTime() ) sim->setStopAt( stopAt );
+            if( resumeAfter && sim->isRunning() && sim->isPaused() ) CircuitWidget::self()->pauseCirc();   // Resumes
+        });
+    });
+}
+
 void Triggers::restored()   // GUI thread: a keyframe was loaded
 {
     Simulator* sim = Simulator::self();
     if( !m_sim || sim != m_sim ) return;
     m_fired.clear();
     sim->clearTrigStop();
-    uint64_t keep = std::max( sim->circTime(), sim->trigQuiet() );   // A replay to trigQuiet follows
+    uint64_t keep = std::max( { sim->circTime(), sim->trigQuiet(), m_keepUntil } );   // A replay follows
     for( Trigger& t : m_list )
     {
         while( !t.hits.isEmpty() && t.hits.last() > keep ) t.hits.removeLast();
@@ -627,8 +897,40 @@ void Triggers::restored()   // GUI thread: a keyframe was loaded
     }
     m_checks.clear();                     // The checks start again from the definitions
     compile( true );
+    m_firstDone = true;
     m_dirty = false;
     emit changed();
+}
+
+// Keyframes (§10): each check's running state, keyed by trigger id, so a key frame loads whatever
+// triggers were added, edited or deleted since: one deleted is skipped, one added starts from its
+// signal's value
+void Triggers::ioState( StateIO& s )
+{
+    uint32_t n = m_checks.size();
+    s.io( n );
+    if( s.saving() )
+    {
+        for( Check& c : m_checks )
+        {
+            int32_t id = c.id;
+            uint8_t f = ( c.armR ? 1 : 0 ) | ( c.armF ? 2 : 0 ) | ( c.armW ? 4 : 0 ) | ( c.done ? 8 : 0 );
+            uint64_t hold = c.holdEnd;
+            int32_t level = c.curLevel;
+            s.io( id ); s.io( f ); s.io( hold ); s.io( level );
+            s.ioString( c.curText );
+        }
+        return;
+    }
+    m_loaded.clear();
+    if( n > 100000 ){ s.fail(); return; }
+    for( uint32_t i=0; i<n && !s.overflow(); ++i )
+    {
+        int32_t id = 0; uint8_t f = 0; uint64_t hold = 0; int32_t level = -1; QString text;
+        s.io( id ); s.io( f ); s.io( hold ); s.io( level );
+        s.ioString( text );
+        m_loaded.insert( id, { bool( f & 1 ), bool( f & 2 ), bool( f & 4 ), bool( f & 8 ), hold, level, text } );
+    }
 }
 
 void Triggers::summary()   // Count-only triggers: one line each at a pause or stop (§7)
@@ -645,4 +947,37 @@ void Triggers::summary()   // Count-only triggers: one line each at a pause or s
         qInfo().noquote() << "Trigger: "+describe( *t )+": "+QString::number( n )+( n == 1 ? " hit" : " hits" )
                              +", the last at "+timeFmt( t->hits.last() );
     }
+}
+
+//------------------------------------------------------------------------------------------------
+// For the editors
+
+Component* Triggers::comp( const QString& uid ) { return compByUid( uid ); }
+QString Triggers::pinText( Component* c, Pin* p ) { return pinLabel( c, p ); }
+QString Triggers::partName( Component* c ) { return compName( c ); }
+
+QStringList Triggers::statesSeen( Component* c, const QString& block )
+{
+    QStringList l;
+    const void* src = stateSource( c, block );
+    if( !src ) return l;
+    bool isLog = c->stateLogAny() == src;
+    if( SubCircuit* sub = dynamic_cast<SubCircuit*>( c ) )
+        for( Component* inner : *sub->compList() ) if( inner->stateLogAny() == src ) isLog = true;
+    QList<StateLog::Event> h = isLog ? ((StateLog*)src)->history() : ((ScriptCpu*)src)->statusHistory();
+    for( const StateLog::Event& e : h ) if( !e.text.isEmpty() && !l.contains( e.text ) ) l.append( e.text );
+    return l;
+}
+
+QList<int> Triggers::watchingPart( const QString& uid )
+{
+    QList<int> ids;
+    for( const Trigger& t : m_list )
+    {
+        const TrigCond& c = t.cond;
+        QString nodeUid;
+        if( !c.node.isEmpty() ) nodeUid = c.node.left( c.node.lastIndexOf(':') );
+        if( c.comp == uid || c.refComp == uid || nodeUid == uid ) ids.append( t.id );
+    }
+    return ids;
 }

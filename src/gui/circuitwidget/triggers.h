@@ -17,20 +17,27 @@
 #include <QList>
 #include <QVector>
 #include <QString>
+#include <QHash>
 
 #include "simulator.h"
 #include "updatable.h"
+#include "statelog.h"
 
 class Pin;
 class Component;
 
 struct TrigCond
 {
-    QString sig = "volt";   // volt: a pin's voltage (to ground or to a second pin); curr: current into a pin
+    QString sig = "volt";   // volt: a pin's voltage (to ground or to a second pin); curr: current into a pin;
+                            // state: a part's state, or one block of it (a scripted core of a subcircuit)
     QString comp, pin;      // The watched pin: component uid, pin short name
     QString refComp, ref;   // A pin pair: the second pin (refComp empty: the same part); ref empty: ground
     QString node;           // A node, "uid:pin" of one of its pins (comp / pin then unused)
-    QString kind = "edge";  // edge | window
+    QString block;          // state: the block ("" = the part's own state)
+    QString from, to;       // state transition: "any" or a state name (case does not matter)
+    bool   change = false;  // state: any change
+    int    sev = -1;        // state: reaches this severity (Component::stOn … stFault); -1: not used
+    QString kind = "edge";  // edge | window | state
     int    edge = 1;        // +1 rising, -1 falling, 0 either
     bool   outside = true;  // window: fires on leaving the band (true) or on entering it
     double level = 0, low = 0, high = 0;
@@ -58,7 +65,7 @@ struct Trigger
     uint64_t selfDisarmedAt = 0;   // It disarmed itself at this hit (single, max): going back before re-arms
 };
 
-class Triggers : public QObject, public SimWatch, public Updatable
+class Triggers : public QObject, public SimWatch, public Updatable, public StateWatch
 {
     Q_OBJECT
     public:
@@ -100,12 +107,26 @@ class Triggers : public QObject, public SimWatch, public Updatable
 
  static Pin* findPin( const QString& comp, const QString& pin );   // uid + short name (or 1-based number)
  static QString pinName( Pin* p, Component* c );                    // The short name saved in the .sim1
+ static Component* comp( const QString& uid );                       // A top-level part (or node) by uid
+ static QString pinText( Component* c, Pin* p );                     // "pin 3 VDD", "pin 1"
+ static QString partName( Component* c );                            // Its label, else its uid
+ static QStringList statesSeen( Component* c, const QString& block );   // State names reported so far
+        QList<int> watchingPart( const QString& uid );               // Triggers on that part's pins or states
 
         // SimWatch
         virtual void simStarted() override;
         virtual void simStopped() override;
         virtual void stepDone() override;
         virtual void restored() override;
+        virtual bool hasState() override { return !m_checks.isEmpty(); }
+        virtual void ioState( class StateIO& s ) override;
+        // StateWatch
+        virtual void stateReport( const void* source, const QString& text, int level, uint64_t time ) override;
+
+ static const void* stateSource( Component* comp, const QString& block );   // StateLog* or ScriptCpu*, null: none
+ static QStringList stateBlocks( Component* comp );                         // "" = its own, then the blocks
+ static QString levelName( int level );                                     // "OFF", "ON", "WAIT", "FAULT"
+ static int levelOf( const QString& name );                                 // -1: not a level
         // Updatable
         virtual void updateStep() override;
 
@@ -124,11 +145,22 @@ class Triggers : public QObject, public SimWatch, public Updatable
             bool direct = false;
             bool curr = false;
             bool window = false;
+            bool state = false;                           // A state condition: the rest below
+            const void* src = nullptr;
+            QString from, to;
+            bool change = false;
+            int  sev = -1;
+            QString curText;
+            int  curLevel = -1;
+            struct Ev { QString text; int level; uint64_t time; };
+            QVector<Ev> pending;                          // Reports of this step (worker)
+            bool fireState( const Ev& e );                // Updates the current state; true: fires
             int  edge = 1;
             bool outside = true;
             double level = 0, lo = 0, hi = 0, h = 0;
             bool armR = false, armF = false, armW = false;   // Armed sides
-            bool pause = false, single = true;
+            bool needDerive = false;                      // Sides from the value at the next step
+            bool pause = false, keyframe = false, single = true;
             uint64_t holdoff = 0, holdEnd = 0;
             int  max = 0, hits = 0;
             bool done = false;                            // Disarmed itself: no more hits
@@ -144,6 +176,10 @@ class Triggers : public QObject, public SimWatch, public Updatable
         bool compileOne( const Trigger& t, Check& c );
         QString condXml( const TrigCond& c );
         void summary();
+        void keyFrame( Trigger* t, uint64_t hit, bool resumeAfter );   // The key frame action
+        bool hit( Check& c, uint64_t t, double v, bool quiet );        // Counts a hit; true: stop there
+        struct Saved { bool armR, armF, armW, done; uint64_t holdEnd; int level; QString text; };
+        QHash<int, Saved> m_loaded;   // Trigger state read from a keyframe, applied by restored()
 
         QList<Trigger> m_list;
         int m_nextId = 1;
@@ -152,7 +188,9 @@ class Triggers : public QObject, public SimWatch, public Updatable
         QVector<Check> m_checks;      // Worker side: only touched with the worker idle elsewhere
         QVector<Hit>   m_fired;       // Hits of the worker, taken in updateStep()
         bool m_dirty = false;         // Definitions changed: recompile at the next frame
-        bool m_derive = false;        // A keyframe was loaded: the armed sides come from the values
+        bool m_firstDone = false;     // The run's first solved step is done (start states don't fire)
+        uint64_t m_keepUntil = 0;     // A key frame −Δ in progress: the hits up to the trigger stay
+        bool m_preBusy = false;       // A key frame −Δ is being made
         bool m_wasPaused = false;
         QVector<int> m_countNew;      // Count-only hits since the last summary, by trigger id
 

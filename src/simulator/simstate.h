@@ -33,6 +33,7 @@ class StateIO
         bool overflow() { return m_over; }     // Saving: out of room; loading: read past the end
         void fail() { m_over = true; }         // Bad data while loading: the keyframe is refused
         size_t size()   { return m_p-m_begin; }
+        size_t remaining() { return m_end-m_p; }   // Loading: bytes not read yet
 
         template<class T> inline void io( T& v ) { raw( &v, sizeof( T ) ); }
         template<class T, size_t N> inline void io( T (&a)[N] ) { raw( a, sizeof( T )*N ); }

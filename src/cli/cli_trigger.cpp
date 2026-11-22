@@ -12,6 +12,7 @@
 #include "pin.h"
 #include "simulator.h"
 #include "triggers.h"
+#include "keyframes.h"
 
 namespace
 {
@@ -47,8 +48,26 @@ bool isPin( const QString& ref )
 // The watch (§11): IC1.VDD, IC1.3, Q1.G-Q1.S, IC1.5:i, R5:i, R5 (across), node:R5.rPin
 void parseWatch( const QString& w, TrigCond& c )
 {
-    c.comp.clear(); c.pin.clear(); c.refComp.clear(); c.ref.clear(); c.node.clear();
+    c.comp.clear(); c.pin.clear(); c.refComp.clear(); c.ref.clear(); c.node.clear(); c.block.clear();
     c.sig = "volt";
+    int colon = w.lastIndexOf(':');
+    if( colon > 0 && !w.startsWith("node:") && w.mid( colon+1 ).toLower() != "i" )   // IC1:supply, Q1:state
+    {
+        Component* comp = CliRefs::comp( w.left( colon ) );
+        c.sig  = "state";
+        c.kind = "state";
+        c.comp = comp->getUid();
+        QString b = w.mid( colon+1 );
+        c.block = ( b.toLower() == "state" ) ? "" : b;
+        if( !Triggers::stateSource( comp, c.block ) )
+        {
+            QStringList bl = Triggers::stateBlocks( comp );
+            for( QString& x : bl ) if( x.isEmpty() ) x = "state";
+            if( bl.isEmpty() ) throw CliError( w.left( colon )+" reports no state");
+            throw CliError("no state "+b+" on "+w.left( colon )+": "+bl.join(", "));
+        }
+        return;
+    }
     if( w.startsWith("node:") )
     {
         QString uid, pin;
@@ -98,6 +117,26 @@ double value( const QString& v, const QString& unit )
 // The condition (§11): rise:4, fall:8, cross:0, out:0..1.2, in:4.5..5.5
 void parseCond( const QString& s, TrigCond& c )
 {
+    if( c.sig == "state" )       // ON->UVLO, any->RUN, change, >=FAULT
+    {
+        c.kind = "state";
+        c.change = false; c.sev = -1; c.from.clear(); c.to.clear();
+        if( s.toLower() == "change" ){ c.change = true; return; }
+        if( s.startsWith(">=") )
+        {
+            c.sev = Triggers::levelOf( s.mid( 2 ) );
+            if( c.sev < 0 ) throw CliError("a severity is OFF, ON, WAIT or FAULT");
+            return;
+        }
+        QStringList ft = s.split("->");
+        if( ft.size() != 2 ) throw CliError("a state condition is FROM->TO (either may be any), change, or >=FAULT");
+        c.from = ft.at( 0 ).trimmed();
+        c.to   = ft.at( 1 ).trimmed();
+        if( c.from.toLower() == "any" ) c.from.clear();
+        if( c.to.toLower() == "any" ) c.to.clear();
+        if( c.from.isEmpty() && c.to.isEmpty() ) throw CliError("any->any: use change");
+        return;
+    }
     int colon = s.indexOf(':');
     if( colon <= 0 ) throw CliError("invalid condition: "+s+" (rise:L, fall:L, cross:L, out:LOW..HIGH, in:LOW..HIGH)");
     QString k = s.left( colon ).toLower(), v = s.mid( colon+1 );
@@ -129,7 +168,6 @@ void parseOptions( CliCtx& c, Trigger& t, bool isNew )
     if( c.has("keyframe") )
     {
         t.keyframe = c.flag("keyframe");
-        if( t.keyframe ) throw CliError("--keyframe: the key frame action is not built yet (phase 3b, step 2)");
     }
     if( c.has("before") ) t.before = Cli::parseTime( c.opt("before") );
     if( c.has("mode") )
@@ -177,7 +215,10 @@ QJsonObject Cli::triggerJson( int id )
         {"last", t->hits.isEmpty() ? QJsonValue() : QJsonValue( Cli::timeStr( t->hits.last() ) )} };
     if( !t->name.isEmpty() ) o["name"] = t->name;
     QString err = tr->check( *t );
+    if( err.isEmpty() && t->keyframe && KeyFrames::self()->folder().isEmpty() )
+        err = "a key frame needs the circuit saved to a file: it pauses instead";
     if( !err.isEmpty() ) o["warning"] = err;
+    if( t->before ) o["before"] = Cli::timeStr( t->before );
     return o;
 }
 
@@ -192,12 +233,14 @@ void CliApi::registerTrigger()
         return a;
     });
 
-    add("trigger add", "trigger add <watch> <condition> [--pause] [--mode single|normal] [--holdoff T] [--max N] "
-        "[--hyst V] [--name TEXT]",
+    add("trigger add", "trigger add <watch> <condition> [--pause] [--keyframe [--before T]] [--mode single|normal] "
+        "[--holdoff T] [--max N] [--hyst V] [--name TEXT]",
         "A new trigger. Watch: IC1.VDD or IC1.3 (pin number) = a pin to ground; Q1.G-Q1.S = a pin pair; "
         "R5 = across a two-pin part; IC1.5:i = current into a pin; R5:i = current through a two-pin part (pin 1 to 2); "
-        "node:R5.rPin = a node. Condition: rise:4, fall:8, cross:0 (either), out:0..1.2, in:4.5..5.5 (values with "
-        "or without a unit: 350mA, 2.5V). --pause pauses at the step that fired; without it the trigger only counts. "
+        "node:R5.rPin = a node; IC1:supply = a block's state, Q1:state = a part's own state. Condition: rise:4, fall:8, "
+        "cross:0 (either), out:0..1.2, in:4.5..5.5 (values with or without a unit: 350mA, 2.5V); for a state: ON->UVLO, "
+        "any->RUN, change, >=FAULT. --pause pauses at the step that fired; --keyframe saves a key frame there (--before T: "
+        "that long before it, with the history); with neither the trigger only counts. "
         "Default mode single (disarms after firing); --holdoff or --max make it normal. --hyst: default 1 % of the "
         "level (at least 1 mV / 1 µA).",
         []( CliCtx& c ) -> QJsonValue

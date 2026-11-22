@@ -94,6 +94,7 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
 
         // Operating state of a built-in part (BJT, MOSFET, SCR...): see docs/PART_STATES.md
         StateLog* stateLog() { return m_showState ? m_stateLog : nullptr; }   // nullptr: none, or hidden
+        StateLog* stateLogAny() { return m_stateLog; }   // Shown or not (triggers watch it either way)
         bool showState() { return m_showState; }
         void setShowState( bool s ) { m_showState = s; }
 

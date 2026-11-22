@@ -244,7 +244,7 @@ bool CliApi::parseArgv( QJsonArray argv, QString& cmd, CliCtx& ctx, QString& err
                 ctx.opts[key] = tokens.at( ++i );
             else ctx.opts[key] = true;
         }
-        else if( t.contains('=') && !t.startsWith('=') && !t.startsWith('-') )
+        else if( t.contains('=') && !t.startsWith('=') && !t.startsWith('-') && !t.startsWith('>') && !t.startsWith('<') )
         {
             int eq = t.indexOf('=');
             ctx.sets[t.left( eq )] = t.mid( eq+1 );

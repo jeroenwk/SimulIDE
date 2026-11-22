@@ -14,6 +14,11 @@ Run control: sim run --until-trigger and sim run --for end at a pause trigger, a
 re-arms a single trigger whose hit is gone), replaying forward gives the same hits. Saved:
 save and reopen keep the triggers; delete and undo. Start: a signal that starts above a rising
 level does not fire.
+Step 2: the key frame action (at the trigger, named by it; 1 ms before a falling trigger at 11 ms:
+saved at 10 ms, with the state the run passed through, bit for bit), the run going on, a key
+frame saved before a trigger was added still loading without "circuit changed"; part states on
+led_driver board_mains (frozen copy): supply any -> ON pauses when the state log says ON, a
+block's start state does not fire "change", ">=WAIT", a wrong block name lists the blocks.
 """
 import os
 import tempfile
@@ -127,6 +132,85 @@ def test(sim):
     sim.check("undo: back", len(c("trigger", "list")), len(saved), absolute=0)
     c("redo")
     sim.check("redo: gone again", len(c("trigger", "list")), len(saved) - 2, absolute=0)
+
+    keyframes(sim, os.path.dirname(path))
+    states(sim)
+
+
+def keyframes(sim, folder):
+    """Step 2: the key frame action, at the trigger and before it; trigger edits and key frames."""
+    c = sim.cli
+    build(c)
+    path = os.path.join(folder, "rc_kf.sim1")
+    c("circuit", "save", path)
+    c("sim", "speed", "10")                       # 5 ms per frame: the history holds the 10 ms before
+    c("trigger", "add", "C1", "rise:6.3212", "--keyframe", "--name", "at tau")       # 1: at 1 ms
+    c("trigger", "add", "C1", "fall:3.6788", "--keyframe", "--before", "1ms")        # 2: at 11 ms, saved at 10 ms
+    r = c("sim", "run", "--for", "15ms", timeout=300)
+    sim.check("key frame action: the run goes on", secs(r["time_ps"]), 15e-3, absolute=STEP)
+    kfs = c("sim", "keyframe", "list")["keyframes"]
+    sim.log("key frames: %s" % [(k["n"], k["time"], k["note"]) for k in kfs])
+    sim.check("two key frames saved", len(kfs), 2, absolute=0)
+    if len(kfs) == 2:
+        sim.check("at the trigger: its time", secs(kfs[0]["time_ps"]), TAU, absolute=STEP)
+        sim.check("at the trigger: named by the trigger", 1 if kfs[0]["note"] == "at tau" else 0, 1, absolute=0, note=kfs[0]["note"])
+        sim.check("before: 1 ms before the falling trigger", secs(kfs[1]["time_ps"]), 10e-3, absolute=STEP)
+        sim.check("before: described by the trigger", 1 if kfs[1]["note"] == "C1 pins 1–2 (V) ↓ 3.6788 V" else 0, 1, absolute=0,
+                  note=kfs[1]["note"])
+    hits2 = hits(c, 2)
+    sim.check("before: the trigger's hit kept, not fired again on the replay", len(hits2), 1, absolute=0, note=str(hits2))
+    # the state of the key frame before = the state the run passed through at that time
+    c("sim", "keyframe", "open", str(kfs[1]["n"]))
+    h_kf = c("sim", "hash", "--elements")
+    c("sim", "stop")
+    c("trigger", "disarm", "1", "2")
+    c("sim", "run", "--for", "%dps" % (int(kfs[1]["time_ps"]) - 1), timeout=300)   # A run starts at 1 ps
+    h_run = c("sim", "hash", "--elements")
+    sim.check("before: the same state as the run at that time", 1 if (h_kf["hash"], h_kf["state"]) == (h_run["hash"], h_run["state"]) else 0,
+              1, absolute=0, note="%s %s vs %s %s" % (h_kf["time_ps"], h_kf["hash"], h_run["time_ps"], h_run["hash"]))
+    c("sim", "stop")
+
+    # key frames and trigger edits: a trigger added after a key frame was saved; it still loads,
+    # without "the circuit changed", and the new trigger starts from its signal
+    c("trigger", "add", "C1", "rise:9", "--pause")   # 3
+    n = len(c("messages")["lines"])
+    c("sim", "keyframe", "open", str(kfs[1]["n"]))    # 10 ms: charged, the falling edge next
+    new = c("messages")["lines"][n:]
+    sim.check("key frame after a trigger edit: no 'circuit changed'", 0 if any("changed" in l for l in new) else 1, 1, absolute=0,
+              note=str([l for l in new if "changed" in l]))
+    r = c("sim", "run", "--until-trigger", "--timeout", "30ms", timeout=300)
+    sim.check("the added trigger fires on from the key frame", secs(r["time_ps"]), 20e-3 + 2.3026 * TAU, absolute=STEP)
+    c("sim", "stop")
+
+
+def states(sim):
+    """Step 2: part states, on led_driver board_mains (frozen copy: its MT7833A reports three blocks)."""
+    c = sim.cli
+    here = os.path.dirname(os.path.abspath(__file__))
+    c("circuit", "open", os.path.join(here, "floating_pair", "board_mains.sim1"), "--discard")
+    c("trigger", "add", "MT7833A-1:supply", "any->ON", "--pause")        # 1
+    c("trigger", "add", "MT7833A-1:supply", "change", "--mode", "normal")  # 2: the start state (UVLO) does not fire
+    c("trigger", "add", "MT7833A-1:pwm", ">=WAIT", "--mode", "normal")     # 3
+    r = c("sim", "run", "--until-trigger", "--timeout", "1s", timeout=600)
+    log = [e for e in c("status", "MT7833A-1")["history"] if e["block"] == "supply" and e["text"] == "ON"]
+    sim.check("state: paused when the state log says supply ON", int(r["time_ps"]), int(Cli_ps(log[0]["time"])) if log else 0,
+              absolute=1e6, note="%s vs %s (the log's time is text: 1 us)" % (r["time"], log[0]["time"] if log else None))
+    h2 = hits(c, 2)
+    sim.check("state change: the start state did not fire", len(h2), 1, absolute=0, note=str(h2))
+    sim.check("state >= WAIT: pwm WAIT COMP at the same step", len(hits(c, 3)), 1, absolute=0)
+    try:
+        c("trigger", "add", "MT7833A-1:foo", "change")
+        ok = 0
+    except Exception as e:
+        ok = 1 if "supply, fb, pwm" in str(e) else 0
+    sim.check("a wrong block names the blocks", ok, 1, absolute=0)
+    c("sim", "stop")
+
+
+def Cli_ps(t):
+    """'312.888 ms' -> ps"""
+    v, u = t.split()
+    return round(float(v) * {"s": 1e12, "ms": 1e9, "us": 1e6, "µs": 1e6, "ns": 1e3, "ps": 1}[u])
 
 
 if __name__ == "__main__":

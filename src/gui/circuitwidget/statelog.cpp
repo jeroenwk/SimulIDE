@@ -15,6 +15,8 @@ uint64_t StateLog::nextSeq()
     return ++s_seq;
 }
 
+StateWatch* StateLog::s_watch = nullptr;
+
 static QMutex s_allLock;
 static QList<StateLog*> s_all;    // Every log, subcircuit parts included, in creation order (keyframes)
 
@@ -68,6 +70,8 @@ bool StateLog::report( QString text, int level, uint64_t time )
     Event e = { time, text, level, nextSeq() };
     m_history.append( e );
     if( level > m_peak.level ) m_peak = e;
+    lock.unlock();
+    if( s_watch ) s_watch->stateReport( this, text, level, time );   // Triggers
     return true;
 }
 

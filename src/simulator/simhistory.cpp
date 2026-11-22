@@ -198,6 +198,13 @@ bool SimHistory::saveAll( Simulator* sim, StateIO& s )
     if( !sim->simCore( s ) ) return false;
     if( !s.mark( 0x54415453 ) ) return false;                  // STAT
     StateLog::ioAll( s );
+    SimWatch* w = sim->simWatch();                             // TRIG: the triggers' state (§10 of
+    if( s.saving() ){                                          // specs/triggers.html), when they have one
+        if( w && w->hasState() ){ s.mark( 0x47495254 ); w->ioState( s ); }
+    }else if( s.remaining() >= 4 ){
+        if( !s.mark( 0x47495254 ) ) return false;
+        if( w ) w->ioState( s );
+    }
     return true;
 }
 

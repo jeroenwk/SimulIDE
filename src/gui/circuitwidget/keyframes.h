@@ -44,8 +44,10 @@ class KeyFrames : public QObject
         const QList<KeyFrame>& list() { return m_list; }   // By time
         const KeyFrame* find( int n );
 
-        QString whyNotSave();               // "" when a key frame can be saved now
-        int     save( QString note, QString* error );       // Its number, 0 on error
+        QString whyNotSave( bool trigger=false );   // "" when a key frame can be saved now
+        // Its number, 0 on error. trigger: a trigger's key frame, taken at the step that fired
+        // with the worker idle, running or in a skip
+        int     save( QString note, QString* error, bool trigger=false );
         QString open( int n );              // Jump there: "" or an error
         QString setNote( int n, QString note );
         QString remove( const QList<int>& ns );
