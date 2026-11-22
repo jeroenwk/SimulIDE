@@ -13,6 +13,10 @@ fields that only the load set, or that a run left behind, made run 1 differ from
   so a run depended on when frames fell.
 - IoPin::m_inpVolt, WaveGen's time and next step, the clocked devices' clock state, the MCU
   compare unit's pin level (garbage before: never initialized).
+- An MCU timer's external clock level (McuTimer::enableExtClock), read when the reset writes
+  OPTION during Mcu::stamp, maybe before the clock pin's own stamp: the pin still had the mode the
+  load or the last run left, so the start level was random (887 CCP failed about every other
+  run of the suite, depending on the circuits run before). Now low at the start, like the nodes.
 
 Each circuit is opened, run 1 ms, stopped, run 1 ms again: the full state (every element's saved
 state, nodes, event queue) must be the same bit for bit. The flip-flops draw a random start

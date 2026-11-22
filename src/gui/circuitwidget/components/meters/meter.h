@@ -37,6 +37,7 @@ class Meter : public Component, public eResistor
         virtual void stamp() override;
         virtual void voltChanged() override;
         virtual void stepSettled() override;
+        virtual void runEvent() override;        // Sets the output pin (wired output only)
         virtual void updateStep() override;
         virtual void updateLabelColors() override;   // Display colours follow the theme
 
@@ -68,6 +69,13 @@ class Meter : public Component, public eResistor
         bool m_switchPins;
 
         IoPin* m_outPin;
+        // Output pin wired (set at stamp): its voltage follows the reading in simulation time,
+        // set by an event at the step where the reading changed, not once per GUI frame
+        bool     m_outLive;
+        uint64_t m_outT;                          // Time the output was last set
+        int      m_outN;                          // Times it was set at m_outT
+        void     outputNow();                     // Schedule the output update at this time
+        void     setOutput( double v );
         QGraphicsSimpleTextItem m_display;
 };
 

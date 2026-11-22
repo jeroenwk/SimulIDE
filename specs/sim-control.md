@@ -545,10 +545,12 @@ their own state) and reviewed; `sim history check` over all the circuits found w
   tables below are the current state.)*
 - **Known limits** (circuits that run but can't replay exactly; `sim history` says why where it
   can):
-  - A **meter's output pin** (ammeter, voltmeter `outnod`) is set once per GUI frame
-    (`Meter::updateStep`), so the circuit depends on when frames fall; a replay differs where
-    that output feeds something (2 examples). Would need the output updated at fixed simulated
-    times.
+  - A **meter's output pin** (ammeter, voltmeter `outnod`) was set once per GUI frame
+    (`Meter::updateStep`), so the circuit depended on when frames fell and a replay differed
+    where that output fed something. *Fixed 2026-11-22*: when the pin is wired, the output is
+    set by an event at the step where the reading changed (Mean/RMS: also at each block end),
+    solved at that same time; an unwired pin is still set per frame, at no cost
+    (`tests/regress/test_meter_output.py`).
   - **Steps that don't converge** (the UJT relaxation oscillator of Duncan 56.4, the centre-tap
     rectifier of Duncan 40.3): a step that iterates past its limit can be cut by the 50 ms
     wall-time guard (`breakStep`), so the run itself isn't repeatable; where no step is ever
@@ -630,7 +632,7 @@ Go back, but the replay differs (what differs, then the cause):
 
 | Circuit | Differs | Cause |
 |---|---|---|
-| `SimulIDE/resources/examples/Active/BJT/npn-curve.sim1` | (2026-11-22: no keyframe at the checked times: steps not solved when the frames fall) | a meter's output pin is set once per GUI frame (`Meter::updateStep`) and feeds the curve tracer's loop |
+| `SimulIDE/resources/examples/Active/BJT/npn-curve.sim1` | (2026-11-22: no keyframe at the checked times: steps not solved when the frames fall) | a meter's output pin was set once per GUI frame (`Meter::updateStep`) and feeds the curve tracer's scope. *Fixed the same day*: set in simulation time, goes back bit for bit |
 
 No result:
 
@@ -670,7 +672,7 @@ Covered, but the replay is not exact:
 
 | Part | When |
 |---|---|
-| Ammeter, voltmeter (`Meter`: Amperimeter, Voltimeter) | their output pin (`outnod`) takes the shown value once per GUI frame, so its value depends on when frames fall |
+| ~~Ammeter, voltmeter (`Meter`: Amperimeter, Voltimeter)~~ | ~~their output pin (`outnod`) takes the shown value once per GUI frame~~: fixed 2026-11-22, the wired output follows the reading in simulation time |
 | Any part whose model doesn't converge in a circuit (seen: the UJT in Duncan 56.4, a diode in Duncan 40.3) | a step cut by the 50 ms wall-time guard makes the run itself unrepeatable; no keyframe while no step is complete |
 
 Found on the way: the **first run after opening** `board_mains` differs from later runs (two
@@ -709,6 +711,10 @@ and noise are random on purpose otherwise). What differed, and the fix:
   Now every run applies the reset value.
 - The noise source's normal distribution had an uninitialized cache (no effect, but the state
   hash differed).
+- An MCU timer's external clock level (`McuTimer::enableExtClock`): the reset writes OPTION from
+  `Mcu::stamp`, possibly before the clock pin's own stamp, so the pin still had the mode the load
+  or the last run left and the start level was random (887 CCP, about every other suite run,
+  depending on the circuits run before). Now low during the start, as every node is at 0 V.
 
 Sweep of the 753 circuits of the repos (run 1 ms, stop, run 1 ms; seeds fixed): node voltages
 the same in all of them (3 too slow for the 120 s limit); the full saved state the same in 695.

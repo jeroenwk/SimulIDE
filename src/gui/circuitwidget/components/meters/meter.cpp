@@ -57,6 +57,9 @@ Meter::Meter( QString type, QString id )
     m_avgTime    = 0.1;
     m_block      = 100000000000ULL;   // 100 ms
     m_dispValue  = 0;
+    m_outLive    = false;
+    m_outT       = 0;
+    m_outN       = 0;
     initialize();
 
     addPropGroup( { tr("Main"), {
@@ -103,6 +106,8 @@ void Meter::initialize()
     m_blockStart = m_lastT = 0;
     m_held = m_sum = m_sum2 = m_result = 0;
     m_haveResult = false;
+    m_outT = (uint64_t)-1;            // Not set yet (0 is a time)
+    m_outN = 0;
     m_dispValue = 0;                  // A new run: the output pin starts at 0, not at the last
     m_outPin->setOutHighV( 0 );       // run's reading (the first run after opening differed);
                                       // high (at 0 V) as the constructor leaves it: in stamp()
@@ -113,6 +118,11 @@ void Meter::stamp()
     eResistor::stamp();
     m_outPin->setOutState( true );    // Not in initialize(): it stamps the node before the nodes are
                                       // initialized, and the changed-node list looped (npn-curve hung)
+    m_outLive = m_outPin->isConnected();
+    if( m_outLive ){                  // The output follows every change of the reading
+        m_ePin[0]->changeCallBack( this );
+        m_ePin[1]->changeCallBack( this );
+    }
     if( m_reading == rInstant ) return;
     uint64_t now = Simulator::self()->circTime();     // (a run resumed after a pause: from here)
     m_blockStart = m_lastT = now;
@@ -126,9 +136,52 @@ void Meter::voltChanged() { Simulator::self()->addToSettled( this ); }
 
 void Meter::stepSettled()                  // Once per converged step that changed a pin
 {
-    if( m_reading == rInstant ) return;
-    integrateTo( Simulator::self()->circTime() );
-    m_held = instant();
+    if( m_reading != rInstant ){
+        integrateTo( Simulator::self()->circTime() );
+        m_held = instant();
+    }
+    if( m_outLive ) outputNow();
+}
+
+// The output pin is set by an event at the time of the step that changed the reading, then
+// solved at that same time (a stamp from stepSettled would wait for the next event, whenever
+// that falls). Instant: the value now. Mean/RMS: what the display shows (evalAt), which changes
+// at each step until the first block ends, then only at block ends: an event at each block end.
+void Meter::outputNow()
+{
+    Simulator* sim = Simulator::self();
+    uint64_t now = sim->circTime();
+    if( m_outT == now && m_outN >= 16 && !eventTime ) return; // A meter whose output feeds its
+                                     // own leads could loop at one time: the rest at the next step
+    if( m_reading != rInstant && m_haveResult ){        // Only block ends change it now
+        if( !eventTime ) sim->addEvent( 0, this );       // (their chain not started yet)
+        return;
+    }
+    if( eventTime ){
+        if( eventTime == now ) return;          // Already due now
+        sim->cancelEvents( this );              // The block-end event (first block only)
+    }
+    sim->addEvent( 0, this );
+}
+
+void Meter::runEvent()
+{
+    Simulator* sim = Simulator::self();
+    uint64_t now = sim->circTime();
+    if( m_outT == now ) m_outN++;
+    else { m_outT = now; m_outN = 1; }
+    if( m_reading == rInstant ){ setOutput( instant() ); return; }
+
+    integrateTo( now );
+    setOutput( evalAt( now ) );
+    sim->addEvent( m_blockStart + m_block - now, this );  // The next block end
+}
+
+void Meter::setOutput( double v )
+{
+    if( v == m_outPin->outHighV() ) return;
+    m_outPin->setOutHighV( v );
+    m_outPin->setOutState( true );
 }
 
 double Meter::blockValue( double sum, double sum2, double span )
@@ -214,7 +267,8 @@ void Meter::updateStep()
     else m_display.setText( sign+QString::number( value,'f', decimals ).left(5)+"\n"+mult+m_unit
                           + ( m_reading == rRms ? " rms" : m_reading == rMean ? " avg" : "" ) );
 
-    m_outPin->setOutHighV( m_dispValue );
+    if( m_outLive ) return;                  // Set by the simulation (runEvent)
+    m_outPin->setOutHighV( m_dispValue );    // Not wired: only read back (CLI, pin voltage)
     m_outPin->setOutState( true );
 }
 
@@ -283,4 +337,6 @@ void Meter::simState( StateIO& s )
     s.io( m_haveResult );
     s.io( m_dispValue );
     s.io( m_switchPins );
+    s.io( m_outT );
+    s.io( m_outN );
 }

@@ -231,7 +231,11 @@ void McuTimer::enableExtClock( bool en )
 
     if( m_clockPin ){
         m_clockPin->changeCallBack( this, en );
-        m_clkState = m_clockPin->getInpState();
+        // At the start (the MCU reset, from Mcu::stamp) the pin may not be stamped yet: it still
+        // has the mode the load or the last run left (source, output...), so reading it gave a
+        // random start level (887 CCP: the first run differed). Every node starts at 0 V: low.
+        if( Simulator::self()->simState() == SIM_STARTING ) m_clkState = false;
+        else m_clkState = m_clockPin->getInpState();
     }
 }
 
