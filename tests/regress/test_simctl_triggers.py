@@ -19,6 +19,8 @@ saved at 10 ms, with the state the run passed through, bit for bit), the run goi
 frame saved before a trigger was added still loading without "circuit changed"; part states on
 led_driver board_mains (frozen copy): supply any -> ON pauses when the state log says ON, a
 block's start state does not fire "change", ">=WAIT", a wrong block name lists the blocks.
+Steps 3-4: the Triggers pane (tab / split, the editor opens), a part's Triggers tab, transistor
+and diode pins by name (G-S, B-E, A->K), the scope's own trigger (fixed 5 V and Auto: ln2 tau).
 """
 import os
 import tempfile
@@ -136,6 +138,50 @@ def test(sim):
     keyframes(sim, os.path.dirname(path))
     states(sim)
     pane(sim)
+    parts(sim)
+
+
+def parts(sim):
+    """Step 4: the Triggers tab of a part's properties; pin names of transistors and diodes; the scope's
+    own trigger as a simulation trigger (D21)."""
+    c = sim.cli
+    c("circuit", "new", "--discard")
+    c("comp", "add", "Mosfet", "--label", "Q1", "--at", "0,0")
+    c("comp", "add", "BJT", "--label", "Q2", "--at", "80,0")
+    c("comp", "add", "Diode", "--label", "D1", "--at", "160,0")
+    rows = [c("trigger", "add", "Q1.G-Q1.S", "rise:4")["watches"], c("trigger", "add", "Q1.D:i", "rise:1")["watches"],
+            c("trigger", "add", "Q2.B-Q2.E", "rise:0.6")["watches"], c("trigger", "add", "D1:i", "rise:1")["watches"],
+            c("trigger", "add", "Q1:state", "any->ACTIVE")["watches"]]
+    sim.check("transistor and diode pins by name", 1 if rows == ["Q1 pins G–S (Vgs)", "Q1 pin D (I)", "Q2 pins B–E (Vbe)",
+                                                                 "D1 current (A→K)", "Q1 state"] else 0, 1, absolute=0, note=str(rows))
+    for part in ("Q1", "D1"):
+        try:
+            c("view", "props", part, "--tab", "Triggers")
+            ok = 1
+        except Exception as e:
+            ok, _ = 0, sim.log(str(e))
+        sim.check("%s properties: a Triggers tab" % part, ok, 1, absolute=0)
+
+    # the scope: channel 1 on C1 of the RC; a fixed 5 V level fires ln2 tau after each rising edge,
+    # Auto (the middle of the range, ~5 V) as well
+    build(c)
+    c("comp", "add", "Oscope", "--label", "S", "--at", "400,0")
+    c("wire", "add", "C1.lPin", "S.Pin0")
+    c("comp", "set", "S", "Trigger=0", "TrigAuto=false", "TrigLevel=5")
+    t = c("trigger", "add", "scope:S", "--mode", "normal")
+    sim.check("scope: its row", 1 if (t["watches"], t["condition"]) == ("S Ch1", "↑ 5 V") else 0, 1, absolute=0, note=str(t))
+    c("sim", "run", "--for", "50ms")
+    h = hits(c, t["id"])
+    sim.check("scope fixed level: 3 rising crossings in 50 ms", len(h), 3, absolute=0)
+    sim.check("scope fixed level: at ln2 tau", h[0] if h else 0, 0.6931 * TAU, absolute=STEP)
+    c("comp", "set", "S", "TrigAuto=true")
+    sim.check("scope Auto: the row follows", 1 if c("trigger", "list")[0]["condition"] == "↑ auto" else 0, 1, absolute=0)
+    c("sim", "run", "--for", "100ms")
+    h = hits(c, t["id"])
+    sim.check("scope Auto: on firing each cycle", len(h), 8, absolute=0, note=str(h))
+    sim.check("scope Auto: near the middle (ln2 tau)", h[-1] if h else 0, 140e-3 + 0.6931 * TAU, absolute=5 * STEP)
+    c("comp", "set", "S", "Trigger=4")
+    sim.check("scope trigger off: a warning on its row", 1 if "warning" in c("trigger", "list")[0] else 0, 1, absolute=0)
 
 
 def pane(sim):

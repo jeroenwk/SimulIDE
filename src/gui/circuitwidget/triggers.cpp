@@ -24,10 +24,13 @@
 #include "subcircuit.h"
 #include "mcu.h"
 #include "scriptcpu.h"
+#include "oscope.h"
+#include "oscopechannel.h"
 
 #define TRIG_LOG qDebug() << "[triggers]"
 
-static const char* kUndoId = "__triggers__";   // The undo step's "component" (Circuit::restoreState)
+static const char* kUndoId = "__triggers__";
+static QString knownName( class Component* c, class Pin* p );   // The undo step's "component" (Circuit::restoreState)
 
 //------------------------------------------------------------------------------------------------
 // Conditions
@@ -131,6 +134,7 @@ Pin* Triggers::findPin( const QString& uid, const QString& name )
     for( Pin* p : pins ) if( p && p->getLabelText() == name ) return p;
     for( Pin* p : pins ) if( p && pinName( p, c ).compare( name, Qt::CaseInsensitive ) == 0 ) return p;
     for( Pin* p : pins ) if( p && p->getLabelText().compare( name, Qt::CaseInsensitive ) == 0 ) return p;
+    for( Pin* p : pins ) if( p && knownName( c, p ).compare( name, Qt::CaseInsensitive ) == 0 ) return p;   // Q1.G
     bool isNum = false;
     int n = name.toInt( &isNum );             // A pin number: 1-based, as on the package
     if( isNum && n >= 1 && n <= (int)pins.size() ) return pins[n-1];
@@ -139,6 +143,7 @@ Pin* Triggers::findPin( const QString& uid, const QString& name )
 
 static QString compName( Component* c );
 static QString pinLabel( Component* c, Pin* p );
+static QString knownName( Component* c, Pin* p );
 
 static void splitNode( const QString& node, QString& uid, QString& pin )
 {
@@ -150,7 +155,14 @@ static void splitNode( const QString& node, QString& uid, QString& pin )
 QString Triggers::check( const Trigger& t )
 {
     const TrigCond& c = t.cond;
-    if( c.sig != "volt" && c.sig != "curr" && c.sig != "state" ) return "unknown signal "+c.sig;
+    if( c.sig != "volt" && c.sig != "curr" && c.sig != "state" && c.sig != "scope" ) return "unknown signal "+c.sig;
+    if( c.sig == "scope" )
+    {
+        Oscope* o = dynamic_cast<Oscope*>( compByUid( c.comp ) );
+        if( !o ) return "no scope "+c.comp;
+        if( o->trigger() < 0 || o->trigger() > 3 ) return "the scope's trigger is off: choose its channel";
+        return "";
+    }
     if( c.sig == "state" )
     {
         Component* comp = compByUid( c.comp );
@@ -205,8 +217,36 @@ static int pinNumber( Component* c, Pin* p )
     return 0;
 }
 
+// The usual name of an unlabelled pin of a built-in part (transistors: by name only, §13)
+static QString knownName( Component* c, Pin* p )
+{
+    static const QHash<QString, QHash<QString, QString>> names = {
+        { "Mosfet",  { {"Dren","D"}, {"Sour","S"}, {"Gate","G"} } },
+        { "JFET",    { {"Dren","D"}, {"Sour","S"}, {"Gate","G"} } },
+        { "BJT",     { {"collector","C"}, {"emiter","E"}, {"base","B"} } },
+        { "SCR",     { {"lPin","A"}, {"rPin","K"}, {"gPin","G"} } },
+        { "Triac",   { {"lPin","MT1"}, {"rPin","MT2"}, {"gPin","G"} } },
+        { "Diode",   { {"lPin","A"}, {"rPin","K"} } },
+        { "Zener",   { {"lPin","A"}, {"rPin","K"} } },
+        { "Led",     { {"lPin","A"}, {"rPin","K"} } },
+    };
+    auto t = names.find( c->itemType() );
+    if( t == names.end() ) return "";
+    return t->value( Triggers::pinName( p, c ) );
+}
+
+static QString pinShort( Component* c, Pin* p )   // "G", "VDD", "1"
+{
+    QString k = knownName( c, p );
+    if( !k.isEmpty() ) return k;
+    QString l = p->getLabelText().trimmed();
+    return l.isEmpty() ? QString::number( pinNumber( c, p ) ) : l;
+}
+
 static QString pinLabel( Component* c, Pin* p )   // "pin 3 VDD", "pin 1", "pin G"
 {
+    QString k = knownName( c, p );
+    if( !k.isEmpty() ) return "pin "+k;
     QString name = p->getLabelText().trimmed();
     int n = pinNumber( c, p );
     if( name.isEmpty() ) return "pin "+QString::number( n );
@@ -227,6 +267,13 @@ static QString timeFmt( uint64_t ps ) { return KeyFrames::timeText( ps ); }
 QString Triggers::watchText( const Trigger& t )
 {
     const TrigCond& c = t.cond;
+    if( c.sig == "scope" )
+    {
+        Oscope* o = dynamic_cast<Oscope*>( compByUid( c.comp ) );
+        if( !o ) return c.comp+" (scope)";
+        int ch = o->trigger();
+        return compName( o )+( ch >= 0 && ch < 4 ? " Ch"+QString::number( ch+1 ) : " (trigger off)" );
+    }
     if( c.sig == "state" )
     {
         Component* comp = compByUid( c.comp );
@@ -249,7 +296,11 @@ QString Triggers::watchText( const Trigger& t )
     int n = pinNumber( comp, p );
     if( c.sig == "curr" )
     {
-        if( twoPin ) return compName( comp )+( n == 1 ? " current (1→2)" : " current (2→1)" );
+        if( twoPin ){
+            std::vector<Pin*> ps = comp->getPins();
+            QString a = pinShort( comp, ps[0] ), b = pinShort( comp, ps[1] );
+            return compName( comp )+( n == 1 ? " current ("+a+"→"+b+")" : " current ("+b+"→"+a+")" );
+        }
         return compName( comp )+" "+pinLabel( comp, p )+" (I)";
     }
     if( c.ref.isEmpty() ) return compName( comp )+" "+pinLabel( comp, p );
@@ -260,8 +311,7 @@ QString Triggers::watchText( const Trigger& t )
     if( !rc || !r ) return compName( comp )+" "+pinLabel( comp, p )+" – "+rcUid+"."+c.ref;
     if( rc != comp ) return compName( comp )+" "+pinLabel( comp, p )+" – "+compName( rc )+" "+pinLabel( rc, r );
 
-    auto shortName = [&]( Pin* x ){ QString l = x->getLabelText().trimmed();
-                                    return l.isEmpty() ? QString::number( pinNumber( comp, x ) ) : l; };
+    auto shortName = [&]( Pin* x ){ return pinShort( comp, x ); };
     QString a = shortName( p ), b = shortName( r );
     QString known;                        // A familiar name for a transistor's pin pair
     QString ab = (a+b).toUpper();
@@ -272,6 +322,12 @@ QString Triggers::watchText( const Trigger& t )
 QString Triggers::condText( const Trigger& t )
 {
     const TrigCond& c = t.cond;
+    if( c.sig == "scope" )
+    {
+        Oscope* o = dynamic_cast<Oscope*>( compByUid( c.comp ) );
+        if( !o ) return "↑";
+        return o->trigAuto() ? "↑ auto" : "↑ "+fmt( o->trigLevel(), "V" );
+    }
     if( c.sig == "state" )
     {
         if( c.change ) return "any change";
@@ -389,6 +445,7 @@ static QString esc( const QString& s ) { return s.toHtmlEscaped(); }
 QString Triggers::condXml( const TrigCond& c )
 {
     QString x = "<cond sig=\""+c.sig+"\"";
+    if( c.sig == "scope" ) return x+" comp=\""+esc( c.comp )+"\"/>";   // Channel and level: the scope's own
     if( c.sig == "state" )
     {
         x += " comp=\""+esc( c.comp )+"\"";
@@ -463,7 +520,8 @@ void Triggers::restoreXml( const QString& xml )
             c.ref     = ce.attribute("ref");
             if( c.ref == "gnd" ) c.ref.clear();
             c.node    = ce.attribute("node");
-            if( c.sig == "state" ){
+            if( c.sig == "scope" ) c.kind = "scope";
+            else if( c.sig == "state" ){
                 c.kind   = "state";
                 c.block  = ce.attribute("block");
                 c.change = ce.attribute("change") == "1";
@@ -611,6 +669,25 @@ bool Triggers::compileOne( const Trigger& t, Check& k )
     k.holdoff  = t.single ? 0 : t.holdoff;
     k.max      = t.single ? 1 : t.max;
     k.hits     = t.hits.size();
+    if( c.sig == "scope" )             // §4.5: a rising edge of the scope's trigger channel at its level
+    {
+        Oscope* o = dynamic_cast<Oscope*>( compByUid( c.comp ) );
+        std::vector<Pin*> pins = o->getPins();
+        int ch = o->trigger();
+        if( (int)pins.size() < 5 ) return false;
+        k.p0 = pins[ch];
+        k.p1 = pins[4];                   // The scope's ground lead
+        k.edge = 1;
+        if( o->trigAuto() ) k.scope = (OscopeChannel*)o->channel( ch );
+        else{
+            k.level = o->trigLevel();
+            k.h = o->filter() > 0 ? o->filter() : std::max( 0.01*std::fabs( k.level ), 1e-3 );
+        }
+        k.n0 = k.p0->getEnode();
+        k.n1 = k.p1->getEnode();
+        k.direct = k.n0 && k.n1;
+        return true;
+    }
     if( c.sig == "state" )
     {
         Component* comp = compByUid( c.comp );
@@ -752,6 +829,7 @@ void Triggers::stepDone()   // Worker: after each solved step
             continue;
         }
         if( c.done ) continue;
+        if( c.scope && !c.scope->autoLevel( &c.level, &c.h ) ) continue;   // Auto: the scope's level now
         double v = c.value();
         if( c.needDerive ){ c.needDerive = false; c.derive( v ); continue; }
         if( c.eval( v ) ) stop |= hit( c, t, v, quiet );
@@ -980,4 +1058,10 @@ QList<int> Triggers::watchingPart( const QString& uid )
         if( c.comp == uid || c.refComp == uid || nodeUid == uid ) ids.append( t.id );
     }
     return ids;
+}
+
+int Triggers::scopeTrigger( const QString& uid )
+{
+    for( const Trigger& t : m_list ) if( t.cond.sig == "scope" && t.cond.comp == uid ) return t.id;
+    return 0;
 }

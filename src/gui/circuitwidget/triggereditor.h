@@ -9,6 +9,7 @@
 
 #include <QWidget>
 #include <QDialog>
+#include <QPointer>
 
 #include "triggers.h"
 
@@ -86,6 +87,59 @@ class TriggerDialog : public QDialog   // The Triggers tab's editor: OK applies
         TriggerEditor* editor() { return m_ed; }
     private:
         TriggerEditor* m_ed;
+};
+
+// The Triggers tab of a part's properties (§4): its triggers (the same rows as the circuit's tab,
+// "Watches" without the part's label), + and −, and the editor of the selected one. Changes
+// apply at once, as the other property tabs (a short pause after typing: one undo step)
+class TriggerTab : public QWidget
+{
+    Q_OBJECT
+    public:
+        TriggerTab( QWidget* parent, Component* part );
+
+ static bool wanted( Component* part );   // Parts whose pins or states can be watched
+
+    private:
+        void fill();
+        void select( int id );
+        void selectionChanged();
+        void apply();
+        void addNew();
+        void removeSelected();
+
+        Component*     m_part;
+        class QTreeWidget* m_list;
+        TriggerEditor* m_ed;
+        class QPushButton* m_addBtn;   // A new trigger's form: adds it as it is
+        class QTimer*  m_apply;
+        QPointer<Triggers> m_trig;
+        int  m_id = 0;              // The trigger in the editor; 0: a new one, not added yet
+        bool m_draft = false;
+        bool m_filling = false;
+};
+
+// The scope's Triggers tab (D21, §4.5): its own trigger channel and level (Auto or a voltage),
+// edited here as in its Expand panel, and a box that makes it a simulation trigger: a row in
+// the circuit's Triggers tab (its action and mode are set there); deleting the row clears the box
+class ScopeTriggerTab : public QWidget
+{
+    Q_OBJECT
+    public:
+        ScopeTriggerTab( QWidget* parent, Component* scope );
+
+    private:
+        void fill();
+        void setProp( const QString& prop, const QString& val );   // One undo step
+
+        Component* m_scope;
+        QPointer<Triggers> m_trig;
+        QComboBox* m_ch;
+        QCheckBox* m_auto;
+        QLineEdit* m_level;
+        QCheckBox* m_sim;
+        QLabel*    m_row;
+        bool m_filling = false;
 };
 
 #endif

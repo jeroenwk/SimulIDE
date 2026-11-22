@@ -50,6 +50,13 @@ void parseWatch( const QString& w, TrigCond& c )
 {
     c.comp.clear(); c.pin.clear(); c.refComp.clear(); c.ref.clear(); c.node.clear(); c.block.clear();
     c.sig = "volt";
+    if( w.startsWith("scope:") )            // The scope's own trigger (§4.5)
+    {
+        Component* comp = CliRefs::comp( w.mid( 6 ) );
+        if( comp->itemType() != "Oscope" ) throw CliError( w.mid( 6 )+" is not an oscilloscope");
+        c.sig = "scope"; c.kind = "scope"; c.comp = comp->getUid();
+        return;
+    }
     int colon = w.lastIndexOf(':');
     if( colon > 0 && !w.startsWith("node:") && w.mid( colon+1 ).toLower() != "i" )   // IC1:supply, Q1:state
     {
@@ -117,6 +124,7 @@ double value( const QString& v, const QString& unit )
 // The condition (§11): rise:4, fall:8, cross:0, out:0..1.2, in:4.5..5.5
 void parseCond( const QString& s, TrigCond& c )
 {
+    if( c.sig == "scope" ) return;       // Its channel and level are the scope's settings
     if( c.sig == "state" )       // ON->UVLO, any->RUN, change, >=FAULT
     {
         c.kind = "state";
@@ -237,7 +245,8 @@ void CliApi::registerTrigger()
         "[--holdoff T] [--max N] [--hyst V] [--name TEXT]",
         "A new trigger. Watch: IC1.VDD or IC1.3 (pin number) = a pin to ground; Q1.G-Q1.S = a pin pair; "
         "R5 = across a two-pin part; IC1.5:i = current into a pin; R5:i = current through a two-pin part (pin 1 to 2); "
-        "node:R5.rPin = a node; IC1:supply = a block's state, Q1:state = a part's own state. Condition: rise:4, fall:8, "
+        "node:R5.rPin = a node; IC1:supply = a block's state, Q1:state = a part's own state; scope:Oscope-1 = the scope's own trigger (its channel and level, Auto or fixed, "
+        "set on the scope; no condition). Condition: rise:4, fall:8, "
         "cross:0 (either), out:0..1.2, in:4.5..5.5 (values with or without a unit: 350mA, 2.5V); for a state: ON->UVLO, "
         "any->RUN, change, >=FAULT. --pause pauses at the step that fired; --keyframe saves a key frame there (--before T: "
         "that long before it, with the history); with neither the trigger only counts. "
@@ -245,10 +254,11 @@ void CliApi::registerTrigger()
         "level (at least 1 mV / 1 µA).",
         []( CliCtx& c ) -> QJsonValue
     {
-        if( c.pos.size() < 2 ) throw CliError("usage: trigger add <watch> <condition> [options]");
+        if( c.pos.isEmpty() ) throw CliError("usage: trigger add <watch> <condition> [options]");
         Trigger t;
         parseWatch( c.pos.at( 0 ), t.cond );
-        parseCond( c.pos.at( 1 ), t.cond );
+        if( t.cond.sig != "scope" && c.pos.size() < 2 ) throw CliError("usage: trigger add <watch> <condition> [options]");
+        if( t.cond.sig != "scope" ) parseCond( c.pos.at( 1 ), t.cond );
         parseOptions( c, t, true );
         QString err = trig()->check( t );
         if( !err.isEmpty() ) throw CliError( err );

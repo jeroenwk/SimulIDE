@@ -18,6 +18,7 @@
 #include <QButtonGroup>
 
 #include "triggereditor.h"
+#include "keyframes.h"
 #include "circuit.h"
 #include "component.h"
 #include "node.h"
@@ -329,7 +330,7 @@ void TriggerEditor::setTrigger( const Trigger& t )
         m_edge->setCurrentIndex( c.edge > 0 ? 0 : c.edge < 0 ? 1 : 2 );
         QString u = c.sig == "curr" ? "A" : "V";
         bool fresh = c.comp.isEmpty() && c.node.isEmpty();
-        m_level->setText( fresh ? "" : num( c.level, u ) );
+        m_level->setText( fresh || std::isnan( c.level ) ? "" : num( c.level, u ) );
         m_low->setText( fresh || c.kind != "window" ? "" : num( c.low, u ) );
         m_high->setText( fresh || c.kind != "window" ? "" : num( c.high, u ) );
         m_hyst->setText( c.hyst >= 0 ? num( c.hyst, u ) : "" );
@@ -451,4 +452,329 @@ TriggerDialog::TriggerDialog( QWidget* parent, const Trigger& t, bool isNew )
     connect( m_ed, &TriggerEditor::edited, this, check );
     m_ed->setTrigger( t );
     check();
+}
+
+//------------------------------------------------------------------------------------------------
+// The Triggers tab of a part's properties (§4)
+
+#include <QApplication>
+#include <QHeaderView>
+#include <QTimer>
+#include <QToolButton>
+#include <QTreeWidget>
+
+bool TriggerTab::wanted( Component* part )
+{
+    if( !part || !Circuit::self() || !Circuit::self()->compList()->contains( part ) ) return false;   // Top level only
+    QString type = part->itemType();
+    if( type == "Ground" || type == "Tunnel" || type == "Node" ) return false;
+    return !part->getPins().empty() || !Triggers::stateBlocks( part ).isEmpty();
+}
+
+enum { tArmed = 0, tWatch, tCond, tAction, tMode, tHits, tLast, tCount };
+
+TriggerTab::TriggerTab( QWidget* parent, Component* part )
+          : QWidget( parent )
+{
+    m_part = part;
+    m_trig = Triggers::self();
+    setObjectName("Triggers");
+    QVBoxLayout* col = new QVBoxLayout( this );
+    col->setSpacing( 6 );
+
+    QHBoxLayout* top = new QHBoxLayout();
+    top->setContentsMargins( 0, 0, 0, 0 );
+    top->addWidget( new QLabel( tr("Triggers on %1").arg( Triggers::partName( part ) ), this ), 1 );
+    QToolButton* add = new QToolButton( this );
+    add->setText("+");
+    add->setToolTip( tr("New trigger on this part") );
+    QToolButton* del = new QToolButton( this );
+    del->setText("−");
+    del->setToolTip( tr("Delete the selected triggers (Edit → Undo brings them back)") );
+    top->addWidget( add );
+    top->addWidget( del );
+    QWidget* topW = new QWidget( this );
+    topW->setLayout( top );
+    col->addWidget( topW );
+
+    m_list = new QTreeWidget( this );
+    m_list->setColumnCount( tCount );
+    m_list->setHeaderLabels( { "", tr("Watches"), tr("Condition"), tr("Action"), tr("Mode"), tr("Hits"), tr("Last") } );
+    m_list->setRootIsDecorated( false );
+    m_list->setUniformRowHeights( true );
+    m_list->setSelectionMode( QAbstractItemView::ExtendedSelection );
+    m_list->header()->setStretchLastSection( false );
+    for( int c=0; c<tCount; ++c ) m_list->header()->setSectionResizeMode( c, QHeaderView::ResizeToContents );
+    m_list->header()->setSectionResizeMode( tWatch, QHeaderView::Stretch );
+    m_list->setMinimumHeight( 96 );
+    m_list->setMaximumHeight( 140 );
+    col->addWidget( m_list );
+
+    QLabel* editLabel = new QLabel( this );
+    editLabel->setObjectName("editLabel");
+    QFont bf = editLabel->font();
+    bf.setBold( true );
+    editLabel->setFont( bf );
+    col->addWidget( editLabel );
+
+    m_ed = new TriggerEditor( this, part );
+    col->addWidget( m_ed );
+    m_addBtn = new QPushButton( tr("Add this trigger"), this );
+    m_addBtn->setVisible( false );
+    col->addWidget( m_addBtn, 0, Qt::AlignRight );
+    connect( m_addBtn, &QPushButton::clicked, this, [this](){ m_apply->stop(); apply(); } );
+    col->addStretch( 1 );
+
+    m_apply = new QTimer( this );
+    m_apply->setSingleShot( true );
+    m_apply->setInterval( 600 );
+    connect( m_apply, &QTimer::timeout, this, [this](){ apply(); } );
+    connect( m_ed, &TriggerEditor::edited, this, [this](){ if( !m_filling ) m_apply->start(); } );
+    connect( add, &QToolButton::clicked, this, [this](){ addNew(); } );
+    connect( del, &QToolButton::clicked, this, [this](){ removeSelected(); } );
+    connect( m_list, &QTreeWidget::itemSelectionChanged, this, [this](){ if( !m_filling ) selectionChanged(); } );
+    connect( m_list, &QTreeWidget::itemChanged, this, [this]( QTreeWidgetItem* it, int col ){
+        if( m_filling || col != tArmed || !m_trig ) return;
+        QList<int> ids = { it->data( tArmed, Qt::UserRole ).toInt() };
+        if( it->isSelected() ){ ids.clear(); for( QTreeWidgetItem* s : m_list->selectedItems() ) ids << s->data( tArmed, Qt::UserRole ).toInt(); }
+        m_trig->setArmed( ids, it->checkState( tArmed ) == Qt::Checked );
+    });
+    if( m_trig ) connect( m_trig, &Triggers::changed, this, [this](){ fill(); } );
+
+    fill();
+    if( m_list->topLevelItemCount() ) m_list->topLevelItem( 0 )->setSelected( true );
+    else addNew();
+}
+
+void TriggerTab::fill()
+{
+    if( !m_trig ) return;
+    if( m_apply->isActive() ) return;             // Typing: the list follows once applied
+    QList<int> sel;
+    for( QTreeWidgetItem* it : m_list->selectedItems() ) sel << it->data( tArmed, Qt::UserRole ).toInt();
+    m_filling = true;
+    m_list->clear();
+    QString prefix = Triggers::partName( m_part )+" ";
+    QColor dim = palette().color( QPalette::Disabled, QPalette::Text );
+    for( int id : m_trig->watchingPart( m_part->getUid() ) )
+    {
+        Trigger* t = m_trig->find( id );
+        if( !t ) continue;
+        QTreeWidgetItem* it = new QTreeWidgetItem( m_list );
+        it->setFlags( it->flags() | Qt::ItemIsUserCheckable );
+        it->setData( tArmed, Qt::UserRole, id );
+        it->setCheckState( tArmed, t->armed ? Qt::Checked : Qt::Unchecked );
+        QString w = m_trig->watchText( *t );
+        if( w.startsWith( prefix ) ) w = w.mid( prefix.size() );
+        it->setText( tWatch, w );
+        it->setText( tCond, m_trig->condText( *t ) );
+        it->setText( tAction, m_trig->actionText( *t ) );
+        it->setText( tMode, m_trig->modeText( *t ) );
+        it->setText( tHits, QString::number( t->hits.size() ) );
+        it->setText( tLast, t->hits.isEmpty() ? "–" : KeyFrames::timeText( t->hits.last() ) );
+        if( !t->armed ) for( int c=1; c<tCount; ++c ) it->setForeground( c, dim );
+        if( sel.contains( id ) ) it->setSelected( true );
+    }
+    m_filling = false;
+    // The trigger in the editor changed elsewhere (undo, the Triggers tab, the CLI): show it,
+    // unless the user is typing in it
+    if( m_id && !m_draft )
+    {
+        Trigger* t = m_trig->find( m_id );
+        bool typing = m_ed->isAncestorOf( QApplication::focusWidget() );
+        if( !t ){ m_id = 0; selectionChanged(); }
+        else if( !typing ){ m_filling = true; m_ed->setTrigger( *t ); m_filling = false; }
+    }
+}
+
+void TriggerTab::select( int id )
+{
+    m_filling = true;
+    m_list->clearSelection();
+    for( int i=0; i<m_list->topLevelItemCount(); ++i )
+        if( m_list->topLevelItem( i )->data( tArmed, Qt::UserRole ).toInt() == id ) m_list->topLevelItem( i )->setSelected( true );
+    m_filling = false;
+    selectionChanged();
+}
+
+void TriggerTab::selectionChanged()
+{
+    if( m_apply->isActive() ){ m_apply->stop(); apply(); }   // The last edit first
+    QList<QTreeWidgetItem*> sel = m_list->selectedItems();
+    QLabel* lab = findChild<QLabel*>("editLabel");
+    if( sel.size() != 1 || !m_trig )
+    {
+        m_ed->setEnabled( false );
+        if( lab ) lab->setText( sel.isEmpty() ? tr("No trigger selected") : tr("%1 triggers selected").arg( sel.size() ) );
+        return;
+    }
+    m_draft = false;
+    m_addBtn->setVisible( false );
+    m_id = sel.first()->data( tArmed, Qt::UserRole ).toInt();
+    Trigger* t = m_trig->find( m_id );
+    if( !t ) return;
+    m_ed->setEnabled( true );
+    m_filling = true;
+    m_ed->setTrigger( *t );
+    m_filling = false;
+    if( lab ) lab->setText( tr("Edit: %1").arg( sel.first()->text( tWatch )+" "+sel.first()->text( tCond ) ) );
+}
+
+void TriggerTab::addNew()   // A draft in the editor: added once the form makes a trigger
+{
+    if( m_apply->isActive() ){ m_apply->stop(); apply(); }
+    m_filling = true;
+    m_list->clearSelection();
+    m_filling = false;
+    Trigger t;
+    t.pause = true;
+    t.cond.comp = m_part->getUid();
+    QStringList blocks = Triggers::stateBlocks( m_part );
+    std::vector<Pin*> pins = m_part->getPins();
+    if( !blocks.isEmpty() ){                  // A part with states: its first state, any change
+        t.cond.sig = "state"; t.cond.kind = "state"; t.cond.block = blocks.first(); t.cond.change = true;
+    }else if( !pins.empty() && pins[0] ){
+        t.cond.level = std::nan("");          // The level to type
+        t.cond.pin = Triggers::pinName( pins[0], m_part );
+        if( pins.size() == 2 && pins[1] ) t.cond.ref = Triggers::pinName( pins[1], m_part );   // Across
+    }
+    m_draft = true;
+    m_id = 0;
+    m_ed->setEnabled( true );
+    m_filling = true;
+    m_ed->setTrigger( t );
+    m_filling = false;
+    if( QLabel* lab = findChild<QLabel*>("editLabel") ) lab->setText( tr("New trigger") );
+    m_addBtn->setVisible( true );
+}
+
+void TriggerTab::apply()
+{
+    if( !m_trig || !m_ed->isEnabled() || !m_ed->error().isEmpty() ) return;
+    Trigger t = m_ed->trigger();
+    if( m_draft )
+    {
+        m_draft = false;
+        m_addBtn->setVisible( false );
+        m_id = m_trig->add( t );
+        select( m_id );
+        return;
+    }
+    Trigger* old = m_trig->find( m_id );
+    if( !old ) return;
+    t.id = m_id;
+    t.hits = old->hits;
+    m_trig->set( t );
+    if( QLabel* lab = findChild<QLabel*>("editLabel") )
+        lab->setText( tr("Edit: %1").arg( m_trig->describe( t ).mid( Triggers::partName( m_part ).size()+1 ) ) );
+}
+
+void TriggerTab::removeSelected()
+{
+    if( !m_trig ) return;
+    if( m_draft ){ m_draft = false; m_addBtn->setVisible( false ); m_apply->stop(); selectionChanged(); return; }
+    QList<int> ids;
+    for( QTreeWidgetItem* it : m_list->selectedItems() ) ids << it->data( tArmed, Qt::UserRole ).toInt();
+    if( ids.isEmpty() ) return;
+    m_id = 0;
+    m_trig->remove( ids );
+    if( m_list->topLevelItemCount() ) m_list->topLevelItem( 0 )->setSelected( true );
+}
+
+//------------------------------------------------------------------------------------------------
+// The scope's Triggers tab (D21, §4.5)
+
+ScopeTriggerTab::ScopeTriggerTab( QWidget* parent, Component* scope )
+               : QWidget( parent )
+{
+    m_scope = scope;
+    m_trig = Triggers::self();
+    setObjectName("Triggers");
+    QVBoxLayout* col = new QVBoxLayout( this );
+    col->setSpacing( 8 );
+    QLabel* head = new QLabel( tr("Scope trigger"), this );
+    QFont bf = head->font();
+    bf.setBold( true );
+    head->setFont( bf );
+    col->addWidget( head );
+
+    QFormLayout* f = new QFormLayout();
+    m_ch = new QComboBox( this );
+    m_ch->addItems( { "Ch1", "Ch2", "Ch3", "Ch4", tr("off") } );
+    f->addRow( tr("Channel"), m_ch );
+    m_auto = new QCheckBox( tr("Auto"), this );
+    m_auto->setToolTip( tr("The middle of the signal's range: fires every cycle") );
+    m_level = new QLineEdit( this );
+    m_level->setMaximumWidth( 110 );
+    f->addRow( tr("Level"), row( this, { m_auto, m_level, new QLabel( tr("↑ rising"), this ) } ) );
+    QWidget* fw = new QWidget( this );
+    fw->setLayout( f );
+    col->addWidget( fw );
+
+    m_sim = new QCheckBox( tr("Also a simulation trigger"), this );
+    col->addWidget( m_sim );
+    m_row = new QLabel( this );
+    m_row->setWordWrap( true );
+    m_row->setStyleSheet("QLabel { color: palette(mid); }");
+    col->addWidget( m_row );
+    QLabel* about = new QLabel( tr("The channel and the level are the scope's own trigger (its Expand panel shows the same). "
+                                   "As a simulation trigger it is a row of the circuit's Triggers tab, where its action and mode are set "
+                                   "(new: pause, single); deleting the row clears this box."), this );
+    about->setWordWrap( true );
+    about->setEnabled( false );
+    col->addWidget( about );
+    col->addStretch( 1 );
+
+    connect( m_ch, QOverload<int>::of( &QComboBox::currentIndexChanged ), this, [this]( int i ){
+        if( !m_filling ) setProp( "Trigger", QString::number( i ) ); });
+    connect( m_auto, &QCheckBox::toggled, this, [this]( bool a ){
+        if( !m_filling ) setProp( "TrigAuto", a ? "true" : "false" ); });
+    connect( m_level, &QLineEdit::editingFinished, this, [this](){
+        double v = 0;
+        if( !m_filling && parse( m_level->text(), "V", &v ) ) setProp( "TrigLevel", QString::number( v, 'g', 12 ) ); });
+    connect( m_sim, &QCheckBox::toggled, this, [this]( bool on ){
+        if( m_filling || !m_trig ) return;
+        int id = m_trig->scopeTrigger( m_scope->getUid() );
+        if( on && !id ){
+            Trigger t;
+            t.pause = true;
+            t.cond.sig = "scope";
+            t.cond.kind = "scope";
+            t.cond.comp = m_scope->getUid();
+            m_trig->add( t );
+        }
+        else if( !on && id ) m_trig->remove( { id } );
+    });
+    if( m_trig ) connect( m_trig, &Triggers::changed, this, [this](){ fill(); } );
+    fill();
+}
+
+void ScopeTriggerTab::setProp( const QString& prop, const QString& val )
+{
+    QString old = m_scope->getPropStr( prop );
+    if( old == val ) return;
+    Circuit::self()->saveCompChange( m_scope->getUid(), prop, old );
+    m_scope->setPropStr( prop, val );
+    fill();
+}
+
+void ScopeTriggerTab::fill()
+{
+    m_filling = true;
+    int ch = m_scope->getPropStr("Trigger").toInt();
+    m_ch->setCurrentIndex( ch >= 0 && ch < 5 ? ch : 4 );
+    bool aut = m_scope->getPropStr("TrigAuto") == "true";
+    m_auto->setChecked( aut );
+    m_level->setEnabled( !aut );
+    m_level->setText( num( m_scope->getPropStr("TrigLevel").toDouble(), "V" ) );
+    int id = m_trig ? m_trig->scopeTrigger( m_scope->getUid() ) : 0;
+    m_sim->setChecked( id != 0 );
+    if( id && m_trig->find( id ) ){
+        Trigger* t = m_trig->find( id );
+        QString warn = m_trig->check( *t );
+        m_row->setText( tr("In the circuit's Triggers tab: %1 %2 — %3, %4%5").arg( m_trig->watchText( *t ), m_trig->condText( *t ),
+                        m_trig->actionText( *t ), m_trig->modeText( *t ), warn.isEmpty() ? "" : " ⚠ "+warn ) );
+    }else m_row->setText("");
+    m_row->setVisible( id != 0 );
+    m_filling = false;
 }

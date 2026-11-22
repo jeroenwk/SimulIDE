@@ -29,6 +29,15 @@ class OscopeChannel : public DataChannel
 
         // Fixed trigger level: forget the edges found (level or mode changed)
         void resetTrig() { m_trigReset = true; }
+        // The Auto trigger level now (the middle of the last 10-20 screens) and its hysteresis;
+        // false while the signal is too flat for one. Worker (circuit triggers, specs/triggers.html §4.5)
+        bool autoLevel( double* level, double* hyst ) {
+            double top = qMax( m_envMax[0], m_envMax[1] ), bot = qMin( m_envMin[0], m_envMin[1] );
+            double ampli = top-bot;
+            if( m_envMax[0] < -1e11 || ampli < 2*m_filter || ampli <= 1e-9 ) return false;
+            *level = bot+ampli/2;
+            *hyst  = qMax( ampli*0.15, m_filter );
+            return true; }
         // Latest rising crossing of the trigger level at or before t
         bool trigEdgeBefore( uint64_t t, uint64_t* edge );
 

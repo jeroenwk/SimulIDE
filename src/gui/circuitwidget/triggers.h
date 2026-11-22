@@ -83,6 +83,8 @@ class Triggers : public QObject, public SimWatch, public Updatable, public State
         int  remove( QList<int> ids );               // Returns how many were deleted
         int  setArmed( QList<int> ids, bool armed );
         void clearHits( QList<int> ids );
+        void touch() { m_dirty = true; emit changed(); }   // Something a trigger reads changed (the scope's setting)
+        int  scopeTrigger( const QString& uid );     // The scope's simulation trigger row (0: none)
 
         QString check( const Trigger& t );           // "" when every pin it names exists, else why not
 
@@ -159,6 +161,7 @@ class Triggers : public QObject, public SimWatch, public Updatable, public State
             bool outside = true;
             double level = 0, lo = 0, hi = 0, h = 0;
             bool armR = false, armF = false, armW = false;   // Armed sides
+            class OscopeChannel* scope = nullptr;         // The scope's trigger, Auto level: read each step
             bool needDerive = false;                      // Sides from the value at the next step
             bool pause = false, keyframe = false, single = true;
             uint64_t holdoff = 0, holdEnd = 0;

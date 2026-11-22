@@ -14,6 +14,9 @@
 #include <QPushButton>
 
 #include "propdialog.h"
+#include "triggereditor.h"
+#include "component.h"
+#include "circuit.h"
 #include "appfonts.h"
 #include "component.h"
 #include "circuit.h"
@@ -138,6 +141,13 @@ void PropDialog::setComponent( CompBase* comp, bool isComp )
             }
             tabList->addTab( groupWidget, group.name );
     }   }
+    if( isComp )                                              // Triggers (specs/triggers.html §4), before Keyboard
+        if( Component* c = dynamic_cast<Component*>( comp ) )
+            if( TriggerTab::wanted( c ) ){
+                QWidget* tab = ( c->itemType() == "Oscope" ) ? (QWidget*)new ScopeTriggerTab( tabList, c )   // D21
+                                                             : (QWidget*)new TriggerTab( tabList, c );
+                tabList->addTab( tab, tr("Triggers") );
+            }
     if( isComp ) addShortcutRow( comp );                      // Last tab: Keyboard (K9f)
     if( tabList->count() == 0 ) tabList->setVisible( false ); // Hide tab widget if empty
 }
@@ -201,6 +211,17 @@ void PropDialog::adjustWidgets()
     if( helpText->isVisible() ) w += helpText->width()+6;
 
     QWidget* widget = tabList->currentWidget();
+    if( widget && widget->objectName() == "Triggers" )   // A list and a form: its own size
+    {
+        QSize hint = widget->sizeHint();
+        w = qMax( w, hint.width()+24 );
+        h = hint.height()+90*m_scale;
+        this->setMinimumWidth( hint.width()+24 );
+        this->setMaximumWidth( 16777215 );
+        this->setFixedHeight( h );
+        this->adjustSize();
+        return;
+    }
     if( widget )
     {
         int count = 0;
