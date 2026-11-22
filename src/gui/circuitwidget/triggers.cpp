@@ -85,6 +85,28 @@ bool Triggers::Check::eval( double v )   // §6: armed beyond the hysteresis, fi
     return f;
 }
 
+bool Triggers::Check::qualNow( double v )   // §2: the state an AND member's condition leads to
+{
+    if( state ){
+        if( sev >= 0 ) qOk = curLevel >= sev;
+        else if( !to.isEmpty() ) qOk = curText.compare( to, Qt::CaseInsensitive ) == 0;
+        else qOk = curLevel >= 0 && curText.compare( from, Qt::CaseInsensitive ) != 0;
+        return qOk;
+    }
+    if( window ){
+        bool out = v < lo || v > hi;
+        bool in  = v >= lo+h && v <= hi-h;
+        if( !qInit ){ qOk = outside ? out : !out; qInit = true; }
+        else if( outside ){ if( out ) qOk = true; else if( in ) qOk = false; }
+        else              { if( in ) qOk = true;  else if( out ) qOk = false; }
+        return qOk;
+    }
+    if( !qInit ){ qOk = edge > 0 ? v >= level : v <= level; qInit = true; }
+    else if( edge > 0 ){ if( v >= level ) qOk = true; else if( v < level-h ) qOk = false; }   // "is above L"
+    else               { if( v <= level ) qOk = true; else if( v > level+h ) qOk = false; }   // "is below L"
+    return qOk;
+}
+
 void Triggers::Check::derive( double v )   // After a keyframe load: which side the value is on
 {
     armR = v < level;
@@ -105,8 +127,24 @@ Triggers* Triggers::self()
 
 Trigger* Triggers::find( int id )
 {
-    for( Trigger& t : m_list ) if( t.id == id ) return &t;
+    for( Trigger& t : m_list ){
+        if( t.id == id ) return &t;
+        for( Trigger& m : t.members ) if( m.id == id ) return &m;
+    }
     return nullptr;
+}
+
+Trigger* Triggers::parentOf( int id )
+{
+    for( Trigger& t : m_list ) for( Trigger& m : t.members ) if( m.id == id ) return &t;
+    return nullptr;
+}
+
+bool Triggers::eventOnly( const TrigCond& c )
+{
+    if( c.sig == "scope" ) return true;
+    if( c.sig == "state" ) return c.change;
+    return c.kind == "edge" && c.edge == 0;
 }
 
 static Component* compByUid( const QString& uid )
@@ -154,6 +192,19 @@ static void splitNode( const QString& node, QString& uid, QString& pin )
 
 QString Triggers::check( const Trigger& t )
 {
+    if( t.isAnd() )
+    {
+        int events = 0;
+        for( const Trigger& m : t.members )
+        {
+            QString e = check( m );
+            if( !e.isEmpty() ) return e;
+            if( m.event ) events++;
+            else if( eventOnly( m.cond ) ) return describe( m )+" can only be the AND's event";
+        }
+        if( events != 1 ) return "an AND needs exactly one event";
+        return "";
+    }
     const TrigCond& c = t.cond;
     if( c.sig != "volt" && c.sig != "curr" && c.sig != "state" && c.sig != "scope" ) return "unknown signal "+c.sig;
     if( c.sig == "scope" )
@@ -266,6 +317,13 @@ static QString timeFmt( uint64_t ps ) { return KeyFrames::timeText( ps ); }
 
 QString Triggers::watchText( const Trigger& t )
 {
+    if( t.isAnd() )
+    {
+        if( !t.name.isEmpty() ) return "AND "+t.name;
+        QStringList w;
+        for( const Trigger& m : t.members ) w << watchText( m );
+        return "AND "+w.join(" · ");
+    }
     const TrigCond& c = t.cond;
     if( c.sig == "scope" )
     {
@@ -321,6 +379,7 @@ QString Triggers::watchText( const Trigger& t )
 
 QString Triggers::condText( const Trigger& t )
 {
+    if( t.isAnd() ) return "("+QString::number( t.members.size() )+")";
     const TrigCond& c = t.cond;
     if( c.sig == "scope" )
     {
@@ -339,6 +398,22 @@ QString Triggers::condText( const Trigger& t )
         return QString( c.outside ? "outside " : "inside " )+fmt( c.low, "" ).trimmed()+" … "+fmt( c.high, u );
     QString arrow = c.edge > 0 ? "↑ " : c.edge < 0 ? "↓ " : "↕ ";
     return arrow+fmt( c.level, u );
+}
+
+QString Triggers::qualText( const Trigger& m )   // §2: a member read as the state its condition leads to
+{
+    const TrigCond& c = m.cond;
+    if( eventOnly( c ) ) return condText( m );
+    if( c.sig == "state" )
+    {
+        if( c.sev >= 0 ) return "is at least "+levelName( c.sev );
+        if( !c.to.isEmpty() ) return "is "+c.to;
+        return "is not "+c.from;
+    }
+    QString u = ( c.sig == "curr" ) ? "A" : "V";
+    if( c.kind == "window" )
+        return QString( c.outside ? "is outside " : "is inside " )+fmt( c.low, "" ).trimmed()+" … "+fmt( c.high, u );
+    return ( c.edge > 0 ? "is above " : "is below " )+fmt( c.level, u );
 }
 
 QString Triggers::actionText( const Trigger& t )
@@ -395,25 +470,136 @@ bool Triggers::set( const Trigger& t )
     QString undo = toXml();
     QVector<uint64_t> hits = old->hits;
     bool sameCond = old->cond == t.cond;
+    bool event = old->event;
+    QList<Trigger> members = old->members;
     *old = t;
+    if( parentOf( t.id ) ) old->event = event;              // A member stays the event or a qualifier
+    if( !t.isAnd() && !members.isEmpty() ){ old->members = members; sameCond = true; }   // An AND's settings
     old->hits = sameCond ? hits : QVector<uint64_t>();   // Another signal: its hits are not these
     if( t.armed ) old->selfDisarmedAt = 0;
     edited( undo );
     return true;
 }
 
-int Triggers::remove( QList<int> ids )
+Trigger Triggers::asRow( const Trigger& m, const Trigger& from )
+{
+    Trigger r = m;
+    r.event = false;
+    r.armed = from.armed; r.pause = from.pause; r.keyframe = from.keyframe; r.before = from.before;
+    r.single = from.single; r.holdoff = from.holdoff; r.max = from.max;
+    r.hits = from.hits;
+    return r;
+}
+
+int Triggers::remove( QList<int> ids )   // Rows, or members of an AND (§3: one left becomes the row)
 {
     QString undo = toXml();
     int n = 0;
     for( int i=m_list.size()-1; i>=0; --i )
-        if( ids.contains( m_list.at( i ).id ) ){ m_list.removeAt( i ); n++; }
+    {
+        if( ids.contains( m_list.at( i ).id ) ){ m_list.removeAt( i ); n++; continue; }
+        Trigger& t = m_list[i];
+        if( !t.isAnd() ) continue;
+        for( int k=t.members.size()-1; k>=0; --k )
+            if( ids.contains( t.members.at( k ).id ) ){ t.members.removeAt( k ); n++; }
+        if( t.members.isEmpty() ){ m_list.removeAt( i ); continue; }
+        if( t.members.size() == 1 ){ m_list[i] = asRow( t.members.first(), t ); continue; }
+        bool hasEvent = false;
+        for( const Trigger& m : t.members ) hasEvent |= m.event;
+        if( !hasEvent ){                     // The event went: the first that can be one
+            for( Trigger& m : t.members ) if( !hasEvent ){ m.event = true; hasEvent = true; }
+        }
+    }
     if( n ) edited( undo );
     return n;
 }
 
+QString Triggers::canCombine( QList<int> ids )
+{
+    QList<Trigger> members;
+    for( int id : ids )
+    {
+        Trigger* t = find( id );
+        if( !t ) return "no trigger "+QString::number( id );
+        if( parentOf( id ) ) return "trigger "+QString::number( id )+" is already in an AND";
+        if( t->isAnd() ) members += t->members;
+        else members.append( *t );
+    }
+    if( members.size() < 2 || ids.size() < 2 ) return "select two or more rows";
+    int only = 0;
+    for( const Trigger& m : members ) if( eventOnly( m.cond ) ) only++;
+    if( only > 1 ) return "only one ↕, \"any change\" or scope trigger can be in an AND: it is its event";
+    return "";
+}
+
+int Triggers::combine( QList<int> ids, int event, QString name )
+{
+    if( !canCombine( ids ).isEmpty() ) return 0;
+    QString undo = toXml();
+    Trigger first = *find( ids.first() );
+    Trigger a;
+    a.armed = first.armed; a.pause = first.pause; a.keyframe = first.keyframe; a.before = first.before;
+    a.single = first.single; a.holdoff = first.holdoff; a.max = first.max;
+    a.name = name;
+    for( int id : ids )
+    {
+        Trigger t = *find( id );
+        if( t.isAnd() ){
+            for( Trigger m : t.members ){ m.event = false; a.members.append( m ); }
+            if( a.name.isEmpty() && ids.size() == 2 ) a.name = t.name;
+        }else{ t.event = false; t.hits.clear(); a.members.append( t ); }
+    }
+    for( int i=m_list.size()-1; i>=0; --i ) if( ids.contains( m_list.at( i ).id ) ) m_list.removeAt( i );
+    int ev = -1;                              // §3: the given one, else the event-only one, else the first
+    for( int i=0; i<a.members.size(); ++i ) if( a.members.at( i ).id == event ) ev = i;
+    if( ev < 0 ) for( int i=0; i<a.members.size(); ++i ) if( eventOnly( a.members.at( i ).cond ) ) ev = i;
+    if( ev < 0 ) ev = 0;
+    a.members[ev].event = true;
+    a.id = m_nextId++;
+    m_list.append( a );
+    edited( undo );
+    return a.id;
+}
+
+QList<int> Triggers::split( int id )
+{
+    QList<int> ids;
+    Trigger* t = find( id );
+    if( !t || !t->isAnd() ) return ids;
+    QString undo = toXml();
+    int i = 0;
+    while( i < m_list.size() && m_list.at( i ).id != id ) i++;
+    QList<Trigger> members = t->members;
+    m_list.removeAt( i );
+    for( Trigger m : members ){               // Back as they were, disarmed (§3)
+        m.event = false;
+        m.armed = false;
+        m.hits.clear();
+        m_list.insert( i++, m );
+        ids << m.id;
+    }
+    edited( undo );
+    return ids;
+}
+
+bool Triggers::setEvent( int andId, int memberId )
+{
+    Trigger* t = find( andId );
+    if( !t || !t->isAnd() ) return false;
+    bool found = false;
+    for( const Trigger& m : t->members ) if( m.id == memberId ) found = true;
+    if( !found ) return false;
+    for( const Trigger& m : t->members )      // An event-only member can't be a qualifier
+        if( m.id != memberId && eventOnly( m.cond ) ) return false;
+    QString undo = toXml();
+    for( Trigger& m : t->members ) m.event = ( m.id == memberId );
+    edited( undo );
+    return true;
+}
+
 int Triggers::setArmed( QList<int> ids, bool armed )
 {
+    for( int& id : ids ) if( Trigger* p = parentOf( id ) ) id = p->id;   // A member: its AND
     QString undo = toXml();
     int n = 0;
     for( Trigger& t : m_list )
@@ -471,36 +657,36 @@ QString Triggers::condXml( const TrigCond& c )
     return x+"/>";
 }
 
+QString Triggers::trigXml( const Trigger& t, bool member )
+{
+    QString x = "<trigger id=\""+QString::number( t.id )+"\" armed=\""+( t.armed ? "1" : "0" )+"\"";
+    if( t.pause ) x += " pause=\"1\"";
+    if( t.keyframe ) x += " keyframe=\"1\"";
+    if( t.before ) x += " before=\""+secs( t.before )+"\"";
+    x += QString(" mode=\"")+( t.single ? "single" : "normal" )+"\"";
+    if( t.holdoff ) x += " holdoff=\""+secs( t.holdoff )+"\"";
+    if( t.max ) x += " max=\""+QString::number( t.max )+"\"";
+    if( !t.name.isEmpty() ) x += " name=\""+esc( t.name )+"\"";
+    if( member && t.event ) x += " event=\"1\"";
+    if( t.isAnd() )                       // join="and": room for OR later (D24)
+    {
+        x += " join=\"and\">\n";
+        for( const Trigger& m : t.members ) x += "  "+trigXml( m, true );
+        return x+"</trigger>\n";
+    }
+    return x+">"+condXml( t.cond )+"</trigger>\n";
+}
+
 QString Triggers::toXml()
 {
     if( m_list.isEmpty() ) return "";
     QString x = "\n<triggers>\n";
-    for( const Trigger& t : m_list )
-    {
-        x += "<trigger id=\""+QString::number( t.id )+"\" armed=\""+( t.armed ? "1" : "0" )+"\"";
-        if( t.pause ) x += " pause=\"1\"";
-        if( t.keyframe ) x += " keyframe=\"1\"";
-        if( t.before ) x += " before=\""+secs( t.before )+"\"";
-        x += QString(" mode=\"")+( t.single ? "single" : "normal" )+"\"";
-        if( t.holdoff ) x += " holdoff=\""+secs( t.holdoff )+"\"";
-        if( t.max ) x += " max=\""+QString::number( t.max )+"\"";
-        if( !t.name.isEmpty() ) x += " name=\""+esc( t.name )+"\"";
-        x += ">"+condXml( t.cond )+"</trigger>\n";
-    }
+    for( const Trigger& t : m_list ) x += trigXml( t, false );
     return x+"</triggers>\n";
 }
 
-void Triggers::restoreXml( const QString& xml )
+Trigger Triggers::readXml( const QDomElement& e, const QList<Trigger>& old )
 {
-    QList<Trigger> old = m_list;          // Hits stay with the triggers that come back
-    m_list.clear();
-    m_nextId = 1;
-    QDomDocument dom;
-    if( !xml.trimmed().isEmpty() && dom.setContent( xml ) )
-    {
-        QDomElement root = dom.documentElement();
-        for( QDomElement e = root.firstChildElement("trigger"); !e.isNull(); e = e.nextSiblingElement("trigger") )
-        {
             Trigger t;
             t.id       = e.attribute("id").toInt();
             t.armed    = e.attribute("armed", "1") != "0";
@@ -542,9 +728,34 @@ void Triggers::restoreXml( const QString& xml )
                 c.level = ce.attribute("level").toDouble();
             }
             c.hyst = ce.hasAttribute("hyst") ? ce.attribute("hyst").toDouble() : -1;
+            t.event = e.attribute("event") == "1";
             if( t.id <= 0 || find( t.id ) ) t.id = m_nextId;
-            for( const Trigger& o : old ) if( o.id == t.id && o.cond == t.cond ) t.hits = o.hits;
             m_nextId = std::max( m_nextId, t.id+1 );
+            if( e.attribute("join") == "and" )   // An AND: its members (each with its own id and settings)
+            {
+                for( QDomElement me = e.firstChildElement("trigger"); !me.isNull(); me = me.nextSiblingElement("trigger") )
+                {
+                    Trigger m = readXml( me, QList<Trigger>() );
+                    for( const Trigger& x : t.members ) if( x.id == m.id ) m.id = m_nextId++;
+                    t.members.append( m );
+                }
+            }
+            for( const Trigger& o : old ) if( o.id == t.id && o.cond == t.cond && o.isAnd() == t.isAnd() ) t.hits = o.hits;
+            return t;
+}
+
+void Triggers::restoreXml( const QString& xml )
+{
+    QList<Trigger> old = m_list;          // Hits stay with the triggers that come back
+    m_list.clear();
+    m_nextId = 1;
+    QDomDocument dom;
+    if( !xml.trimmed().isEmpty() && dom.setContent( xml ) )
+    {
+        QDomElement root = dom.documentElement();
+        for( QDomElement e = root.firstChildElement("trigger"); !e.isNull(); e = e.nextSiblingElement("trigger") )
+        {
+            Trigger t = readXml( e, old );
             m_list.append( t );
         }
     }
@@ -731,37 +942,65 @@ bool Triggers::compileOne( const Trigger& t, Check& k )
 void Triggers::compile( bool derive )
 {
     QHash<int, Check> old;
-    for( const Check& c : m_checks ) old.insert( c.id, c );
+    for( const Check& c : m_checks ) old.insert( c.key, c );
     m_checks.clear();
     bool states = false;
-    for( const Trigger& t : m_list )
+
+    auto addCheck = [&]( const Trigger& t, int rowId, int key, bool qual ) -> int   // Index, -1: skipped
     {
-        if( !t.armed ) continue;
         Check k;
         if( !compileOne( t, k ) ){
-            qWarning().noquote() << "[triggers] Trigger "+QString::number( t.id )+" ("+describe( t )+") skipped: "+check( t );
-            continue;
+            qWarning().noquote() << "[triggers] Trigger "+QString::number( key )+" ("+describe( t )+") skipped: "+check( t );
+            return -1;
         }
-        auto o = old.find( t.id );         // The same check as before (an edit of another row): keep its state
+        k.id = rowId;
+        k.key = key;
+        k.qual = qual;
+        auto o = old.find( key );          // The same check as before (an edit of another row): keep its state
         if( !derive && o != old.end() && o->p0 == k.p0 && o->p1 == k.p1 && o->curr == k.curr && o->window == k.window
             && o->edge == k.edge && o->outside == k.outside && o->level == k.level && o->lo == k.lo
-            && o->hi == k.hi && o->h == k.h && o->src == k.src )
+            && o->hi == k.hi && o->h == k.h && o->src == k.src && o->qual == k.qual )
         {
             k.armR = o->armR; k.armF = o->armF; k.armW = o->armW;
             k.holdEnd = o->holdEnd;
             k.pending = o->pending;
+            k.qOk = o->qOk; k.qInit = o->qInit;
         }
         if( derive )                       // A keyframe was loaded: its saved state, else from the values
         {
-            auto l = m_loaded.find( t.id );
+            auto l = m_loaded.find( key );
             if( l != m_loaded.end() ){
                 k.armR = l->armR; k.armF = l->armF; k.armW = l->armW; k.holdEnd = l->holdEnd;
+                k.qOk = l->qOk; k.qInit = true;
                 if( k.state ){ k.curText = l->text; k.curLevel = l->level; }
             }
             else if( !k.state ) k.needDerive = true;
         }
         if( k.state ) states = true;
         m_checks.append( k );
+        return m_checks.size()-1;
+    };
+
+    for( const Trigger& t : m_list )
+    {
+        if( !t.armed ) continue;
+        if( !t.isAnd() ){ addCheck( t, t.id, t.id, false ); continue; }
+        if( !check( t ).isEmpty() ){
+            qWarning().noquote() << "[triggers] Trigger "+QString::number( t.id )+" ("+describe( t )+") skipped: "+check( t );
+            continue;
+        }
+        QVector<int> quals;                // §2, §6: the qualifiers are read at the event's step
+        int ev = -1;
+        for( const Trigger& m : t.members )
+        {
+            Trigger mt = m;                // The AND's action and mode on its event
+            mt.pause = t.pause; mt.keyframe = t.keyframe; mt.single = t.single;
+            mt.holdoff = t.holdoff; mt.max = t.max; mt.hits = t.hits;
+            int i = addCheck( mt, t.id, m.id, !m.event );
+            if( i < 0 ) continue;
+            if( m.event ) ev = i; else quals.append( i );
+        }
+        if( ev >= 0 ) m_checks[ev].quals = quals;
     }
     m_loaded.clear();
     StateLog::setWatch( states ? this : nullptr );
@@ -814,8 +1053,27 @@ void Triggers::stepDone()   // Worker: after each solved step
     uint64_t t = sim->circTime();
     bool quiet = t <= sim->trigQuiet();   // A replay of going back: track, don't fire
     bool stop = false;
+    for( Check& c : m_checks )            // AND qualifiers first: their state at this step
+    {
+        if( !c.qual ) continue;
+        if( c.state ){
+            for( const Check::Ev& e : c.pending ){ c.curText = e.text; c.curLevel = e.level; }
+            c.pending.clear();
+            c.qualNow( 0 );
+            continue;
+        }
+        if( c.scope ) continue;
+        double v = c.value();
+        if( c.needDerive ){ c.needDerive = false; c.qInit = false; }
+        c.qualNow( v );
+    }
+    auto allQuals = [this]( const Check& c ){
+        for( int i : c.quals ) if( !m_checks.at( i ).qOk ) return false;
+        return true;
+    };
     for( Check& c : m_checks )
     {
+        if( c.qual ) continue;
         if( c.state )
         {
             for( const Check::Ev& e : c.pending )
@@ -823,7 +1081,7 @@ void Triggers::stepDone()   // Worker: after each solved step
                 if( c.done ) break;
                 bool first = c.curLevel < 0;          // Its first report is its start state
                 bool f = c.fireState( e );
-                if( f && m_firstDone && !first ) stop |= hit( c, e.time, e.level, quiet );   // Start states don't fire
+                if( f && m_firstDone && !first && allQuals( c ) ) stop |= hit( c, e.time, e.level, quiet );   // Start states don't fire
             }
             c.pending.clear();
             continue;
@@ -832,7 +1090,7 @@ void Triggers::stepDone()   // Worker: after each solved step
         if( c.scope && !c.scope->autoLevel( &c.level, &c.h ) ) continue;   // Auto: the scope's level now
         double v = c.value();
         if( c.needDerive ){ c.needDerive = false; c.derive( v ); continue; }
-        if( c.eval( v ) ) stop |= hit( c, t, v, quiet );
+        if( c.eval( v ) && allQuals( c ) ) stop |= hit( c, t, v, quiet );
     }
     m_firstDone = true;
     if( stop ) sim->trigStop();
@@ -991,8 +1249,8 @@ void Triggers::ioState( StateIO& s )
     {
         for( Check& c : m_checks )
         {
-            int32_t id = c.id;
-            uint8_t f = ( c.armR ? 1 : 0 ) | ( c.armF ? 2 : 0 ) | ( c.armW ? 4 : 0 ) | ( c.done ? 8 : 0 );
+            int32_t id = c.key;
+            uint8_t f = ( c.armR ? 1 : 0 ) | ( c.armF ? 2 : 0 ) | ( c.armW ? 4 : 0 ) | ( c.done ? 8 : 0 ) | ( c.qOk ? 16 : 0 );
             uint64_t hold = c.holdEnd;
             int32_t level = c.curLevel;
             s.io( id ); s.io( f ); s.io( hold ); s.io( level );
@@ -1007,7 +1265,7 @@ void Triggers::ioState( StateIO& s )
         int32_t id = 0; uint8_t f = 0; uint64_t hold = 0; int32_t level = -1; QString text;
         s.io( id ); s.io( f ); s.io( hold ); s.io( level );
         s.ioString( text );
-        m_loaded.insert( id, { bool( f & 1 ), bool( f & 2 ), bool( f & 4 ), bool( f & 8 ), hold, level, text } );
+        m_loaded.insert( id, { bool( f & 1 ), bool( f & 2 ), bool( f & 4 ), bool( f & 8 ), hold, level, text, bool( f & 16 ) } );
     }
 }
 
@@ -1050,12 +1308,16 @@ QStringList Triggers::statesSeen( Component* c, const QString& block )
 QList<int> Triggers::watchingPart( const QString& uid )
 {
     QList<int> ids;
-    for( const Trigger& t : m_list )
-    {
+    auto watches = [&uid]( const Trigger& t ){
         const TrigCond& c = t.cond;
         QString nodeUid;
         if( !c.node.isEmpty() ) nodeUid = c.node.left( c.node.lastIndexOf(':') );
-        if( c.comp == uid || c.refComp == uid || nodeUid == uid ) ids.append( t.id );
+        return c.comp == uid || c.refComp == uid || nodeUid == uid;
+    };
+    for( const Trigger& t : m_list )
+    {
+        if( !t.isAnd() ){ if( watches( t ) ) ids.append( t.id ); continue; }
+        for( const Trigger& m : t.members ) if( watches( m ) ) ids.append( m.id );   // Members: "in AND"
     }
     return ids;
 }

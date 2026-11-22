@@ -13,6 +13,7 @@
 
 #include <QWidget>
 #include <QPointer>
+#include <QSet>
 
 class QLineEdit;
 class QToolButton;
@@ -63,6 +64,9 @@ class TriggerPane : public QWidget
         QLabel*      m_empty;
         QPointer<Triggers> m_trig;
         bool m_split = false;
+        QSet<int> m_folded;                // ANDs folded by the user
+        void combineSelected();
+        void splitSelected();
         bool m_filling = false;
 
  static TriggerPane* m_pSelf;

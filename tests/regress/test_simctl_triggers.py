@@ -21,6 +21,9 @@ led_driver board_mains (frozen copy): supply any -> ON pauses when the state log
 block's start state does not fire "change", ">=WAIT", a wrong block name lists the blocks.
 Steps 3-4: the Triggers pane (tab / split, the editor opens), a part's Triggers tab, transistor
 and diode pins by name (G-S, B-E, A->K), the scope's own trigger (fixed 5 V and Auto: ln2 tau).
+Step 5: AND - an event and qualifiers read as states at its step (current crossings only while C1
+is below 5 V: the rising edges), the event changed, a ↕ member only as the event, saved and
+reopened, split, undo, one member left becomes the row; a state qualifier (supply is ON).
 """
 import os
 import tempfile
@@ -139,6 +142,87 @@ def test(sim):
     states(sim)
     pane(sim)
     parts(sim)
+    combined(sim)
+
+
+def combined(sim):
+    """Step 5: AND (§3). An event and qualifiers read as states at its step."""
+    c = sim.cli
+    build(c)
+    a = c("trigger", "add", "R1:i", "cross:0", "--mode", "normal")["id"]     # Every edge of the wave
+    b = c("trigger", "add", "C1", "fall:5")["id"]                            # Qualifier: C1 is below 5 V
+    try:
+        c("trigger", "combine", str(a))
+        ok = 0
+    except Exception:
+        ok = 1
+    sim.check("combine needs two rows", ok, 1, absolute=0)
+    x = c("trigger", "combine", str(a), str(b), "--name", "edge while low")
+    roles = [(m["id"], m["role"]) for m in x["members"]]
+    sim.check("AND: the current crossing is the event, C1 a qualifier", 1 if roles == [(a, "event"), (b, "qualifier")] else 0, 1,
+              absolute=0, note=str(roles))
+    sim.check("AND: the qualifier reads 'is below 5 V'", 1 if x["members"][1]["reads"] == "is below 5 V" else 0, 1, absolute=0)
+    sim.check("AND: the first row's action and mode", 1 if (x["action"], x["mode"]) == ("count only", "normal") else 0, 1, absolute=0)
+    c("sim", "run", "--for", "101ms")
+    h = hits(c, x["id"])
+    sim.check("AND: fires only at the rising edges (C1 low)", len(h), 5, absolute=0, note=str(h))
+    sim.check("AND: the first at 20 ms", h[0] if h else 0, 20e-3, absolute=STEP)
+    try:
+        c("trigger", "set", str(x["id"]), "--event", str(b))
+        ok = 0
+    except Exception:
+        ok = 1
+    sim.check("a ↕ member can only be the event", ok, 1, absolute=0)
+    c("sim", "stop")
+
+    # changing the event: C1 rising through 5 V (only while the wave is high) with "the wave is above 5 V" fires
+    # each period; with the wave's rising edge as the event, C1 is then near 0, never "above 5 V": no hit
+    e = c("trigger", "add", "C1", "rise:5", "--mode", "normal")["id"]
+    q = c("trigger", "add", "W.outnod", "rise:5")["id"]
+    y = c("trigger", "combine", str(e), str(q))["id"]
+    c("sim", "run", "--for", "100ms")
+    sim.check("AND event C1 ↑5 V, wave high: once per period", len(hits(c, y)), 5, absolute=0)
+    c("sim", "stop")
+    c("trigger", "set", str(y), "--event", str(q))
+    c("sim", "run", "--for", "100ms")
+    sim.check("event changed to the wave's edge: C1 is never above 5 V then", len(hits(c, y)), 0, absolute=0)
+    c("sim", "stop")
+
+    # saved, reopened, split, undo, a member deleted
+    path = os.path.join(tempfile.mkdtemp(prefix="simulide-triggers-"), "and.sim1")
+    c("circuit", "save", path)
+    with open(path) as f:
+        text = f.read()
+    sim.check(".sim1: join=and with its members, event marked", 1 if 'join="and"' in text and 'event="1"' in text else 0, 1, absolute=0)
+    def defs():          # The definitions (hits are this run's)
+        strip = lambda r: {k: v for k, v in r.items() if k not in ("hits", "last")}
+        return [dict(strip(r), members=[strip(m) for m in r.get("members", [])]) for r in c("trigger", "list")]
+    before = defs()
+    c("circuit", "open", path, "--discard")
+    sim.check("reopened: the same ANDs", 1 if defs() == before else 0, 1, absolute=0, note=str(defs()))
+    rows = c("trigger", "split", str(x["id"]))
+    sim.check("split: the members back as rows, disarmed", 1 if [r["id"] for r in rows] == [a, b] and not any(r["armed"] for r in rows) else 0,
+              1, absolute=0, note=str(rows))
+    c("undo")
+    sim.check("undo: the AND again", 1 if defs() == before else 0, 1, absolute=0)
+    c("trigger", "del", str(q))
+    t = [r for r in c("trigger", "list") if r["id"] == e]
+    sim.check("one member left: it is the row again, with the AND's mode", 1 if t and "members" not in t[0] else 0, 1, absolute=0, note=str(t))
+
+    # a part's state as a qualifier (board_mains): the pwm block's change while supply is ON
+    here = os.path.dirname(os.path.abspath(__file__))
+    c("circuit", "open", os.path.join(here, "floating_pair", "board_mains.sim1"), "--discard")
+    ev = c("trigger", "add", "MT7833A-1:pwm", "change", "--mode", "normal")["id"]
+    ql = c("trigger", "add", "MT7833A-1:supply", "any->ON")["id"]
+    z = c("trigger", "combine", str(ev), str(ql))
+    sim.check("state qualifier reads 'is ON'", 1 if z["members"][1].get("reads") == "is ON" else 0, 1, absolute=0, note=str(z["members"]))
+    c("sim", "run", "--for", "400ms", timeout=600)
+    pwm = [e2 for e2 in c("status", "MT7833A-1")["history"] if e2["block"] == "pwm"]
+    on = [e2 for e2 in c("status", "MT7833A-1")["history"] if e2["block"] == "supply" and e2["text"] == "ON"]
+    after_on = [e2 for e2 in pwm if on and Cli_ps(e2["time"]) >= Cli_ps(on[0]["time"])]
+    sim.check("pwm changes while supply ON: as many hits as the state log has", len(hits(c, z["id"])), len(after_on), absolute=0,
+              note="%s vs %s" % (hits(c, z["id"]), [p2["time"] for p2 in after_on]))
+    c("sim", "stop")
 
 
 def parts(sim):

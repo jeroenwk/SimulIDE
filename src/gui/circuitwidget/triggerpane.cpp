@@ -12,6 +12,7 @@
 #include <QMessageBox>
 #include <QToolButton>
 #include <QTreeWidget>
+#include <QTreeWidgetItemIterator>
 #include <QVBoxLayout>
 #include <QDebug>
 
@@ -28,7 +29,7 @@
 
 TriggerPane* TriggerPane::m_pSelf = nullptr;
 
-enum { cArmed = 0, cWatch, cCond, cAction, cMode, cHits, cLast, cCount };
+enum { cArmed = 0, cEvent, cWatch, cCond, cAction, cMode, cHits, cLast, cCount };
 
 TriggerPane::TriggerPane( QWidget* parent )
            : QWidget( parent )
@@ -85,8 +86,9 @@ TriggerPane::TriggerPane( QWidget* parent )
 
     m_tree = new QTreeWidget( this );
     m_tree->setColumnCount( cCount );
-    m_tree->setHeaderLabels( { "", tr("Watches"), tr("Condition"), tr("Action"), tr("Mode"), tr("Hits"), tr("Last") } );
-    m_tree->setRootIsDecorated( false );
+    m_tree->setHeaderLabels( { "", "⚡", tr("Watches"), tr("Condition"), tr("Action"), tr("Mode"), tr("Hits"), tr("Last") } );
+    m_tree->setRootIsDecorated( true );                  // ANDs fold their members (▾)
+    m_tree->headerItem()->setToolTip( cEvent, tr("An AND's event (⚡): it gives the time; the other members (◦) are read as states then. A click makes a member the event") );
     m_tree->setUniformRowHeights( true );
     m_tree->setAlternatingRowColors( true );
     m_tree->setSelectionMode( QAbstractItemView::ExtendedSelection );
@@ -112,8 +114,19 @@ TriggerPane::TriggerPane( QWidget* parent )
         if( col == cArmed ) return;
         edit( it->data( cArmed, Qt::UserRole ).toInt() );
     });
+    connect( m_tree, &QTreeWidget::itemCollapsed, this, [this]( QTreeWidgetItem* it ){ if( !m_filling ) m_folded.insert( it->data( cArmed, Qt::UserRole ).toInt() ); } );
+    connect( m_tree, &QTreeWidget::itemExpanded,  this, [this]( QTreeWidgetItem* it ){ if( !m_filling ) m_folded.remove( it->data( cArmed, Qt::UserRole ).toInt() ); } );
     connect( m_tree, &QTreeWidget::itemClicked, this, [this]( QTreeWidgetItem* it, int col )
     {
+        if( col == cEvent && it->parent() && m_trig ){   // A member: make it the AND's event
+            int andId = it->parent()->data( cArmed, Qt::UserRole ).toInt();
+            int id = it->data( cArmed, Qt::UserRole ).toInt();
+            Trigger* a = m_trig->find( andId );
+            Trigger* m = m_trig->find( id );
+            if( a && m && !m->event && !m_trig->setEvent( andId, id ) )
+                qWarning().noquote() << "[triggers] "+tr("%1 can't be the event: another member can only be the event (↕, any change, scope)").arg( m_trig->watchText( *m ) );
+            return;
+        }
         if( col != cLast || QApplication::keyboardModifiers() & ( Qt::ShiftModifier | Qt::ControlModifier | Qt::MetaModifier ) ) return;
         goToLast( it->data( cArmed, Qt::UserRole ).toInt() );
     });
@@ -173,7 +186,7 @@ void TriggerPane::fill()
         it->setData( cArmed, Qt::UserRole, t.id );
         it->setCheckState( cArmed, t.armed ? Qt::Checked : Qt::Unchecked );
         QString watch = m_trig->watchText( t );
-        if( !t.name.isEmpty() ) watch += "  — "+t.name;
+        if( !t.name.isEmpty() && !t.isAnd() ) watch += "  — "+t.name;
         it->setText( cWatch, watch );
         it->setText( cCond, m_trig->condText( t ) );
         it->setText( cAction, m_trig->actionText( t ) );
@@ -198,6 +211,21 @@ void TriggerPane::fill()
         }else it->setToolTip( cWatch, tr("Trigger %1").arg( t.id ) );
         if( !t.armed ) for( int c=1; c<cCount; ++c ) it->setForeground( c, dim );
         if( sel.contains( t.id ) ) it->setSelected( true );
+        for( const Trigger& m : t.members )               // An AND's members (§3): the event and qualifiers
+        {
+            QTreeWidgetItem* mi = new QTreeWidgetItem( it );
+            mi->setData( cArmed, Qt::UserRole, m.id );
+            mi->setText( cEvent, m.event ? "⚡" : "◦" );
+            mi->setTextAlignment( cEvent, Qt::AlignCenter );
+            mi->setText( cWatch, m_trig->watchText( m ) );
+            mi->setText( cCond, m.event ? m_trig->condText( m ) : m_trig->qualText( m )+"  ("+m_trig->condText( m )+")" );
+            mi->setText( cAction, m.event ? tr("event") : tr("qualifier") );
+            mi->setToolTip( cEvent, m.event ? tr("The event: it gives the time") : tr("A qualifier, read as a state at the event's step: a click makes it the event") );
+            mi->setToolTip( cWatch, tr("Trigger %1, in AND %2").arg( m.id ).arg( t.id ) );
+            if( !t.armed ) for( int c=1; c<cCount; ++c ) mi->setForeground( c, dim );
+            if( sel.contains( m.id ) ) mi->setSelected( true );
+        }
+        if( t.isAnd() ) it->setExpanded( !m_folded.contains( t.id ) );
     }
     m_filling = false;
     bool none = m_trig->list().isEmpty();
@@ -212,8 +240,13 @@ void TriggerPane::applyFilter()
     for( int i=0; i<m_tree->topLevelItemCount(); ++i )
     {
         QTreeWidgetItem* it = m_tree->topLevelItem( i );
-        bool show = f.isEmpty();
-        for( int c=cWatch; c<=cMode && !show; ++c ) show = it->text( c ).contains( f, Qt::CaseInsensitive );
+        auto matches = [&f]( QTreeWidgetItem* x ){
+            if( f.isEmpty() ) return true;
+            for( int c=cWatch; c<=cMode; ++c ) if( x->text( c ).contains( f, Qt::CaseInsensitive ) ) return true;
+            return false;
+        };
+        bool show = matches( it );
+        for( int k=0; k<it->childCount(); ++k ) show |= matches( it->child( k ) );   // An AND: any member
         it->setHidden( !show );
     }
 }
@@ -227,9 +260,10 @@ QList<int> TriggerPane::selected()
 
 void TriggerPane::selectId( int id )
 {
-    for( int i=0; i<m_tree->topLevelItemCount(); ++i )
+    QTreeWidgetItemIterator iter( m_tree );
+    for( ; *iter; ++iter )
     {
-        QTreeWidgetItem* it = m_tree->topLevelItem( i );
+        QTreeWidgetItem* it = *iter;
         if( it->data( cArmed, Qt::UserRole ).toInt() != id ) continue;
         m_tree->clearSelection();
         m_tree->setCurrentItem( it );
@@ -317,9 +351,12 @@ void TriggerPane::highlightParts()   // Selected rows: their parts selected on t
     {
         Trigger* t = m_trig->find( id );
         if( !t ) continue;
-        QString uid = t->cond.node.isEmpty() ? t->cond.comp : t->cond.node.left( t->cond.node.lastIndexOf(':') );
-        for( QString u : { uid, t->cond.refComp } )
-            if( Component* c = Triggers::comp( u ) ) if( !parts.contains( c ) ) parts.append( c );
+        QList<Trigger> ts = t->isAnd() ? t->members : QList<Trigger>{ *t };
+        for( const Trigger& x : ts ){
+            QString uid = x.cond.node.isEmpty() ? x.cond.comp : x.cond.node.left( x.cond.node.lastIndexOf(':') );
+            for( QString u : { uid, x.cond.refComp } )
+                if( Component* c = Triggers::comp( u ) ) if( !parts.contains( c ) ) parts.append( c );
+        }
     }
     if( parts.isEmpty() ) return;
     Circuit::self()->clearSelection();
@@ -335,6 +372,27 @@ void TriggerPane::contextMenu( const QPoint& pos )
     if( ids.size() == 1 ){
         int id = ids.first();
         menu.addAction( tr("Edit…"), this, [this, id](){ edit( id ); } );
+        Trigger* p = m_trig->parentOf( id );
+        if( p && !m_trig->find( id )->event ){
+            int andId = p->id;
+            menu.addAction( tr("Make it the event ⚡"), this, [this, andId, id](){ m_trig->setEvent( andId, id ); } );
+        }
+    }
+    if( ids.size() >= 2 || ( ids.size() == 1 && m_trig->find( ids.first() ) && m_trig->find( ids.first() )->isAnd() ) )
+    {
+        if( ids.size() >= 2 ){
+            QString why = m_trig->canCombine( ids );
+            QAction* a = menu.addAction( why.isEmpty() ? tr("Combine with AND") : tr("Combine with AND (%1)").arg( why ),
+                                         this, [this](){ combineSelected(); } );
+            a->setShortcut( QKeySequence("Ctrl+G") );
+            a->setEnabled( why.isEmpty() );
+        }
+        bool anyAnd = false;
+        for( int id : ids ) if( m_trig->find( id ) && m_trig->find( id )->isAnd() ) anyAnd = true;
+        if( anyAnd ){
+            QAction* a = menu.addAction( tr("Split"), this, [this](){ splitSelected(); } );
+            a->setShortcut( QKeySequence("Ctrl+Shift+G") );
+        }
     }
     if( !ids.isEmpty() )
     {
@@ -364,6 +422,11 @@ bool TriggerPane::eventFilter( QObject* obj, QEvent* ev )
     if( obj == m_tree )
     {
         if( ke->key() == Qt::Key_Backspace || ke->key() == Qt::Key_Delete ){ askDelete(); return true; }
+        if( ke->key() == Qt::Key_G && ( ke->modifiers() & Qt::ControlModifier ) )   // ⌘G combine, ⇧⌘G split (§3)
+        {
+            if( ke->modifiers() & Qt::ShiftModifier ) splitSelected(); else combineSelected();
+            return true;
+        }
         if( ke->key() == Qt::Key_Space && !( ke->modifiers() & ~Qt::KeypadModifier ) )   // Play / pause as elsewhere (D23)
         {
             if( !ke->isAutoRepeat() ) CircuitWidget::self()->togglePlay();
@@ -381,4 +444,37 @@ bool TriggerPane::eventFilter( QObject* obj, QEvent* ev )
         return true;
     }
     return QWidget::eventFilter( obj, ev );
+}
+
+void TriggerPane::combineSelected()   // §3: the selected rows (and ANDs, merged) become one AND
+{
+    if( !m_trig ) return;
+    QList<int> ids;
+    for( QTreeWidgetItem* it : m_tree->selectedItems() )     // In the order they are listed
+        if( !it->parent() ) ids << it->data( cArmed, Qt::UserRole ).toInt();
+    QList<int> order;
+    for( int i=0; i<m_tree->topLevelItemCount(); ++i ){
+        int id = m_tree->topLevelItem( i )->data( cArmed, Qt::UserRole ).toInt();
+        if( ids.contains( id ) ) order << id;
+    }
+    if( QTreeWidgetItem* cur = m_tree->currentItem() ){      // The row clicked first gives the action and mode
+        int c = cur->data( cArmed, Qt::UserRole ).toInt();
+        if( order.removeOne( c ) ) order.prepend( c );
+    }
+    QString why = m_trig->canCombine( order );
+    if( !why.isEmpty() ){ qWarning().noquote() << "[triggers] "+tr("Not combined: %1").arg( why ); return; }
+    int id = m_trig->combine( order );
+    selectId( id );
+}
+
+void TriggerPane::splitSelected()
+{
+    if( !m_trig ) return;
+    QList<int> ids;
+    for( int id : selected() ){
+        Trigger* p = m_trig->parentOf( id );
+        int a = p ? p->id : id;
+        if( m_trig->find( a ) && m_trig->find( a )->isAnd() && !ids.contains( a ) ) ids << a;
+    }
+    for( int a : ids ) m_trig->split( a );
 }

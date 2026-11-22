@@ -77,6 +77,9 @@ class TriggerEditor : public QWidget
         QCheckBox* m_armed;
         QLineEdit* m_name;
         QLabel*    m_note;
+        QLabel*    m_andNote;          // An AND, or a member of one: what applies
+        class QFormLayout* m_form;
+        QList<QWidget*> m_watchRows;   // Hidden for an AND
 };
 
 class TriggerDialog : public QDialog   // The Triggers tab's editor: OK applies

@@ -84,7 +84,8 @@ TriggerEditor::TriggerEditor( QWidget* parent, Component* part )
     m_part = new QComboBox( this );
     m_part->setMinimumContentsLength( 18 );
     m_part->setSizeAdjustPolicy( QComboBox::AdjustToMinimumContentsLengthWithIcon );
-    if( !m_fixed ) f->addRow( tr("Part"), m_part );
+    m_form = f;
+    if( !m_fixed ){ f->addRow( tr("Part"), m_part ); m_watchRows << m_part; }
     else m_part->hide();
 
     m_kState = new QRadioButton( tr("State"), this );
@@ -92,13 +93,15 @@ TriggerEditor::TriggerEditor( QWidget* parent, Component* part )
     m_kCurr  = new QRadioButton( tr("Current"), this );
     QButtonGroup* kg = new QButtonGroup( this );
     kg->addButton( m_kState ); kg->addButton( m_kVolt ); kg->addButton( m_kCurr );
-    f->addRow( tr("Watch"), row( this, { m_kState, m_kVolt, m_kCurr } ) );
+    m_watchRows << row( this, { m_kState, m_kVolt, m_kCurr } );
+    f->addRow( tr("Watch"), m_watchRows.last() );
 
     m_block = new QComboBox( this );
     m_pin   = new QComboBox( this );
     m_toLabel = new QLabel( tr("to"), this );
     m_ref   = new QComboBox( this );
-    f->addRow( "", row( this, { m_block, m_pin, m_toLabel, m_ref } ) );
+    m_watchRows << row( this, { m_block, m_pin, m_toLabel, m_ref } );
+    f->addRow( "", m_watchRows.last() );
 
     m_when = new QComboBox( this );
     m_cond = new QStackedWidget( this );
@@ -125,13 +128,15 @@ TriggerEditor::TriggerEditor( QWidget* parent, Component* part )
     m_sev = new QComboBox( this );
     m_sev->addItems( { "ON", "WAIT", "FAULT" } );
     m_cond->addWidget( row( this, { m_sev } ) );                                    // 4: reaches
-    f->addRow( tr("When"), row( this, { m_when, m_cond } ) );
+    m_watchRows << row( this, { m_when, m_cond } );
+    f->addRow( tr("When"), m_watchRows.last() );
 
     m_hyst = new QLineEdit( this );
     m_hyst->setMaximumWidth( 110 );
     m_hyst->setPlaceholderText( tr("auto (1 %)") );
     m_hystRow = row( this, { new QLabel( tr("hysteresis"), this ), m_hyst } );
     f->addRow( "", m_hystRow );
+    m_watchRows << m_hystRow;
 
     m_pause    = new QCheckBox( tr("Pause"), this );
     m_keyframe = new QCheckBox( tr("Key frame"), this );
@@ -139,6 +144,10 @@ TriggerEditor::TriggerEditor( QWidget* parent, Component* part )
     m_before->setPlaceholderText("0");
     m_before->setMaximumWidth( 80 );
     m_before->setToolTip( tr("Save the key frame this long before the trigger (with the history)") );
+    m_andNote = new QLabel( this );
+    m_andNote->setWordWrap( true );
+    f->addRow( m_andNote );
+    m_andNote->hide();
     f->addRow( tr("Action"), row( this, { m_pause, m_keyframe, new QLabel( tr("before"), this ), m_before,
                                           new QLabel( tr("(neither: count only)"), this ) } ) );
 
@@ -275,7 +284,7 @@ void TriggerEditor::updateVisible()
     m_ref->setVisible( !st && !cu );
     int w = m_when->currentIndex();
     m_cond->setCurrentIndex( st ? 2+qMax( 0, w ) : ( w <= 0 ? 0 : 1 ) );
-    m_hystRow->setVisible( !st );
+    m_hystRow->setVisible( !st && !m_t.isAnd() );   // An AND: no watch of its own
     QString unit = cu ? "A" : "V";
     m_level->setPlaceholderText( unit );
     m_low->setPlaceholderText( tr("low ")+unit );
@@ -296,6 +305,37 @@ void TriggerEditor::updateVisible()
 void TriggerEditor::setTrigger( const Trigger& t )
 {
     m_t = t;
+    Trigger* parent = Triggers::self() ? Triggers::self()->parentOf( t.id ) : nullptr;
+    bool isAnd = t.isAnd();
+    for( QWidget* w : m_watchRows ){                 // An AND: no watch of its own (its members have)
+        w->setVisible( !isAnd );
+        if( QWidget* l = m_form->labelForField( w ) ) l->setVisible( !isAnd );
+    }
+    if( isAnd ){
+        m_andNote->setText( tr("AND of %1 conditions: edit them in their rows (or the parts' Triggers tabs). "
+                               "This sets its action and mode.").arg( t.members.size() ) );
+    }else if( parent ){
+        m_andNote->setText( tr("In %1, as its %2: the AND's action and mode apply (its own are kept for a split).")
+                            .arg( Triggers::self()->watchText( *parent ), t.event ? tr("event ⚡") : tr("qualifier") ) );
+    }
+    m_andNote->setVisible( isAnd || parent );
+    for( QWidget* w : { (QWidget*)m_pause, (QWidget*)m_keyframe, (QWidget*)m_before, (QWidget*)m_mode,
+                        (QWidget*)m_normalRow, (QWidget*)m_armed } ) w->setEnabled( !parent );
+    if( isAnd ){                                     // Its action, mode, name
+        m_filling = true;
+        m_pause->setChecked( t.pause );
+        m_keyframe->setChecked( t.keyframe );
+        m_before->setText( timeText( t.before ) );
+        m_mode->setCurrentIndex( t.single ? 0 : 1 );
+        m_holdoff->setText( timeText( t.holdoff ) );
+        m_max->setValue( t.max );
+        m_armed->setChecked( t.armed );
+        m_name->setText( t.name );
+        m_filling = false;
+        updateVisible();
+        m_note->hide();
+        return;
+    }
     const TrigCond& c = t.cond;
     m_filling = true;
     QString uid = c.comp;
@@ -361,6 +401,19 @@ void TriggerEditor::setTrigger( const Trigger& t )
 Trigger TriggerEditor::trigger()
 {
     Trigger t = m_t;
+    if( t.isAnd() ){                                 // An AND: its action, mode and name only
+        t.pause = m_pause->isChecked();
+        t.keyframe = m_keyframe->isChecked();
+        parseTime( m_before->text(), &t.before );
+        if( !t.keyframe ) t.before = 0;
+        t.single = m_mode->currentIndex() == 0;
+        parseTime( m_holdoff->text(), &t.holdoff );
+        t.max = m_max->value();
+        if( t.single ){ t.holdoff = 0; t.max = 0; }
+        t.armed = m_armed->isChecked();
+        t.name = m_name->text().trimmed();
+        return t;
+    }
     TrigCond& c = t.cond;
     Component* p = part();
     double hyst = c.hyst;
@@ -418,6 +471,12 @@ Trigger TriggerEditor::trigger()
 
 QString TriggerEditor::error()
 {
+    if( m_t.isAnd() ){
+        uint64_t ps;
+        if( !parseTime( m_before->text(), &ps ) ) return tr("\"before\" is a time, e.g. 1ms.");
+        if( !parseTime( m_holdoff->text(), &ps ) ) return tr("The holdoff is a time, e.g. 1ms.");
+        return "";
+    }
     if( !part() ) return tr("Pick a part.");
     if( !m_kState->isChecked() )
     {
@@ -460,6 +519,7 @@ TriggerDialog::TriggerDialog( QWidget* parent, const Trigger& t, bool isNew )
     connect( m_ed, &TriggerEditor::edited, this, check );
     m_ed->setTrigger( t );
     check();
+    adjustSize();                          // An AND hides the watch rows
 }
 
 //------------------------------------------------------------------------------------------------
@@ -579,7 +639,20 @@ void TriggerTab::fill()
         it->setText( tMode, m_trig->modeText( *t ) );
         it->setText( tHits, QString::number( t->hits.size() ) );
         it->setText( tLast, t->hits.isEmpty() ? "–" : KeyFrames::timeText( t->hits.last() ) );
-        if( !t->armed ) for( int c=1; c<tCount; ++c ) it->setForeground( c, dim );
+        bool armed = t->armed;
+        if( Trigger* p = m_trig->parentOf( id ) )        // A member of an AND (§4): the AND's action and mode
+        {
+            it->setText( tWatch, w+"  "+tr("in AND") );
+            it->setToolTip( tWatch, tr("%1 of %2").arg( t->event ? tr("The event") : tr("A qualifier"), m_trig->watchText( *p ) ) );
+            if( !t->event ) it->setText( tCond, m_trig->qualText( *t ) );
+            it->setText( tAction, m_trig->actionText( *p )+" (AND)" );
+            it->setText( tMode, m_trig->modeText( *p ) );
+            it->setText( tHits, QString::number( p->hits.size() ) );
+            it->setText( tLast, p->hits.isEmpty() ? "–" : KeyFrames::timeText( p->hits.last() ) );
+            armed = p->armed;
+            it->setCheckState( tArmed, armed ? Qt::Checked : Qt::Unchecked );
+        }
+        if( !armed ) for( int c=1; c<tCount; ++c ) it->setForeground( c, dim );
         if( sel.contains( id ) ) it->setSelected( true );
     }
     m_filling = false;

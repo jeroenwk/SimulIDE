@@ -227,6 +227,18 @@ QJsonObject Cli::triggerJson( int id )
         err = "a key frame needs the circuit saved to a file: it pauses instead";
     if( !err.isEmpty() ) o["warning"] = err;
     if( t->before ) o["before"] = Cli::timeStr( t->before );
+    if( Trigger* p = tr->parentOf( id ) ){                    // A member of an AND
+        o["in_and"] = p->id;
+        o["role"] = t->event ? "event" : "qualifier";
+        if( !t->event ) o["reads"] = tr->qualText( *t );
+        o.remove("action"); o.remove("mode"); o.remove("hits"); o.remove("last"); o.remove("armed");
+    }
+    if( t->isAnd() ){
+        QJsonArray m;
+        for( const Trigger& x : t->members ) m.append( Cli::triggerJson( x.id ) );
+        o["members"] = m;
+        o.remove("condition");
+    }
     return o;
 }
 
@@ -273,7 +285,13 @@ void CliApi::registerTrigger()
     {
         QList<int> l = ids( c );
         if( l.size() != 1 ) throw CliError("trigger set takes one id");
+        if( c.has("event") ){
+            int ev = c.opt("event").toInt();
+            if( !trig()->find( l.first() )->isAnd() ) throw CliError("--event is for an AND");
+            if( !trig()->setEvent( l.first(), ev ) ) throw CliError("trigger "+c.opt("event")+" can't be this AND's event (not a member, or another member is ↕ / any change / scope)");
+        }
         Trigger t = *trig()->find( l.first() );
+        if( t.isAnd() && ( c.has("watch") || c.has("cond") ) ) throw CliError("an AND has no watch of its own: set its members");
         if( c.has("watch") ) parseWatch( c.opt("watch"), t.cond );
         if( c.has("cond") || c.has("watch") )
         {
@@ -285,7 +303,33 @@ void CliApi::registerTrigger()
         QString err = trig()->check( t );
         if( !err.isEmpty() ) throw CliError( err );
         trig()->set( t );
-        return Cli::triggerJson( t.id );
+        return Cli::triggerJson( t.id );   // (--event only: set above)
+    });
+
+    add("trigger combine", "trigger combine <id> <id>... [--event ID] [--name TEXT]", "Combine rows with AND "
+        "(specs/triggers.html §3): one row replaces them, with the first id's action and mode; the members keep their "
+        "own settings (unused while combined). An AND in the list merges its members in. --event: the member that gives "
+        "the time (default: the only ↕ / any change / scope member, else the first); the others are qualifiers, read as "
+        "states at that step: ↑ L = is above L, ↓ L = is below L, out/in = is outside/inside, A->B = is B, >=S = is at least S.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QList<int> l = ids( c );
+        QString why = trig()->canCombine( l );
+        if( !why.isEmpty() ) throw CliError( why );
+        int ev = c.has("event") ? c.opt("event").toInt() : 0;
+        int id = trig()->combine( l, ev, c.opt("name") );
+        if( !id ) throw CliError("not combined");
+        return Cli::triggerJson( id );
+    });
+
+    add("trigger split", "trigger split <id>", "Split an AND back into its members, as rows with their own settings, disarmed.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QList<int> l = ids( c );
+        if( l.size() != 1 || !trig()->find( l.first() )->isAnd() ) throw CliError("trigger split takes one AND's id");
+        QJsonArray a;
+        for( int id : trig()->split( l.first() ) ) a.append( Cli::triggerJson( id ) );
+        return a;
     });
 
     add("trigger arm", "trigger arm <id>...", "Arm triggers.", []( CliCtx& c ) -> QJsonValue

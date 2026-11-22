@@ -60,6 +60,13 @@ struct Trigger
     QString name;
     TrigCond cond;
 
+    // AND (§3, Combining rows): a combined row has members, its conditions; it has the action and
+    // mode, the members keep their own (unused while combined, restored by a split). One member
+    // is the event (it gives the time), the others are qualifiers, read as states at that step
+    QList<Trigger> members;
+    bool event = false;     // A member: the AND's event
+    bool isAnd() const { return !members.isEmpty(); }
+
     // Results of this run (not saved)
     QVector<uint64_t> hits;        // Times of the hits
     uint64_t selfDisarmedAt = 0;   // It disarmed itself at this hit (single, max): going back before re-arms
@@ -75,7 +82,8 @@ class Triggers : public QObject, public SimWatch, public Updatable, public State
  static Triggers* self();   // The current circuit's
 
         const QList<Trigger>& list() { return m_list; }
-        Trigger* find( int id );
+        Trigger* find( int id );                     // A row, or a member of an AND
+        Trigger* parentOf( int id );                 // The AND a member is in (null: a row)
 
         // Edits: one undo step each, the circuit marked changed. Apply at the next frame while running
         int  add( Trigger t );                       // Returns its id
@@ -83,6 +91,15 @@ class Triggers : public QObject, public SimWatch, public Updatable, public State
         int  remove( QList<int> ids );               // Returns how many were deleted
         int  setArmed( QList<int> ids, bool armed );
         void clearHits( QList<int> ids );
+
+        // AND (§3): rows (or ANDs, merged) combined into one; the first id gives the action and
+        // mode; event: a member's id (0: the first one that can be, or the only event-only one)
+        QString canCombine( QList<int> ids );        // "" when they can be combined, else why not
+        int  combine( QList<int> ids, int event=0, QString name="" );   // The new row's id, 0: refused
+        QList<int> split( int id );                  // The members back as rows, disarmed
+        bool setEvent( int andId, int memberId );
+ static bool eventOnly( const TrigCond& c );        // ↕, any change, the scope: no state to read
+        QString qualText( const Trigger& m );        // A member as a qualifier: "is above 10 V"
         void touch() { m_dirty = true; emit changed(); }   // Something a trigger reads changed (the scope's setting)
         int  scopeTrigger( const QString& uid );     // The scope's simulation trigger row (0: none)
 
@@ -139,7 +156,12 @@ class Triggers : public QObject, public SimWatch, public Updatable, public State
     private:
         struct Check
         {
-            int id = 0;
+            int id = 0;                                   // The row (an AND's members: the AND's id)
+            int key = 0;                                  // Its own id (keyframes, the AND's members)
+            bool qual = false;                            // An AND's qualifier: read as a state
+            bool qOk = false, qInit = false;              // Its state now
+            QVector<int> quals;                           // An AND's event: its qualifiers (indexes)
+            bool qualNow( double v );                     // Updates and returns the qualifier's state
             Pin* p0 = nullptr;
             Pin* p1 = nullptr;
             class eNode* n0 = nullptr;   // Their nodes, read directly (both pins have one, or p1 is ground)
@@ -178,10 +200,13 @@ class Triggers : public QObject, public SimWatch, public Updatable, public State
         void compile( bool derive );
         bool compileOne( const Trigger& t, Check& c );
         QString condXml( const TrigCond& c );
+        QString trigXml( const Trigger& t, bool member );
+        Trigger readXml( const class QDomElement& e, const QList<Trigger>& old );
+        Trigger asRow( const Trigger& m, const Trigger& from );   // A member as a row with the AND's action and mode
         void summary();
         void keyFrame( Trigger* t, uint64_t hit, bool resumeAfter );   // The key frame action
         bool hit( Check& c, uint64_t t, double v, bool quiet );        // Counts a hit; true: stop there
-        struct Saved { bool armR, armF, armW, done; uint64_t holdEnd; int level; QString text; };
+        struct Saved { bool armR, armF, armW, done; uint64_t holdEnd; int level; QString text; bool qOk; };
         QHash<int, Saved> m_loaded;   // Trigger state read from a keyframe, applied by restored()
 
         QList<Trigger> m_list;
