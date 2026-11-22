@@ -418,6 +418,15 @@ ScriptCpu::StatusEvent ScriptCpu::status()
     return { t, m_stText, m_stLevel, 0 };
 }
 
+void ScriptCpu::statusRewind( uint64_t time )
+{
+    QMutexLocker lock( &m_statusLock );
+    StateLog::rewindList( m_stHistory, m_stText, m_stLevel, time );
+    m_stPeakText.clear();
+    m_stPeakLevel = -1;
+    m_stHold = 0;
+}
+
 QList<ScriptCpu::StatusEvent> ScriptCpu::statusHistory()
 {
     QMutexLocker lock( &m_statusLock );

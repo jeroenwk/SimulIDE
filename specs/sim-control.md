@@ -146,7 +146,9 @@ Simulation keys (canvas not focused, §3.1); F5 and F6 work everywhere:
   1 s/s → 100 ms. Set when the speed is set (toolbar, `sim speed`, `settings set speed`), and
   while running (not paused, not skipping) from the **real speed** when it is below the set speed
   (the orange speed, speed lock off): board_mains set to 1 s/s but reaching 25 ms/s gets 1 ms. A
-  10 % margin before moving up a list step keeps it from flipping. It changes only when that list
+  10 % margin before moving up a list step keeps it from flipping; once it keeps up again it goes
+  straight back to the set speed's interval. The real speed is measured from the run's start and
+  from a resume (it used to count the idle time before, so a run read as far too slow: 1 ps). It changes only when that list
   step changes, so a value set by hand (↑ / ↓, the box) stays until then. A run starts from the
   interval as it is (the one saved with the circuit). `1 step` is kept.
 
@@ -169,12 +171,13 @@ the meters, scope and part views show the new state.
 
 Layout (user, 2026-11-21, built):
 
-- **Stopped**: one row, the editing bar, then only the play button; the Info menu at the right
-  end. Speed, skip, the other run buttons and the time are hidden.
+- **Stopped, before the first start or after ×**: one row, the editing bar, then only the play
+  button; the Info menu at the right end. Speed, skip, the other run buttons and the time are hidden.
 - **Running, paused or debugging**: always two rows, even when one would fit. The first is the
   editing bar with the Info menu at its right end; the second is the simulation bar:
-  `[speed ▾] [skip ▾] ⏮ ⏹ ⏯ ⏭  time  [NOISE]`. A stop (not a pause) collapses it again
-  (`CircuitWidget::setSimExpanded`).
+  `[speed ▾] [skip ▾] ⏮ ⏹ ⏯ ⏭  time  [NOISE]`. A stop keeps it open (user, 2026-11-22): a
+  faint × after the time, shown only while stopped, collapses it (`CircuitWidget::setSimExpanded`,
+  `updtSimClose`); the next start opens it again.
 - **No status block**: the time's colour gives the state, green running, light grey paused.
   Other status messages (`CircuitWidget::setMsg`: simulator warnings and errors) go to
   Messages, once per run; answers to a key or a typed value (a refused skip, a speed that

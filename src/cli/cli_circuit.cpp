@@ -206,7 +206,8 @@ void CliApi::registerCircuit()
         "Current through wires (A), signed: positive flows from the 'from' pin to the 'to' pin. "
         "Computed from the solved circuit; works paused. flag: approximate = shared between passive pins "
         "(tunnels, subcircuit pins), inconsistent = current does not add up (bug). "
-        "level (with currentFlow on): how the dots show it, 1 = as the largest current, 0 = crawling, -1 = below currentMin.",
+        "level (with currentFlow on): how the dots show it, 1 = as the largest current, 0 = crawling, -1 = below currentMin; "
+        "dots: forward / backward (from -> to, or against it: for a moment after going back in time) / still.",
         []( CliCtx& c ) -> QJsonValue
     {
         if( !Simulator::self()->isRunning() ) throw CliError("simulation is not running");
@@ -225,7 +226,14 @@ void CliApi::registerCircuit()
                 o["current"] = con->flowCurrent;
                 CurrentFlow* flow = CurrentFlow::self();
                 if( flow->enabled() )   // How the dots show it: 1 = like the largest current, 0 = crawl, -1 = none
+                {
                     o["level"] = qRound( 100*flow->level( con->flowCurrent, flow->threshold(), flow->scale() ) )/100.0;
+                    double v = flow->speed( con->flowCurrent, flow->threshold(), flow->scale() );
+                    Simulator* sim = Simulator::self();
+                    int dir = flow->rewinding() ? -1 : ( sim->simState() >= SIM_WAITING ) ? 1 : 0;
+                    v *= dir;           // Along from -> to: forward; against it: backward (going back in time)
+                    o["dots"] = v > 0 ? "forward" : v < 0 ? "backward" : "still";
+                }
                 if( con->flowFlag == 1 ) o["flag"] = "approximate";
                 if( con->flowFlag == 2 ) o["flag"] = "inconsistent";
                 rows.append( o );

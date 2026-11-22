@@ -571,5 +571,4 @@ void Transformer::simState( StateIO& s )
     s.io( m_coupCoeff );
     s.io( m_reacStep );
     s.io( m_currentScale );
-    s.io( m_shownRef );
-}
+}   // Not m_shownRef: display state, taken each frame (snapCurrents)

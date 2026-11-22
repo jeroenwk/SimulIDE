@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include "simskip.h"
+#include "currentflow.h"
 #include "simulator.h"
 #include "circuitwidget.h"
 #include "simhistory.h"
@@ -90,6 +91,7 @@ QString SimSkip::startBack( uint64_t span, int count )
 
     m_back = true;
     m_backFrom = sim->circTime();
+    CurrentFlow::self()->rewindCue( 300 );    // From the key press on; a long one is extended at the landing
     m_announced = false;
     m_wall.start();
     if( span == 0 )
@@ -235,6 +237,7 @@ void SimSkip::finish( bool ok, QString msg )
         return;
     }
     m_then = nullptr;
+    if( ok && m_back ) CurrentFlow::self()->rewindCue();   // The dots run backwards a moment
     m_back = false;
     // Landed and paused on a solved step: a keyframe there, so a skip shorter than a frame still
     // leaves one and the places skipped to are quick to come back to (specs/sim-control.md §4.8)

@@ -579,6 +579,22 @@ void CircuitWidget::createToolBars()
     timeLabel->setContentsMargins( 6*MainWindow::self()->fontScale(), 0, 0, 0 );
     m_simRunItems << m_simToolBar.addWidget( timeLabel );
     m_infoWidget->setToolbarTime( timeLabel );
+
+    QToolButton* closeBar = new QToolButton( this );   // Stopped: closes the row (a start opens it again)
+    closeBar->setObjectName("simBarClose");
+    closeBar->setText("×");
+    closeBar->setAutoRaise( true );
+    closeBar->setFocusPolicy( Qt::NoFocus );
+    closeBar->setCursor( Qt::PointingHandCursor );
+    QFont cf = closeBar->font();
+    cf.setPixelSize( 14*MainWindow::self()->fontScale() );
+    closeBar->setFont( cf );
+    closeBar->setStyleSheet("#simBarClose { color: rgba(128,128,128,0.55); border: none; padding: 0 4px; }"
+                            "#simBarClose:hover { color: rgba(128,128,128,1.0); }");
+    closeBar->setToolTip( tr("Close the simulation bar (it opens again when the simulation starts)") );
+    connect( closeBar, &QToolButton::clicked, this, [this](){ setSimExpanded( false ); } );
+    m_simCloseAct = m_simToolBar.addWidget( closeBar );
+    m_simCloseAct->setVisible( false );
     m_simRunItems << m_simToolBar.addSeparator();//..........................
     // No status block: the time's colour gives the state (green running, light grey paused),
     // other status messages go to Messages (setMsg)
@@ -636,10 +652,20 @@ void CircuitWidget::setSimExpanded( bool on )
 {
     m_simExpanded = on;
     for( QAction* a : m_simRunItems ) a->setVisible( on );
+    updtSimClose();
     updateNoise();                    // The NOISE badge follows the bar
     updateLock();
     m_toolRows = 0;                   // Lay out again
     layoutToolBars();
+}
+
+// The × after the time: only while stopped with the bar open
+void CircuitWidget::updtSimClose()
+{
+    if( !m_simCloseAct ) return;
+    Simulator* sim = Simulator::self();
+    bool stopped = !sim || !sim->isRunning();
+    m_simCloseAct->setVisible( m_simExpanded && stopped );
 }
 
 void CircuitWidget::layoutToolBars()
@@ -853,6 +879,7 @@ void CircuitWidget::powerCircOn()
     setSimExpanded( true );
     m_infoWidget->setSimState( InfoWidget::shownRunning );
     Simulator::self()->startSim();
+    updtSimClose();                      // Running: no ×
     updtBackAvail( false );              // Parts added since the load
     m_skipPreset = 0;                    // The interval as it is; the real speed moves it (§3.3)
     m_circView.clearFocus();             // The simulation keys work (specs/sim-control.md §3.1)
@@ -878,7 +905,7 @@ void CircuitWidget::powerCircOff()
     m_infoWidget->setRate( 0, 0 );
     m_infoWidget->setSimState( InfoWidget::shownStopped );
     updtKeyOwner();
-    setSimExpanded( false );
+    updtSimClose();                    // The bar stays open; its × closes it
     CurrentFlow::self()->clear();
     ChargeView::self()->clear();
     EventLog::self()->stop();
@@ -903,6 +930,7 @@ void CircuitWidget::powerCircDebug()
     ChargeView::self()->attach();
     m_infoWidget->setSimState( InfoWidget::shownPaused );
     Simulator::self()->startSim( true );
+    updtSimClose();
 }
 
 void CircuitWidget::pauseDebug()
@@ -1214,7 +1242,8 @@ void CircuitWidget::skipForSpeed( double psPerSec, bool hysteresis )
     if( !sim || sim->skipInterval() == 0 ) return;     // 1 step is kept
     if( hysteresis && m_skipPreset == 0 ) m_skipPreset = speedPreset( sim->psPerSec() );   // Run start: from the set speed
     double p = speedPreset( psPerSec );
-    if( hysteresis && m_skipPreset > 0 && p > m_skipPreset && psPerSec < p*1.1 ) p = m_skipPreset;
+    bool atSet = psPerSec >= sim->psPerSec()*0.999;  // Keeping up again: straight back to the set speed's
+    if( hysteresis && !atSet && m_skipPreset > 0 && p > m_skipPreset && psPerSec < p*1.1 ) p = m_skipPreset;
     if( p == m_skipPreset && hysteresis ) return;      // Unchanged: a value set by hand stays
     m_skipPreset = p;
     uint64_t v = SimSkip::nextInterval( (uint64_t)p, -1, 10 );

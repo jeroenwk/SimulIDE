@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <atomic>
+#include <QSet>
 
 #include "statelog.h"
 
@@ -11,6 +12,34 @@ uint64_t StateLog::nextSeq()
 {
     static std::atomic<uint64_t> s_seq( 0 );
     return ++s_seq;
+}
+
+static QMutex s_allLock;
+static QSet<StateLog*> s_all;     // Every log, subcircuit parts included
+
+StateLog::StateLog()  { QMutexLocker l( &s_allLock ); s_all.insert( this ); }
+StateLog::~StateLog() { QMutexLocker l( &s_allLock ); s_all.remove( this ); }
+
+void StateLog::rewindList( QList<Event>& h, QString& text, int& level, uint64_t time )
+{
+    while( !h.isEmpty() && h.last().time > time ) h.removeLast();
+    if( h.isEmpty() ){ text.clear(); level = -1; }
+    else             { text = h.last().text; level = h.last().level; }
+}
+
+void StateLog::rewind( uint64_t time )
+{
+    QMutexLocker lock( &m_lock );
+    rewindList( m_history, m_text, m_level, time );
+    m_peak = { 0, "", -1, 0 };
+    m_held = { 0, "", -1, 0 };
+    m_holdFrames = 0;
+}
+
+void StateLog::rewindAll( uint64_t time )
+{
+    QMutexLocker l( &s_allLock );
+    for( StateLog* log : s_all ) log->rewind( time );
 }
 
 bool StateLog::report( QString text, int level, uint64_t time )

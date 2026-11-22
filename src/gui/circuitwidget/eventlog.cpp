@@ -177,6 +177,24 @@ void EventLog::flushRate()
     }
 }
 
+// After going back in time the part logs were cut back (StateLog::rewind): take the states as
+// they are now, so the replay's changes are written again from the right state
+void EventLog::rewound()
+{
+    for( Component* comp : *Circuit::self()->compList() )
+    {
+        if( !m_tracks.contains( comp->getUid() ) ) continue;
+        if( dynamic_cast<CapacitorBase*>( comp ) ) { m_tracks.remove( comp->getUid() ); continue; }
+        Track& tr = m_tracks[ comp->getUid() ];
+        tr.last.clear();
+        tr.sigs.clear();                          // The cycle summary starts again
+        tr.times.clear();
+        tr.cycling = false;
+        tr.repeats = 0;
+        partEvents( comp, true );
+    }
+}
+
 // Part states: the setStatus history of the part's scripted cores, one line per moment
 void EventLog::partEvents( Component* comp, bool silent )
 {

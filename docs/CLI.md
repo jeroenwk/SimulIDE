@@ -141,7 +141,7 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 | `wire list` | Wires and the pins they join |
 | `wire remove <wire> ...` | Remove wires. Prints the removed uids and any merged wires |
 | `wire style <wire> ... [--color C\|none] [--band C\|none] [--opacity 0..100] [--width W\|default]` | Wire colours ([specs/wire-colors.md](../specs/wire-colors.md)): line colour, and a translucent band behind the wire (default 6 px, 50 %). One undo step; without options prints them. `wire list` shows `color`, `bandColor`, `bandWidth` when set |
-| `wire current [wire ...]` | Current through wires (A), signed from the `from` pin to the `to` pin. Works paused. `flag` marks shared (`approximate`) or non-conserving (`inconsistent`) results |
+| `wire current [wire ...]` | Current through wires (A), signed from the `from` pin to the `to` pin. Works paused. `flag` marks shared (`approximate`) or non-conserving (`inconsistent`) results. With currentFlow on: `level` and `dots` (`forward`, `backward` for a moment after going back in time, `still`) |
 
 - `comp move`, `comp rotate` and `comp flip` also print the new pin positions.
 

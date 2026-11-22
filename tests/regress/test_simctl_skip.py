@@ -102,6 +102,26 @@ def test(sim):
     sim.check("skipInterval saved (1 step)", 1 if sim.cli("settings", "get", "skipInterval") == "1 step" else 0, 1, absolute=0)
 
 
+def test_real_speed_start(sim):
+    """The interval follows the real speed (§3.3), measured from the run's start: it used to count
+    the idle time since the circuit was made, so a run started after a wait read as far too slow
+    (the interval fell to 1 ps), and once keeping up the 10 % up-margin kept it there."""
+    build(sim)
+    sim.cli("sim", "speed", "100")                     # 1 s/s: interval 100 ms
+    time.sleep(4)                                      # Idle before the run
+    sim.cli("sim", "start")
+    time.sleep(3.5)                                    # Three real-speed readings
+    iv = sim.cli("settings", "get", "skipInterval")
+    sim.check("1 s/s run started after a wait keeps 100 ms", 1 if iv == "100 ms" else 0, 1, absolute=0, note=iv)
+    sim.cli("sim", "pause")
+    time.sleep(3)                                      # A pause doesn't count either
+    sim.cli("sim", "resume")
+    time.sleep(2.5)
+    iv = sim.cli("settings", "get", "skipInterval")
+    sim.check("after a 3 s pause still 100 ms", 1 if iv == "100 ms" else 0, 1, absolute=0, note=iv)
+    sim.cli("sim", "stop")
+
+
 def wait_paused(sim, timeout=10):
     t0 = time.time()
     while time.time() - t0 < timeout:
@@ -166,6 +186,7 @@ def test_keys(sim):
 def test_all(sim):
     test(sim)
     test_keys(sim)
+    test_real_speed_start(sim)
 
 
 if __name__ == "__main__":

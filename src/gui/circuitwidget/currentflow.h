@@ -39,6 +39,11 @@ class CurrentFlow : public Updatable
 
         virtual void updateStep() override;
 
+        // Going back in time (← ⏮): the dots run backwards for `ms` of wall time from now, also
+        // while paused. A cue only: time jumps, the dots don't follow the charge (specs/current-flow.md)
+        void rewindCue( int ms=500 );
+        bool rewinding() { return m_clock.nsecsElapsed() < m_revUntil; }
+
         // Largest wire current right now (A), smoothed: rises at once, decays in about 1 s.
         // Speed and opacity are relative to it, like EveryCircuit: the busiest wire is
         // fastest and brightest, wires carrying 10^-range of it or less crawl, dim.
@@ -69,6 +74,7 @@ class CurrentFlow : public Updatable
 
         QElapsedTimer m_clock;
         qint64 m_lastNs;
+        qint64 m_revUntil = 0;   // Dots run backwards until then (m_clock ns)
 };
 
 #endif

@@ -16,6 +16,9 @@
 #include "e-element.h"
 #include "mainwindow.h"
 #include "circuitwidget.h"
+#include "statelog.h"
+#include "scriptcpu.h"
+#include "eventlog.h"
 #include <QSettings>
 
 SimHistory* SimHistory::self()
@@ -191,6 +194,10 @@ uint64_t SimHistory::restore( Simulator* sim, uint64_t t, QString keepClass )
         }
         sim->setLastEventTime( it->time );
         for( eElement* el : sim->elementList() ) el->stateRestored();
+        StateLog::rewindAll( it->time );           // Part states: as they were then (badges, Messages)
+        for( eElement* el : sim->elementList() )
+            if( ScriptCpu* cpu = dynamic_cast<ScriptCpu*>( el ) ) cpu->statusRewind( it->time );
+        if( EventLog::self() ) EventLog::self()->rewound();
         return it->time;
     }
     return 0;

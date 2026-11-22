@@ -468,6 +468,8 @@ void Simulator::startSim( bool paused )
     m_refTime  = m_RefTimer.nsecsElapsed();
     m_loopTime = m_refTime;
     m_timerTime = m_loopTime;
+    m_lastRefT = m_refTime;     // Real speed measured from now: 0 counted the time since the program started
+    m_lastStep = m_tStep;
     m_realFPS = m_fps;
     m_timerId = this->startTimer( m_timerTick_ms, Qt::PreciseTimer ); // Init Timer
 }
@@ -621,6 +623,8 @@ void Simulator::resumeSim()
 {
     if( m_state != SIM_PAUSED ) return;
     m_state = m_oldState;
+    m_lastRefT = m_RefTimer.nsecsElapsed();   // The pause doesn't count in the real speed
+    m_lastStep = m_tStep;
 }
 
 /*void Simulator::stopTimer()

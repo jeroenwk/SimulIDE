@@ -164,8 +164,85 @@ def test_off_warning(sim):
     c("sim", "stop")
 
 
+def test_back_states(sim):
+    """Part states go back too: board_mains' bridge diode D8 conducts from ~13.2 to ~15.4 ms. Going
+    back from 16 ms to 14 ms used to leave its state log at OFF (badge, read, status), and the
+    replay's OFF -> ON was then no change, so it was never reported."""
+    c = sim.cli
+    c("circuit", "open", os.path.join(HERE, "floating_pair", "board_mains.sim1"), "--discard")
+    c("settings", "set", "history", "true")
+    was = c("settings", "get", "partStatus")      # The user's settings file: put it back after
+    c("settings", "set", "partStatus", "true")
+    c("comp", "set", "D8", "Show_State=true")
+    c("sim", "skip", "14ms", timeout=300)
+
+    def d8():
+        return c("read", "D8").get("state")
+
+    units = {"ps": 1e-12, "ns": 1e-9, "us": 1e-6, "µs": 1e-6, "ms": 1e-3, "s": 1}
+
+    def changes(after_ps):
+        out = []
+        for e in c("status", "D8")["history"]:
+            v, u = e["time"].split()
+            if float(v) * units[u] * 1e12 > after_ps:
+                out.append(e)
+        return out
+
+    sim.check("D8 at 14 ms: ON", 1 if d8() == "ON" else 0, 1, absolute=0, note=str(d8()))
+    c("sim", "skip", "2ms", timeout=300)
+    sim.check("D8 at 16 ms: OFF", 1 if d8() == "OFF" else 0, 1, absolute=0, note=str(d8()))
+    c("sim", "skip", "2ms", "--back", timeout=300)
+    sim.check("back to 14 ms: D8 ON again", 1 if d8() == "ON" else 0, 1, absolute=0, note=str(d8()))
+    sim.check("back to 14 ms: no change after 14 ms in its history", len(changes(14000000001)), 0, absolute=0,
+              note=str(changes(14000000001)))
+    c("sim", "skip", "2ms", timeout=300)
+    ev = changes(14000000001)
+    sim.check("forward again: D8 OFF", 1 if d8() == "OFF" else 0, 1, absolute=0, note=str(d8()))
+    sim.check("forward again: the ON -> OFF reported once", len(ev), 1, absolute=0, note=str(ev))
+    c("sim", "stop")
+    c("settings", "set", "partStatus", str(was).lower())
+
+
+def test_back_dots(sim):
+    """Going back in time: the current-flow dots run backwards for a moment (a cue, ~0.5 s), then
+    stand still (paused); running forward they go with the current."""
+    c = sim.cli
+    c("circuit", "new", "--discard")
+    c("comp", "add", "Battery", "--label", "B1", "--at", "0,0", "Voltage=10")
+    c("comp", "add", "Resistor", "--label", "R1", "--at", "80,-40", "Resistance=1000")
+    c("comp", "add", "Capacitor", "--label", "C1", "--at", "160,0", "Capacitance=1e-3")
+    c("comp", "add", "Ground", "--label", "G", "--at", "0,80")
+    for a, b in (("B1.lPin", "R1.lPin"), ("R1.rPin", "C1.lPin"), ("C1.rPin", "G.Gnd"), ("B1.rPin", "G.Gnd")):
+        c("wire", "add", a, b)
+    c("settings", "set", "history", "true")
+    was = c("settings", "get", "currentFlow")     # The user's settings file: put it back after
+    c("settings", "set", "currentFlow", "true")
+    c("sim", "speed", "1")
+    c("sim", "start")
+    time.sleep(1.5)
+
+    def dots():
+        return {r["uid"]: r.get("dots") for r in c("wire", "current") if abs(r.get("current", 0)) > 1e-6}
+
+    flip = {"forward": "backward", "backward": "forward"}
+    run = dots()
+    sim.check("running: dots move on every wire", 1 if run and all(v in flip for v in run.values()) else 0, 1, absolute=0, note=str(run))
+    c("sim", "skip", "1ms", "--back")
+    back = dots()
+    sim.check("just gone back: every wire's dots reversed", 1 if back and all(back.get(k) == flip.get(v) for k, v in run.items()) else 0, 1,
+              absolute=0, note="%s -> %s" % (run, back))
+    time.sleep(1.0)
+    d = set(dots().values())
+    sim.check("a second later, paused: dots still", 1 if d == {"still"} else 0, 1, absolute=0, note=str(d))
+    c("sim", "stop")
+    c("settings", "set", "currentFlow", str(was).lower())
+
+
 def test_all(sim):
     test(sim)
+    test_back_dots(sim)
+    test_back_states(sim)
     test_back_board(sim)
     test_back_switch(sim)
     test_off_warning(sim)

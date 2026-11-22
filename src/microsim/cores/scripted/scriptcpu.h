@@ -51,6 +51,7 @@ class ScriptCpu : public ScriptModule, public McuCpu
         typedef StateLog::Event StatusEvent;          // seq: unique, rising, shared with built-in parts' states
         QList<StatusEvent> statusHistory();           // State changes since the start (thread safe)
         StatusEvent status();                         // Current state, not the one held on screen
+        void statusRewind( uint64_t time );           // Going back: the changes after `time` dropped
 
         void addCpuReg( string name, string type );
         void addCpuVar( string name, string type );

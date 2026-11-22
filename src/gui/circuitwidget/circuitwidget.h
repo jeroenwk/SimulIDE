@@ -132,6 +132,8 @@ class CircuitWidget : public QWidget
         void layoutToolBars();       // One row when both fit, else two; two while the simulation is on
         void setSimExpanded( bool on );   // The whole simulation bar (on) or only the play button
         bool m_simExpanded = false;
+        QAction* m_simCloseAct = nullptr;  // × after the time, stopped only
+        void updtSimClose();
         QList<QAction*> m_simRunItems;    // Hidden while stopped
         bool eventFilter( QObject* obj, QEvent* ev ) override;
         bool keysToSim();                    // Focus outside the canvas, text fields, lists, editable combos

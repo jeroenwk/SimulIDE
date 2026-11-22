@@ -207,6 +207,11 @@ The result is a signed current for each `Connector`, positive from
     `update()` so its dots disappear.
   - When the simulation is paused, the phase stops advancing and the dots stay
     still but visible. When it stops, the dots are cleared.
+  - Going back in time (← ⏮, specs/sim-control.md §4; user, 2026-11-22): the dots run
+    backwards, with the currents of the moment shown, from the key press until 0.5 s after the
+    landing (`CurrentFlow::rewindCue`), then stand still (paused). A cue only: time jumps, the
+    dots don't follow the charge. Holding ← (key repeat) keeps them running backwards.
+    `wire current` gives `dots`: forward / backward / still.
 - **Frame rate:** the GUI timer rate (the `fps` setting). There's no separate
   timer.
 - **`capture circuit`:** draws whatever is on screen, so the dots appear in
