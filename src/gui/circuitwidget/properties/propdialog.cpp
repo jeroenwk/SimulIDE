@@ -215,7 +215,9 @@ void PropDialog::adjustWidgets()
     {
         QSize hint = widget->sizeHint();
         w = qMax( w, hint.width()+24 );
-        h = hint.height()+90*m_scale;
+        int contentW = qMax( widget->width(), hint.width() );        // Wrapped texts: their height at this width
+        int contentH = widget->layout()->hasHeightForWidth() ? widget->layout()->heightForWidth( contentW ) : hint.height();
+        h = qMax( hint.height(), contentH )+90*m_scale;
         this->setMinimumWidth( hint.width()+24 );
         this->setMaximumWidth( 16777215 );
         this->setFixedHeight( h );

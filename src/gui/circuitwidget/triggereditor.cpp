@@ -16,9 +16,12 @@
 #include <QStackedWidget>
 #include <QVBoxLayout>
 #include <QButtonGroup>
+#include <QTimer>
 
 #include "triggereditor.h"
 #include "keyframes.h"
+#include "oscope.h"
+#include "propdialog.h"
 #include "circuit.h"
 #include "component.h"
 #include "node.h"
@@ -62,6 +65,12 @@ static QWidget* row( QWidget* parent, QList<QWidget*> ws, bool stretch=true )
     for( QWidget* x : ws ) l->addWidget( x );
     if( stretch ) l->addStretch( 1 );
     return w;
+}
+
+// The properties dialog sizes itself to its tab: again when a tab's content grows or shrinks
+static void relayout( QWidget* w )
+{
+    QTimer::singleShot( 0, w, [w](){ if( PropDialog* d = qobject_cast<PropDialog*>( w->window() ) ) d->adjustWidgets(); } );
 }
 
 TriggerEditor::TriggerEditor( QWidget* parent, Component* part )
@@ -152,7 +161,6 @@ TriggerEditor::TriggerEditor( QWidget* parent, Component* part )
 
     m_note = new QLabel( this );
     m_note->setWordWrap( true );
-    m_note->setStyleSheet("QLabel { color: palette(mid); }");
     f->addRow( m_note );
 
     fillParts();
@@ -459,7 +467,6 @@ TriggerDialog::TriggerDialog( QWidget* parent, const Trigger& t, bool isNew )
 
 #include <QApplication>
 #include <QHeaderView>
-#include <QTimer>
 #include <QToolButton>
 #include <QTreeWidget>
 
@@ -529,7 +536,7 @@ TriggerTab::TriggerTab( QWidget* parent, Component* part )
     m_apply->setSingleShot( true );
     m_apply->setInterval( 600 );
     connect( m_apply, &QTimer::timeout, this, [this](){ apply(); } );
-    connect( m_ed, &TriggerEditor::edited, this, [this](){ if( !m_filling ) m_apply->start(); } );
+    connect( m_ed, &TriggerEditor::edited, this, [this](){ relayout( this ); if( !m_filling ) m_apply->start(); } );
     connect( add, &QToolButton::clicked, this, [this](){ addNew(); } );
     connect( del, &QToolButton::clicked, this, [this](){ removeSelected(); } );
     connect( m_list, &QTreeWidget::itemSelectionChanged, this, [this](){ if( !m_filling ) selectionChanged(); } );
@@ -610,6 +617,7 @@ void TriggerTab::selectionChanged()
     }
     m_draft = false;
     m_addBtn->setVisible( false );
+    relayout( this );
     m_id = sel.first()->data( tArmed, Qt::UserRole ).toInt();
     Trigger* t = m_trig->find( m_id );
     if( !t ) return;
@@ -646,6 +654,7 @@ void TriggerTab::addNew()   // A draft in the editor: added once the form makes 
     m_filling = false;
     if( QLabel* lab = findChild<QLabel*>("editLabel") ) lab->setText( tr("New trigger") );
     m_addBtn->setVisible( true );
+    relayout( this );
 }
 
 void TriggerTab::apply()
@@ -715,13 +724,11 @@ ScopeTriggerTab::ScopeTriggerTab( QWidget* parent, Component* scope )
     col->addWidget( m_sim );
     m_row = new QLabel( this );
     m_row->setWordWrap( true );
-    m_row->setStyleSheet("QLabel { color: palette(mid); }");
     col->addWidget( m_row );
     QLabel* about = new QLabel( tr("The channel and the level are the scope's own trigger (its Expand panel shows the same). "
                                    "As a simulation trigger it is a row of the circuit's Triggers tab, where its action and mode are set "
                                    "(new: pause, single); deleting the row clears this box."), this );
     about->setWordWrap( true );
-    about->setEnabled( false );
     col->addWidget( about );
     col->addStretch( 1 );
 
@@ -731,7 +738,7 @@ ScopeTriggerTab::ScopeTriggerTab( QWidget* parent, Component* scope )
         if( !m_filling ) setProp( "TrigAuto", a ? "true" : "false" ); });
     connect( m_level, &QLineEdit::editingFinished, this, [this](){
         double v = 0;
-        if( !m_filling && parse( m_level->text(), "V", &v ) ) setProp( "TrigLevel", QString::number( v, 'g', 12 ) ); });
+        if( !m_filling && parse( m_level->text(), "V", &v ) ) setProp( "TrigLevel", QString::number( v, 'g', 12 )+" V" ); });   // Its unit: "3.3" alone would take the property's last prefix (mV)
     connect( m_sim, &QCheckBox::toggled, this, [this]( bool on ){
         if( m_filling || !m_trig ) return;
         int id = m_trig->scopeTrigger( m_scope->getUid() );
@@ -760,13 +767,15 @@ void ScopeTriggerTab::setProp( const QString& prop, const QString& val )
 
 void ScopeTriggerTab::fill()
 {
+    Oscope* o = dynamic_cast<Oscope*>( m_scope );     // Its values, not their texts ("3.3 V" read as a number is 0)
+    if( !o ) return;
     m_filling = true;
-    int ch = m_scope->getPropStr("Trigger").toInt();
+    int ch = o->trigger();
     m_ch->setCurrentIndex( ch >= 0 && ch < 5 ? ch : 4 );
-    bool aut = m_scope->getPropStr("TrigAuto") == "true";
+    bool aut = o->trigAuto();
     m_auto->setChecked( aut );
     m_level->setEnabled( !aut );
-    m_level->setText( num( m_scope->getPropStr("TrigLevel").toDouble(), "V" ) );
+    if( !m_level->hasFocus() ) m_level->setText( num( o->trigLevel(), "V" ) );   // Not while it is typed in
     int id = m_trig ? m_trig->scopeTrigger( m_scope->getUid() ) : 0;
     m_sim->setChecked( id != 0 );
     if( id && m_trig->find( id ) ){
@@ -777,4 +786,5 @@ void ScopeTriggerTab::fill()
     }else m_row->setText("");
     m_row->setVisible( id != 0 );
     m_filling = false;
+    relayout( this );
 }

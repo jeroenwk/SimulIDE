@@ -72,8 +72,8 @@ KeyFramePane::KeyFramePane( QWidget* parent, QAction* saveAct )
 
     m_empty = new QLabel( this );
     m_empty->setWordWrap( true );
+    m_empty->setAlignment( Qt::AlignTop | Qt::AlignLeft );   // At the top, in the labels' colour
     m_empty->setContentsMargins( 8, 6, 8, 6 );
-    m_empty->setStyleSheet("QLabel { color: palette(mid); }");
     lay->addWidget( m_empty );
 
     m_tree = new QTreeWidget( this );

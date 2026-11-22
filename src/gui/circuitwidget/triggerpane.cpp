@@ -77,8 +77,8 @@ TriggerPane::TriggerPane( QWidget* parent )
 
     m_empty = new QLabel( this );
     m_empty->setWordWrap( true );
+    m_empty->setAlignment( Qt::AlignTop | Qt::AlignLeft );   // At the top, in the labels' colour
     m_empty->setContentsMargins( 8, 6, 8, 6 );
-    m_empty->setStyleSheet("QLabel { color: palette(mid); }");
     m_empty->setText( tr("No triggers. A trigger watches a pin, a current or a part's state while the simulation runs, "
                          "and pauses, saves a key frame or counts when its condition is met. + makes one.") );
     lay->addWidget( m_empty );
