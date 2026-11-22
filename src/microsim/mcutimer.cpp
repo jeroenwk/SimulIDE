@@ -54,6 +54,7 @@ void McuTimer::initialize()
 
     //m_clkSrc  = clkMCU;
     m_clkEdge = 1;
+    m_clkState = false;   // Last level of the clock pin: not the last run's (its first edge was missed or counted)
 
     m_scale = m_prescaler*m_mcu->psInst();
 }

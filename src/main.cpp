@@ -129,7 +129,7 @@ int main( int argc, char *argv[] )
 
     QApplication app( argc, argv );
 
-    QSettings settings( QStandardPaths::standardLocations( QStandardPaths::DataLocation).first()+"/simulide.ini",  QSettings::IniFormat, 0l );
+    QSettings settings( MainWindow::configDir()+"/simulide.ini",  QSettings::IniFormat, 0l );
 
     QString locale = QLocale::system().name();
     if( settings.contains( "language" ) ) locale = settings.value( "language" ).toString();

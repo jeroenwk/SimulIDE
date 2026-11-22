@@ -17,6 +17,7 @@ struct NoiseSrc;
 class eElement
 {
     public:
+        void clearChanged() { m_changed = false; }   // Each start: from a known state (parts that need it set it in initialize/stamp)
         eElement( QString id );
         virtual ~eElement();
 
@@ -83,7 +84,7 @@ class eElement
 
         QString m_elmId;
 
-        bool m_changed;
+        bool m_changed = false;   // Was left uninitialized: the first run after opening read garbage
         double m_step;
 };
 #endif

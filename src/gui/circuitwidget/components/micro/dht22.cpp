@@ -120,6 +120,7 @@ void Dht22::stamp()   // Called at Simulation Start
     m_outStep = 0;
     m_bitStep = 0;
     m_lastIn = true;
+    m_lastTime = 0;   // Not the last run's falling edge
     m_inpin->setPinMode( input );
     m_inpin->changeCallBack( this, true );
 }

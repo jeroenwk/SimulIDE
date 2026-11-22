@@ -103,11 +103,16 @@ void Meter::initialize()
     m_blockStart = m_lastT = 0;
     m_held = m_sum = m_sum2 = m_result = 0;
     m_haveResult = false;
+    m_dispValue = 0;                  // A new run: the output pin starts at 0, not at the last
+    m_outPin->setOutHighV( 0 );       // run's reading (the first run after opening differed);
+                                      // high (at 0 V) as the constructor leaves it: in stamp()
 }
 
 void Meter::stamp()
 {
     eResistor::stamp();
+    m_outPin->setOutState( true );    // Not in initialize(): it stamps the node before the nodes are
+                                      // initialized, and the changed-node list looped (npn-curve hung)
     if( m_reading == rInstant ) return;
     uint64_t now = Simulator::self()->circTime();     // (a run resumed after a pause: from here)
     m_blockStart = m_lastT = now;

@@ -52,8 +52,12 @@ void IoPin::initialize()
     m_steps = Simulator::self()->slopeSteps();
 
     m_inpState  = false;
+    m_inpVolt   = 0;        // Not the last run's input voltage
     m_outState  = false;
     m_nextState = false;
+    // The output voltage stamped until the owner sets a state: the one of the state above (a source
+    // pin is always on), not the level the last run ended with (the first run after opening differed)
+    m_outVolt = ( m_pinMode == source ) ? m_outHighV : ( m_pinMode > input ) ? m_outLowV : 0;
 }
 
 void IoPin::stamp()
@@ -73,8 +77,12 @@ void IoPin::updateStep()
 
     if( m_stateZ ) m_pinState = undef_state;
     else{
-        bool state = IoPin::getInpState();
-        if( m_inverted ) state = !state;
+        // Read only: the pin colour must not touch the simulation's input state (m_inpState
+        // hysteresis, m_inpVolt), or a run depends on when GUI frames fall (keyframes, §4.4)
+        double volt = getVoltage();
+        bool state = m_inpState;
+        if     ( volt > m_inpHighV ) state = true;
+        else if( volt < m_inpLowV )  state = false;
         switch( m_pinMode ) // Pin colors in animation
         {
             case undef_mode: m_pinState = undef_state; break;

@@ -164,7 +164,7 @@ void eNoise::collect()
         int n = index.value( key, 0 );
         index[key] = n+1;
 
-        Src* src = new Src;
+        Src* src = new Src();     // Value-initialized: the normal distribution's unused cache is zeroed (not garbage in keyframes)
         src->s = s;
         src->pa = new ePin( "Noise-"+key+"-"+QString::number(n)+"a", 0 );
         src->pb = new ePin( "Noise-"+key+"-"+QString::number(n)+"b", 1 );

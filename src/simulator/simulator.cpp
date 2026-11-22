@@ -146,6 +146,12 @@ void Simulator::timerEvent( QTimerEvent* e )  //update at m_timerTick_ms rate (5
     }
     // Calculate Real Simulation Speed
     m_refTime  = m_RefTimer.nsecsElapsed();
+    if( m_speedBase && m_state == SIM_RUNNING )   // The worker starts with this frame: the window too
+    {
+        m_speedBase = false;
+        m_lastRefT = m_refTime;
+        m_lastStep = m_tStep;
+    }
     uint64_t deltaRefTime = m_refTime-m_lastRefT;
     if( deltaRefTime >= 1e9 )               // We want steps per 1 Sec = 1e9 ns
     {
@@ -393,6 +399,7 @@ void Simulator::startSim( bool paused )
     {                                      // This can create new eNodes
         //qDebug() << "initializing  "<< el->getId();
         el->eventTime = 0;
+        el->clearChanged();                // The same start state on every run (the first after opening differed)
         el->initialize();
         el->added = false;
     }
@@ -468,8 +475,8 @@ void Simulator::startSim( bool paused )
     m_refTime  = m_RefTimer.nsecsElapsed();
     m_loopTime = m_refTime;
     m_timerTime = m_loopTime;
-    m_lastRefT = m_refTime;     // Real speed measured from now: 0 counted the time since the program started
-    m_lastStep = m_tStep;
+    m_speedBase = true;         // Real speed measured from the first frame (timerEvent): 0 counted the
+                                // time since the program started, startSim() one frame the worker hadn't run
     m_realFPS = m_fps;
     m_timerId = this->startTimer( m_timerTick_ms, Qt::PreciseTimer ); // Init Timer
 }
@@ -623,8 +630,7 @@ void Simulator::resumeSim()
 {
     if( m_state != SIM_PAUSED ) return;
     m_state = m_oldState;
-    m_lastRefT = m_RefTimer.nsecsElapsed();   // The pause doesn't count in the real speed
-    m_lastStep = m_tStep;
+    m_speedBase = true;         // The pause doesn't count in the real speed
 }
 
 /*void Simulator::stopTimer()
@@ -758,6 +764,28 @@ bool Simulator::simCore( StateIO& s )
     m_runEnd = m_circTime;
     m_resumeRun = false;
     return !s.overflow();
+}
+
+// A keyframe was loaded (simCore): its nodes are marked changed, so the matrix takes the restored
+// admittances and currents. Solving them again at the restored time used to replace the solved
+// voltages with a fresh solution, and where non-linear parts settle within their tolerance
+// (Scherz 12.57b: diodes and zeners of a ternary AND) on another point than the first pass took:
+// the replay then differed. Now the matrix is stamped and solved for its factors, then the
+// keyframe's voltages are put back and the callbacks that solve queued are dropped: the step
+// stays the solved one it was
+void Simulator::syncAfterRestore()
+{
+    std::vector<double> volts;
+    volts.reserve( m_eNodeList.size() );
+    for( eNode* n : m_eNodeList ) volts.push_back( n->getVolt() );
+    if( m_changedNode ) solveMatrix();
+    for( int i=0; i<m_eNodeList.size(); ++i ) m_eNodeList.at( i )->restoreVolt( volts[i] );
+    for( eElement* e = m_voltChanged; e; e = e->nextChanged ) e->added = false;
+    for( eElement* e = m_nonLinear;   e; e = e->nextChanged ) e->added = false;
+    m_voltChanged = nullptr;
+    m_nonLinear = nullptr;
+    m_changedNode = nullptr;
+    m_converged = true;
 }
 
 void Simulator::setSpeedLock( bool on )

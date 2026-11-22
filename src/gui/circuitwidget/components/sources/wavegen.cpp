@@ -124,6 +124,8 @@ void WaveGen::stamp()
     ClockBase::stamp();
     m_vOut = 0;
     m_index = 0;
+    m_time = 0;           // Not the last run's
+    m_nextStep = 0;
 
     if( m_bipolar && m_floating )
     {

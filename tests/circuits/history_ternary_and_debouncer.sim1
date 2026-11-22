@@ -1,0 +1,88 @@
+<circuit version="1.1.0-SR2" rev="261114" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+<description>
+# Fig 12.57b — Example of switch bounce (Scherz &amp; Monk, *PEI* 4th ed., fig 12.57 left panel, book p. 760)
+
+**What it shows:** the book's *problem* panel that the debouncer (fig12_57a) fixes: a switch
+with a 10 k pull-up to +5 V drives an AND gate input (the text: "the other input is fixed
+high"), so `out = node`. The figure draws the node's "bounce" — on opening, the contact
+oscillates between +5 V and 0 V instead of switching cleanly, and each edge passes straight
+through the gate ("false triggering" on the book's out waveform).
+
+**Parts:** RP 10 k pull-up, +5 V (book's values); SW1 SPST, node N → U1 AND input, V1 = the
+fixed-high `1` [chosen: the figure text's "1"].
+
+**How to use:** toggle SW1 (`Toggled` true = closed, node low). SimulIDE's switch toggles
+cleanly, so the bounce is *stepped*: each `comp set` is one contact event, the way the book's
+drawn bounce burst is a train of make/break events. Scope: CH0 = node N, CH1 = out.
+
+**Results [SIMULATED]** — switch closed 200 µs, then a 5-event burst (open/close/open/close/
+open, 100 µs apart), then settled open:
+
+| node N | out | contact event |
+|---|---|---|
+| ≈ 0 V | ≈ 0 V | closed (rest) |
+| 4.1946 V | 5.000 V | open — edge 1 @ 200 µs |
+| ≈ 0 V | ≈ 0 V | closed — edge 2 @ 300 µs |
+| 4.1948 V | 5.000 V | open — edge 3 @ 400 µs |
+| ≈ 0 V | ≈ 0 V | closed — edge 4 @ 500 µs |
+| 4.1924 V | 5.000 V | open — edge 5 @ 600 µs, stays |
+
+**Five contact events → five output edges** (rise @ 200/400/600 µs, fall @ 300/500 µs): every
+bounce of a real opening would false-trigger whatever counts this signal. Compare fig12_57a:
+with the SR latch, the same actions move the output exactly once and hold.
+
+- Node highs read 4.19 V, not 5 V: SimulIDE's AND subcircuit input loads the 10 k pull-up
+  (≈ 52 kΩ effective, issue #127 family) — still a valid high (threshold 2.5 V), out = 5.000 V.
+- AND output lows here sit at ≈ 0 V (its input low is 0 V; the −5 V lows of issue #127 come
+  from the NAND outputs feeding it in fig12_57a).
+
+## create-circuit skill
+
+- Version: 1.4.1 (commit b897f9d)
+- Circuit: fig12_57b_switch_bounce_example.sim1
+
+### Limitations found while building it
+
+- T_ logic gates are typed Subcircuit inside SimulIDE (fidelity false positive): [#134](https://github.com/jeroenwk/create-circuit/issues/134)
+- SimulIDE NAND subcircuit outputs sit at -5 V when low; gate inputs load 10k pull-up nodes: [#135](https://github.com/jeroenwk/create-circuit/issues/135)
+- SimulIDE switch cannot bounce; headless comp set steps one clean contact action: [#136](https://github.com/jeroenwk/create-circuit/issues/136)
+</description>
+
+
+<item itemtype="Subcircuit" CircId="T_AND-1" mainComp="false" Show_id="true" Show_Val="false" Pos="48,-32" rotation="0" hflip="1" vflip="1" label="U1" idLabPos="11.5,-14" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Input_High_V="2.5 V" Input_Low_V="2.5 V" Input_Imped="1e+09 Ω" Out_High_V="5 V" Out_Low_V="0 V" Out_Imped="40 Ω" Tpd_ps="10 ns" Tr_ps="3 ns" Tf_ps="4 ns" Logic_Symbol="true" />
+
+<item itemtype="Rail" CircId="Rail-2" mainComp="false" ShowProp="Voltage" Show_id="false" Show_Val="true" Pos="-80,-96" rotation="90" hflip="1" vflip="1" label="V5" idLabPos="-5,-10" labelrot="-90" valLabPos="-12,6" valLabRot="-90" labelAuto="true" Voltage="5 V" />
+
+<item itemtype="Resistor" CircId="Resistor-3" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="-48,-48" rotation="90" hflip="1" vflip="1" label="RP" idLabPos="-18,8.5" labelrot="0" valLabPos="-3,8.5" valLabRot="0" labelAuto="true" Resistance="10 kΩ" Cp="0 pF" />
+
+<item itemtype="Rail" CircId="Rail-4" mainComp="false" ShowProp="Voltage" Show_id="false" Show_Val="true" Pos="0,-48" rotation="90" hflip="1" vflip="1" label="V1" idLabPos="-5,-10" labelrot="-90" valLabPos="-12,6" valLabRot="-90" labelAuto="true" Voltage="5 V" />
+
+<item itemtype="Switch" CircId="Switch-5" mainComp="false" Show_id="true" Show_Val="false" Pos="-48,16" rotation="90" hflip="1" vflip="1" label="SW1" idLabPos="-8,-22" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Norm_Close="false" DT="false" Poles="1" Toggled="false" />
+
+<item itemtype="Ground" CircId="Ground-6" mainComp="false" Show_id="false" Show_Val="false" Pos="-48,64" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Oscope" CircId="Oscope-8" mainComp="false" Show_id="false" Show_Val="false" Pos="376,48" rotation="0" hflip="1" vflip="1" label="SC" idLabPos="-90,-100" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Basic_X="135 _px" Basic_Y="135 _px" BufferSize="600000" connectGnd="true" InputImped="10 MΩ" TimDiv="200000000" TimPos="0,0,0,0," VolDiv="2.5,2.5,1,1," Tunnels=",,,," Trigger="4" Filter="0.1 V" AutoSC="4" Tracks="1" HideCh="false,false,false,false," VolPos="4,-4,0,0," TrigAuto="true" TrigLevel="0 V" />
+
+<item itemtype="Node" CircId="Node-7" mainComp="false" Pos="-48,-16" />
+
+<item itemtype="Node" CircId="Node-9" mainComp="false" Pos="-48,-8" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="Resistor-3-lPin" endpinid="Rail-2-outnod" pointList="-48,-64,-48,-72,-80,-72,-80,-80" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="Switch-5-switch0pinN" endpinid="Ground-6-Gnd" pointList="-48,32,-48,48" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Rail-4-outnod" endpinid="T_AND-1-X1" pointList="0,-32,0,-24,40,-24" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="T_AND-1-X2" endpinid="Node-7-1" pointList="40,-16,-48,-16" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Resistor-3-rPin" endpinid="Node-7-0" pointList="-48,-32,-48,-16" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Node-9-1" endpinid="Oscope-8-Pin0" pointList="-48,-8,288,-8,288,0" />
+
+<item itemtype="Connector" uid="Connector-9" startpinid="Node-7-2" endpinid="Node-9-0" pointList="-48,-16,-48,-8" />
+
+<item itemtype="Connector" uid="Connector-10" startpinid="Node-9-2" endpinid="Switch-5-pinP0" pointList="-48,-8,-48,0" />
+
+<item itemtype="Connector" uid="Connector-11" startpinid="T_AND-1-Y" endpinid="Oscope-8-Pin1" pointList="88,-24,96,-24,96,32,288,32" />
+
+</circuit>

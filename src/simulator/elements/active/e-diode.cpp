@@ -35,10 +35,13 @@ eDiode::~eDiode(){}
 void eDiode::stamp()
 {
     m_converged = true;
+    m_changed = true;   // Linearize at the first step, as after a load (eBJT, eJfet: initialize);
+                        // left false by a previous run, the first run after opening differed
     m_step    = 0;      // Iteration damping (gmin) from a previous run
     m_gminDropped = false;
     m_admit   = m_bAdmit;
     m_voltPN  = 0;
+    m_voltSolved = 0;
     m_current = 0;
 
     eResistor::stamp();

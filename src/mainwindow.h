@@ -77,6 +77,7 @@ class MainWindow : public QMainWindow
 
         QString getFilePath( QString file );              // Get file path in SimulIDE folders
         QString getConfigPath( QString file );            // Get file path in config folder
+        static QString configDir();                       // SIMULIDE_CONFIG_DIR, else the platform data folder
         QString getDataFilePath( QString file );          // Get file path in data folder, first user folder, if not SimulIDE folder
         QString getUserFilePath( QString f );             // Get file path in user folder
         QString userPath() { return m_userDir; }          // User folder path

@@ -6,6 +6,7 @@
 #include "cliapi.h"
 #include "circuitwidget.h"
 #include "simulator.h"
+#include "e-node.h"
 #include "updatable.h"
 #include "noise.h"
 #include "simskip.h"
@@ -294,14 +295,56 @@ void CliApi::registerSim()
 
     // Determinism check (specs/sim-control.md §4.4): two runs to the same time must give the
     // same bits in every node voltage
-    add("sim hash", "sim hash", "Bit-exact hash (FNV-1a 64) of every node voltage at the current simulated time, "
-        "with the time and the node count: two runs to the same time compare equal only when they computed the same.",
-        []( CliCtx& ) -> QJsonValue
+    add("sim hash", "sim hash [--elements] [--dump ID]", "Bit-exact hash (FNV-1a 64) of every node voltage at the current simulated time, "
+        "with the time and the node count: two runs to the same time compare equal only when they computed the same. "
+        "--elements: also the full state hash and one hash per element (\"class id:hash\" of its saved state), to find "
+        "the part that differs between two runs. --dump ID: that element's saved state bytes (hex).",
+        []( CliCtx& c ) -> QJsonValue
     {
         Simulator* sim = Simulator::self();
         uint64_t t = sim->isRunning() ? sim->circTime() : 0;
-        return QJsonObject{ {"time_ps", QString::number( t ) }, {"nodes", sim->isRunning() ? sim->eNodeCount() : 0 },
-                            {"hash", nodeHash() } };
+        QJsonObject o{ {"time_ps", QString::number( t ) }, {"nodes", sim->isRunning() ? sim->eNodeCount() : 0 },
+                       {"hash", nodeHash() } };
+        if( c.has("elements") && sim->isRunning() )
+        {
+            o["state"] = stateHash();
+            o["elements"] = QJsonArray::fromStringList( elementHashes() );
+            o["events"]   = QJsonArray::fromStringList( sim->eventQueue() );   // id@time, in order
+            QStringList nodes;                       // Per node: its saved state (volt, stamps, callbacks)
+            static std::vector<uint8_t> nbuf( 1u<<20 );
+            for( eNode* n : sim->eNodeList() )
+            {
+                StateIO st( nbuf.data(), nbuf.size() );
+                n->simState( st );
+                uint64_t h = 1469598103934665603ull;
+                for( size_t i=0; i<st.size(); ++i ){ h ^= nbuf[i]; h *= 1099511628211ull; }
+                nodes << n->itemId()+":"+QString::number( (qulonglong)h, 16 );
+            }
+            o["nodes"] = QJsonArray::fromStringList( nodes );
+            o["nlBudget"] = (qint64)sim->nlBudget();
+            o["stepScale"] = sim->stepScale();
+        }
+        QString dump = c.opt("dump", "");     // Debug: the saved state bytes of one element or node (hex)
+        if( !dump.isEmpty() && sim->isRunning() )
+            for( eNode* n : sim->eNodeList() )
+            {
+                if( n->itemId() != dump ) continue;
+                std::vector<uint8_t> buf( 1u<<20 );
+                StateIO st( buf.data(), buf.size() );
+                n->simState( st );
+                o["dump"] = QString( QByteArray( (const char*)buf.data(), (int)st.size() ).toHex() );
+                o["callbacks"] = QJsonArray::fromStringList( n->callbackIds() );
+            }
+        if( !dump.isEmpty() && sim->isRunning() )
+            for( eElement* el : sim->elementList() )
+            {
+                if( el->getId() != dump ) continue;
+                std::vector<uint8_t> buf( 1u<<20 );
+                StateIO st( buf.data(), buf.size() );
+                el->simState( st );
+                o["dump"] = QString( QByteArray( (const char*)buf.data(), (int)st.size() ).toHex() );
+            }
+        return o;
     });
 
     add("sim history", "sim history [sizes | check [--span T] [--points N] [--ago T] [--keep CLASS]]", "Keyframes of the run (specs/sim-control.md §4): "

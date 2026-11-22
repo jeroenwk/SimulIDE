@@ -541,6 +541,8 @@ their own state) and reviewed; `sim history check` over all the circuits found w
   classes, plus a BJT oscillator with noise on. 106 circuits are refused: all but one hold an
   MCU (AVR, PIC, 8051, …: their peripherals and cores are the next step); one has a
   `SubPackage` (the package editor).
+  *(Later the same day: state code for the MCUs and the remaining parts, 757 of 773; the
+  tables below are the current state.)*
 - **Known limits** (circuits that run but can't replay exactly; `sim history` says why where it
   can):
   - A **meter's output pin** (ammeter, voltmeter `outnod`) is set once per GUI frame
@@ -552,8 +554,8 @@ their own state) and reviewed; `sim history check` over all the circuits found w
     wall-time guard (`breakStep`), so the run itself isn't repeatable; where no step is ever
     complete at a frame, no keyframe is taken (`sim history` error: "the step was not solved").
   - The **audio output** is paced by the sound card's buffer: refused (`hasSimState` false).
-  - Scherz 12.57b (switch debouncer with the T_AND ternary subcircuit) lands in another state
-    after a replay, unexplained so far.
+  - ~~Scherz 12.57b (switch debouncer with the T_AND ternary subcircuit) lands in another state
+    after a replay~~: fixed 2026-11-22, see below.
 
 **MCUs (2026-11-21)** [SIMULATED]: the AVR and PIC families. The core saves its own fields
 through `CoreBase::coreState()` (PC, return address; the PIC mid-range core also W, bank, its
@@ -596,6 +598,17 @@ back on a restore (`LaChannel::stateRestored`).
 After these, every circuit of the repos is covered except those with a real serial port or the
 audio output (8, refused on purpose): **757 of the 773 go back bit for bit** (143 before the
 part state code); the other 8 are the known limits above. `test_simctl_history_parts.py`: 44 checks, 21 circuits. 
+*Sweep of 2026-11-22* [SIMULATED], after the first-run fixes and `syncAfterRestore` (below):
+**762 of 774** (one circuit more in the repos); the triac, `board_mains_reference`, the UJT
+oscillator of Duncan 56.4 and Scherz 12.57b now replay bit for bit. Left: npn-curve and the
+PIC 16F887 CCP example (table), Duncan 40.3 (no keyframe) and Scherz 3.91e (check over 120 s).
+Then the same day: the 16F887 CCP example goes back bit for bit too. Its logic analyzer has
+channels joined by tunnel name, and they started listening to their node at a screen update
+(`LAnalizer::updateStep`), so later in the replay than in the first pass, or the other way; they
+now listen from the start (`LaChannel::stamp`). Found with `sim hash --elements`, which now also
+gives one hash per node, the event queue and the iteration budget; `--dump` takes a node and
+lists its callbacks. Scherz 3.91e goes back bit for bit with shorter spans. Duncan 40.3: its two
+diodes never converge (every step taken after 1000 iterations), a solver question of its own.
 
 **Circuits that don't go back yet** (2026-11-21, `sim history check` over the 773 circuits of the
 repos: 6 × 1 ms run, back 4 ms, 3 checkpoints). Paths from `~/perso/electronics/`.
@@ -617,19 +630,14 @@ Go back, but the replay differs (what differs, then the cause):
 
 | Circuit | Differs | Cause |
 |---|---|---|
-| `SimulIDE/resources/examples/Active/BJT/npn-curve.sim1` | ammeter outputs `Amperimeter-49/114-outnod`, `Oscope-8-Pin1` | a meter's output pin is set once per GUI frame (`Meter::updateStep`) |
-| `SimulIDE/resources/examples/Active/triac.sim1` | ammeter output `Amperimeter-4-outnod` | same |
-| `led_driver/sim/board_mains_reference.sim1` | ammeter output `Amperimeter-34-outnod` | same |
-| `books/duncan/fig56_4_ujt_relaxation_oscillator.sim1` | the UJT's two BJTs, `Capacitor-5` | steps that don't converge (100 000 iterations), cut by the 50 ms wall-time guard: the run itself isn't repeatable |
-| `SimulIDE/resources/examples/Micro/Pic/16F88x/16f887_CCP/887_ccp.sim1` | logic analyzer input pins (once; node voltages the same) | the first run after opening differs from later runs (below) |
-| `books/scherz/fig12_57b_switch_bounce_example.sim1` | diodes, zener and buffer inputs of the T_AND ternary subcircuit (another steady state) | unexplained: the run is repeatable, so some state is missing |
+| `SimulIDE/resources/examples/Active/BJT/npn-curve.sim1` | (2026-11-22: no keyframe at the checked times: steps not solved when the frames fall) | a meter's output pin is set once per GUI frame (`Meter::updateStep`) and feeds the curve tracer's loop |
 
 No result:
 
 | Circuit | Why |
 |---|---|
 | `books/duncan/fig40_3_centre_tap_rectifier.sim1` | diode D1 never converges, so no step is complete at a frame and no keyframe is taken (`sim history`: "the step was not solved") |
-| `books/scherz/fig3_91e_coax_highpass.sim1` | the check took over 120 s (a slow circuit); not known to differ |
+| `books/scherz/fig3_91e_coax_highpass.sim1` | slow (20 s of wall time per simulated ms), so the 1 ms check took over 120 s; with 50 µs spans it goes back bit for bit (2026-11-22) |
 
 **Parts that break going back** (2026-11-21: each of the 569 items of the component library
 placed alone in a running circuit, then `sim history` → `missing`; library item names as in
@@ -667,7 +675,51 @@ Covered, but the replay is not exact:
 
 Found on the way: the **first run after opening** `board_mains` differs from later runs (two
 skips of 200 ms after the first: same hash; the first: another), so some part keeps state
-across a stop and a start. It doesn't touch keyframes (they restore within a run); to chase.
+across a stop and a start. It doesn't touch keyframes (they restore within a run).
+
+**A restore no longer re-solves the step (2026-11-22)** [SIMULATED]: Scherz 12.57b went back
+with every element's state and every node voltage identical, then replayed differently. Loading
+a keyframe marks every node changed (the matrix must take the restored stamps), and the
+simulator then solved the restored step again: in this static circuit (no event pending) the
+diodes and zeners of the ternary AND settled on another point within their 10 mV tolerance than
+the first pass, so the replay went on from other voltages. `Simulator::syncAfterRestore()` now
+stamps and solves the matrix for its factors, puts the keyframe's voltages back and drops what
+that solve queued: the step stays the solved one. `test_simctl_history_parts.py` has the
+circuit (copy in `tests/circuits/history_ternary_and_debouncer.sim1`).
+
+**Fixed (2026-11-22)** [SIMULATED]: every run now starts from the same state. Found with
+`sim hash --elements` (one hash per element) and a dump of every element's state just before
+the first step, run 1 against run 2 with the seeds fixed (`runSeed`, `noiseSeed`; flip-flops
+and noise are random on purpose otherwise). What differed, and the fix:
+
+- `eElement::m_changed` was never initialized (garbage in run 1); cleared at each start, and the
+  parts that need it set it in `initialize`/`stamp` (BJT, JFET, clocks, controlled sources, and
+  now the diode: it linearized at the first step only after a load).
+- `IoPin`: the output voltage stamped before the owner sets a state was the last run's level
+  (`m_outVolt`; now the level of the reset state), the input voltage too, and its per-frame
+  colour update wrote the simulation's input state (`getInpState`: hysteresis, `m_inpVolt`),
+  so a run depended on when GUI frames fell.
+- Left from the last run: a meter's output reading, `eDiode::m_voltSolved`, the wave
+  generator's time and next step, the clock's start time and output level, the 555's output
+  high level (set from the supply), the stepper's rotor position, the DHT22's last edge time,
+  the clocked devices' clock state, the MCU compare unit's pin level, the CPU's return address.
+- PIC ADC (`PicAdc00/01`): the pin mode was applied only when ADCON1's mode changed, from a
+  cached mode not reset at start: run 1 left the ADC pins digital after reset (the constructor's
+  mode 0 hid the reset write), later runs analog as the datasheet says (PCFG = 0: all analog).
+  Now every run applies the reset value.
+- The noise source's normal distribution had an uninitialized cache (no effect, but the state
+  hash differed).
+
+Sweep of the 753 circuits of the repos (run 1 ms, stop, run 1 ms; seeds fixed): node voltages
+the same in all of them (3 too slow for the 120 s limit); the full saved state the same in 695.
+The other 55 differ only in state that changed no voltage within that millisecond: inside MCUs
+(AVR, PIC, 8051, Z80: a pin's last read input voltage, open-collector admittances of I2C pins,
+module bytes) — left for now. `tests/regress/test_first_run_same.py`: board_mains, the precision
+rectifier, the triac, the SCR and the PIC 16F887 CCP example, full state bit for bit.
+
+The first real-speed reading after a start or a resume was about one frame short (947 ms/s at
+real time, 20 fps: the window started in `startSim`, the worker one frame later), so the skip
+interval dipped for a second; the window now starts at the first frame (`m_speedBase`).
 
 ## 5. Phase 3: saved snapshots and triggers
 
@@ -720,10 +772,14 @@ specs/scope-trigger-level.md).
 
 ## 8. Open points to check in the code
 
-- Why the canvas keeps focus today at start, and which widget takes it (the run button?).
-- The range `Cli::setSimSpeed()` accepts, and how the real-speed override behaves in an
-  editable combo.
-- Whether `sim run --for` runs at the set speed or as fast as it can (decides how §3.4 reuses it).
+All three settled while building phase 1 (2026-11-21):
+
+- ~~Why the canvas keeps focus at start~~: it took focus on hover and from trackpad touches;
+  now only on a click, and a start clears it (§3.1).
+- ~~The speed range and the real-speed override~~: the toolbar box shows the real speed as an
+  override text in orange while slower than set (`TimebaseBox::setOverride`), §3.3.
+- ~~Whether `sim run --for` runs at the set speed~~: a skip doesn't reuse it; it runs as fast as
+  it can (D7, `SimSkip`).
 
 ## 9. Decision log
 

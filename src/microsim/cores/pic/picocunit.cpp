@@ -21,6 +21,7 @@ PicOcUnit::PicOcUnit( eMcu* mcu, QString name )
 {
     m_enhanced = name.contains("+");
     m_resetTimer = false;
+    m_specEvent = false;
 
     m_GODO = getRegBits( "GO/DONE", mcu );
 }

@@ -16,6 +16,7 @@ McuOcUnit::McuOcUnit( eMcu* mcu, QString name )
     m_ocPin = NULL;
     m_ocm = NULL;
     m_ocPinInv = NULL;
+    m_pinSet = false;
 }
 McuOcUnit::~McuOcUnit( ){}
 
@@ -23,6 +24,7 @@ void McuOcUnit::initialize()
 {
     m_comMatch = 0;
     m_extMatch = 0;
+    m_pinSet = false;              // Not the last run's (nor garbage: the constructor left it unset)
     m_ocPin->controlPin( false, false );
 
     clear();

@@ -48,7 +48,7 @@ MainWindow::MainWindow( bool headless )
 
     if( m_filesDir.exists("../share/simulide") ) m_filesDir.cd("../share/simulide");
 
-    m_configDir.setPath( QStandardPaths::writableLocation( QStandardPaths::DataLocation ) );
+    m_configDir.setPath( configDir() );
 
     m_settings     = new QSettings( getConfigPath("simulide.ini"), QSettings::IniFormat, this );
     m_compSettings = new QSettings( getConfigPath("compList.ini"), QSettings::IniFormat, this );
@@ -363,6 +363,15 @@ QString MainWindow::getUserFilePath( QString f )
 }
 
 QString MainWindow::getFilePath( QString file )   { return m_filesDir.absoluteFilePath( file ); }
+// The settings folder: SIMULIDE_CONFIG_DIR when set (the regression tests give each server a
+// copy, so they never change the user's settings), else the platform's data location
+QString MainWindow::configDir()
+{
+    QString env = qEnvironmentVariable("SIMULIDE_CONFIG_DIR");
+    if( !env.isEmpty() ) return env;
+    return QStandardPaths::writableLocation( QStandardPaths::DataLocation );
+}
+
 QString MainWindow::getConfigPath( QString file ) { return m_configDir.absoluteFilePath( file ); }
 QString MainWindow::getDataFilePath( QString file )
 {

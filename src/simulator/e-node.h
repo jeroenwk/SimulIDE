@@ -18,6 +18,7 @@ class eNode
         ~eNode();
 
         QString itemId() { return m_id; }
+        QStringList callbackIds();      // Elements called when its voltage changes, in order (CLI)
 
         void addEpin( ePin* epin );
         void remEpin( ePin* epin );
@@ -45,6 +46,7 @@ class eNode
 
         double getVolt() { return m_volt; }
         void   setVolt( double volt );
+        void   restoreVolt( double v ) { m_volt = v; }   // A keyframe's voltage: no callbacks (Simulator::syncAfterRestore)
         //bool voltchanged() { return m_voltChanged; }
         //void setVoltChanged( bool changed ){ m_voltChanged = changed; }
 

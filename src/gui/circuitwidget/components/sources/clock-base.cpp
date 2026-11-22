@@ -40,6 +40,9 @@ bool ClockBase::setPropStr( QString prop, QString val )
 
 void ClockBase::stamp()
 {
+    m_lastTime = 0;                  // Not the last run's: set at the first frame (updateStep)
+    m_state = false;
+    m_outpin->setOutState( false );  // Low until then, as updateStep sets it: not the last run's level
     setFreq( m_freq );
     if( !Simulator::self()->isPaused() ) m_changed = true;
 }

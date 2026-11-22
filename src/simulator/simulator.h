@@ -125,6 +125,12 @@ class Simulator : public QObject
         uint64_t lockMaxStep() { return m_lockMaxStep ? m_lockMaxStep : 100*m_reactStep; }
         void setLockMaxStep( uint64_t ps );
         int stepScale() { return m_stepScale; }
+        uint32_t nlBudget() { return m_nlBudget; }
+        QStringList eventQueue( int max=200 ) {    // "id@time", in order (CLI sim hash --elements)
+            QStringList l; int n = 0;
+            for( eElement* e = m_firstEvent; e && n < max; e = e->nextEvent, ++n )
+                l << e->getId()+"@"+QString::number( e->eventTime );
+            return l; }
         uint64_t lockedStep();     // The reactive step in use now (reactStep × scale, capped)
         bool lockLimited() { return m_lockLimit; }   // Can't keep up even at the limit (or no steps to coarsen)
         bool lockUsedThisRun() { return m_lockMaxScale > 1; }
@@ -166,11 +172,13 @@ class Simulator : public QObject
         void remFromElementList( eElement* el );
         
         int eNodeCount() { return m_eNodeList.size(); }
+        const QList<eNode*>& eNodeList() { return m_eNodeList; }
 
         // Keyframes (specs/sim-control.md §4.5): save or load the simulator core, every node and
         // every element, and the event queue. Worker idle. Saving returns false when the step is
         // not solved or an event belongs to an element outside the list
         bool simCore( class StateIO& s );
+        void syncAfterRestore();     // After simCore() loaded a keyframe: the matrix takes its stamps, the voltages stay
         QString coreError() { return m_coreError; }   // Why simCore() refused (saving)
         // Time of the last event run (a solved step), for one step back. Worker idle
         uint64_t lastEventTime() { return m_lastEvent; }
@@ -305,6 +313,7 @@ class Simulator : public QObject
         uint64_t m_lastStep;
         uint64_t m_refTime;
         uint64_t m_lastRefT;
+        bool     m_speedBase = false;  // Start the real-speed window at the next frame
         uint64_t m_loopTime;
         uint64_t m_guiTime;
         uint64_t m_updtTime;

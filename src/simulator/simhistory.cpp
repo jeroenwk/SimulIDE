@@ -193,6 +193,7 @@ uint64_t SimHistory::restore( Simulator* sim, uint64_t t, QString keepClass )
             for( eElement* el : keep ) el->simState( k );
         }
         sim->setLastEventTime( it->time );
+        sim->syncAfterRestore();
         for( eElement* el : sim->elementList() ) el->stateRestored();
         StateLog::rewindAll( it->time );           // Part states: as they were then (badges, Messages)
         for( eElement* el : sim->elementList() )

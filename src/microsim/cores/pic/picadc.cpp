@@ -39,6 +39,8 @@ PicAdc::~PicAdc(){}
 void PicAdc::initialize()
 {
     McuAdc::initialize();
+    m_mode = 0xFF;   // No mode yet: the reset value of ADCON1 is applied (all analog on the
+                     // 16F87x), on every run; the last run's mode skipped it, the constructor's 0 too
     m_pRefPin = m_refPin.at(0);
     if( m_refPin.size() > 1 ) m_nRefPin = m_refPin.at(1);
 }

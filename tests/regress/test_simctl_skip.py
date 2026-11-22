@@ -110,7 +110,11 @@ def test_real_speed_start(sim):
     sim.cli("sim", "speed", "100")                     # 1 s/s: interval 100 ms
     time.sleep(4)                                      # Idle before the run
     sim.cli("sim", "start")
-    time.sleep(3.5)                                    # Three real-speed readings
+    time.sleep(1.3)                                    # The first reading: a light RC keeps up
+    rs = sim.cli("sim", "status").get("realSpeed", 0)
+    sim.check("first real-speed reading at 1 s/s >= 97 %", 1 if rs >= 97 else 0, 1, absolute=0,
+              note="%s %% (it lost the frame before the worker started: 95 %%)" % rs)
+    time.sleep(2.2)                                    # Three real-speed readings
     iv = sim.cli("settings", "get", "skipInterval")
     sim.check("1 s/s run started after a wait keeps 100 ms", 1 if iv == "100 ms" else 0, 1, absolute=0, note=iv)
     sim.cli("sim", "pause")

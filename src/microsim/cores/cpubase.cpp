@@ -21,6 +21,7 @@ CpuBase::~CpuBase() {}
 void CpuBase::reset()
 {
     m_PC = 0;
+    m_RET_ADDR = 0;     // Not the last run's (the first run after opening differed)
 }
 
 void CpuBase::coreState( StateIO& s )

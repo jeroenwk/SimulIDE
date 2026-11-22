@@ -100,6 +100,9 @@ Stepper::~Stepper(){}
 
 void Stepper::stamp()
 {
+    m_ang  = 0;      // Each run from the start position: the last run's left the first run
+    m_Ppos = 4;      // different from the next ones (as setSteps does)
+    update();
     eNode* enode = m_pinCo.getEnode();// Register for changes callback
     if( enode )
     {

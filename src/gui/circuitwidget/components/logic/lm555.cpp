@@ -118,6 +118,7 @@ void Lm555::initialize()
     clearStates();
     m_voltNeg = 0;
     m_voltPos = 0;
+    m_output->setOutHighV( 5-1.3 );   // As built: not the last run's level (the first run differed)
 
     if( !Simulator::self()->isRunning() ) return;
     m_thrEnode = m_cv->getEnode();               // Control Voltage Pin

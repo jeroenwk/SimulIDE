@@ -319,6 +319,13 @@ void eNode::clear()
 QList<int> eNode::getConnections()
 { return m_nodeList; }
 
+QStringList eNode::callbackIds()
+{
+    QStringList l;
+    for( CallBackElement* cb = m_voltChEl; cb; cb = cb->next ) l << cb->element->getId();
+    return l;
+}
+
 void eNode::voltChangedCallback( eElement* el )
 {
     CallBackElement* changed = m_voltChEl;
