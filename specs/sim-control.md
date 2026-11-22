@@ -3,7 +3,7 @@
 Status: **phase 1 merged** (main b0096de, 2026-11-21), §3.1–3.8; **speed lock merged**
 (main 7a697b7, §3.9); **phase 2 merged** (main b1472ec, §4); **phase 3 saved key frames merged**
 (main 4bed867, §5.1; triggers §5.2 later). Differences from this text are noted in place.
-Decisions D1–D17 (Decision log §9).
+Decisions D1–D20 (Decision log §9).
 
 Goal: control a running simulation the way you control a media player or a scope: play/pause,
 stop and skip forward from the keyboard, set the skip interval and the speed by typing, and
@@ -835,14 +835,63 @@ A trigger watches the simulation and acts when its condition is met, like a scop
 Shares the trigger engine with the scope redesign (specs/scope-redesign.md,
 specs/scope-trigger-level.md).
 
-- **Conditions**: a node voltage or a part's current crosses a level (rising, falling, either),
-  a logic level or edge, a part state change (an overstress or rating from docs/PART_STATES.md),
-  a non-converged step (`NlReport`), an MCU breakpoint or register value, a time.
-- **Actions**: pause, save a snapshot, or both; with the history, the snapshot can be taken a
-  set time **before** the trigger (pre-trigger), as a scope shows the signal before its trigger.
-- **Modes**: single (once, then disarmed), normal (every time, with a holdoff and a maximum
-  count).
-- Saved with the circuit; listed in the CLI (`sim trigger add|list|del`).
+**Requirements (user, 2026-11-22)**
+
+1. A **Triggers** tab in the bottom pane, like Key frames (also as a split beside the tabs), with
+   multi-selectable rows that can be managed (switched on and off, edited, deleted together).
+2. Each row names what it watches: a **part label and pin number**, or a **node**, or several of
+   them when more are involved, and the trigger **values in volts and/or amperes**.
+3. Triggers on a part can be set **directly from its properties window**, in a **Triggers tab** of
+   that window.
+
+**What a trigger can watch** (first set; from the discussion of 2026-11-22)
+
+| Kind | Watches | Values |
+|---|---|---|
+| Part state | a part's state, or one block of it (`IC1 pwm`) | any change, a transition (`ON → UVLO`), a level (`FAULT`, over a rating) |
+| Edge | a pin's or node's voltage, a pin's current; or the voltage between two pins (Vgs, VDD−VSS) | level in V or A, rising / falling / either, hysteresis |
+| Window | the same | a band (low, high), entering or leaving |
+| Pulse width | the same, around a level | shorter or longer than T (a glitch, a missing pulse) |
+| Timeout | the same | no crossing for T (an oscillator or PWM that stopped) |
+| Simulator | a step that did not converge (`NlReport`); a time; every T | — |
+
+Later: measured values (mean / RMS over a window), settled (dV/dt < ε for T), logic patterns, MCU
+(PC, register, RAM, UART bytes), and combinations (A then B within T, AND / OR, Nth occurrence).
+
+**Actions**: pause (at the step that fired, not at the next frame); save a key frame, described by
+the trigger ("IC1 pwm: SOFT START → RUN", "IC1.VDD ↓ 8 V"); save it Δ **before** the trigger
+(pre-trigger: a restore of the ring and a replay, §4.3); count only (hits and their times, no
+stop). **Modes**: single (fires once, then disarmed) or normal (every time, with a holdoff and an
+optional maximum count).
+
+**Triggers tab** (design proposal)
+
+- Columns: ☑ armed, **Watches** (`IC1 pin 5 (VDD)`, `node n12`, `Q1 pins 1–2 (Vgs)`,
+  `IC1 supply`), **Condition** (`↓ 8 V`, `outside 0.9 … 1.1 A`, `pulse < 2 µs at 2.5 V`,
+  `ON → UVLO`), **Action** (`pause`, `key frame`, `key frame −1 ms`, `count`), **Mode**
+  (`single`, `normal, holdoff 1 ms`), **Hits**, **Last** (time of the last hit).
+- Multi-select (Shift / ⌘): arm, disarm, delete (with a question), as in Key frames. A filter line.
+- Double-click or Enter edits the row in a small editor (the same form as the properties tab).
+- A hit that saved a key frame: the row's Last time goes to that key frame on a click.
+- New trigger: **+** in the tab (pick a part and pin or a node), or from a part's properties window.
+
+**Triggers tab of a part's properties window**
+
+- Lists the triggers on that part (the same rows, filtered), with **+**: pin (or pin pair, or the
+  part's state / block), quantity (V, I, state), condition, values, action, mode.
+- Saved with the part's uid, so a renamed label follows; deleting the part deletes its triggers
+  (undoable with it).
+
+**Engine (notes)**: part-state triggers hook the existing `StateLog` / `ScriptCpu` reports (exact
+times, no cost). Voltage and current conditions are checked where the value is solved: a small
+compiled check on the watched nodes after each solved step (only those nodes), so an unwatched
+circuit pays nothing; the time of a crossing is the step's time (no interpolation inside a step).
+
+**Decided (user, 2026-11-22)**: D18 triggers are saved **in the `.sim1`** (they travel with the
+circuit, undo covers them, a deleted part takes its triggers along). D19 multi-signal: **both**
+the voltage between two pins or nodes and AND / OR of conditions in the first version. D20 first
+kinds: **part state** and **edge / window**; pulse width, timeout and the simulator triggers
+follow. Open: whether the scope trigger moves onto this engine.
 
 ## 6. Order of work
 
@@ -889,6 +938,9 @@ All three settled while building phase 1 (2026-11-21):
 | D10 | Snapshots in a folder next to the circuit | yes (`<circuit>.keyframes/`) |
 | D16 | Several key frames selected, then play | **play the range**: earliest to latest, pause there (2026-11-22) |
 | D17 | Shortcut to save a key frame | **⌘K** (Ctrl+K) |
+| D18 | Where triggers are saved | **in the `.sim1`** (2026-11-22) |
+| D19 | Multi-signal triggers first | **both**: voltage between two pins / nodes, and AND / OR |
+| D20 | Trigger kinds in the first version | **part state, edge / window** |
 | — | Going back: full snapshot per step, deltas, or keyframes + replay (§4.2)? | **a snapshot every frame** + replay |
 | D12 | History and snapshots for all parts, or limited? | **limited to circuits**: no MCUs, script parts or outside links (§4.6) |
 | D11 | Once the canvas has focus while running, how do the simulation keys come back without stopping? | **Esc on the canvas** when nothing is in progress and nothing is selected (§3.1) |
