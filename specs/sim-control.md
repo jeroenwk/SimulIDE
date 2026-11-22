@@ -1,8 +1,8 @@
 # Simulation control: keys, skip, speed, history and snapshots
 
 Status: **phase 1 merged** (main b0096de, 2026-11-21), §3.1–3.8; **speed lock merged**
-(main 7a697b7, §3.9); **phase 2 merged** (main b1472ec, §4); **phase 3 saved key frames built** on
-`feature/sim-keyframes` (§5.1; triggers §5.2 later). Differences from this text are noted in place.
+(main 7a697b7, §3.9); **phase 2 merged** (main b1472ec, §4); **phase 3 saved key frames merged**
+(main 4bed867, §5.1; triggers §5.2 later). Differences from this text are noted in place.
 Decisions D1–D17 (Decision log §9).
 
 Goal: control a running simulation the way you control a media player or a scope: play/pause,
@@ -791,7 +791,7 @@ Design:
   (circuits with node callbacks, and the 6502); a changed part value gives the warning; another
   circuit's key frame is refused.
 
-**Built (2026-11-22, `feature/sim-keyframes`)** [SIMULATED]: `KeyFrames` (`keyframes.*`: files,
+**Built (2026-11-22, merged into main 4bed867)** [SIMULATED]: `KeyFrames` (`keyframes.*`: files,
 open, range play), `KeyFramePane` (`keyframepane.*`), the ◆+ button and ⌘K in the simulation
 bar (greyed out with the reason), `sim keyframe …`, `view keyframes [tab|split]`.
 `test_simctl_keyframes.py`: 64 checks, 6 circuits (with board_mains' part states) (555, Arduino + DHT22, 6502, the ternary
