@@ -17,8 +17,11 @@
 #include <QVBoxLayout>
 #include <QButtonGroup>
 #include <QTimer>
+#include <QAbstractItemView>
+#include <QEvent>
 
 #include "triggereditor.h"
+#include "pinmarker.h"
 #include "keyframes.h"
 #include "oscope.h"
 #include "propdialog.h"
@@ -186,6 +189,47 @@ TriggerEditor::TriggerEditor( QWidget* parent, Component* part )
     for( QCheckBox* b : { m_pause, m_keyframe, m_armed } )
         connect( b, &QCheckBox::toggled, this, [this](){ if( !m_filling ){ updateVisible(); changed(); } } );
     connect( m_max, QOverload<int>::of( &QSpinBox::valueChanged ), this, [this](){ if( !m_filling ) changed(); } );
+
+    // Which pin is pin 1: the pin under the pointer in an open pin list, else the chosen ones
+    connect( m_pin, QOverload<int>::of( &QComboBox::highlighted ), this, [this]( int i ){ markPins( i, -1 ); } );
+    connect( m_ref, QOverload<int>::of( &QComboBox::highlighted ), this, [this]( int i ){ markPins( -1, i ); } );
+    m_pin->view()->installEventFilter( this );   // The list closed: back to the chosen pins
+    m_ref->view()->installEventFilter( this );
+}
+
+TriggerEditor::~TriggerEditor() { PinMarker::clear( this ); }
+
+void TriggerEditor::showEvent( QShowEvent* e ) { QWidget::showEvent( e ); markPins(); }
+void TriggerEditor::hideEvent( QHideEvent* e ) { QWidget::hideEvent( e ); PinMarker::clear( this ); }
+
+bool TriggerEditor::eventFilter( QObject* obj, QEvent* ev )
+{
+    if( ev->type() == QEvent::Hide && ( obj == m_pin->view() || obj == m_ref->view() ) ) markPins();
+    return QWidget::eventFilter( obj, ev );
+}
+
+void TriggerEditor::markPins( int hoverPin, int hoverRef )
+{
+    if( !isVisible() ) return;
+    Trigger t = trigger();
+    QList<Pin*> pins;
+    Component* c = part();
+    if( !t.isAnd() && !m_kState->isChecked() && c && ( hoverPin >= 0 || hoverRef >= 0 ) )
+    {
+        int ip = hoverPin >= 0 ? hoverPin : m_pin->currentIndex();
+        if( Pin* p = Triggers::findPin( c->getUid(), m_pin->itemData( ip ).toString() ) ) pins.append( p );
+        if( m_ref->isVisible() ){
+            QString r = m_ref->itemData( hoverRef >= 0 ? hoverRef : m_ref->currentIndex() ).toString();
+            Pin* rp = nullptr;
+            if( r == "@ext" ) rp = Triggers::findPin( m_t.cond.refComp, m_t.cond.ref );
+            else if( !r.isEmpty() && r != "@node" ) rp = Triggers::findPin( c->getUid(), r );
+            if( rp && !pins.contains( rp ) ) pins.append( rp );
+        }
+    }
+    else pins = Triggers::pinsOf( t );
+    QList<QPair<Pin*, QString>> tags;
+    for( Pin* p : pins ) tags.append( { p, Triggers::pinTag( p->component(), p ) } );
+    PinMarker::show( this, tags );
 }
 
 void TriggerEditor::changed()
@@ -294,12 +338,17 @@ void TriggerEditor::updateVisible()
     Component* c = part();
     bool two = c && c->getPins().size() == 2;
     if( cu && two && m_pin->count() == 2 ){              // Through a two-pin part
-        m_pin->setItemText( 0, tr("through (pin 1 → pin 2)") );
-        m_pin->setItemText( 1, tr("through (pin 2 → pin 1)") );
+        std::vector<Pin*> ps = c->getPins();
+        QString a = ps[0] ? Triggers::pinTag( c, ps[0] ) : "1", b = ps[1] ? Triggers::pinTag( c, ps[1] ) : "2";
+        bool num = ( a == "1" && b == "2" );           // No names: "pin 1 → pin 2"
+        if( num ){ a = "pin 1"; b = "pin 2"; }
+        m_pin->setItemText( 0, tr("through (%1 → %2)").arg( a, b ) );
+        m_pin->setItemText( 1, tr("through (%1 → %2)").arg( b, a ) );
     }else if( c ){
         std::vector<Pin*> pins = c->getPins();
         for( int i=0; i<m_pin->count() && i<(int)pins.size(); ++i ) if( pins[i] ) m_pin->setItemText( i, Triggers::pinText( c, pins[i] ) );
     }
+    markPins();
 }
 
 void TriggerEditor::setTrigger( const Trigger& t )

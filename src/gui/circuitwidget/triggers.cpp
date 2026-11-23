@@ -173,7 +173,10 @@ Pin* Triggers::findPin( const QString& uid, const QString& name )
     for( Pin* p : pins ) if( p && p->getLabelText() == name ) return p;
     for( Pin* p : pins ) if( p && pinName( p, c ).compare( name, Qt::CaseInsensitive ) == 0 ) return p;
     for( Pin* p : pins ) if( p && p->getLabelText().compare( name, Qt::CaseInsensitive ) == 0 ) return p;
-    for( Pin* p : pins ) if( p && knownName( c, p ).compare( name, Qt::CaseInsensitive ) == 0 ) return p;   // Q1.G
+    QString known = name;                     // A hyphen for − (C1.-, U1.In-) or – (labels of M1, I1)
+    known.replace('-', QChar(0x2212));
+    for( Pin* p : pins ) if( p && QString( p->getLabelText() ).replace( QChar(0x2013), QChar(0x2212) ) == known ) return p;
+    for( Pin* p : pins ) if( p && knownName( c, p ).compare( known, Qt::CaseInsensitive ) == 0 ) return p;   // Q1.G, C1.+
     bool isNum = false;
     int n = name.toInt( &isNum );             // A pin number: 1-based, as on the package
     if( isNum && n >= 1 && n <= (int)pins.size() ) return pins[n-1];
@@ -281,6 +284,15 @@ static QString knownName( Component* c, Pin* p )
         { "Diode",   { {"lPin","A"}, {"rPin","K"} } },
         { "Zener",   { {"lPin","A"}, {"rPin","K"} } },
         { "Led",     { {"lPin","A"}, {"rPin","K"} } },
+        { "elCapacitor", { {"lPin","+"}, {"rPin","−"} } },   // Polarized: the + plate is pin 1
+        { "Battery",     { {"lPin","+"}, {"rPin","−"} } },
+        { "Voltimeter",  { {"lPin","+"}, {"rPin","COM"}, {"outnod","out"} } },   // Red lead, COM grey
+        { "Amperimeter", { {"lPin","+"}, {"rPin","COM"}, {"outnod","out"} } },
+        { "PUT",     { {"anode","A"}, {"cathode","K"}, {"gate","G"} } },
+        { "UJT",     { {"emitter","E"}, {"base1","B1"}, {"base2","B2"} } },
+        { "LedRgb",  { {"Pin0","R"}, {"Pin1","G"}, {"Pin2","B"}, {"Pin3","com"} } },
+        { "opAmp",   { {"inputNinv","In+"}, {"inputInv","In−"}, {"output","Out"},   // Its labels show "+" twice
+                       {"powerPos","V+"}, {"powerNeg","V−"} } },
     };
     auto t = names.find( c->itemType() );
     if( t == names.end() ) return "";
@@ -377,6 +389,8 @@ QString Triggers::watchText( const Trigger& t )
 
     auto shortName = [&]( Pin* x ){ return pinShort( comp, x ); };
     QString a = shortName( p ), b = shortName( r );
+    if( ( a == "+" && b == "−" ) || ( a == "−" && b == "+" ) )   // A polarized part: "C1 + to −"
+        return compName( comp )+" "+a+" to "+b;
     QString known;                        // A familiar name for a transistor's pin pair
     QString ab = (a+b).toUpper();
     if( ab == "GS" || ab == "DS" || ab == "GD" || ab == "BE" || ab == "CE" || ab == "BC" ) known = "V"+a.toLower()+b.toLower();
@@ -1361,6 +1375,26 @@ void Triggers::summary()   // Count-only triggers: one line each at a pause or s
 
 Component* Triggers::comp( const QString& uid ) { return compByUid( uid ); }
 QString Triggers::pinText( Component* c, Pin* p ) { return pinLabel( c, p ); }
+QString Triggers::pinTag( Component* c, Pin* p ) { return pinLabel( c, p ).mid( 4 ); }   // Without "pin "
+
+QList<Pin*> Triggers::pinsOf( const Trigger& t )
+{
+    QList<Pin*> l;
+    auto add = [&l]( Pin* p ){ if( p && !l.contains( p ) ) l.append( p ); };
+    if( t.isAnd() ){ for( const Trigger& m : t.members ) for( Pin* p : pinsOf( m ) ) add( p ); return l; }
+    const TrigCond& c = t.cond;
+    if( c.sig != "volt" && c.sig != "curr" ) return l;
+    if( !c.node.isEmpty() )
+    {
+        QString uid, pin;
+        splitNode( c.node, uid, pin );
+        add( findPin( uid, pin ) );
+        return l;
+    }
+    add( findPin( c.comp, c.pin ) );
+    if( !c.ref.isEmpty() ) add( findPin( c.refComp.isEmpty() ? c.comp : c.refComp, c.ref ) );
+    return l;
+}
 QString Triggers::partName( Component* c ) { return compName( c ); }
 
 QStringList Triggers::statesSeen( Component* c, const QString& block )

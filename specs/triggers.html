@@ -169,7 +169,7 @@ nav.toc a{ color:var(--accent); text-decoration:none; display:block; padding:2px
 <div class="tablewrap"><table class="doc">
 <tr><th>Signal</th><th>Written in a row</th><th>Notes</th></tr>
 <tr><td>A part's state, or one block of it</td><td><code>IC1 supply (state)</code></td><td>Scripted cores (<code>component.setStatus</code>) and the built-in parts with a StateLog (BJT, MOSFET, SCR, triac, diac, op amp, regulator, diode, zener, LED, 555, relay, analog mux)</td></tr>
-<tr><td>A pin's voltage to ground</td><td><code>IC1 pin 3 VDD</code></td><td>Pin number and name; two-pin parts: <code>pin 1</code>, <code>pin 2</code></td></tr>
+<tr><td>A pin's voltage to ground</td><td><code>IC1 pin 3 VDD</code></td><td>Pin number and name; two-pin parts: <code>pin 1</code>, <code>pin 2</code>; polarized parts their polarity: <code>C1 pin +</code>, <code>C1 + to −</code> (electrolytic capacitor, battery, meters + / COM, op amp In+ In− Out V+ V−), diodes A / K. The editor and the tab ring the watched pins on the canvas with that tag (an open pin list: the entry under the pointer), so pin 1 can be seen</td></tr>
 <tr><td>The voltage between two pins</td><td><code>Q1 pins G–S (Vgs)</code></td><td>A familiar name where there is one (Vgs, Vds, Vbe, Vce); the pins may be of two parts: <code>R5 pin 2 – C3 pin 1</code> (then shown in both parts' tabs)</td></tr>
 <tr><td>The scope's trigger</td><td><code>Oscope-1 Ch1 (node n12)</code></td><td>Linked to the scope's own trigger setting (§4.5)</td></tr>
 <tr><td>The current into a pin</td><td><code>IC1 pin 5 DRAIN (I)</code></td><td>Positive into the part. Two-pin parts: <code>current (1→2)</code>, through the part, positive from pin 1 to pin 2</td></tr>

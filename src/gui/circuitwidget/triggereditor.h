@@ -28,6 +28,7 @@ class TriggerEditor : public QWidget
     public:
         // part: the editor of that part's properties (no part list); null: any part
         TriggerEditor( QWidget* parent, Component* part=nullptr );
+        ~TriggerEditor();
 
         void setTrigger( const Trigger& t );
         Trigger trigger();          // The form's trigger (id, hits and the rest kept from setTrigger)
@@ -36,7 +37,16 @@ class TriggerEditor : public QWidget
     signals:
         void edited();              // Any change by the user
 
+    protected:
+        void showEvent( QShowEvent* e ) override;
+        void hideEvent( QHideEvent* e ) override;
+        bool eventFilter( QObject* obj, QEvent* ev ) override;
+
     private:
+        // The watched pins marked on the canvas (PinMarker); a pin list open: the entry under
+        // the pointer instead of the chosen one (hoverPin / hoverRef: an index, -1: the chosen)
+        void markPins( int hoverPin=-1, int hoverRef=-1 );
+
         void fillParts();
         void partChanged();
         void kindChanged();

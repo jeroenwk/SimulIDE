@@ -20,6 +20,7 @@
 #include "triggerpane.h"
 #include "triggereditor.h"
 #include "triggers.h"
+#include "pinmarker.h"
 #include "circuit.h"
 #include "circuitwidget.h"
 #include "component.h"
@@ -133,6 +134,12 @@ TriggerPane::TriggerPane( QWidget* parent )
         goToLast( it->data( cArmed, Qt::UserRole ).toInt() );
     });
     connect( m_tree, &QTreeWidget::itemSelectionChanged, this, [this](){ if( !m_filling ) highlightParts(); } );
+    m_tree->setMouseTracking( true );          // A row under the pointer: its pins marked
+    m_tree->viewport()->installEventFilter( this );
+    connect( m_tree, &QTreeWidget::itemEntered, this, [this]( QTreeWidgetItem* it ){
+        int id = idAt( it );
+        markPins( id ? QList<int>{ id } : selected() );
+    } );
     connect( m_tree, &QTreeWidget::customContextMenuRequested, this, &TriggerPane::contextMenu );
     follow();
 }
@@ -345,9 +352,25 @@ void TriggerPane::goToLast( int id )   // To the key frame it saved there, else 
     if( !err.isEmpty() ) qWarning().noquote() << "[triggers] "+err;
 }
 
+int TriggerPane::idAt( QTreeWidgetItem* it ) { return it ? it->data( cArmed, Qt::UserRole ).toInt() : 0; }
+
+void TriggerPane::markPins( const QList<int>& ids )
+{
+    QList<QPair<Pin*, QString>> tags;
+    if( m_trig )
+        for( int id : ids )
+            if( Trigger* t = m_trig->find( id ) )
+                for( Pin* p : Triggers::pinsOf( *t ) ) tags.append( { p, Triggers::pinTag( p->component(), p ) } );
+    if( tags.isEmpty() ) PinMarker::clear( this );
+    else PinMarker::show( this, tags );
+}
+
+void TriggerPane::hideEvent( QHideEvent* e ) { QWidget::hideEvent( e ); PinMarker::clear( this ); }
+
 void TriggerPane::highlightParts()   // Selected rows: their parts selected on the canvas
 {
     if( !m_trig || !Circuit::self() ) return;
+    markPins( selected() );
     QList<Component*> parts;
     for( int id : selected() )
     {
@@ -419,6 +442,7 @@ void TriggerPane::contextMenu( const QPoint& pos )
 
 bool TriggerPane::eventFilter( QObject* obj, QEvent* ev )
 {
+    if( obj == m_tree->viewport() && ev->type() == QEvent::Leave ) markPins( selected() );   // Back to the selection
     if( ev->type() != QEvent::KeyPress ) return QWidget::eventFilter( obj, ev );
     QKeyEvent* ke = static_cast<QKeyEvent*>( ev );
     if( obj == m_tree )

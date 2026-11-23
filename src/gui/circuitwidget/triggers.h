@@ -136,7 +136,9 @@ class Triggers : public QObject, public SimWatch, public Updatable, public State
  static Pin* findPin( const QString& comp, const QString& pin );   // uid + short name (or 1-based number)
  static QString pinName( Pin* p, Component* c );                    // The short name saved in the .sim1
  static Component* comp( const QString& uid );                       // A top-level part (or node) by uid
- static QString pinText( Component* c, Pin* p );                     // "pin 3 VDD", "pin 1"
+ static QString pinText( Component* c, Pin* p );                     // "pin 3 VDD", "pin 1", "pin +"
+ static QString pinTag( Component* c, Pin* p );                      // "3 VDD", "1", "+" (a pin marker)
+ static QList<Pin*> pinsOf( const Trigger& t );                      // The pins it watches (an AND: its members')
  static QString partName( Component* c );                            // Its label, else its uid
  static QStringList statesSeen( Component* c, const QString& block );   // State names reported so far
         QList<int> watchingPart( const QString& uid );               // Triggers on that part's pins or states

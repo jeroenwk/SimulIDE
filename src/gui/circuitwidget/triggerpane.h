@@ -47,6 +47,7 @@ class TriggerPane : public QWidget
 
     protected:
         bool eventFilter( QObject* obj, QEvent* ev ) override;
+        void hideEvent( QHideEvent* e ) override;
 
     private:
         void fill();
@@ -55,6 +56,8 @@ class TriggerPane : public QWidget
         void contextMenu( const QPoint& pos );
         void goToLast( int id );
         void highlightParts();
+        void markPins( const QList<int>& ids );   // Their pins marked on the canvas (PinMarker)
+        int  idAt( QTreeWidgetItem* it );
         void armSelected( bool armed );
 
         QLabel*      m_title;
