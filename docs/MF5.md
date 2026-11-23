@@ -24,11 +24,14 @@ BP, LP, AGND, V− (right).
 
 The external resistors pick the mode (MF10 datasheet modes 1–6): e.g. Mode 1 (R1 input to
 INV, R2 N→INV, R3 BP→INV, SA to V+): f0 = fCLK/100 or /50, Q = R3/R2, HOBP = −R3/R1,
-HOLP = HON = −R2/R1.
+HOLP = HON = −R2/R1. SA picks the second summer input: V+ → LP (modes 1 and 4 here), V− →
+AGND. Mode 3, the state-variable HP/BP/LP filter (R2 N→INV, R3 BP→INV, R4 LP→INV), needs
+SA at V−: f0 = fCLK/100 (or /50) · √(R2/R4), Q = √(R2/R4) · R3/R2, HOLP = −R4/R1,
+HOBP = −R3/R1, HOHP = −R2/R1 (Scherz Fig. 9.24 draws this mode without the SA pin).
 
 ## Checks
 
-`tests/regress/test_mf5.py` (13 checks, [SIMULATED]), ±5 V, 0.1 V sine in, 100 kHz clock:
+`tests/regress/test_mf5.py` (16 checks, [SIMULATED]), ±5 V, 0.1 V sine in, 100 kHz clock:
 
 | | Datasheet equations | Model |
 |---|---|---|
@@ -39,6 +42,7 @@ HOLP = HON = −R2/R1.
 | 50/100 at V+: BP at 2 kHz | 1.0 V | 0.997 V |
 | 50/100 at V−: filtering stops | — | 0 V |
 | Mode 4: LP at 100 Hz (HOLP −2); N at 0.3 / 1 / 3 kHz (allpass) | 0.202; 0.1 V | 0.2015; 0.0999 / 0.1000 / 0.0996 V |
+| Mode 3 (all 10 k, SA at V−, f0 1 kHz, Q 1): LP 100 Hz, BP 1 kHz, HP 10 kHz | 0.1005, 0.1, 0.1005 V | 0.1002, 0.0998, 0.0998 V |
 
 Source: TI MF10-N (SNOS547C, 2013), block diagram p. 2, pin descriptions, modes
 p. 15–18. The MF5's own datasheet (SNOSBC9A) could not be fetched; its pin numbers are not

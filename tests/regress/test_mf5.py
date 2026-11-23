@@ -12,6 +12,10 @@ HOBP = -R3/R1 = -10, HOLP = -R2/R1 = -1, notch at f0 on N:
 Mode 4 (R1 = R2 = 10 k, R3 = 100 k, S1 = Vin, SA to V+): HOLP = -(1 + R2/R1) = -2:
 LP at 100 Hz 0.202 V; N is an allpass: 0.1 V at 300 Hz, 1 kHz and 3 kHz (within 0.5 dB:
 the datasheet notes 0.4 dB of peaking near f0 from the sampling).
+Mode 3 (state variable: R1 = R2 = R3 = R4 = 10 k, R2 N->INV, R3 BP->INV, R4 LP->INV, SA to V-
+so the second summer input is AGND; Scherz Fig. 9.24): f0 = fCLK/100 sqrt(R2/R4) = 1 kHz,
+Q = sqrt(R2/R4) R3/R2 = 1, HOLP = -R4/R1, HOBP = -R3/R1, HOHP = -R2/R1 = -1:
+LP at 100 Hz 0.1005 V, BP at 1 kHz 0.1 V, HP at 10 kHz 0.1005 V (within 5 %).
 """
 
 from harness import run_test
@@ -46,11 +50,19 @@ def filt(sim, fin, fclk=100e3, ratio="G.Gnd", mode=1):
     c("comp", "add", "Resistor", "--label", "R3", "--at", "0,-120", "Resistance=100000")
     c("comp", "add", "Resistor", "--label", "RA", "--at", "200,40", "--rot", "90", "Resistance=10000")
     for a, b in [("VP.outnod", "U.vp"), ("VN.outnod", "U.vn"), ("U.agnd", "G.Gnd"), ("U.lsh", "G.Gnd"),
-                 ("U.ratio", ratio), ("VP.outnod", "U.sa"), ("CK.outnod", "U.clk"), ("W.outnod", "R1.lPin"),
+                 ("U.ratio", ratio), ("VN.outnod" if mode == 3 else "VP.outnod", "U.sa"), ("CK.outnod", "U.clk"), ("W.outnod", "R1.lPin"),
                  ("R1.rPin", "U.inv"), ("U.inv", "R2.lPin"), ("R2.rPin", "U.n"), ("U.inv", "R3.lPin"),
-                 ("R3.rPin", "U.bp"), ("U.lp", "RA.lPin"), ("RA.rPin", "G.Gnd")]:
+                 ("R3.rPin", "U.bp")]:
         c("wire", "add", a, b)
     c("wire", "add", "U.s1", "W.outnod" if mode == 4 else "G.Gnd")
+    if mode != 3:
+        c("wire", "add", "U.lp", "RA.lPin")
+        c("wire", "add", "RA.rPin", "G.Gnd")
+    if mode == 3:
+        c("comp", "set", "R3", "Resistance=10000")
+        c("comp", "add", "Resistor", "--label", "R4", "--at", "0,-160", "Resistance=10000")
+        c("wire", "add", "U.inv", "R4.lPin")
+        c("wire", "add", "R4.rPin", "U.lp")
     c("sim", "run", "--for", "30ms", timeout=900)
 
 
@@ -88,6 +100,11 @@ def test(sim):
     for f in (300, 1000, 3000):
         filt(sim, f, mode=4)
         within(sim, "mode 4 allpass, %d Hz: N (V)" % f, amp(sim, "U.n", f), 0.0944, 0.106)
+        c("sim", "stop")
+
+    for f, pin, name in ((100, "U.lp", "LP"), (1000, "U.bp", "BP"), (10000, "U.n", "HP")):
+        filt(sim, f, mode=3)
+        within(sim, "mode 3 (SA at V-), %d Hz: %s (V), 0.1 by hand" % (f, name), amp(sim, pin, f), 0.095, 0.1055)
         c("sim", "stop")
 
 
