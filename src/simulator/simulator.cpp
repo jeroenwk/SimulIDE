@@ -380,6 +380,7 @@ void Simulator::startSim( bool paused )
 {
     stopNoise();          // A restart without a stop
     resetSim();
+    m_pauseNest = 0;
     m_runSeed = m_runSeedSet;
     while( m_runSeed == 0 ) m_runSeed = std::random_device{}();
     std::srand( m_runSeed );   // Before initialize(): flip-flops draw their start state there
@@ -488,6 +489,7 @@ void Simulator::stopSim()
         m_timerId = 0;
     }
     m_state = SIM_STOPPED;
+    m_pauseNest = 0;
     if( !m_CircuitFuture.isFinished() ) m_CircuitFuture.waitForFinished();
     stopNoise();
 
@@ -592,7 +594,9 @@ QString Simulator::noiseBadge( bool brief )
 
 void Simulator::pauseSim() // Only pause simulation, don't update UI
 {
-    if( m_state <= SIM_PAUSED ) return;
+    if( m_state == SIM_PAUSED ){ m_pauseNest++; return; }
+    if( m_state < SIM_PAUSED ) return;
+    m_pauseNest = 0;
     m_oldState = m_state;
     m_holdSince = m_RefTimer.nsecsElapsed();
     m_state = SIM_PAUSED;
@@ -626,9 +630,11 @@ void Simulator::resumeWorker()
     m_CircuitFuture = QtConcurrent::run( this, &Simulator::runCircuit );
 }
 
-void Simulator::resumeSim()
+void Simulator::resumeSim( bool user )
 {
     if( m_state != SIM_PAUSED ) return;
+    if( user ) m_pauseNest = 0;
+    else if( m_pauseNest > 0 ){ m_pauseNest--; return; }   // An inner pair: stays paused
     m_state = m_oldState;
     m_speedBase = true;         // The pause doesn't count in the real speed
 }

@@ -254,7 +254,7 @@ void MemData::saveData( QVector<int>* data, int bits )
                        simulideTr( "MemData", "Save Data" ), dir,
                        simulideTr( "MemData", "All files (*.*);;.data (*.data);;.bin (*.bin)"));
 
-    if( fileName.isEmpty() ) return; // User cancels saving
+    if( fileName.isEmpty() ){ Simulator::self()->resumeSim(); return; } // User cancels saving
 
     QFile outFile( fileName );
     int bytes = (bits+7)/8;

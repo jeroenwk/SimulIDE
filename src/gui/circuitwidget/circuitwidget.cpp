@@ -1054,7 +1054,7 @@ void CircuitWidget::debugPaused()
 void CircuitWidget::resumeDebug()
 {
     MainWindow::self()->setState("▶");
-    Simulator::self()->resumeSim();
+    Simulator::self()->resumeSim( true );
 }
 
 void CircuitWidget::pauseCirc()
@@ -1074,7 +1074,7 @@ void CircuitWidget::pauseCirc()
     }
     else if( Simulator::self()->isPaused() )
     {
-        Simulator::self()->resumeSim();
+        Simulator::self()->resumeSim( true );
         MainWindow::self()->setState("▶");
         pauseSimAct->setText(tr("Pause Simulation"));
         pauseSimAct->setIcon( QIcon(":/simpause.svg") );

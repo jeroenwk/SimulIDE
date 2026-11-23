@@ -28,6 +28,7 @@
 #include "comproperty.h"
 #include "componentselector.h"
 #include "simulator.h"
+#include "instrumentview.h"
 #include "utils.h"
 
 namespace
@@ -643,9 +644,14 @@ void CliApi::registerEdit()
         stopSimForEdit();
         Circuit* circ = Circuit::self();
         circ->clearSelection();
+        // Removal goes by the selection, and Qt does not select a hidden item: with instruments
+        // hidden (settings instruments=false), a Probe and its leads stayed. Show them meanwhile
+        InstrumentView* iv = InstrumentView::self();
+        if( !iv->shown() ) iv->apply( true );
         QJsonArray removed;
         for( Component* comp : comps ){ comp->setSelected( true ); removed.append( comp->getUid() ); }
         circ->removeItems();
+        if( !iv->shown() ) iv->apply( false );
         return removed;
     });
 

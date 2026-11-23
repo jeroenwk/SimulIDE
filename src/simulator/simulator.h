@@ -48,13 +48,16 @@ class Simulator : public QObject
          void cancelEvents( eElement* el );
 
         void startSim( bool paused=false );
+        // A part changing itself (a setter) pauses around the change: pauseSim() / resumeSim() nest, so
+        // while the user has paused, the pair leaves the run paused (comp set resumed it). user: the
+        // pause button / sim resume, which resumes whatever was nested
         void pauseSim();
 
         // GUI thread: let the worker finish the time step it is solving and stop there, so what
         // the GUI and the CLI read next is a converged step, not a Newton iteration in progress
         void holdWorker();
         void resumeWorker();
-        void resumeSim();
+        void resumeSim( bool user=false );
         void stopSim();
 
         void setWarning( int warning ) { m_warning = warning; }
@@ -275,6 +278,7 @@ class Simulator : public QObject
 
         simState_t m_state;
         simState_t m_oldState;
+        int m_pauseNest = 0;   // pauseSim() calls while already paused, not resumed yet
 
         bool m_debug;
         bool m_converged;
