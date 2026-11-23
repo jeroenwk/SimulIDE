@@ -2,7 +2,8 @@
 
 Status: **phase 1 merged** (main b0096de, 2026-11-21), §3.1–3.8; **speed lock merged**
 (main 7a697b7, §3.9); **phase 2 merged** (main b1472ec, §4); **phase 3 saved key frames merged**
-(main 4bed867, §5.1; triggers §5.2 later). Differences from this text are noted in place.
+(main 4bed867, §5.1); **phase 3b triggers merged** (main b2223db, 2026-11-23, §5.2,
+specs/triggers.html). Differences from this text are noted in place.
 Decisions D1–D24 (Decision log §9).
 
 Goal: control a running simulation the way you control a media player or a scope: play/pause,
