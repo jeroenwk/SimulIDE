@@ -40,7 +40,7 @@ HOLP = HON = −R2/R1.
 | 50/100 at V−: filtering stops | — | 0 V |
 | Mode 4: LP at 100 Hz (HOLP −2); N at 0.3 / 1 / 3 kHz (allpass) | 0.202; 0.1 V | 0.2015; 0.0999 / 0.1000 / 0.0996 V |
 
-Source: TI MF10-N (SNOS547C, 2013), block diagram p. 2, pin descriptions p. 13, modes
+Source: TI MF10-N (SNOS547C, 2013), block diagram p. 2, pin descriptions, modes
 p. 15–18. The MF5's own datasheet (SNOSBC9A) could not be fetched; its pin numbers are not
 modelled (pins by name).
 
