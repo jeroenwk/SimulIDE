@@ -48,6 +48,7 @@
 #include "pllvco.h"
 #include "noisesource.h"
 #include "lm2575.h"
+#include "mf5.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -287,6 +288,12 @@ QJsonObject readComp( Component* comp )
         o["switch_on"] = sr->switchOn();
         o["i_switch"] = num( sr->switchCurrent() );
         o["limited"] = sr->limited();
+    }
+    else if( Mf5* mf = dynamic_cast<Mf5*>( comp ) )   // Clock ratio and the integrator states (V from AGND)
+    {
+        o["ratio"] = mf->ratio();
+        o["bp"] = num( mf->bp() );
+        o["lp"] = num( mf->lp() );
     }
     else if( CurrReg* cr = dynamic_cast<CurrReg*>( comp ) )   // Current Source IC: headroom, set and bias currents
     {

@@ -68,6 +68,7 @@
 #include "noisesource.h"
 #include "pllvco.h"
 #include "lm2575.h"
+#include "mf5.h"
 #include "crystal.h"
 #include "optocoupler.h"
 #include "led.h"
@@ -221,6 +222,7 @@ void ItemLibrary::loadItems()
     addItem( Cd4046::libraryItem() );
     addItem( Ne566::libraryItem() );
     addItem( Lm2575::libraryItem() );
+    addItem( Mf5::libraryItem() );
     addItem( MuxAnalog::libraryItem() );
     // Outputs
     addItem( new LibraryItem( QObject::tr("Outputs"), "", "","Outputs", NULL ) );
