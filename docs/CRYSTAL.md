@@ -30,9 +30,14 @@ error damps a high-Q loop.
 
 ## Using it
 
-- **The rest of the circuit needs a fine `reactStep`** (Settings or `settings set
-  reactStep=5ns`): load capacitors of 33 pF at the default 1 µs step see four cycles of
-  4 MHz per step. About fs × 50 steps is enough.
+- **The rest of the circuit needs a fine `reactStep`**: about 1 / (250 fs), so 1 ns at
+  4 MHz (`settings set reactStep=1ns`). SimulIDE's capacitors integrate with backward
+  Euler, which adds about reactStep / (2 C) of series resistance to each load capacitor;
+  it must stay well below the crystal's R1. With 33 pF and R1 = 50 Ω: 76 Ω at 5 ns (more
+  loss than the crystal itself), 15 Ω at 1 ns. Measured on a BJT Pierce (β 100, 1 kΩ,
+  220 kΩ, 2 × 33 pF, 4 MHz) [SIMULATED]: the oscillation decays at 1 920 /s with a 5 ns
+  step and at 750–930 /s with 1 ns; the small-signal analysis of that circuit gives
+  904 /s (it does not start: r_π loads the base node).
 - **Start-up takes about Q / π cycles** of exponential growth from noise: 14 000 cycles
   (3.5 ms) at 4 MHz, 60 000 cycles (2 s) at 32.768 kHz. A symmetric circuit sits at its DC
   point for ever without noise. `Start_Current` (e.g. 0.05 mA) starts the motional branch
@@ -68,8 +73,12 @@ Use the crystal's own datasheet values for a given part (Custom).
 What the model leaves out: overtones and spurious modes, drive-level dependence,
 temperature (the frequency is fixed), ageing, and the pulling of a real crystal by C0's
 package capacitance beyond C0 itself. A BJT Pierce stage needs enough gain at the base
-node: its r_π across the load capacitor can damp the loop (a 1 kΩ / 100 kΩ common-emitter
-stage with 33 pF did not start).
+node: its r_π across the load capacitor can damp the loop (the β 100 stage above decays
+in the analysis too; with β 300 and the same resistors it still decays, at 608 /s).
+Check the start-up with the circuit's small-signal pole, not with gm against R1 alone.
+An op-amp crystal oscillator does not work: SimulIDE's op amp has no gain-bandwidth
+limit, so the positive feedback through C0 makes it oscillate far above fs, at whatever
+rate the simulation steps (Scherz Fig. 10.22 panel A).
 
 Books: AoE Fig. 7.38 (Pierce and other crystal oscillators); Scherz Figs. 10.20–10.22
 (equivalent circuit, Colpitts and Pierce crystal oscillators).
