@@ -18,6 +18,10 @@
 #include "doubleprop.h"
 #include "stringprop.h"
 
+// A value read back from its saved text ("400 µA" = 400*1e-6) can be one ulp off the model's
+// table value: compare with a relative tolerance so a reopened model doesn't turn Custom.
+static inline bool same( double a, double b ) { return qAbs( a-b ) <= 1e-9*qMax( qAbs( a ), qAbs( b ) ); }
+
 #define tr(str) simulideTr("Crystal",str)
 
 // Typical values [INFERRED from vendor tables: HC-49 C1 18-20 fF, C0 <= 7 pF; ESR within the
@@ -100,10 +104,10 @@ void Crystal::custom()
     if( Simulator::self()->isRunning() ) CircuitWidget::self()->powerCircOff();
 }
 
-void Crystal::setFreq( double f ){ if( f < 1 ) f = 1;         if( f == m_data.freq ) return; m_data.freq = f; custom(); }
-void Crystal::setC1  ( double c ){ if( c < 1e-18 ) c = 1e-18; if( c == m_data.c1 ) return;   m_data.c1 = c;   custom(); }
-void Crystal::setR1  ( double r ){ if( r < 1e-3 ) r = 1e-3;   if( r == m_data.r1 ) return;   m_data.r1 = r;   custom(); }
-void Crystal::setC0  ( double c ){ if( c < 1e-15 ) c = 1e-15; if( c == m_data.c0 ) return;   m_data.c0 = c;   custom(); }
+void Crystal::setFreq( double f ){ if( f < 1 ) f = 1;         if( same( f, m_data.freq ) ) return; m_data.freq = f; custom(); }
+void Crystal::setC1  ( double c ){ if( c < 1e-18 ) c = 1e-18; if( same( c, m_data.c1 ) ) return;   m_data.c1 = c;   custom(); }
+void Crystal::setR1  ( double r ){ if( r < 1e-3 ) r = 1e-3;   if( same( r, m_data.r1 ) ) return;   m_data.r1 = r;   custom(); }
+void Crystal::setC0  ( double c ){ if( c < 1e-15 ) c = 1e-15; if( same( c, m_data.c0 ) ) return;   m_data.c0 = c;   custom(); }
 void Crystal::setSteps( double s )
 {
     if( s < 8 ) s = 8;

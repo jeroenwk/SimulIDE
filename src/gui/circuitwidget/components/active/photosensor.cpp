@@ -25,6 +25,10 @@
 #include "boolprop.h"
 #include "stringprop.h"
 
+// A value read back from its saved text ("400 µA" = 400*1e-6) can be one ulp off the model's
+// table value: compare with a relative tolerance so a reopened model doesn't turn Custom.
+static inline bool same( double a, double b ) { return qAbs( a-b ) <= 1e-9*qMax( qAbs( a ), qAbs( b ) ); }
+
 #define tr(str) simulideTr("PhotoSensor",str)
 
 // Models (docs/PHOTO.md has where each number comes from). Light in lux of illuminant A.
@@ -108,7 +112,7 @@ void PhotoSensor::setMaxVal( double v ) { if( v < 1e-9 ) v = 1e-9; if( v < m_min
 void PhotoSensor::setSens( double s )
 {
     if( s < 0 ) s = 0;
-    if( s == m_sens ) return;
+    if( same( s, m_sens ) ) return;
     m_sens = s;
     m_needUpdate = true;
     custom();
@@ -322,7 +326,7 @@ double Photodiode::vj()     { return m_data.vj; }
 double Photodiode::mj()     { return m_data.mj; }
 
 #define PD_SET( fn, field, lo ) \
-void Photodiode::fn( double v ){ if( v < lo ) v = lo; if( v == m_data.field ) return; m_data.field = v; custom(); \
+void Photodiode::fn( double v ){ if( v < lo ) v = lo; if( same( v, m_data.field ) ) return; m_data.field = v; custom(); \
     if( Simulator::self()->isRunning() ) CircuitWidget::self()->powerCircOff(); }
 PD_SET( setSatCur, satCur, 1e-20 )
 PD_SET( setEmCoef, emCoef, 0.1 )
@@ -517,7 +521,7 @@ double Phototransistor::cje()   { return m_data.cje; }
 double Phototransistor::cjc()   { return m_data.cjc; }
 
 #define PT_SET( fn, field, lo ) \
-void Phototransistor::fn( double v ){ if( v < lo ) v = lo; if( v == m_data.field ) return; m_data.field = v; custom(); \
+void Phototransistor::fn( double v ){ if( v < lo ) v = lo; if( same( v, m_data.field ) ) return; m_data.field = v; custom(); \
     if( Simulator::self()->isRunning() ) CircuitWidget::self()->powerCircOff(); }
 PT_SET( setGain, gain, 1 )
 PT_SET( setSatCur, satCur, 1e-20 )

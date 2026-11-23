@@ -22,6 +22,10 @@
 #include "boolprop.h"
 #include "stringprop.h"
 
+// A value read back from its saved text ("400 µA" = 400*1e-6) can be one ulp off the model's
+// table value: compare with a relative tolerance so a reopened model doesn't turn Custom.
+static inline bool same( double a, double b ) { return qAbs( a-b ) <= 1e-9*qMax( qAbs( a ), qAbs( b ) ); }
+
 #define tr(str) simulideTr("Optocoupler",str)
 
 // Models: docs/OPTOCOUPLER.md has where each number comes from.
@@ -104,8 +108,8 @@ void OptoBase::custom()
     powerOff();
 }
 
-void OptoBase::setLedIs( double v ){ if( v < 1e-25 ) v = 1e-25; if( v == m_led_d.satCur ) return; m_led_d.satCur = v; custom(); }
-void OptoBase::setLedN ( double v ){ if( v < 0.5 ) v = 0.5;     if( v == m_led_d.emCoef ) return; m_led_d.emCoef = v; custom(); }
+void OptoBase::setLedIs( double v ){ if( v < 1e-25 ) v = 1e-25; if( same( v, m_led_d.satCur ) ) return; m_led_d.satCur = v; custom(); }
+void OptoBase::setLedN ( double v ){ if( v < 0.5 ) v = 0.5;     if( same( v, m_led_d.emCoef ) ) return; m_led_d.emCoef = v; custom(); }
 
 void OptoBase::paintLed( QPainter* p )
 {
@@ -228,11 +232,11 @@ void OptoTransistor::setModel( QString m )
     m_led_d = m_data.led;
 }
 
-void OptoTransistor::setCtr  ( double v ){ if( v < 0 ) v = 0;   if( v == m_data.ctr   ) return; m_data.ctr   = v; custom(); }
-void OptoTransistor::setGain ( double v ){ if( v < 1 ) v = 1;   if( v == m_data.gain  ) return; m_data.gain  = v; custom(); }
-void OptoTransistor::setBvceo( double v ){ if( v < 0 ) v = 0;   if( v == m_data.bvceo ) return; m_data.bvceo = v; custom(); }
-void OptoTransistor::setCje  ( double v ){ if( v < 0 ) v = 0;   if( v == m_data.cje   ) return; m_data.cje   = v; custom(); }
-void OptoTransistor::setCjc  ( double v ){ if( v < 0 ) v = 0;   if( v == m_data.cjc   ) return; m_data.cjc   = v; custom(); }
+void OptoTransistor::setCtr  ( double v ){ if( v < 0 ) v = 0;   if( same( v, m_data.ctr ) ) return; m_data.ctr   = v; custom(); }
+void OptoTransistor::setGain ( double v ){ if( v < 1 ) v = 1;   if( same( v, m_data.gain ) ) return; m_data.gain  = v; custom(); }
+void OptoTransistor::setBvceo( double v ){ if( v < 0 ) v = 0;   if( same( v, m_data.bvceo ) ) return; m_data.bvceo = v; custom(); }
+void OptoTransistor::setCje  ( double v ){ if( v < 0 ) v = 0;   if( same( v, m_data.cje ) ) return; m_data.cje   = v; custom(); }
+void OptoTransistor::setCjc  ( double v ){ if( v < 0 ) v = 0;   if( same( v, m_data.cjc ) ) return; m_data.cjc   = v; custom(); }
 
 void OptoTransistor::setBasePin( bool b )
 {
@@ -402,10 +406,10 @@ void OptoTriac::setModel( QString m )
     m_led_d = m_data.led;
 }
 
-void OptoTriac::setIft ( double v ){ if( v < 1e-6 ) v = 1e-6; if( v == m_data.ift  ) return; m_data.ift  = v; custom(); }
-void OptoTriac::setIh  ( double v ){ if( v < 1e-9 ) v = 1e-9; if( v == m_data.ih   ) return; m_data.ih   = v; custom(); }
-void OptoTriac::setRon ( double v ){ if( v < 1e-3 ) v = 1e-3; if( v == m_data.ron  ) return; m_data.ron  = v; custom(); }
-void OptoTriac::setVinh( double v ){ if( v < 0 ) v = 0;       if( v == m_data.vinh ) return; m_data.vinh = v; custom(); }
+void OptoTriac::setIft ( double v ){ if( v < 1e-6 ) v = 1e-6; if( same( v, m_data.ift ) ) return; m_data.ift  = v; custom(); }
+void OptoTriac::setIh  ( double v ){ if( v < 1e-9 ) v = 1e-9; if( same( v, m_data.ih ) ) return; m_data.ih   = v; custom(); }
+void OptoTriac::setRon ( double v ){ if( v < 1e-3 ) v = 1e-3; if( same( v, m_data.ron ) ) return; m_data.ron  = v; custom(); }
+void OptoTriac::setVinh( double v ){ if( v < 0 ) v = 0;       if( same( v, m_data.vinh ) ) return; m_data.vinh = v; custom(); }
 
 void OptoTriac::initialize()
 {
@@ -584,9 +588,9 @@ void OptoLogic::setModel( QString m )
     m_led_d = m_data.led;
 }
 
-void OptoLogic::setIth ( double v ){ if( v < 1e-6 ) v = 1e-6; if( v == m_data.ith  ) return; m_data.ith  = v; custom(); }
-void OptoLogic::setTphl( double v ){ if( v < 0 ) v = 0;       if( v == m_data.tphl ) return; m_data.tphl = v; custom(); }
-void OptoLogic::setTplh( double v ){ if( v < 0 ) v = 0;       if( v == m_data.tplh ) return; m_data.tplh = v; custom(); }
+void OptoLogic::setIth ( double v ){ if( v < 1e-6 ) v = 1e-6; if( same( v, m_data.ith ) ) return; m_data.ith  = v; custom(); }
+void OptoLogic::setTphl( double v ){ if( v < 0 ) v = 0;       if( same( v, m_data.tphl ) ) return; m_data.tphl = v; custom(); }
+void OptoLogic::setTplh( double v ){ if( v < 0 ) v = 0;       if( same( v, m_data.tplh ) ) return; m_data.tplh = v; custom(); }
 
 void OptoLogic::initialize()
 {
