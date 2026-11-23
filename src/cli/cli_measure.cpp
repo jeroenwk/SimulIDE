@@ -47,6 +47,7 @@
 #include "crystal.h"
 #include "pllvco.h"
 #include "noisesource.h"
+#include "lm2575.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -280,6 +281,13 @@ QJsonObject readComp( Component* comp )
         o["charging"] = vc->charging();
     }
     else if( NoiseSource* ns = dynamic_cast<NoiseSource*>( comp ) ) o["voltage"] = num( ns->voltage() );
+    else if( Lm2575* sr = dynamic_cast<Lm2575*>( comp ) )   // Duty cycle, switch, current-limited cycles
+    {
+        o["duty"] = num( sr->duty() );
+        o["switch_on"] = sr->switchOn();
+        o["i_switch"] = num( sr->switchCurrent() );
+        o["limited"] = sr->limited();
+    }
     else if( CurrReg* cr = dynamic_cast<CurrReg*>( comp ) )   // Current Source IC: headroom, set and bias currents
     {
         std::vector<Pin*> pins = comp->getPins();   // V+, V-, R
