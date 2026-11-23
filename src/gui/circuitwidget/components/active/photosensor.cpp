@@ -300,7 +300,7 @@ void Photodiode::applyData()
     m_diode->setCj0( m_data.cj0 );
     m_diode->setVj( m_data.vj );
     m_diode->setMj( m_data.mj );
-    m_shunt->setResSafe( m_data.rShunt );
+    m_shunt->setRes( m_data.rShunt );
 }
 
 void Photodiode::setModel( QString m )

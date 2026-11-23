@@ -65,6 +65,7 @@
 #include "latchd.h"
 #include "ldr.h"
 #include "photosensor.h"
+#include "optocoupler.h"
 #include "led.h"
 #include "ledstrip.h"
 #include "ledbar.h"
@@ -208,6 +209,9 @@ void ItemLibrary::loadItems()
     addItem( OpAmp::libraryItem() );
     addItem( VoltReg::libraryItem() );
     addItem( CurrReg::libraryItem() );
+    addItem( OptoTransistor::libraryItem() );
+    addItem( OptoTriac::libraryItem() );
+    addItem( OptoLogic::libraryItem() );
     addItem( MuxAnalog::libraryItem() );
     // Outputs
     addItem( new LibraryItem( QObject::tr("Outputs"), "", "","Outputs", NULL ) );

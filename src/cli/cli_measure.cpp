@@ -43,6 +43,7 @@
 #include "jfet.h"
 #include "currreg.h"
 #include "photosensor.h"
+#include "optocoupler.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -245,6 +246,17 @@ QJsonObject readComp( Component* comp )
         o["i_photo"] = num( ps->photoCurrent() );
         if( Photodiode* pd = dynamic_cast<Photodiode*>( comp ) ) o["current"] = num( pd->diodeCurrent() );
         else if( Phototransistor* pt = dynamic_cast<Phototransistor*>( comp ) ) o["i_collector"] = num( pt->collectorCurrent() );
+    }
+    else if( OptoBase* op = dynamic_cast<OptoBase*>( comp ) )   // LED current and the output side
+    {
+        o["i_led"] = num( op->ledCurrent() );
+        if( OptoTransistor* ot = dynamic_cast<OptoTransistor*>( comp ) ){
+            std::vector<Pin*> pins = comp->getPins();
+            o["i_photo"] = num( ot->photoCurrent() );
+            if( pins[2]->isConnected() && pins[2]->hasTrueCurrent() ) o["i_collector"] = num( pins[2]->trueCurrent()+ot->photoCurrent() );
+        }
+        else if( OptoTriac* tr = dynamic_cast<OptoTriac*>( comp ) ){ o["on"] = tr->isOn(); o["i_main"] = num( tr->mainCurrent() ); }
+        else if( OptoLogic* ol = dynamic_cast<OptoLogic*>( comp ) ) o["out_low"] = ol->outLow();
     }
     else if( CurrReg* cr = dynamic_cast<CurrReg*>( comp ) )   // Current Source IC: headroom, set and bias currents
     {

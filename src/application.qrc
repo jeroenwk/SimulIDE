@@ -189,6 +189,9 @@
         <file alias="currreg.svg">../src/icons/components/currreg.svg</file>
         <file alias="photodiode.svg">../src/icons/components/photodiode.svg</file>
         <file alias="phototransistor.svg">../src/icons/components/phototransistor.svg</file>
+        <file alias="optocoupler.svg">../src/icons/components/optocoupler.svg</file>
+        <file alias="optotriac.svg">../src/icons/components/optotriac.svg</file>
+        <file alias="optologic.svg">../src/icons/components/optologic.svg</file>
         <file alias="clock.png">../src/icons/components/clock.png</file>
         <file alias="resistordip.png">../src/icons/components/resistordip.png</file>
         <file alias="ledbar.png">../src/icons/components/ledbar.png</file>
