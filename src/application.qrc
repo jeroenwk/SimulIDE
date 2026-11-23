@@ -191,6 +191,7 @@
         <file alias="phototransistor.svg">../src/icons/components/phototransistor.svg</file>
         <file alias="optocoupler.svg">../src/icons/components/optocoupler.svg</file>
         <file alias="optotriac.svg">../src/icons/components/optotriac.svg</file>
+        <file alias="noisesource.svg">../src/icons/components/noisesource.svg</file>
         <file alias="crystal.svg">../src/icons/components/crystal.svg</file>
         <file alias="optologic.svg">../src/icons/components/optologic.svg</file>
         <file alias="clock.png">../src/icons/components/clock.png</file>

@@ -367,7 +367,7 @@ commit per step, and only when the user says so. Each step ends with
   tested on a regression set. It is a generic simulator setting, not an answer
   for a tested circuit, so the benchmark guardrail allows it.
 
-## 11. Phase 3 (later): the noise source part
+## 11. Phase 3: the noise source part (built 2026-11-23: white, 1/f, telegraph, hum; see NOISE.md)
 
 A visible part with two pins, a voltage or current source, in the Sources group:
 white (rms, bandwidth), 1/f (exponent, level at 1 Hz), random telegraph (amplitude,

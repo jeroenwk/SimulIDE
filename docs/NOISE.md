@@ -205,3 +205,27 @@ The bistable of `test_noise_bistable` is built by the test itself (CLI), so it c
 rebuilt in the GUI the same way. `python3 tests/regress/sweeps/sweep.py header` puts
 junk in every noise attribute of a saved header and opens and runs it (crash, hang,
 NaN), and checks that each setting survives a save and reopen.
+
+## Noise source part
+
+**Sources → Noise Source** (`NoiseSource`, `noisesource.cpp`): a floating voltage source
+between `plus` and `minus`, through `Out_Imped` (1 Ω), for noise you add on purpose: a noisy
+signal into a comparator (AoE Figs. 4.31–4.33), an amplifier's input noise, a telegraph
+glitch, mains hum. It runs whether the circuit's transient noise is on or off (like ngspice
+`TRNOISE`), and is the sum of:
+
+| Property | | |
+|---|---|---|
+| `White` (V rms), `Bandwidth` | white noise: a new Gaussian value every 1/(2·Bandwidth) | default 0.1 V, 10 kHz |
+| `Flicker` (V/√Hz at 1 Hz), `Fmin` | 1/f noise from Fmin to the bandwidth: rms = Flicker·√ln(BW/Fmin) | sum of first-order processes, two per decade |
+| `RTS_Amp`, `RTS_High`, `RTS_Low` | random telegraph signal: 0 or RTS_Amp, mean times in each level | |
+| `Hum`, `Hum_Freq` | a sine (peak), 50 Hz default | |
+| `Offset` | DC | |
+| `Seed` | 0 = from the run seed (a replay or a key frame repeats it), else fixed | |
+
+Each part is off at 0 (White defaults to 0.1 V so a placed source does something). An op
+amp's input noise is a source in series with its + input: `White` = e_n × √(Bandwidth ×
+π/2)… or simply the rms you want over your bandwidth. `tests/regress/test_noise_source.py`
+checks white rms and mean, the 1/f rms over its band (24 mV against 21.5 mV by hand: the
+sum of processes runs about 10 % high), the telegraph duty, hum peak, offset, output
+impedance and seeds. CLI `read`: `voltage`, the present source value.

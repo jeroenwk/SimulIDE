@@ -46,6 +46,7 @@
 #include "optocoupler.h"
 #include "crystal.h"
 #include "pllvco.h"
+#include "noisesource.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -278,6 +279,7 @@ QJsonObject readComp( Component* comp )
         o["i_timing"] = num( vc->timingCurrent() );
         o["charging"] = vc->charging();
     }
+    else if( NoiseSource* ns = dynamic_cast<NoiseSource*>( comp ) ) o["voltage"] = num( ns->voltage() );
     else if( CurrReg* cr = dynamic_cast<CurrReg*>( comp ) )   // Current Source IC: headroom, set and bias currents
     {
         std::vector<Pin*> pins = comp->getPins();   // V+, V-, R

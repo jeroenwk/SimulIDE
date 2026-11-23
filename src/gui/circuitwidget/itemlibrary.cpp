@@ -65,6 +65,7 @@
 #include "latchd.h"
 #include "ldr.h"
 #include "photosensor.h"
+#include "noisesource.h"
 #include "pllvco.h"
 #include "crystal.h"
 #include "optocoupler.h"
@@ -161,6 +162,7 @@ void ItemLibrary::loadItems()
     addItem( WaveGen::libraryItem() );
     addItem( VoltSource::libraryItem() );
     addItem( CurrSource::libraryItem() );
+    addItem( NoiseSource::libraryItem() );
     addItem( Csource::libraryItem() );
     addItem( Battery::libraryItem() );
     addItem( Rail::libraryItem() );
