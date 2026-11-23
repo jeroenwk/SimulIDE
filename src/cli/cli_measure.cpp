@@ -45,6 +45,7 @@
 #include "photosensor.h"
 #include "optocoupler.h"
 #include "crystal.h"
+#include "pllvco.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -266,6 +267,16 @@ QJsonObject readComp( Component* comp )
         o["q"]  = num( xt->q() );
         o["fs"] = num( xt->freq() );
         o["fp"] = num( xt->fp() );
+    }
+    else if( Cd4046* pl = dynamic_cast<Cd4046*>( comp ) )   // VCO timing current, phase comparator II state
+    {
+        o["i_vco"] = num( pl->vcoCurrent() );
+        o["pc2"] = pl->pc2Up() ? "up" : pl->pc2Down() ? "down" : "off";
+    }
+    else if( Ne566* vc = dynamic_cast<Ne566*>( comp ) )
+    {
+        o["i_timing"] = num( vc->timingCurrent() );
+        o["charging"] = vc->charging();
     }
     else if( CurrReg* cr = dynamic_cast<CurrReg*>( comp ) )   // Current Source IC: headroom, set and bias currents
     {

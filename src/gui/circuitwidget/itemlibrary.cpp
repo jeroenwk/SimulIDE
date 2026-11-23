@@ -65,6 +65,7 @@
 #include "latchd.h"
 #include "ldr.h"
 #include "photosensor.h"
+#include "pllvco.h"
 #include "crystal.h"
 #include "optocoupler.h"
 #include "led.h"
@@ -214,6 +215,8 @@ void ItemLibrary::loadItems()
     addItem( OptoTransistor::libraryItem() );
     addItem( OptoTriac::libraryItem() );
     addItem( OptoLogic::libraryItem() );
+    addItem( Cd4046::libraryItem() );
+    addItem( Ne566::libraryItem() );
     addItem( MuxAnalog::libraryItem() );
     // Outputs
     addItem( new LibraryItem( QObject::tr("Outputs"), "", "","Outputs", NULL ) );
