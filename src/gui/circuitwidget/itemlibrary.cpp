@@ -64,6 +64,7 @@
 #include "lamp.h"
 #include "latchd.h"
 #include "ldr.h"
+#include "photosensor.h"
 #include "led.h"
 #include "ledstrip.h"
 #include "ledbar.h"
@@ -194,6 +195,7 @@ void ItemLibrary::loadItems()
     addItem( Zener::libraryItem() );
     addItem( SCR::libraryItem() );
     addItem( PUT::libraryItem() );
+    addItem( Photodiode::libraryItem() );
     addItem( Diac::libraryItem() );
     addItem( Triac::libraryItem() );
     addItem( new LibraryItem( QObject::tr("Transistors"), "Active", "transistors.png","Transistors", NULL ) );
@@ -201,6 +203,7 @@ void ItemLibrary::loadItems()
     addItem( Jfet::libraryItem() );
     addItem( BJT::libraryItem() );
     addItem( UJT::libraryItem() );
+    addItem( Phototransistor::libraryItem() );
     addItem( new LibraryItem( QObject::tr("Other Active"), "Active", "2to2.png","Other Active", NULL ) );
     addItem( OpAmp::libraryItem() );
     addItem( VoltReg::libraryItem() );

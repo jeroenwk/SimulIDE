@@ -42,6 +42,7 @@
 #include "mosfet.h"
 #include "jfet.h"
 #include "currreg.h"
+#include "photosensor.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -237,6 +238,13 @@ QJsonObject readComp( Component* comp )
             if( pins[0]->hasTrueCurrent() ) o["i_drain"] = num( pins[0]->trueCurrent() );
             if( pins[2]->hasTrueCurrent() ) o["i_gate"]  = num( pins[2]->trueCurrent() );
         }
+    }
+    else if( PhotoSensor* ps = dynamic_cast<PhotoSensor*>( comp ) )   // Light, photocurrent and the main current
+    {
+        o["lux"]     = num( ps->getVal() );
+        o["i_photo"] = num( ps->photoCurrent() );
+        if( Photodiode* pd = dynamic_cast<Photodiode*>( comp ) ) o["current"] = num( pd->diodeCurrent() );
+        else if( Phototransistor* pt = dynamic_cast<Phototransistor*>( comp ) ) o["i_collector"] = num( pt->collectorCurrent() );
     }
     else if( CurrReg* cr = dynamic_cast<CurrReg*>( comp ) )   // Current Source IC: headroom, set and bias currents
     {
