@@ -15,9 +15,21 @@
 #include <QList>
 #include <QMutex>
 
+// Told of every state change of every log and scripted core (circuit triggers, specs/triggers.html).
+// Simulation thread, at the report's simulated time; set only while a trigger watches a state
+class StateWatch
+{
+    public:
+        virtual ~StateWatch(){}
+        virtual void stateReport( const void* source, const QString& text, int level, uint64_t time ) = 0;
+};
+
 class StateLog
 {
     public:
+        static StateWatch* watch() { return s_watch; }
+        static void setWatch( StateWatch* w ) { s_watch = w; }
+
         struct Event { uint64_t time; QString text; int level; uint64_t seq; };   // seq: unique, rising
 
         // Simulation thread: a state at simulated time `time`. Only changes are recorded (up to
@@ -50,6 +62,7 @@ class StateLog
         ~StateLog();
 
     private:
+        static StateWatch* s_watch;
         QMutex m_lock;
         QString m_text;
         int     m_level = -1;

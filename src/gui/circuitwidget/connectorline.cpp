@@ -18,6 +18,7 @@
 #include "pin.h"
 #include "utils.h"
 #include "currentflow.h"
+#include "triggerpane.h"
 
 #define tr(str) simulideTr("ConnectorLine",str)
  
@@ -349,6 +350,10 @@ void ConnectorLine::contextMenuEvent( QGraphicsSceneContextMenuEvent* event )
        Connector* con = m_pConnector;                 // specs/wire-colors.md
        QAction* styleAction = menu.addAction( tr("Colours…") );
        QObject::connect( styleAction, &QAction::triggered, [con](){ KeyboardController::self()->wireStyleFromMenu( con ); } );
+
+       menu.addSeparator();                           // specs/triggers.html §5
+       QAction* trigAction = menu.addAction( tr("Trigger on this node…") );
+       QObject::connect( trigAction, &QAction::triggered, [con](){ if( TriggerPane::self() ) TriggerPane::self()->addNode( con->startPin() ); } );
 
        menu.exec(event->screenPos());
 }   }

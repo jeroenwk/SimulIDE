@@ -173,7 +173,7 @@ void Simulator::runCircuit()
     solveCircuit(); // Solve any pending changes
     if( !m_startSettle.isEmpty() ) startSettle();
     runSettled();
-    if( m_state < SIM_RUNNING ) return;
+    if( m_state < SIM_RUNNING || m_trigStop ) return;   // A trigger paused: not one step further
 
     eElement* event = m_firstEvent;
     uint64_t endRun = m_circTime + m_psPF; // Run upto next Timer event
@@ -204,6 +204,7 @@ void Simulator::runCircuit()
         solveCircuit();
         runSettled();
         if( m_state < SIM_RUNNING ) break;
+        if( m_trigStop ){ endRun = m_circTime; break; }   // A trigger fired: the run ends at this step
         event = m_firstEvent;               // m_firstEvent can be an event added at solveCircuit()
     }
     if( m_state > SIM_WAITING ) m_circTime = endRun;
@@ -223,6 +224,7 @@ void Simulator::runSettled()   // The step is solved: elements that asked see it
         el->stepSettled();
         el = next;
     }
+    if( m_watching ) m_simWatch->stepDone();   // Triggers: after the parts' reports of this step
 }
 
 void Simulator::startSettle()  // First step: logic gates settle one by one, with a solve between
@@ -336,6 +338,9 @@ void Simulator::resetSim()
     m_settledGen++;
     m_startSettle.clear();
     m_stepWatch = nullptr;
+    m_watching  = false;
+    m_trigStop  = false;
+    m_trigQuiet = 0;
 }
 
 void Simulator::createNodes()
@@ -472,6 +477,8 @@ void Simulator::startSim( bool paused )
     }
     else m_state = SIM_RUNNING;
 
+    if( m_simWatch ) m_simWatch->simStarted();   // Triggers compile their checks (nodes exist now)
+
     if( m_timerId != 0 ) this->killTimer( m_timerId );               // Stop Timer
     m_refTime  = m_RefTimer.nsecsElapsed();
     m_loopTime = m_refTime;
@@ -508,6 +515,9 @@ void Simulator::stopSim()
     m_reactive.clear();
     m_stepScale = 1;
     m_lockLimit = false;
+    m_watching  = false;
+    m_trigStop  = false;
+    if( m_simWatch ) m_simWatch->simStopped();
     SimHistory::self()->stop();
 }
 

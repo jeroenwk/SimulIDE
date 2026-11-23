@@ -15,6 +15,7 @@
 
 #include <QJsonArray>
 #include "keyframes.h"
+#include "triggers.h"
 #include "mainwindow.h"
 #include <QMap>
 #include <QElapsedTimer>
@@ -471,41 +472,55 @@ void CliApi::registerSim()
         return simStatus();
     });
 
-    add("sim run", "sim run --for <time>", "Run (starting or resuming as needed) for a span of simulated time, then pause. "
-        "Replies when done. Time examples: 500us, 10ms, 2s.",
+    add("sim run", "sim run --for <time> | --until-trigger [--timeout <time>]", "Run (starting or resuming as needed) "
+        "for a span of simulated time, then pause. Replies when done. Time examples: 500us, 10ms, 2s. A pause trigger "
+        "(trigger add ... --pause) ends it early: the reply then has \"trigger\". --until-trigger: run until a pause "
+        "trigger fires (\"fired\": false when --timeout of simulated time passes first).",
         []( CliCtx& c ) -> QJsonValue
     {
-        QString span = c.opt("for", c.argOr( 0, "") );
-        if( span.isEmpty() ) throw CliError("missing --for <time>");
-        uint64_t dur = Cli::parseTime( span );
-        if( dur == 0 ) throw CliError("time must be > 0");
+        bool until = c.flag("until-trigger");
+        QString span = until ? c.opt("timeout", "") : c.opt("for", c.argOr( 0, "") );
+        if( span.isEmpty() && !until ) throw CliError("missing --for <time>");
+        uint64_t dur = span.isEmpty() ? 0 : Cli::parseTime( span );
+        if( dur == 0 && !until ) throw CliError("time must be > 0");
+        Triggers* trig = Triggers::self();
+        if( until )
+        {
+            bool any = false;
+            for( const Trigger& t : trig->list() ) if( t.armed && t.pause ) any = true;
+            if( !any ) throw CliError("no armed pause trigger (trigger add ... --pause, trigger arm)");
+        }
 
         Simulator* sim = Simulator::self();
         startOrResume();
         if( !sim->isRunning() ) throw CliError("simulation could not start");
 
-        uint64_t target = sim->circTime() + dur;
+        uint64_t target = dur ? sim->circTime() + dur : 0;
         sim->setStopAt( target );
 
         CliPendingPtr reply = c.defer();
         frameCounter();
         auto pausedAtFrame = std::make_shared<int64_t>( -1 );
+        auto byTrigger = std::make_shared<bool>( false );
         int generation = Cli::runGeneration();
-        Cli::pollUntil( [reply, target, pausedAtFrame, generation]() -> bool
+        int stops = trig->stopCount();
+        Cli::pollUntil( [reply, target, pausedAtFrame, byTrigger, generation, stops, until]() -> bool
         {
             Simulator* sim = Simulator::self();
+            Triggers* trig = Triggers::self();
             if( Cli::runGeneration() != generation ){
                 if( sim ) sim->setStopAt( 0 );
                 reply->fail("run cancelled");
                 return true;
             }
             if( !sim->isRunning() ){
-                reply->fail("simulation stopped before reaching "+Cli::timeStr( target ) );
+                reply->fail( target ? "simulation stopped before reaching "+Cli::timeStr( target ) : "simulation stopped" );
                 return true;
             }
             if( *pausedAtFrame < 0 )
             {
-                if( sim->circTime() < target ) return false;
+                if( trig && trig->stopCount() != stops && sim->isPaused() ) *byTrigger = true;   // Ended early (§8)
+                else if( !target || sim->circTime() < target ) return false;
                 if( !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
                 sim->setStopAt( 0 );
                 *pausedAtFrame = (int64_t)frameCounter()->frames();
@@ -513,7 +528,14 @@ void CliApi::registerSim()
             }
             if( (int64_t)frameCounter()->frames() <= *pausedAtFrame ) return false; // Let displays update
 
-            reply->ok( simStatus() );
+            QJsonObject o = simStatus();
+            if( *byTrigger ){
+                o["trigger"] = Cli::triggerJson( trig->lastStopId() );
+                o["trigger_time"] = Cli::timeStr( trig->lastStopTime() );
+                o["trigger_time_ps"] = QString::number( trig->lastStopTime() );
+            }
+            if( until ) o["fired"] = *byTrigger;
+            reply->ok( o );
             return true;
         });
         return QJsonValue();

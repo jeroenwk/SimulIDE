@@ -1,0 +1,376 @@
+/***************************************************************************
+ *   SimulIDE command line control interface                              *
+ *   trigger ...: the circuit's triggers (specs/triggers.html §11)         *
+ ***( see copyright.txt file at root folder )*******************************/
+
+#include <QJsonArray>
+
+#include "cliapi.h"
+#include "clirefs.h"
+#include "circuit.h"
+#include "component.h"
+#include "pin.h"
+#include "simulator.h"
+#include "triggers.h"
+#include "keyframes.h"
+
+namespace
+{
+Triggers* trig()
+{
+    Triggers* t = Triggers::self();
+    if( !t ) throw CliError("no circuit");
+    return t;
+}
+
+// "IC1.VDD", "IC1.3" (pin number, 1-based), "R1.lPin": component uid and the pin's short name
+void pinRef( const QString& ref, QString& uid, QString& pin )
+{
+    int dot = ref.lastIndexOf('.');
+    if( dot <= 0 || dot == ref.size()-1 ) throw CliError("invalid pin: "+ref+" (expected <part>.<pin>, e.g. R1.lPin, IC1.VDD, IC1.3)");
+    Component* c = CliRefs::comp( ref.left( dot ) );
+    Pin* p = Triggers::findPin( c->getUid(), ref.mid( dot+1 ) );
+    if( !p ){
+        QStringList names;
+        for( Pin* x : c->getPins() ) if( x ) names.append( Triggers::pinName( x, c ) );
+        throw CliError("no pin "+ref.mid( dot+1 )+" on "+ref.left( dot )+". Pins: "+names.join(", "));
+    }
+    uid = c->getUid();
+    pin = Triggers::pinName( p, c );
+}
+
+bool isPin( const QString& ref )
+{
+    try { QString u, p; pinRef( ref, u, p ); return true; }
+    catch( CliError& ) { return false; }
+}
+
+// The watch (§11): IC1.VDD, IC1.3, Q1.G-Q1.S, IC1.5:i, R5:i, R5 (across), node:R5.rPin
+void parseWatch( const QString& w, TrigCond& c )
+{
+    c.comp.clear(); c.pin.clear(); c.refComp.clear(); c.ref.clear(); c.node.clear(); c.block.clear();
+    c.sig = "volt";
+    if( w.startsWith("scope:") )            // The scope's own trigger (§4.5)
+    {
+        Component* comp = CliRefs::comp( w.mid( 6 ) );
+        if( comp->itemType() != "Oscope" ) throw CliError( w.mid( 6 )+" is not an oscilloscope");
+        c.sig = "scope"; c.kind = "scope"; c.comp = comp->getUid();
+        return;
+    }
+    int colon = w.lastIndexOf(':');
+    if( colon > 0 && !w.startsWith("node:") && w.mid( colon+1 ).toLower() != "i" )   // IC1:supply, Q1:state
+    {
+        Component* comp = CliRefs::comp( w.left( colon ) );
+        c.sig  = "state";
+        c.kind = "state";
+        c.comp = comp->getUid();
+        QString b = w.mid( colon+1 );
+        c.block = ( b.toLower() == "state" ) ? "" : b;
+        if( !Triggers::stateSource( comp, c.block ) )
+        {
+            QStringList bl = Triggers::stateBlocks( comp );
+            for( QString& x : bl ) if( x.isEmpty() ) x = "state";
+            if( bl.isEmpty() ) throw CliError( w.left( colon )+" reports no state");
+            throw CliError("no state "+b+" on "+w.left( colon )+": "+bl.join(", "));
+        }
+        return;
+    }
+    if( w.startsWith("node:") )
+    {
+        QString uid, pin;
+        pinRef( w.mid( 5 ), uid, pin );
+        c.node = uid+":"+pin;
+        return;
+    }
+    if( w.endsWith(":i") || w.endsWith(":I") )
+    {
+        c.sig = "curr";
+        QString r = w.left( w.size()-2 );
+        if( isPin( r ) ){ pinRef( r, c.comp, c.pin ); return; }
+        Component* comp = CliRefs::comp( r );
+        std::vector<Pin*> pins = comp->getPins();
+        if( pins.size() != 2 ) throw CliError( r+" has "+QString::number( pins.size() )+" pins: name one (e.g. "+r+".1:i)");
+        c.comp = comp->getUid();
+        c.pin  = Triggers::pinName( pins[0], comp );   // Through the part, from pin 1 to pin 2
+        return;
+    }
+    if( isPin( w ) ){ pinRef( w, c.comp, c.pin ); return; }
+    for( int i=w.indexOf('-'); i > 0; i=w.indexOf('-', i+1) )   // A pin pair (uids hold '-' too)
+    {
+        QString a = w.left( i ), b = w.mid( i+1 );
+        if( !isPin( a ) || !isPin( b ) ) continue;
+        pinRef( a, c.comp, c.pin );
+        QString rc;
+        pinRef( b, rc, c.ref );
+        if( rc != c.comp ) c.refComp = rc;
+        return;
+    }
+    Component* comp = CliRefs::comp( w );       // A two-pin part: the voltage across it
+    std::vector<Pin*> pins = comp->getPins();
+    if( pins.size() != 2 ) throw CliError( w+" has "+QString::number( pins.size() )+" pins: name one (e.g. "+w+".1)");
+    c.comp = comp->getUid();
+    c.pin  = Triggers::pinName( pins[0], comp );
+    c.ref  = Triggers::pinName( pins[1], comp );
+}
+
+double value( const QString& v, const QString& unit )
+{
+    bool ok = false;
+    double d = Simulator::parseSi( v, unit, &ok );
+    if( !ok ) throw CliError("invalid value: "+v+" (e.g. 4.5, 350mA, 2.5V)");
+    return d;
+}
+
+// The condition (§11): rise:4, fall:8, cross:0, out:0..1.2, in:4.5..5.5
+void parseCond( const QString& s, TrigCond& c )
+{
+    if( c.sig == "scope" ) return;       // Its channel and level are the scope's settings
+    if( c.sig == "state" )       // ON->UVLO, any->RUN, change, >=FAULT
+    {
+        c.kind = "state";
+        c.change = false; c.sev = -1; c.from.clear(); c.to.clear();
+        if( s.toLower() == "change" ){ c.change = true; return; }
+        if( s.startsWith(">=") )
+        {
+            c.sev = Triggers::levelOf( s.mid( 2 ) );
+            if( c.sev < 0 ) throw CliError("a severity is OFF, ON, WAIT or FAULT");
+            return;
+        }
+        QStringList ft = s.split("->");
+        if( ft.size() != 2 ) throw CliError("a state condition is FROM->TO (either may be any), change, or >=FAULT");
+        c.from = ft.at( 0 ).trimmed();
+        c.to   = ft.at( 1 ).trimmed();
+        if( c.from.toLower() == "any" ) c.from.clear();
+        if( c.to.toLower() == "any" ) c.to.clear();
+        if( c.from.isEmpty() && c.to.isEmpty() ) throw CliError("any->any: use change");
+        return;
+    }
+    int colon = s.indexOf(':');
+    if( colon <= 0 ) throw CliError("invalid condition: "+s+" (rise:L, fall:L, cross:L, out:LOW..HIGH, in:LOW..HIGH)");
+    QString k = s.left( colon ).toLower(), v = s.mid( colon+1 );
+    QString unit = ( c.sig == "curr" ) ? "A" : "V";
+    if( k == "rise" || k == "fall" || k == "cross" || k == "either" )
+    {
+        c.kind  = "edge";
+        c.edge  = k == "rise" ? 1 : k == "fall" ? -1 : 0;
+        c.level = value( v, unit );
+        return;
+    }
+    if( k == "out" || k == "in" )
+    {
+        QStringList lh = v.split("..");
+        if( lh.size() != 2 ) throw CliError("a window is LOW..HIGH, e.g. out:0..1.2");
+        c.kind = "window";
+        c.outside = k == "out";
+        c.low  = value( lh.at( 0 ), unit );
+        c.high = value( lh.at( 1 ), unit );
+        if( !( c.low < c.high ) ) throw CliError("the window's low must be below its high");
+        return;
+    }
+    throw CliError("unknown condition: "+k+" (rise, fall, cross, out, in)");
+}
+
+void parseOptions( CliCtx& c, Trigger& t, bool isNew )
+{
+    if( c.has("pause") ) t.pause = c.flag("pause");
+    if( c.has("keyframe") )
+    {
+        t.keyframe = c.flag("keyframe");
+    }
+    if( c.has("before") ) t.before = Cli::parseTime( c.opt("before") );
+    if( c.has("mode") )
+    {
+        QString m = c.opt("mode");
+        if( m != "single" && m != "normal" ) throw CliError("--mode is single or normal");
+        t.single = m == "single";
+    }
+    if( c.has("holdoff") ){ t.holdoff = Cli::parseTime( c.opt("holdoff") ); if( isNew && !c.has("mode") ) t.single = false; }
+    if( c.has("max") )
+    {
+        bool ok = false;
+        int n = c.opt("max").toInt( &ok );
+        if( !ok || n < 0 ) throw CliError("--max is a count (0: no limit)");
+        t.max = n;
+        if( isNew && !c.has("mode") ) t.single = false;
+    }
+    if( c.has("hyst") ) t.cond.hyst = value( c.opt("hyst"), t.cond.sig == "curr" ? "A" : "V" );
+    if( c.has("name") ) t.name = c.opt("name");
+}
+
+QList<int> ids( CliCtx& c )
+{
+    if( c.pos.isEmpty() ) throw CliError("missing trigger id (see: trigger list)");
+    QList<int> l;
+    for( const QString& s : c.pos )
+    {
+        bool ok = false;
+        int id = s.toInt( &ok );
+        if( !ok || !trig()->find( id ) ) throw CliError("no trigger "+s+" (see: trigger list)");
+        l.append( id );
+    }
+    return l;
+}
+}
+
+QJsonObject Cli::triggerJson( int id )
+{
+    Triggers* tr = Triggers::self();
+    Trigger* t = tr ? tr->find( id ) : nullptr;
+    if( !t ) return QJsonObject();
+    QJsonObject o{
+        {"id", t->id}, {"armed", t->armed}, {"watches", tr->watchText( *t )}, {"condition", tr->condText( *t )},
+        {"action", tr->actionText( *t )}, {"mode", tr->modeText( *t )}, {"hits", t->hits.size()},
+        {"last", t->hits.isEmpty() ? QJsonValue() : QJsonValue( Cli::timeStr( t->hits.last() ) )} };
+    if( !t->name.isEmpty() ) o["name"] = t->name;
+    QString err = tr->check( *t );
+    if( err.isEmpty() && t->keyframe && KeyFrames::self()->folder().isEmpty() )
+        err = "a key frame needs the circuit saved to a file: it pauses instead";
+    if( !err.isEmpty() ) o["warning"] = err;
+    if( t->before ) o["before"] = Cli::timeStr( t->before );
+    if( Trigger* p = tr->parentOf( id ) ){                    // A member of an AND
+        o["in_and"] = p->id;
+        o["role"] = t->event ? "event" : "qualifier";
+        if( !t->event ) o["reads"] = tr->qualText( *t );
+        o.remove("action"); o.remove("mode"); o.remove("hits"); o.remove("last"); o.remove("armed");
+    }
+    if( t->isAnd() ){
+        QJsonArray m;
+        for( const Trigger& x : t->members ) m.append( Cli::triggerJson( x.id ) );
+        o["members"] = m;
+        o.remove("condition");
+    }
+    return o;
+}
+
+void CliApi::registerTrigger()
+{
+    add("trigger list", "trigger list", "The circuit's triggers: id, armed, what each watches, its condition, "
+        "action, mode, hits in this run and the time of the last one (specs/triggers.html).",
+        []( CliCtx& ) -> QJsonValue
+    {
+        QJsonArray a;
+        for( const Trigger& t : trig()->list() ) a.append( Cli::triggerJson( t.id ) );
+        return a;
+    });
+
+    add("trigger add", "trigger add <watch> <condition> [--pause] [--keyframe [--before T]] [--mode single|normal] "
+        "[--holdoff T] [--max N] [--hyst V] [--name TEXT]",
+        "A new trigger. Watch: IC1.VDD or IC1.3 (pin number) = a pin to ground; Q1.G-Q1.S = a pin pair; "
+        "R5 = across a two-pin part; IC1.5:i = current into a pin; R5:i = current through a two-pin part (pin 1 to 2); "
+        "node:R5.rPin = a node; IC1:supply = a block's state, Q1:state = a part's own state; scope:Oscope-1 = the scope's own trigger (its channel and level, Auto or fixed, "
+        "set on the scope; no condition). Condition: rise:4, fall:8, "
+        "cross:0 (either), out:0..1.2, in:4.5..5.5 (values with or without a unit: 350mA, 2.5V); for a state: ON->UVLO, "
+        "any->RUN, change, >=FAULT. --pause pauses at the step that fired; --keyframe saves a key frame there (--before T: "
+        "that long before it, with the history); with neither the trigger only counts. "
+        "Default mode single (disarms after firing); --holdoff or --max make it normal. --hyst: default 1 % of the "
+        "level (at least 1 mV / 1 µA).",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        if( c.pos.isEmpty() ) throw CliError("usage: trigger add <watch> <condition> [options]");
+        Trigger t;
+        parseWatch( c.pos.at( 0 ), t.cond );
+        if( t.cond.sig != "scope" && c.pos.size() < 2 ) throw CliError("usage: trigger add <watch> <condition> [options]");
+        if( t.cond.sig != "scope" ) parseCond( c.pos.at( 1 ), t.cond );
+        parseOptions( c, t, true );
+        QString err = trig()->check( t );
+        if( !err.isEmpty() ) throw CliError( err );
+        int id = trig()->add( t );
+        return Cli::triggerJson( id );
+    });
+
+    add("trigger set", "trigger set <id> [--watch W] [--cond C] [--pause|--pause=0] [--mode single|normal] "
+        "[--holdoff T] [--max N] [--hyst V] [--name TEXT]",
+        "Change a trigger: the same options as trigger add (--watch and --cond for its signal and condition).",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QList<int> l = ids( c );
+        if( l.size() != 1 ) throw CliError("trigger set takes one id");
+        if( c.has("event") ){
+            int ev = c.opt("event").toInt();
+            if( !trig()->find( l.first() )->isAnd() ) throw CliError("--event is for an AND");
+            if( !trig()->setEvent( l.first(), ev ) ) throw CliError("trigger "+c.opt("event")+" can't be this AND's event (not a member, or another member is ↕ / any change / scope)");
+        }
+        Trigger t = *trig()->find( l.first() );
+        if( t.isAnd() && ( c.has("watch") || c.has("cond") ) ) throw CliError("an AND has no watch of its own: set its members");
+        if( c.has("watch") ) parseWatch( c.opt("watch"), t.cond );
+        if( c.has("cond") || c.has("watch") )
+        {
+            QString cond = c.opt("cond");
+            if( cond.isEmpty() ) throw CliError("a new watch needs its --cond too (the units may differ)");
+            parseCond( cond, t.cond );
+        }
+        parseOptions( c, t, false );
+        QString err = trig()->check( t );
+        if( !err.isEmpty() ) throw CliError( err );
+        trig()->set( t );
+        return Cli::triggerJson( t.id );   // (--event only: set above)
+    });
+
+    add("trigger combine", "trigger combine <id> <id>... [--event ID] [--name TEXT]", "Combine rows with AND "
+        "(specs/triggers.html §3): one row replaces them, with the first id's action and mode; the members keep their "
+        "own settings (unused while combined). An AND in the list merges its members in. --event: the member that gives "
+        "the time (default: the only ↕ / any change / scope member, else the first); the others are qualifiers, read as "
+        "states at that step: ↑ L = is above L, ↓ L = is below L, out/in = is outside/inside, A->B = is B, >=S = is at least S.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QList<int> l = ids( c );
+        QString why = trig()->canCombine( l );
+        if( !why.isEmpty() ) throw CliError( why );
+        int ev = c.has("event") ? c.opt("event").toInt() : 0;
+        int id = trig()->combine( l, ev, c.opt("name") );
+        if( !id ) throw CliError("not combined");
+        return Cli::triggerJson( id );
+    });
+
+    add("trigger split", "trigger split <id>", "Split an AND back into its members, as rows with their own settings, disarmed.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QList<int> l = ids( c );
+        if( l.size() != 1 || !trig()->find( l.first() )->isAnd() ) throw CliError("trigger split takes one AND's id");
+        QJsonArray a;
+        for( int id : trig()->split( l.first() ) ) a.append( Cli::triggerJson( id ) );
+        return a;
+    });
+
+    add("trigger arm", "trigger arm <id>...", "Arm triggers.", []( CliCtx& c ) -> QJsonValue
+    {
+        QList<int> l = ids( c );
+        trig()->setArmed( l, true );
+        QJsonArray a; for( int id : l ) a.append( Cli::triggerJson( id ) );
+        return a;
+    });
+
+    add("trigger disarm", "trigger disarm <id>...", "Disarm triggers (kept, not watched).", []( CliCtx& c ) -> QJsonValue
+    {
+        QList<int> l = ids( c );
+        trig()->setArmed( l, false );
+        QJsonArray a; for( int id : l ) a.append( Cli::triggerJson( id ) );
+        return a;
+    });
+
+    add("trigger del", "trigger del <id>...", "Delete triggers (no question; Edit → Undo brings them back).",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        int n = trig()->remove( ids( c ) );
+        return QJsonObject{ {"deleted", n} };
+    });
+
+    add("trigger hits", "trigger hits [<id>]", "The hits of this run with their times (all triggers without an id).",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        QList<int> l;
+        if( c.pos.isEmpty() ){ for( const Trigger& t : trig()->list() ) l.append( t.id ); }
+        else l = ids( c );
+        QJsonArray a;
+        for( int id : l )
+        {
+            Trigger* t = trig()->find( id );
+            QJsonArray times;
+            for( uint64_t h : t->hits ) times.append( QString::number( h ) );
+            QJsonObject o = Cli::triggerJson( id );
+            o["times_ps"] = times;
+            a.append( o );
+        }
+        return a;
+    });
+}

@@ -20,6 +20,7 @@ class SubPackage;
 class Simulator;
 class SubCircuit;
 class Node;
+class Triggers;
 class ConnectorLine;
 
 class Circuit : public QGraphicsScene
@@ -99,6 +100,8 @@ class Circuit : public QGraphicsScene
         void loadCircuit( QString fileName );
         bool saveCircuit( QString fileName );
         QString toXml() { return circuitToString(); } // Circuit file contents (used by CLI)
+
+        Triggers* triggers() { return m_triggers; }   // Its triggers (specs/triggers.html), saved with it
 
         Component* createItem( QString name, QString id, bool map=true );
 
@@ -257,6 +260,8 @@ class Circuit : public QGraphicsScene
         QTimer m_bckpTimer;
 
         Simulator* m_simulator;
+        Triggers*  m_triggers;
+        QHash<QString, QString> m_pasteUids;   // Pasting: old uid -> new uid (their triggers follow)
 
         //--- Undo/Redo ----------------------------------
 

@@ -144,8 +144,10 @@ QString KeyFrames::electricalHash()
     static const QRegularExpression first("^\\s*<circuit[^>]*>");
     static const QRegularExpression attr("\\s(Pos|rotation|hflip|vflip|idLabPos|labelrot|valLabPos|valLabRot|"
                                          "Show_id|Show_Val|ShowProp|label|pointList|mainComp)=\"[^\"]*\"");
+    static const QRegularExpression trig("<triggers>.*</triggers>\\s*", QRegularExpression::DotMatchesEverythingOption );
     xml.remove( first );
     xml.remove( attr );
+    xml.remove( trig );     // A trigger edit is not a change of the circuit (specs/triggers.html §10)
     QByteArray b = xml.toUtf8();
     uint64_t h = 1469598103934665603ull;
     for( char c : b ){ h ^= (uint8_t)c; h *= 1099511628211ull; }
@@ -166,12 +168,12 @@ QJsonObject KeyFrames::simSettings()
 
 // Save, open, edit ------------------------------------------------------------
 
-QString KeyFrames::whyNotSave()
+QString KeyFrames::whyNotSave( bool trigger )
 {
     Simulator* sim = Simulator::self();
     if( !sim || !sim->isRunning() ) return tr("Start the simulation and pause it to save a key frame");
-    if( !sim->isPaused() )          return tr("Pause the simulation to save a key frame");
-    if( SimSkip::self()->active() || rangeActive() ) return tr("Wait until the skip ends");
+    if( !trigger && !sim->isPaused() ) return tr("Pause the simulation to save a key frame");
+    if( !trigger && ( SimSkip::self()->active() || rangeActive() ) ) return tr("Wait until the skip ends");
     if( sim->simState() == SIM_DEBUG || sim->isPauseDebug() ) return tr("The debugger controls the simulation");
     if( folder().isEmpty() ) return tr("Save the circuit first: key frames are kept next to it");
     QString block = SimHistory::blockers( sim->elementList() );
@@ -179,9 +181,9 @@ QString KeyFrames::whyNotSave()
     return "";
 }
 
-int KeyFrames::save( QString note, QString* error )
+int KeyFrames::save( QString note, QString* error, bool trigger )
 {
-    QString why = whyNotSave();
+    QString why = whyNotSave( trigger );
     if( !why.isEmpty() ){ *error = why; return 0; }
     if( folder() != m_folder ) reload();      // Saved under another name since
     Simulator* sim = Simulator::self();

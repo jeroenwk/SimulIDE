@@ -3,7 +3,7 @@
 Status: **phase 1 merged** (main b0096de, 2026-11-21), §3.1–3.8; **speed lock merged**
 (main 7a697b7, §3.9); **phase 2 merged** (main b1472ec, §4); **phase 3 saved key frames merged**
 (main 4bed867, §5.1; triggers §5.2 later). Differences from this text are noted in place.
-Decisions D1–D20 (Decision log §9).
+Decisions D1–D24 (Decision log §9).
 
 Goal: control a running simulation the way you control a media player or a scope: play/pause,
 stop and skip forward from the keyboard, set the skip interval and the speed by typing, and
@@ -831,67 +831,28 @@ each circuit run in two processes side by side, full saved state compared).
 
 ### 5.2 Triggers
 
-A trigger watches the simulation and acts when its condition is met, like a scope's trigger.
-Shares the trigger engine with the scope redesign (specs/scope-redesign.md,
-specs/scope-trigger-level.md).
+**The specification, with mockups: [`specs/triggers.html`](triggers.html)** (2026-11-22, reviewed
+the same day, its §15): the circuit's Triggers tab, combining rows with AND, the Triggers tab
+of a part's properties (MT7833A, MOSFET, resistor, capacitor, scope), nodes, firing rules, actions,
+run control, the `.sim1` format, engine, CLI, tests. This section keeps only the requirements and
+the decisions; the HTML is the one source for the design.
 
 **Requirements (user, 2026-11-22)**
 
 1. A **Triggers** tab in the bottom pane, like Key frames (also as a split beside the tabs), with
-   multi-selectable rows that can be managed (switched on and off, edited, deleted together).
+   multi-selectable rows that can be managed (armed and disarmed, edited, deleted together).
 2. Each row names what it watches: a **part label and pin number**, or a **node**, or several of
    them when more are involved, and the trigger **values in volts and/or amperes**.
-3. Triggers on a part can be set **directly from its properties window**, in a **Triggers tab** of
-   that window.
+3. Triggers on a part are set **directly from its properties window**, in a **Triggers tab**.
+4. The scope: a Triggers tab in its properties shows its trigger channel and level (Auto or a
+   voltage), editable there (the scope's own setting); a checkbox makes it a simulation trigger
+   (a row in the circuit's Triggers tab); deleting that row only clears the checkbox.
 
-**What a trigger can watch** (first set; from the discussion of 2026-11-22)
-
-| Kind | Watches | Values |
-|---|---|---|
-| Part state | a part's state, or one block of it (`IC1 pwm`) | any change, a transition (`ON → UVLO`), a level (`FAULT`, over a rating) |
-| Edge | a pin's or node's voltage, a pin's current; or the voltage between two pins (Vgs, VDD−VSS) | level in V or A, rising / falling / either, hysteresis |
-| Window | the same | a band (low, high), entering or leaving |
-| Pulse width | the same, around a level | shorter or longer than T (a glitch, a missing pulse) |
-| Timeout | the same | no crossing for T (an oscillator or PWM that stopped) |
-| Simulator | a step that did not converge (`NlReport`); a time; every T | — |
-
-Later: measured values (mean / RMS over a window), settled (dV/dt < ε for T), logic patterns, MCU
-(PC, register, RAM, UART bytes), and combinations (A then B within T, AND / OR, Nth occurrence).
-
-**Actions**: pause (at the step that fired, not at the next frame); save a key frame, described by
-the trigger ("IC1 pwm: SOFT START → RUN", "IC1.VDD ↓ 8 V"); save it Δ **before** the trigger
-(pre-trigger: a restore of the ring and a replay, §4.3); count only (hits and their times, no
-stop). **Modes**: single (fires once, then disarmed) or normal (every time, with a holdoff and an
-optional maximum count).
-
-**Triggers tab** (design proposal)
-
-- Columns: ☑ armed, **Watches** (`IC1 pin 5 (VDD)`, `node n12`, `Q1 pins 1–2 (Vgs)`,
-  `IC1 supply`), **Condition** (`↓ 8 V`, `outside 0.9 … 1.1 A`, `pulse < 2 µs at 2.5 V`,
-  `ON → UVLO`), **Action** (`pause`, `key frame`, `key frame −1 ms`, `count`), **Mode**
-  (`single`, `normal, holdoff 1 ms`), **Hits**, **Last** (time of the last hit).
-- Multi-select (Shift / ⌘): arm, disarm, delete (with a question), as in Key frames. A filter line.
-- Double-click or Enter edits the row in a small editor (the same form as the properties tab).
-- A hit that saved a key frame: the row's Last time goes to that key frame on a click.
-- New trigger: **+** in the tab (pick a part and pin or a node), or from a part's properties window.
-
-**Triggers tab of a part's properties window**
-
-- Lists the triggers on that part (the same rows, filtered), with **+**: pin (or pin pair, or the
-  part's state / block), quantity (V, I, state), condition, values, action, mode.
-- Saved with the part's uid, so a renamed label follows; deleting the part deletes its triggers
-  (undoable with it).
-
-**Engine (notes)**: part-state triggers hook the existing `StateLog` / `ScriptCpu` reports (exact
-times, no cost). Voltage and current conditions are checked where the value is solved: a small
-compiled check on the watched nodes after each solved step (only those nodes), so an unwatched
-circuit pays nothing; the time of a crossing is the step's time (no interpolation inside a step).
-
-**Decided (user, 2026-11-22)**: D18 triggers are saved **in the `.sim1`** (they travel with the
-circuit, undo covers them, a deleted part takes its triggers along). D19 multi-signal: **both**
-the voltage between two pins or nodes and AND / OR of conditions in the first version. D20 first
-kinds: **part state** and **edge / window**; pulse width, timeout and the simulator triggers
-follow. Open: whether the scope trigger moves onto this engine.
+**Decisions**: D18 saved in the `.sim1`; D19 pin-pair voltages and AND / OR (OR revised by D24);
+D20 first kinds part state and edge / window; D21 the scope's simple form; D22 AND made by
+combining rows in the circuit's tab; D24 no OR for now (rows already fire on any of them); D23 the review's simplifications (actions as two checkboxes,
+Space stays play / pause, the scope's trigger an ordinary linked row, no nesting or dragging of
+combinations yet). Table in §9.
 
 ## 6. Order of work
 
@@ -939,8 +900,12 @@ All three settled while building phase 1 (2026-11-21):
 | D16 | Several key frames selected, then play | **play the range**: earliest to latest, pause there (2026-11-22) |
 | D17 | Shortcut to save a key frame | **⌘K** (Ctrl+K) |
 | D18 | Where triggers are saved | **in the `.sim1`** (2026-11-22) |
-| D19 | Multi-signal triggers first | **both**: voltage between two pins / nodes, and AND / OR |
+| D19 | Multi-signal triggers first | **both**: voltage between two pins / nodes, and AND / OR (OR revised by D24) |
 | D20 | Trigger kinds in the first version | **part state, edge / window** |
+| D21 | The scope's trigger in the trigger engine | **simple form**: a Triggers tab in the scope's properties shows its channel and level (editable, the scope's own setting); a checkbox adds it as a simulation trigger row; deleting the row clears the checkbox |
+| D22 | Where AND is made | **in the circuit's Triggers tab**, by combining rows (select, Combine with AND; ⚡ marks the AND's event); a part's tab defines single-signal triggers |
+| D23 | Simplifications from the triggers review | actions as two checkboxes (Pause, Key frame with before Δ; every trigger counts its hits); Space stays play / pause; the scope's simulation trigger is an ordinary row linked to the scope; no nesting or dragging of combinations in the first version (`triggers.html` §15) |
+| D24 | OR in the first version | **dropped**: separate rows already fire on any of them; OR returns with nested combinations (A AND (B OR C)) |
 | — | Going back: full snapshot per step, deltas, or keyframes + replay (§4.2)? | **a snapshot every frame** + replay |
 | D12 | History and snapshots for all parts, or limited? | **limited to circuits**: no MCUs, script parts or outside links (§4.6) |
 | D11 | Once the canvas has focus while running, how do the simulation keys come back without stopping? | **Esc on the canvas** when nothing is in progress and nothing is selected (§3.1) |

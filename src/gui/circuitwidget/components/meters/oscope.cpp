@@ -8,6 +8,7 @@
 #include <QDebug>
 
 #include "oscope.h"
+#include "triggers.h"
 #include "connector.h"
 #include "circuitwidget.h"
 #include "circuit.h"
@@ -235,6 +236,7 @@ void Oscope::setTrigger( int ch )
     }
     m_trigger = ch;
     m_oscWidget->setTrigger( ch );
+    if( Triggers::self() ) Triggers::self()->touch();   // Its simulation trigger follows (§4.5)
     m_trigState = -1;
     for( int i=0; i<4; ++i ) ((OscopeChannel*)m_channel[i])->resetTrig(); // Edges were of the old channel
 
@@ -276,6 +278,7 @@ void Oscope::setTrigAuto( bool a )
     m_trigState = -1;
     for( int i=0; i<4; ++i ) ((OscopeChannel*)m_channel[i])->resetTrig();
     m_oscWidget->setTrigAuto( a );
+    if( Triggers::self() ) Triggers::self()->touch();
     if( m_display ) m_display->update();
 }
 
@@ -286,6 +289,7 @@ void Oscope::setTrigLevel( double l )
     m_trigState = -1;
     for( int i=0; i<4; ++i ) ((OscopeChannel*)m_channel[i])->resetTrig();
     m_oscWidget->setTrigLevel( l );
+    if( Triggers::self() ) Triggers::self()->touch();
     if( m_display ) m_display->update();
 }
 

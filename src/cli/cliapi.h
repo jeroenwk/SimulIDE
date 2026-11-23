@@ -109,6 +109,7 @@ class CliApi
         void registerSettings();  // cli_settings.cpp
         void registerView();      // cli_view.cpp
         void registerKbd();       // cli_kbd.cpp
+        void registerTrigger();   // cli_trigger.cpp
 
         QMap<QString, CliCommand> m_cmds;
 
@@ -124,6 +125,8 @@ namespace Cli
     uint64_t parseTime( QString t );         // "10ms" -> picoseconds
     QString  timeStr( uint64_t ps );
     double   parseNum( QString v, QString what );
+
+    QJsonObject triggerJson( int id );       // A trigger as trigger list shows it (cli_trigger.cpp)
 
     // Transient noise (docs/NOISE_SPEC.md): "off", or the settings, the seed in use and the state
     QJsonValue noiseJson();

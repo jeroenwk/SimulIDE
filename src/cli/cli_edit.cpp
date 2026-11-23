@@ -655,6 +655,30 @@ void CliApi::registerEdit()
         return removed;
     });
 
+    add("comp copy", "comp copy <comp> [comp ...] [--by dx,dy]", "Copy and paste components as Edit → Copy / Paste "
+        "do (their own triggers come along, specs/triggers.html §9), moved by dx,dy (default 0,80). Replies with the new uids.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        if( c.pos.isEmpty() ) throw CliError("missing component");
+        QList<Component*> comps;
+        for( QString ref : c.pos ) comps.append( CliRefs::comp( ref ) );
+        QPointF by( 0, 80 );
+        if( c.has("by") ) by = CliRefs::parsePoint( c.opt("by") );
+
+        stopSimForEdit();
+        Circuit* circ = Circuit::self();
+        circ->clearSelection();
+        for( Component* comp : comps ) comp->setSelected( true );
+        QList<Component*> before = *circ->compList();
+        QPointF at = comps.first()->pos();
+        circ->copy( at );
+        circ->paste( at+by );
+        QJsonArray added;
+        for( Component* comp : *circ->compList() ) if( !before.contains( comp ) ) added.append( comp->getUid() );
+        circ->clearSelection();
+        return added;
+    });
+
     //--- Wires ---------------------------------------------------------------
 
     add("wire add", "wire add <pinA|@x,y> <pinB|@x,y> [--via x,y,...]",

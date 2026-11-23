@@ -27,6 +27,22 @@ enum simState_t{
 
 class BaseProcessor;
 class Updatable;
+
+// Watches the run (circuit triggers, specs/triggers.html): told after every solved step and of
+// the run's start, stop and keyframe loads
+class SimWatch
+{
+    public:
+        virtual ~SimWatch(){}
+        virtual void simStarted(){}   // GUI thread, at the end of startSim()
+        virtual void simStopped(){}   // GUI thread, in stopSim()
+        virtual void stepDone(){}     // Worker, after each solved step (after the parts' stepSettled())
+        virtual void restored(){}     // GUI thread, a keyframe was loaded (going back, a key frame)
+        // Keyframes: the watch's own state in a tagged section after the part states, saved only
+        // when it has any (so keyframes of circuits without triggers are as before)
+        virtual bool hasState() { return false; }
+        virtual void ioState( class StateIO& ){}
+};
 class eElement;
 class Socket;
 class eNode;
@@ -161,6 +177,19 @@ class Simulator : public QObject
         void setStepWatch( eElement* el ) { m_stepWatch = el; }
         eElement* stepWatch() { return m_stepWatch; }
 
+        // Circuit triggers (specs/triggers.html): the watch is told of each solved step while
+        // watching is on (one test per step otherwise). trigStop() (worker) ends the run at the
+        // step that fired; the watch pauses from its updateStep(). Steps up to trigQuiet are a
+        // replay of going back: they track the signals but don't fire
+        void setSimWatch( SimWatch* w ) { m_simWatch = w; }
+        SimWatch* simWatch() { return m_simWatch; }
+        void setWatching( bool on ) { m_watching = on && m_simWatch; }
+        void trigStop() { m_trigStop = true; }
+        bool trigStopped() { return m_trigStop; }
+        void clearTrigStop() { m_trigStop = false; }
+        void setTrigQuiet( uint64_t t ) { m_trigQuiet = t; }
+        uint64_t trigQuiet() { return m_trigQuiet; }
+
         void addToStartSettle( eElement* el ) { m_startSettle.append( el ); }
         // With noise on: a seeded random start state (0/1) for a logic element, -1 when noise is
         // off or its part is in noiseOff (the element keeps its own start state)
@@ -256,6 +285,10 @@ class Simulator : public QObject
         eElement* m_nonLinear;
         eElement* m_settled = nullptr;
         eElement* m_stepWatch = nullptr;
+        SimWatch* m_simWatch = nullptr;
+        bool      m_watching = false;
+        volatile bool m_trigStop = false;
+        uint64_t  m_trigQuiet = 0;
         uint64_t  m_settledGen = 1;
         inline void runSettled();
 
