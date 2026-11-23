@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 36 24">
+  <!-- Quartz crystal for the component list: two electrodes and the quartz -->
+  <g stroke="#000" fill="none" stroke-width="1.5">
+    <line x1="1" y1="12" x2="10" y2="12"/><line x1="26" y1="12" x2="35" y2="12"/>
+    <line x1="10" y1="3" x2="10" y2="21" stroke-width="2"/><line x1="26" y1="3" x2="26" y2="21" stroke-width="2"/>
+    <rect x="14" y="1" width="8" height="22"/>
+  </g>
+</svg>

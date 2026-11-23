@@ -65,6 +65,7 @@
 #include "latchd.h"
 #include "ldr.h"
 #include "photosensor.h"
+#include "crystal.h"
 #include "optocoupler.h"
 #include "led.h"
 #include "ledstrip.h"
@@ -189,6 +190,7 @@ void ItemLibrary::loadItems()
     addItem( elCapacitor::libraryItem() );
     addItem( Inductor::libraryItem() );
     addItem( Transformer::libraryItem() );
+    addItem( Crystal::libraryItem() );
     // Active
     addItem( new LibraryItem( QObject::tr("Active"), "", "","Active", NULL ) );
     addItem( new LibraryItem( QObject::tr("Rectifiers"), "Active", "rectifiers.png","Rectifiers", NULL ) );

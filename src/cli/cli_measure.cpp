@@ -44,6 +44,7 @@
 #include "currreg.h"
 #include "photosensor.h"
 #include "optocoupler.h"
+#include "crystal.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -257,6 +258,14 @@ QJsonObject readComp( Component* comp )
         }
         else if( OptoTriac* tr = dynamic_cast<OptoTriac*>( comp ) ){ o["on"] = tr->isOn(); o["i_main"] = num( tr->mainCurrent() ); }
         else if( OptoLogic* ol = dynamic_cast<OptoLogic*>( comp ) ) o["out_low"] = ol->outLow();
+    }
+    else if( Crystal* xt = dynamic_cast<Crystal*>( comp ) )   // Motional current and the derived values
+    {
+        o["i_motional"] = num( xt->motionalCurrent() );
+        o["l1"] = num( xt->l1() );
+        o["q"]  = num( xt->q() );
+        o["fs"] = num( xt->freq() );
+        o["fp"] = num( xt->fp() );
     }
     else if( CurrReg* cr = dynamic_cast<CurrReg*>( comp ) )   // Current Source IC: headroom, set and bias currents
     {
