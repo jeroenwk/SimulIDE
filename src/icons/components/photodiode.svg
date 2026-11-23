@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="36" height="24" viewBox="0 0 36 24">
+  <!-- Photodiode for the component list: diode with two incoming arrows -->
+  <g stroke="#000" fill="none" stroke-width="1.5">
+    <line x1="1" y1="15" x2="35" y2="15"/>
+    <line x1="25" y1="9" x2="25" y2="21"/>
+    <line x1="5" y1="1" x2="11" y2="7"/><polyline points="8,7 11,7 11,4"/>
+    <line x1="11" y1="1" x2="17" y2="7"/><polyline points="14,7 17,7 17,4"/>
+  </g>
+  <polygon points="25,15 13,8.5 13,21.5" fill="#000"/>
+</svg>

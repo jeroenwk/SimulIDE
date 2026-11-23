@@ -201,6 +201,7 @@ void Simulator::runCircuit()
             if( event ) nextTime = event->eventTime;
             else break;
         }
+        if( m_circTime != m_curSolveT ){ m_prevSolveT = m_curSolveT; m_curSolveT = m_circTime; }
         solveCircuit();
         runSettled();
         if( m_state < SIM_RUNNING ) break;
@@ -318,6 +319,7 @@ void Simulator::resetSim()
     m_tStep    = 0;
     m_lastRefT = 0;
     m_circTime = 1;
+    m_prevSolveT = m_curSolveT = 0;
     m_stopAt   = 0;
     m_fastRun  = false;
     m_updtTime = 0;

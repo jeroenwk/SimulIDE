@@ -42,6 +42,13 @@
 #include "mosfet.h"
 #include "jfet.h"
 #include "currreg.h"
+#include "photosensor.h"
+#include "optocoupler.h"
+#include "crystal.h"
+#include "pllvco.h"
+#include "noisesource.h"
+#include "lm2575.h"
+#include "mf5.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -237,6 +244,56 @@ QJsonObject readComp( Component* comp )
             if( pins[0]->hasTrueCurrent() ) o["i_drain"] = num( pins[0]->trueCurrent() );
             if( pins[2]->hasTrueCurrent() ) o["i_gate"]  = num( pins[2]->trueCurrent() );
         }
+    }
+    else if( PhotoSensor* ps = dynamic_cast<PhotoSensor*>( comp ) )   // Light, photocurrent and the main current
+    {
+        o["lux"]     = num( ps->getVal() );
+        o["i_photo"] = num( ps->photoCurrent() );
+        if( Photodiode* pd = dynamic_cast<Photodiode*>( comp ) ) o["current"] = num( pd->diodeCurrent() );
+        else if( Phototransistor* pt = dynamic_cast<Phototransistor*>( comp ) ) o["i_collector"] = num( pt->collectorCurrent() );
+    }
+    else if( OptoBase* op = dynamic_cast<OptoBase*>( comp ) )   // LED current and the output side
+    {
+        o["i_led"] = num( op->ledCurrent() );
+        if( OptoTransistor* ot = dynamic_cast<OptoTransistor*>( comp ) ){
+            std::vector<Pin*> pins = comp->getPins();
+            o["i_photo"] = num( ot->photoCurrent() );
+            if( pins[2]->isConnected() && pins[2]->hasTrueCurrent() ) o["i_collector"] = num( pins[2]->trueCurrent()+ot->photoCurrent() );
+        }
+        else if( OptoTriac* tr = dynamic_cast<OptoTriac*>( comp ) ){ o["on"] = tr->isOn(); o["i_main"] = num( tr->mainCurrent() ); }
+        else if( OptoLogic* ol = dynamic_cast<OptoLogic*>( comp ) ) o["out_low"] = ol->outLow();
+    }
+    else if( Crystal* xt = dynamic_cast<Crystal*>( comp ) )   // Motional current and the derived values
+    {
+        o["i_motional"] = num( xt->motionalCurrent() );
+        o["l1"] = num( xt->l1() );
+        o["q"]  = num( xt->q() );
+        o["fs"] = num( xt->freq() );
+        o["fp"] = num( xt->fp() );
+    }
+    else if( Cd4046* pl = dynamic_cast<Cd4046*>( comp ) )   // VCO timing current, phase comparator II state
+    {
+        o["i_vco"] = num( pl->vcoCurrent() );
+        o["pc2"] = pl->pc2Up() ? "up" : pl->pc2Down() ? "down" : "off";
+    }
+    else if( Ne566* vc = dynamic_cast<Ne566*>( comp ) )
+    {
+        o["i_timing"] = num( vc->timingCurrent() );
+        o["charging"] = vc->charging();
+    }
+    else if( NoiseSource* ns = dynamic_cast<NoiseSource*>( comp ) ) o["voltage"] = num( ns->voltage() );
+    else if( Lm2575* sr = dynamic_cast<Lm2575*>( comp ) )   // Duty cycle, switch, current-limited cycles
+    {
+        o["duty"] = num( sr->duty() );
+        o["switch_on"] = sr->switchOn();
+        o["i_switch"] = num( sr->switchCurrent() );
+        o["limited"] = sr->limited();
+    }
+    else if( Mf5* mf = dynamic_cast<Mf5*>( comp ) )   // Clock ratio and the integrator states (V from AGND)
+    {
+        o["ratio"] = mf->ratio();
+        o["bp"] = num( mf->bp() );
+        o["lp"] = num( mf->lp() );
     }
     else if( CurrReg* cr = dynamic_cast<CurrReg*>( comp ) )   // Current Source IC: headroom, set and bias currents
     {

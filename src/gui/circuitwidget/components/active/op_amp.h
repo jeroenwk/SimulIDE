@@ -42,6 +42,18 @@ class OpAmp : public Component, public eElement
         double voltNeg() { return m_voltNegDef; }
         void setVoltNeg( double v ) { m_voltNegDef = v; m_changed = true; }
 
+        // Errors and speed, all 0 = off (the ideal model, bit for bit as before):
+        double slewRate() { return m_slewRate*1e-6; }     // V/µs (the unit's multiplier is its first letter)
+        void setSlewRate( double sr );
+        double biasCurr() { return m_ib; }                // A, into each input
+        void setBiasCurr( double ib );
+        double offsetCurr() { return m_ios; }             // A, Ib+ - Ib-
+        void setOffsetCurr( double ios );
+        double offsetVolt() { return m_vos; }             // V, added to V+ - V-
+        void setOffsetVolt( double vos );
+
+        virtual void runEvent() override;                 // Slew steps
+
         bool powerPins() {return m_powerPins; }
         void setPowerPins( bool set );
 
@@ -58,7 +70,11 @@ class OpAmp : public Component, public eElement
         void updtProperties();
         void stampMode();            // Matrix terms of m_mode (BH-032)
 
-        enum { LIN=0, SAT_P, SAT_N };
+        void stampBias();
+        void startSlew( double vs );
+        uint64_t slewStep();         // ps between slew steps
+
+        enum { LIN=0, SAT_P, SAT_N, SLEW };   // SLEW: output a source at m_slewV, moved by events
         enum { aOP=0, aON, aPO, aNO, aNum };  // Internal pins, see stamp()
 
         eElement m_aux;
@@ -87,6 +103,16 @@ class OpAmp : public Component, public eElement
         double m_voltPosDef;
         double m_voltNegDef;
         double m_outImp;
+
+        double m_slewRate;           // V/s, 0 = none
+        double m_ib, m_ios, m_vos;
+        double m_slewV;              // SLEW: output source voltage
+        double m_lastOut;            // Output at the last solved step (slew check)
+        uint64_t m_lastT;
+        bool   m_lastValid;
+        int    m_slewDir;            // Direction of the last slew step (0 = none yet)
+        double m_grace;              // Jump allowed once after leaving SLEW (V)
+        eElement m_bias;             // Bias currents: ePin 0 on V+, 1 on V-
 
         int m_region;                // Part state: -1 none, 0 linear, 1 SAT+, 2 SAT- (stepSettled)
 

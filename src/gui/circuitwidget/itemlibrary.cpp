@@ -64,6 +64,13 @@
 #include "lamp.h"
 #include "latchd.h"
 #include "ldr.h"
+#include "photosensor.h"
+#include "noisesource.h"
+#include "pllvco.h"
+#include "lm2575.h"
+#include "mf5.h"
+#include "crystal.h"
+#include "optocoupler.h"
 #include "led.h"
 #include "ledstrip.h"
 #include "ledbar.h"
@@ -157,6 +164,7 @@ void ItemLibrary::loadItems()
     addItem( WaveGen::libraryItem() );
     addItem( VoltSource::libraryItem() );
     addItem( CurrSource::libraryItem() );
+    addItem( NoiseSource::libraryItem() );
     addItem( Csource::libraryItem() );
     addItem( Battery::libraryItem() );
     addItem( Rail::libraryItem() );
@@ -187,6 +195,7 @@ void ItemLibrary::loadItems()
     addItem( elCapacitor::libraryItem() );
     addItem( Inductor::libraryItem() );
     addItem( Transformer::libraryItem() );
+    addItem( Crystal::libraryItem() );
     // Active
     addItem( new LibraryItem( QObject::tr("Active"), "", "","Active", NULL ) );
     addItem( new LibraryItem( QObject::tr("Rectifiers"), "Active", "rectifiers.png","Rectifiers", NULL ) );
@@ -194,6 +203,7 @@ void ItemLibrary::loadItems()
     addItem( Zener::libraryItem() );
     addItem( SCR::libraryItem() );
     addItem( PUT::libraryItem() );
+    addItem( Photodiode::libraryItem() );
     addItem( Diac::libraryItem() );
     addItem( Triac::libraryItem() );
     addItem( new LibraryItem( QObject::tr("Transistors"), "Active", "transistors.png","Transistors", NULL ) );
@@ -201,10 +211,18 @@ void ItemLibrary::loadItems()
     addItem( Jfet::libraryItem() );
     addItem( BJT::libraryItem() );
     addItem( UJT::libraryItem() );
+    addItem( Phototransistor::libraryItem() );
     addItem( new LibraryItem( QObject::tr("Other Active"), "Active", "2to2.png","Other Active", NULL ) );
     addItem( OpAmp::libraryItem() );
     addItem( VoltReg::libraryItem() );
     addItem( CurrReg::libraryItem() );
+    addItem( OptoTransistor::libraryItem() );
+    addItem( OptoTriac::libraryItem() );
+    addItem( OptoLogic::libraryItem() );
+    addItem( Cd4046::libraryItem() );
+    addItem( Ne566::libraryItem() );
+    addItem( Lm2575::libraryItem() );
+    addItem( Mf5::libraryItem() );
     addItem( MuxAnalog::libraryItem() );
     // Outputs
     addItem( new LibraryItem( QObject::tr("Outputs"), "", "","Outputs", NULL ) );

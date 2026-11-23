@@ -214,6 +214,9 @@ class Simulator : public QObject
         QString coreError() { return m_coreError; }   // Why simCore() refused (saving)
         // Time of the last event run (a solved step), for one step back. Worker idle
         uint64_t lastEventTime() { return m_lastEvent; }
+        // Time of the solved step before the one being solved now (op-amp slew rate: its inputs
+        // were constant from then on). Worker
+        uint64_t prevSolveTime() { return m_prevSolveT; }
         void setLastEventTime( uint64_t t ) { m_lastEvent = t; }
 
         // Run seed (specs/sim-control.md §4.4): std::srand() at each start, so the parts that
@@ -367,6 +370,8 @@ class Simulator : public QObject
         void stopNoise();
 
         uint64_t m_lastEvent = 0;
+        uint64_t m_prevSolveT = 0;   // prevSolveTime()
+        uint64_t m_curSolveT  = 0;
         uint32_t m_runSeed = 0;
         uint32_t m_runSeedSet = 0;
         bool     m_speedLock   = false;

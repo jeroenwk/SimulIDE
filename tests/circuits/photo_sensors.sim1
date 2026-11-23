@@ -1,0 +1,51 @@
+<circuit version="1.1.0-SR2" rev="261123" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
+
+<item itemtype="Fixed Voltage" CircId="Fixed Voltage-1" mainComp="false" Show_id="false" Show_Val="false" Pos="-40,-120" rotation="0" hflip="1" vflip="1" label="V1" idLabPos="-64,-24" labelrot="0" valLabPos="-16,8" valLabRot="0" labelAuto="true" Voltage="5 V" Out="true" />
+
+<item itemtype="Ground" CircId="Ground-2" mainComp="false" Show_id="false" Show_Val="false" Pos="200,120" rotation="0" hflip="1" vflip="1" label="G" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Photodiode" CircId="Photodiode-3" mainComp="false" ShowProp="Lux" Show_id="false" Show_Val="true" Pos="0,0" rotation="-90" hflip="1" vflip="1" label="D1" idLabPos="-16,-36" labelrot="0" valLabPos="-11.5,-26" valLabRot="0" labelAuto="true" Lux="500 lx" Min_Lux="0 lx" Max_Lux="1000 lx" Dial_Step="0 lx" Model="BPW34" Sensitivity="70 nA" IS="6.2e-11 A" N="1" BrkDownV="60 V" Shunt="5 GΩ" Cj0="70 pF" Vj="0.7 V" M="0.62" Slider="false" Scale="1" />
+
+<item itemtype="Resistor" CircId="Resistor-4" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="0,64" rotation="90" hflip="1" vflip="1" label="R1" idLabPos="-16,-24" labelrot="0" valLabPos="-16,8.5" valLabRot="0" labelAuto="true" Resistance="10000 Ω" Cp="0 pF" />
+
+<item itemtype="Phototransistor" CircId="Phototransistor-5" mainComp="false" ShowProp="Lux" Show_id="false" Show_Val="true" Pos="200,16" rotation="0" hflip="1" vflip="1" label="Q1" idLabPos="18,-8" labelrot="0" valLabPos="20,1.5" valLabRot="0" labelAuto="true" Lux="500 lx" Min_Lux="0 lx" Max_Lux="1000 lx" Dial_Step="0 lx" Model="BPW85B" Base_Pin="false" Sensitivity="7.3 nA" Gain="500" IS="1e-13 A" BVceo="70 V" Cje="60 pF" Cjc="6 pF" Slider="false" Scale="1" />
+
+<item itemtype="Resistor" CircId="Resistor-6" mainComp="false" ShowProp="Resistance" Show_id="false" Show_Val="true" Pos="208,-56" rotation="90" hflip="1" vflip="1" label="R2" idLabPos="-16,-24" labelrot="0" valLabPos="-13.5,8.5" valLabRot="0" labelAuto="true" Resistance="1000 Ω" Cp="0 pF" />
+
+<item itemtype="Probe" CircId="Probe-7" mainComp="false" Show_id="false" Show_Val="true" Pos="60,40" rotation="-45" hflip="1" vflip="1" label="P1" idLabPos="16,-16" labelrot="45" valLabPos="16,0" valLabRot="45" labelAuto="true" ShowVolt="true" Threshold="2.5 V" />
+
+<item itemtype="Probe" CircId="Probe-8" mainComp="false" Show_id="false" Show_Val="true" Pos="260,-20" rotation="-45" hflip="1" vflip="1" label="P2" idLabPos="16,-16" labelrot="45" valLabPos="16,0" valLabRot="45" labelAuto="true" ShowVolt="true" Threshold="2.5 V" />
+
+<item itemtype="Node" CircId="Node-9" mainComp="false" Pos="-8,-120" />
+
+<item itemtype="Node" CircId="Node-10" mainComp="false" Pos="104,104" />
+
+<item itemtype="Node" CircId="Node-11" mainComp="false" Pos="0,32" />
+
+<item itemtype="Node" CircId="Node-12" mainComp="false" Pos="208,-16" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="Node-9-1" endpinid="Resistor-6-lPin" pointList="-8,-120,208,-120,208,-72" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Fixed Voltage-1-outnod" endpinid="Node-9-0" pointList="-24,-120,-8,-120" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Node-9-2" endpinid="Photodiode-3-cathode" pointList="-8,-120,0,-120,0,-16" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Phototransistor-5-emitter" endpinid="Node-10-1" pointList="208,32,208,104,104,104" />
+
+<item itemtype="Connector" uid="Connector-9" startpinid="Resistor-4-rPin" endpinid="Node-10-0" pointList="0,80,0,104,104,104" />
+
+<item itemtype="Connector" uid="Connector-10" startpinid="Node-10-2" endpinid="Ground-2-Gnd" pointList="104,104,200,104" />
+
+<item itemtype="Connector" uid="Connector-11" startpinid="Probe-7-inpin" endpinid="Node-11-1" pointList="44,56,0,56,0,32" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="Photodiode-3-anode" endpinid="Node-11-0" pointList="0,16,0,32" />
+
+<item itemtype="Connector" uid="Connector-13" startpinid="Node-11-2" endpinid="Resistor-4-lPin" pointList="0,32,0,48" />
+
+<item itemtype="Connector" uid="Connector-14" startpinid="Probe-8-inpin" endpinid="Node-12-1" pointList="244,-4,208,-4,208,-16" />
+
+<item itemtype="Connector" uid="Connector-15" startpinid="Resistor-6-rPin" endpinid="Node-12-0" pointList="208,-40,208,-16" />
+
+<item itemtype="Connector" uid="Connector-16" startpinid="Node-12-2" endpinid="Phototransistor-5-collector" pointList="208,-16,208,0" />
+
+</circuit>
