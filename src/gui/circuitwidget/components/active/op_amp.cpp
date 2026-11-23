@@ -16,6 +16,7 @@
 #include "simulator.h"
 #include "e-node.h"
 #include "iopin.h"
+#include "circuitwidget.h"
 
 #include "doubleprop.h"
 #include "boolprop.h"
@@ -39,7 +40,10 @@ OpAmp::OpAmp( QString type, QString id )
      : Component( type, id )
      , eElement( id )
      , m_aux( id+"-aux" )
+     , m_bias( id+"-bias" )
 {
+    m_bias.setNumEpins( 2 );
+    m_slewRate = m_ib = m_ios = m_vos = 0;
     m_aux.setNumEpins( aNum );
     m_area = QRect( -18, -8*2, 36, 8*2*2 );
     setLabelPos(-16,-32, 0);
@@ -87,6 +91,16 @@ OpAmp::OpAmp( QString type, QString id )
         new DoubProp<OpAmp>("Out_Imped", tr("Output Impedance"),"Ω"
                            , this, &OpAmp::outImp, &OpAmp::setOutImp ),
         showStateProp()
+    },0} );
+    addPropGroup( { tr("Errors"), {
+        new DoubProp<OpAmp>("SlewRate", tr("Slew Rate (0 = none)"),"V/µs"
+                           , this, &OpAmp::slewRate, &OpAmp::setSlewRate ),
+        new DoubProp<OpAmp>("Ib", tr("Input Bias Current"),"nA"
+                           , this, &OpAmp::biasCurr, &OpAmp::setBiasCurr ),
+        new DoubProp<OpAmp>("Ios", tr("Input Offset Current"),"nA"
+                           , this, &OpAmp::offsetCurr, &OpAmp::setOffsetCurr ),
+        new DoubProp<OpAmp>("Vos", tr("Input Offset Voltage"),"mV"
+                           , this, &OpAmp::offsetVolt, &OpAmp::setOffsetVolt ),
     },0} );
     enableStates( true );
 
@@ -142,6 +156,12 @@ void OpAmp::initialize()
     m_voltPos = m_voltPosDef;
     m_voltNeg = m_voltNegDef;
     m_region = -1;
+    m_slewV = 0;
+    m_lastOut = 0;
+    m_lastT = 0;
+    m_lastValid = false;
+    m_slewDir = 0;
+    m_grace = 0;
     m_output->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
     clearStates();
 }
@@ -154,6 +174,15 @@ void OpAmp::stamp()
     eNode* oN = m_output->getEnode();
     eNode* pN = m_inputP->getEnode();
     eNode* nN = m_inputN->getEnode();
+    m_bias.getEpin( 0 )->setEnode( nullptr );
+    m_bias.getEpin( 1 )->setEnode( nullptr );
+    if( m_ib != 0 || m_ios != 0 ){
+        m_bias.getEpin( 0 )->setEnode( pN );
+        m_bias.getEpin( 1 )->setEnode( nN );
+        m_bias.getEpin( 0 )->createCurrent();
+        m_bias.getEpin( 1 )->createCurrent();
+        stampBias();
+    }
     if( pN ) pN->addToNoLinList( this );
     if( nN ) nN->addToNoLinList( this );
     if( m_powerPins ){
@@ -204,7 +233,8 @@ void OpAmp::stampMode()
         else                    p->stampSingAdm( s );
     }
     double I = ( m_mode == LIN  ) ? G*( m_constIn+m_nudge )
-             : ( m_mode == SAT_P) ? G*m_voltPos : G*m_voltNeg;
+             : ( m_mode == SAT_P) ? G*m_voltPos
+             : ( m_mode == SAT_N) ? G*m_voltNeg : G*m_slewV;
     m_output->stampCurrent( I );
     m_stampI = I;
     m_stampVpos = m_voltPos;
@@ -215,11 +245,15 @@ void OpAmp::stampMode()
 void OpAmp::stepSettled()
 {
     if( m_output->getEnode() ){   // Into the part: G*(Vout - source), the source is in the aux pins too
-        double src = ( m_mode == LIN ) ? m_gain*( m_inputP->getVoltage()-m_inputN->getVoltage() )
-                   : ( m_mode == SAT_P ) ? m_voltPos : m_voltNeg;
+        double src = ( m_mode == LIN ) ? m_gain*( m_inputP->getVoltage()-m_inputN->getVoltage()+m_vos )
+                   : ( m_mode == SAT_P ) ? m_voltPos : ( m_mode == SAT_N ) ? m_voltNeg : m_slewV;
         m_output->setTrueCurrent( ( m_output->getVoltage()-src )/m_outImp );
+        m_lastOut = m_output->getVoltage();
+        m_lastT = Simulator::self()->circTime();
+        m_lastValid = true;
+        if( m_mode != SLEW ) m_grace = 0;
     }
-    double ideal = ( m_inputP->getVoltage()-m_inputN->getVoltage() )*m_gain;
+    double ideal = ( m_inputP->getVoltage()-m_inputN->getVoltage()+m_vos )*m_gain;
     double h = 0.01;
     int r = m_region;
     if( r == 1 ){ if( ideal < m_voltPos-h ) r = 0; }
@@ -263,12 +297,18 @@ void OpAmp::voltChanged() // Called when any pin node change volt
     }
     double vp = m_inputP->getVoltage();
     double vn = m_inputN->getVoltage();
-    double vd = vp-vn;
+    double vd = vp-vn+m_vos;
     double ideal = vd*m_gain;
     double out = m_output->getVoltage();
 
-    // Inputs on ground or open are constants in the LIN current
-    double cst = 0;
+    if( m_mode == SLEW ){                      // The output ramps in runEvent(); only follow the rails
+        if( m_slewV > m_voltPos ){ m_slewV = m_voltPos; m_dirty = true; }
+        if( m_slewV < m_voltNeg ){ m_slewV = m_voltNeg; m_dirty = true; }
+        if( m_dirty ){ sim->notCorverged(); stampMode(); }
+        return;
+    }
+    // Inputs on ground or open are constants in the LIN current (and the offset voltage)
+    double cst = m_vos;
     eNode* pN = m_inputP->getEnode();
     eNode* nN = m_inputN->getEnode();
     if( !pN || pN->getNodeNumber() == 0 ) cst += vp;
@@ -344,9 +384,121 @@ void OpAmp::voltChanged() // Called when any pin node change volt
     if( waiting ){ m_nudge = ( m_nudge > 0 ? -1e-9 : 1e-9 )*( 1+qFabs( ideal ) ); m_dirty = true; }
     else if( m_nudge != 0 ){ m_nudge = 0; if( m_mode == LIN ) m_dirty = true; }
 
+    // Slew rate: the output may move at most SR*dt since the last solved step. A solve that went
+    // further (a step input, a rail change) is replaced by a source ramping from there (SLEW)
+    if( m_slewRate > 0 && m_lastValid && !waiting && !m_dirty ){
+        // The inputs were constant until the previous solved step (else this op amp was solved
+        // there too): the output may have moved since then, at most one reactive step (a
+        // sampled waveform's step) after an idle gap
+        uint64_t prev = qMax( m_lastT, sim->prevSolveTime() );
+        uint64_t gap = sim->circTime() > prev ? sim->circTime()-prev : 0;
+        double dt = qMin( gap, slewStep() )*1e-12;
+        double maxDv = m_slewRate*dt+m_grace;
+        double dv = out-m_lastOut;
+        if( qFabs( dv ) > maxDv*1.001+1e-6 ){
+            startSlew( m_lastOut+( dv > 0 ? maxDv : -maxDv ) );
+            return;
+        }
+    }
     if( !m_dirty && !m_checkStable && !waiting ) return;   // Converged
     sim->notCorverged();
     if( m_dirty ) stampMode();
+}
+
+uint64_t OpAmp::slewStep()   // Steps of 0.2 % of the supply span, 1 ns to 10 us
+{
+    double span = qMax( 1.0, m_voltPos-m_voltNeg );
+    double dt = 0.002*span/m_slewRate;
+    if( dt < 1e-9 ) dt = 1e-9;
+    if( dt > 1e-5 ) dt = 1e-5;
+    return (uint64_t)( dt*1e12 );
+}
+
+void OpAmp::startSlew( double vs )
+{
+    Simulator* sim = Simulator::self();
+    m_slewV = qBound( m_voltNeg, vs, m_voltPos );
+    m_slewDir = 0;
+    m_grace = 0;
+    m_mode = SLEW;
+    m_checkStable = false;
+    m_nudge = 0;
+    stampMode();
+    sim->notCorverged();
+    sim->cancelEvents( this );
+    sim->addEvent( slewStep(), this );
+}
+
+// One slew step: move the source towards where the linear (or rail) solution wants the output.
+// The target comes from the present inputs, which follow the output through any feedback.
+void OpAmp::runEvent()
+{
+    if( m_mode != SLEW || m_slewRate <= 0 ) return;
+    Simulator* sim = Simulator::self();
+    uint64_t step = slewStep();
+    double dv = m_slewRate*step*1e-12;
+    double vd = m_inputP->getVoltage()-m_inputN->getVoltage()+m_vos;
+    double target = qBound( m_voltNeg, m_gain*vd, m_voltPos );
+    // With feedback the target moves with the output: the loop gain sets how far to go. The
+    // linear solution is within reach when out + (target-out)/(1+loop) is within dv; the loop
+    // is unknown here, so take the step and let the LIN solve judge: leave SLEW when the
+    // remaining distance at this step is below dv.
+    double dist = target-m_slewV;
+    int dir = ( dist > 0 ) ? 1 : -1;
+    // Done when the target is within this step (no feedback: a rail or the open-loop value), or
+    // when the direction reverses: with feedback the target is the open-loop gain times the
+    // error, which changes sign as the output crosses the linear solution
+    if( qFabs( dist ) <= dv || ( m_slewDir != 0 && dir != m_slewDir ) ){
+        double ideal = m_gain*vd;
+        if     ( ideal >= m_voltPos ) m_mode = SAT_P;
+        else if( ideal <= m_voltNeg ) m_mode = SAT_N;
+        else{
+            m_mode = LIN;
+            m_linIter = 0;
+            m_checkStable = true;
+            m_satVd  = vd;
+            m_satOut = m_slewV;
+        }
+        m_lastOut = m_slewV;                   // The LIN solve starts from here: within one step
+        m_lastT = sim->circTime();
+        m_grace = 2*dv;
+        m_slewDir = 0;
+        m_dirty = true;
+        stampMode();
+        return;
+    }
+    m_slewV += dir*dv;
+    m_slewDir = dir;
+    stampMode();
+    sim->addEvent( step, this );
+}
+
+void OpAmp::stampBias()
+{
+    m_bias.getEpin( 0 )->stampCurrent(-( m_ib+m_ios/2 ) );   // Drawn from each input node
+    m_bias.getEpin( 1 )->stampCurrent(-( m_ib-m_ios/2 ) );
+}
+
+void OpAmp::setSlewRate( double sr )   // V/µs
+{
+    if( sr < 0 ) sr = 0;
+    m_slewRate = sr*1e6;
+    if( Simulator::self()->isRunning() ) CircuitWidget::self()->powerCircOff();
+}
+void OpAmp::setBiasCurr( double ib )
+{
+    m_ib = ib;
+    if( Simulator::self()->isRunning() ) CircuitWidget::self()->powerCircOff();
+}
+void OpAmp::setOffsetCurr( double ios )
+{
+    m_ios = ios;
+    if( Simulator::self()->isRunning() ) CircuitWidget::self()->powerCircOff();
+}
+void OpAmp::setOffsetVolt( double vos )
+{
+    m_vos = vos;
+    m_changed = true;   // A constant in the LIN current: restamped in updateStep()
 }
 
 void OpAmp::setOutImp( double imp )
@@ -467,4 +619,15 @@ void OpAmp::simState( StateIO& s )
     s.io( m_voltNegDef );
     s.io( m_outImp );
     s.io( m_region );
+    s.io( m_slewRate );
+    s.io( m_ib );
+    s.io( m_ios );
+    s.io( m_vos );
+    s.io( m_slewV );
+    s.io( m_lastOut );
+    s.io( m_lastT );
+    s.io( m_lastValid );
+    s.io( m_slewDir );
+    s.io( m_grace );
+    m_bias.simState( s );
 }
