@@ -209,6 +209,9 @@ def run_test(fn):
         with h as sim:
             fn(sim)
             passed = sim.report()
+    except SimError:   # A refused or timed-out CLI call (SimError is a RuntimeError): the test failed
+        traceback.print_exc()
+        passed = False
     except RuntimeError as e:
         log("harness error: %s" % e)
         sys.exit(2)
