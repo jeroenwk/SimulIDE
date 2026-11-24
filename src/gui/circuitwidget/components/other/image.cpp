@@ -121,7 +121,7 @@ void Image::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
 {
     Component::paint( p, option, widget );
 
-    QPen pen( Qt::black, m_border, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen pen = BorderStyle::pen( m_borderColor, m_border, m_borderStyle );
     p->setPen( pen );
     
     double opacity = p->opacity();

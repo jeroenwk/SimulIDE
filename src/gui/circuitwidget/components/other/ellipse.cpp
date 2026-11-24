@@ -39,8 +39,9 @@ void Ellipse::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 {
     Component::paint( p, option, widget );
 
-    QPen pen(Qt::black, 0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
-    p->setPen( pen );
+    // The 1 px line is the border when Border is 0; under a border its dots
+    // would show in the border's gaps
+    p->setPen( m_border > 0 ? QPen( Qt::NoPen ) : BorderStyle::pen( m_borderColor, 0, m_borderStyle ) );
     p->setBrush( m_color );
 
     double opacity = p->opacity();
@@ -50,8 +51,7 @@ void Ellipse::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidge
 
     if( m_border > 0 )
     {
-        QPen pen(Qt::black, m_border, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
-        p->setPen( pen );
+        p->setPen( BorderStyle::pen( m_borderColor, m_border, m_borderStyle ) );
         p->setBrush( Qt::transparent );
         p->drawEllipse( m_area );
     }

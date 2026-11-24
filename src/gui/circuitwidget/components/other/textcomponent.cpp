@@ -74,6 +74,9 @@ TextComponent::TextComponent( QString type, QString id )
     m_docMargin = m_text->document()->documentMargin();
     m_context = false;
     m_border = 0;
+    m_borderColor    = Qt::black;   // As the border was always drawn: saved circuits look the same
+    m_borderStyleStr = "Solid";
+    m_borderStyle    = Qt::SolidLine;
     updateGeometry( 0, 0, 0 );
     
     setFontSize( 10 );
@@ -89,8 +92,14 @@ TextComponent::TextComponent( QString type, QString id )
         new IntProp <TextComponent>("Border", tr("Border"),"_px"
                                    , this, &TextComponent::border, &TextComponent::setBorder,0,"uint" ),
 
+        new StrProp <TextComponent>("Border_Style", tr("Line Type"), BorderStyle::enums()
+                                   , this, &TextComponent::borderStyle, &TextComponent::setBorderStyle,0,"enum" ),
+
         new StrProp <TextComponent>("Color", tr("Background Color"),""
                                    , this, &TextComponent::colorStr,&TextComponent::setColorStr,0,"color_none" ),
+
+        new StrProp <TextComponent>("Border_Color", tr("Border Color"),""
+                                   , this, &TextComponent::borderColorStr,&TextComponent::setBorderColorStr,0,"color" ),
 
         new DoubProp<TextComponent>("Opacity", tr("Opacity"),""
                                    , this, &TextComponent::opac, &TextComponent::setOpac )
@@ -158,6 +167,19 @@ void TextComponent::setMargin( int margin )
     else             m_text->document()->setDocumentMargin( m_docMargin );
     m_margin = margin;
     updateGeometry( 0, 0, 0 );
+}
+
+void TextComponent::setBorderColorStr( QString n )
+{
+    QColor color( n.trimmed() );
+    if( color.isValid() ) setBorderColor( color );   // Not a colour (junk in the file): keep this one
+}
+
+void TextComponent::setBorderStyle( QString style )
+{
+    m_borderStyleStr = BorderStyle::name( style );
+    m_borderStyle    = BorderStyle::penStyle( m_borderStyleStr );
+    update();
 }
 
 void TextComponent::setColorStr( QString color )
@@ -268,7 +290,7 @@ void TextComponent::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
 {
     Component::paint( p, option, widget );
 
-    QPen pen( Qt::black, m_border, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen pen = BorderStyle::pen( m_borderColor, m_border, m_borderStyle );
     p->setPen( pen );
 
     if( !m_noBack )
