@@ -74,9 +74,6 @@ TextComponent::TextComponent( QString type, QString id )
     m_docMargin = m_text->document()->documentMargin();
     m_context = false;
     m_border = 0;
-    m_borderColor    = Qt::black;   // As the border was always drawn: saved circuits look the same
-    m_borderStyleStr = "Solid";
-    m_borderStyle    = Qt::SolidLine;
     updateGeometry( 0, 0, 0 );
     
     setFontSize( 10 );
@@ -167,19 +164,6 @@ void TextComponent::setMargin( int margin )
     else             m_text->document()->setDocumentMargin( m_docMargin );
     m_margin = margin;
     updateGeometry( 0, 0, 0 );
-}
-
-void TextComponent::setBorderColorStr( QString n )
-{
-    QColor color( n.trimmed() );
-    if( color.isValid() ) setBorderColor( color );   // Not a colour (junk in the file): keep this one
-}
-
-void TextComponent::setBorderStyle( QString style )
-{
-    m_borderStyleStr = BorderStyle::name( style );
-    m_borderStyle    = BorderStyle::penStyle( m_borderStyleStr );
-    update();
 }
 
 void TextComponent::setColorStr( QString color )
@@ -290,7 +274,7 @@ void TextComponent::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
 {
     Component::paint( p, option, widget );
 
-    QPen pen = BorderStyle::pen( m_borderColor, m_border, m_borderStyle );
+    QPen pen = m_bs.pen( m_border );
     p->setPen( pen );
 
     if( !m_noBack )

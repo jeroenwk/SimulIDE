@@ -45,12 +45,15 @@ figure exported for the books could not be drawn.
 
 ## Implementation
 
-- `BorderStyle` (`components/borderstyle.h`): the values and their captions,
-  the saved name of a value, caption or index, the Qt pen style, and the pen
-  (round caps and joins, as before).
+- `BorderStyle` (`components/borderstyle.h`): the values and their captions
+  (marked with `QT_TRANSLATE_NOOP` so `lupdate` finds them), the saved name of
+  a value, caption or index; and, per item, the border's line type and colour
+  (a refused colour keeps the old one) and its pen (round caps and joins, as
+  before).
 - `Shape` owns both properties (a Line removes `Border_Color` in its
-  constructor); `TextComponent` has its own, as it does not derive from
-  `Shape`.
+  constructor); `TextComponent` declares its own, as it does not derive from
+  `Shape`. Both keep the border in a `BorderStyle` member, so the setters are
+  one line each.
 - `Ellipse::paint` no longer draws its 1 px line under a border: with a line
   type set, its dots showed in the gaps of the border.
 

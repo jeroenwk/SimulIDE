@@ -30,14 +30,14 @@ class TextComponent : public LinkerComponent
         int  border() { return m_border; }
         void setBorder( int border ) { m_border = border; update(); }
 
-        QColor borderColor() { return m_borderColor; }
-        void setBorderColor( QColor color ) { m_borderColor = color; update(); }
+        QColor borderColor() { return m_bs.color(); }
+        void setBorderColor( QColor color ) { m_bs.setColor( color ); update(); }
 
-        QString borderColorStr() { return m_borderColor.name(); }
-        void setBorderColorStr( QString n );
+        QString borderColorStr() { return m_bs.colorStr(); }
+        void setBorderColorStr( QString n ) { if( m_bs.setColorStr( n ) ) update(); }
 
-        QString borderStyle() { return m_borderStyleStr; }
-        void setBorderStyle( QString style );
+        QString borderStyle() { return m_bs.style(); }
+        void setBorderStyle( QString style ) { m_bs.setStyle( style ); update(); }
         
         QString getFont() { return m_font; }
         void    setFont( QString font );
@@ -84,10 +84,7 @@ class TextComponent : public LinkerComponent
         int  m_docMargin;
         int  m_margin;
         int  m_border;
-        QColor m_borderColor;
-
-        QString m_borderStyleStr;
-        Qt::PenStyle m_borderStyle;
+        BorderStyle m_bs;   // Line type and colour of the border
 
         bool m_fixedW;
         bool m_noBack;     // Background colour "none"

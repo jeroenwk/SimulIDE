@@ -32,7 +32,7 @@ void Rectangle::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWid
 {
     Component::paint( p, option, widget );
 
-    p->setPen( BorderStyle::pen( m_borderColor, m_border, m_borderStyle ) );
+    p->setPen( m_bs.pen( m_border ) );
 
     double opacity = p->opacity();
     p->setOpacity( opacity*m_opac );

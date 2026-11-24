@@ -48,7 +48,7 @@ void Line::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* 
     double opacity = p->opacity();
     p->setOpacity( opacity*m_opac );
 
-    QPen pen = BorderStyle::pen( m_color, m_border, m_borderStyle );
+    QPen pen = m_bs.pen( m_color, m_border );
     p->setPen( pen );
 
     p->drawLine( -m_hSize/2, m_vSize/2, m_hSize/2, -m_vSize/2 );

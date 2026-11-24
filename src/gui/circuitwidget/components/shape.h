@@ -30,10 +30,10 @@ class Shape : public Component
         int border() { return m_border; }
         void setBorder( int border );
 
-        QColor borderColor() { return m_borderColor; }
+        QColor borderColor() { return m_bs.color(); }
         void setBorderColor( QColor color );
 
-        QString borderStyle() { return m_borderStyleStr; }
+        QString borderStyle() { return m_bs.style(); }
         void setBorderStyle( QString style );
 
         QColor color() { return m_color; }
@@ -48,7 +48,7 @@ class Shape : public Component
         QString colorStr() { return m_color.name(); }
         void setColorStr( QString n ) { setColor( QColor(n) ); }
 
-        QString borderColorStr() { return m_borderColor.name(); }
+        QString borderColorStr() { return m_bs.colorStr(); }
         void setBorderColorStr( QString n );
         
     protected:
@@ -57,10 +57,7 @@ class Shape : public Component
         int m_hSize;
         int m_vSize;
         int m_border;
-        QColor m_borderColor;
-
-        QString m_borderStyleStr;
-        Qt::PenStyle m_borderStyle;
+        BorderStyle m_bs;   // Line type and colour of the border
 
         double m_opac;
 

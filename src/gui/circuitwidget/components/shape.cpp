@@ -26,10 +26,6 @@ Shape::Shape( QString type, QString id )
     m_area   = QRectF( -m_hSize/2, -m_vSize/2, m_hSize, m_vSize );
     setZValue( -1 );
 
-    m_borderColor     = Qt::black;   // As the border was always drawn: saved circuits look the same
-    m_borderStyleStr  = "Solid";
-    m_borderStyle     = Qt::SolidLine;
-
     m_changed = true;
 
     Simulator::self()->addToUpdateList( this );
@@ -99,20 +95,18 @@ void Shape::setBorder( int border )
 
 void Shape::setBorderColor( QColor color )
 {
-    m_borderColor = color;
+    m_bs.setColor( color );
     changed();
 }
 
 void Shape::setBorderColorStr( QString n )
 {
-    QColor color( n.trimmed() );
-    if( color.isValid() ) setBorderColor( color );   // Not a colour (junk in the file): keep this one
+    if( m_bs.setColorStr( n ) ) changed();   // Not a colour (junk in the file): keep this one
 }
 
 void Shape::setBorderStyle( QString style )
 {
-    m_borderStyleStr = BorderStyle::name( style );
-    m_borderStyle    = BorderStyle::penStyle( m_borderStyleStr );
+    m_bs.setStyle( style );
     changed();
 }
 
