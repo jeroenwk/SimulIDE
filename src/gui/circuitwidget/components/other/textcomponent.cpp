@@ -89,8 +89,14 @@ TextComponent::TextComponent( QString type, QString id )
         new IntProp <TextComponent>("Border", tr("Border"),"_px"
                                    , this, &TextComponent::border, &TextComponent::setBorder,0,"uint" ),
 
+        new StrProp <TextComponent>("Border_Style", tr("Line Type"), BorderStyle::enums()
+                                   , this, &TextComponent::borderStyle, &TextComponent::setBorderStyle,0,"enum" ),
+
         new StrProp <TextComponent>("Color", tr("Background Color"),""
                                    , this, &TextComponent::colorStr,&TextComponent::setColorStr,0,"color_none" ),
+
+        new StrProp <TextComponent>("Border_Color", tr("Border Color"),""
+                                   , this, &TextComponent::borderColorStr,&TextComponent::setBorderColorStr,0,"color" ),
 
         new DoubProp<TextComponent>("Opacity", tr("Opacity"),""
                                    , this, &TextComponent::opac, &TextComponent::setOpac )
@@ -268,7 +274,7 @@ void TextComponent::paint( QPainter* p, const QStyleOptionGraphicsItem* option, 
 {
     Component::paint( p, option, widget );
 
-    QPen pen( Qt::black, m_border, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen pen = m_bs.pen( m_border );
     p->setPen( pen );
 
     if( !m_noBack )

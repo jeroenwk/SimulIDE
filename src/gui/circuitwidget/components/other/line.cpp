@@ -25,6 +25,7 @@ LibraryItem* Line::libraryItem()
 Line::Line( QString type, QString id )
     : Shape( type, id )
 {
+    removeProperty( "Border_Color" );   // The line's colour is its Color
 }
 Line::~Line(){}
 
@@ -47,7 +48,7 @@ void Line::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* 
     double opacity = p->opacity();
     p->setOpacity( opacity*m_opac );
 
-    QPen pen( m_color, m_border, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen pen = m_bs.pen( m_color, m_border );
     p->setPen( pen );
 
     p->drawLine( -m_hSize/2, m_vSize/2, m_hSize/2, -m_vSize/2 );

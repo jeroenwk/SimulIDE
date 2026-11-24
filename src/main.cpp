@@ -204,7 +204,10 @@ int main( int argc, char *argv[] )
             QString note = "built "+( b.date() == QDate::currentDate() ? b.toString("HH:mm")
                                                                     : b.toString("d MMM yyyy HH:mm") );
 #ifdef Q_OS_MAC
-            uiMacTitleNote( (void*)window.winId(), note.toUtf8().constData() );
+            // winId() is an NSView only on the Cocoa platform: under offscreen (QT_QPA_PLATFORM)
+            // it is not, and sending it a message crashed the app at start
+            if( QGuiApplication::platformName() == "cocoa" )
+                uiMacTitleNote( (void*)window.winId(), note.toUtf8().constData() );
 #else
             Q_UNUSED( note )
 #endif

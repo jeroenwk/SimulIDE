@@ -40,6 +40,9 @@ Shape::Shape( QString type, QString id )
         new IntProp <Shape>("Border", tr("Border"), "_px"
                            , this, &Shape::border, &Shape::setBorder ),
 
+        new StrProp <Shape>("Border_Style", tr("Line Type"), BorderStyle::enums()
+                           , this, &Shape::borderStyle, &Shape::setBorderStyle,0,"enum" ),
+
         new DoubProp<Shape>("Z_Value", tr("Z Value"), ""
                            , this, &Shape::zVal, &Shape::setZVal )
             },0} );
@@ -47,6 +50,9 @@ Shape::Shape( QString type, QString id )
             addPropGroup( { tr("Color"), {
         new StrProp<Shape>("Color", tr("Color"), ""
                           , this, &Shape::colorStr, &Shape::setColorStr,0,"color" ),
+
+        new StrProp<Shape>("Border_Color", tr("Border Color"), ""
+                          , this, &Shape::borderColorStr, &Shape::setBorderColorStr,0,"color" ),
 
         new DoubProp<Shape>("Opacity", tr("Opacity"), ""
                            , this, &Shape::opac, &Shape::setOpac )
@@ -84,6 +90,23 @@ void Shape::setBorder( int border )
 { 
     if( border < 0 ) border = 0;
     m_border = border;
+    changed();
+}
+
+void Shape::setBorderColor( QColor color )
+{
+    m_bs.setColor( color );
+    changed();
+}
+
+void Shape::setBorderColorStr( QString n )
+{
+    if( m_bs.setColorStr( n ) ) changed();   // Not a colour (junk in the file): keep this one
+}
+
+void Shape::setBorderStyle( QString style )
+{
+    m_bs.setStyle( style );
     changed();
 }
 
