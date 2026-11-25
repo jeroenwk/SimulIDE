@@ -155,6 +155,13 @@ def test(sim):
     src = os.path.join(tmp, "main.c")
     with open(src, "w") as f:
         f.write("int main(void)\n{\n    return 0;\n}\n")
+
+    def new_document_is_current():
+        """1 when the editor's current document is a new, untitled one. `editor files` lists every
+        untitled document as one entry, so counting the entries would only see the first."""
+        cur = next((d for d in sim.cli("editor", "files") if d["current"]), {})
+        return int(cur.get("file") == "" and cur.get("modified"))
+
     sim.cli("editor", "open", src)
     sim.cli("ui", "focus", "editor")
     sim.cli("ui", "type", " ", "x", "--window")
@@ -169,9 +176,14 @@ def test(sim):
               note=text.replace("\n", " | "))
     not_saved("... and not the circuit", before)
 
+    sim.cli("ui", "type", "cmd+n", "--window")           # The focus is still in the document
+    sim.check("Cmd+N in the code editor opens a new document there", new_document_is_current(), 1, absolute=0)
+    not_saved("... and not a new circuit: this one is still open, unsaved", before)
+
     # The editor reads the keys in all of it (EditorWidget::keyPressEvent), not only in a document:
     # with the focus on its output pane they act on the file too. A review of #101 found them
     # saving the circuit there.
+    sim.cli("editor", "open", src)                      # main.c is the current document again
     sim.cli("ui", "focus", "editor")
     sim.cli("ui", "type", " ", "y", "--window")
     sim.cli("ui", "focus", "editor-output")
@@ -179,16 +191,15 @@ def test(sim):
     sim.cli("ui", "type", "cmd+s", "--window")
     with open(src) as f:
         text = f.read()
-    sim.check("Cmd+S with the focus on the editor's output pane saves that file", int("x yint main" in text), 1, absolute=0,
-              note=text.replace("\n", " | "))
+    sim.check("Cmd+S with the focus on the editor's output pane saves that file", int("x yint main" in text), 1,
+              absolute=0, note=text.replace("\n", " | "))
     not_saved("... and not the circuit", before)
 
-    docs = len(sim.cli("editor", "files"))
-    sim.cli("ui", "type", "cmd+n", "--window")
+    sim.cli("ui", "type", "cmd+n", "--window")          # The focus is still on the output pane
     sim.check("Cmd+N with the focus on the editor's output pane opens a new document there",
-              int(len(sim.cli("editor", "files")) == docs + 1), 1, absolute=0)
+              new_document_is_current(), 1, absolute=0)
     not_saved("... and not a new circuit: this one is still open, unsaved", before)
-    sim.cli("ui", "focus", "editor-output")           # The new document may have taken the focus
+    sim.cli("ui", "focus", "editor-output")             # The new document may have taken the focus
     reply = type_keys("cmd+o")
     sim.check("Cmd+O with the focus on the editor's output pane opens the editor's Load File dialog",
               int(closed_dialog(reply).endswith("[Load File]")), 1, absolute=0, note=closed_dialog(reply))
