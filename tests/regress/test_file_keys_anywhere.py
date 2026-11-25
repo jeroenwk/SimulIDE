@@ -169,14 +169,28 @@ def test(sim):
               note=text.replace("\n", " | "))
     not_saved("... and not the circuit", before)
 
+    # The editor reads the keys in all of it (EditorWidget::keyPressEvent), not only in a document:
+    # with the focus on its output pane they act on the file too. A review of #101 found them
+    # saving the circuit there.
+    sim.cli("ui", "focus", "editor")
+    sim.cli("ui", "type", " ", "y", "--window")
+    sim.cli("ui", "focus", "editor-output")
+    edit()
+    sim.cli("ui", "type", "cmd+s", "--window")
+    with open(src) as f:
+        text = f.read()
+    sim.check("Cmd+S with the focus on the editor's output pane saves that file", int("x yint main" in text), 1, absolute=0,
+              note=text.replace("\n", " | "))
+    not_saved("... and not the circuit", before)
+
     docs = len(sim.cli("editor", "files"))
     sim.cli("ui", "type", "cmd+n", "--window")
-    sim.check("Cmd+N in the code editor opens a new document there", int(len(sim.cli("editor", "files")) == docs + 1),
-              1, absolute=0)
+    sim.check("Cmd+N with the focus on the editor's output pane opens a new document there",
+              int(len(sim.cli("editor", "files")) == docs + 1), 1, absolute=0)
     not_saved("... and not a new circuit: this one is still open, unsaved", before)
-    sim.cli("ui", "focus", "editor")
+    sim.cli("ui", "focus", "editor-output")           # The new document may have taken the focus
     reply = type_keys("cmd+o")
-    sim.check("Cmd+O in the code editor opens its own Load File dialog",
+    sim.check("Cmd+O with the focus on the editor's output pane opens the editor's Load File dialog",
               int(closed_dialog(reply).endswith("[Load File]")), 1, absolute=0, note=closed_dialog(reply))
     not_saved("... not the circuit's", before)
     sim.cli("editor", "close", src, "--discard")

@@ -453,7 +453,7 @@ the pause.
 | `ui drag <x1,y1> <x2,y2>` | Drag with the left mouse button between two scene positions (press, moves in 8 px steps, release); returns `kbd state` |
 | `ui click <x,y> [--cmd] [--double]` | Left click at a scene position on the canvas, as the mouse does (on empty canvas: clears the selection, places the keyboard cursor; `--cmd` holds Cmd: on a wire, corner or dot it starts network mode there, and in network mode marks / unmarks a wire; `--double` adds a double click: with `--cmd` on a wire, its net is marked); returns `kbd state` |
 | `ui click --widget messages\|toolbar` | Press and release on Messages or the simulation toolbar, as the mouse does: takes the keyboard focus from the canvas; returns `kbd state` |
-| `ui focus canvas\|none\|editor` | Give the canvas keyboard focus, take it away, or give it to the code editor's current document (no file open: an error; `Cmd+N`, `Cmd+O` and `Cmd+S` then act on that file) |
+| `ui focus canvas\|none\|editor\|editor-output` | Give the canvas keyboard focus, take it away, or give it to the code editor's current document (no file open: an error) or to its output pane, as a click there does; `Cmd+N`, `Cmd+O` and `Cmd+S` then act on the editor's file |
 
 These commands work on any part with on-screen controls, including push
 buttons, switches, DIP switches, keypads, clocks, potentiometers, variable
