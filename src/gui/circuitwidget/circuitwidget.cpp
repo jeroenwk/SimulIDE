@@ -40,7 +40,6 @@
 #include "instrumentview.h"
 #include "exportdialog.h"
 #include "editorwindow.h"
-#include "codeeditor.h"
 #include "mainwindow.h"
 #include "simulator.h"
 #include "circuit.h"
@@ -1347,8 +1346,9 @@ bool CircuitWidget::simKey( QKeyEvent* ev )
 // wherever the keyboard focus is: a panel of the main window, no widget (after a start) or
 // another window of the app (a part's properties dialog). Not the canvas, which reads them itself
 // (Circuit::keyPressEvent: a value being typed is reverted first); not the code editor, which
-// uses them for its own file; not while a popup or a modal dialog has the keyboard. Undo and
-// redo stay the canvas's (a text field undoes its own text)
+// reads them in all of it for its own file (EditorWidget::keyPressEvent, reached from its output
+// pane and tab bar as from a document); not while a popup or a modal dialog has the keyboard.
+// Undo and redo stay the canvas's (a text field undoes its own text)
 bool CircuitWidget::fileKey( QKeyEvent* ev, QWidget* to )
 {
     Qt::KeyboardModifiers mods = ev->modifiers() & ~Qt::KeypadModifier;
@@ -1357,19 +1357,21 @@ bool CircuitWidget::fileKey( QKeyEvent* ev, QWidget* to )
     if( key != Qt::Key_N && key != Qt::Key_O && key != Qt::Key_S ) return false;
     bool shift = mods & Qt::ShiftModifier;             // Only Save As uses it (Shift+Cmd+N / O: as without)
     // Where the key is typed: the focused widget. A key press goes up from it to its parents, each
-    // of which asks here, so the receiver alone would not tell (the parent of a code editor is not one)
+    // of which asks here, so the receiver alone would not tell. In the code editor it is the editor's:
+    // every widget in it, and every window that has it as parent (its Find dialog)
     QPointer<QWidget> f = QApplication::focusWidget();
     QWidget* ctx = f ? static_cast<QWidget*>( f ) : to;
     if( ctx == &m_circView || m_circView.isAncestorOf( ctx ) ) return false;
     for( QWidget* w = ctx; w; w = w->parentWidget() )
-        if( qobject_cast<CodeEditor*>( w ) ) return false;
+        if( qobject_cast<EditorWidget*>( w ) ) return false;
     if( QApplication::activePopupWidget() || QApplication::activeModalWidget() ) return false;
     if( ev->isAutoRepeat() ) return true;               // Held down: done at the press
 
-    // A field of another window takes its typed text when it loses the focus, as when that
-    // window is left (a label in a part's properties, saved by Cmd+S or kept when Cmd+N asks
-    // whether to save): it loses the focus and gets it back (a field that closes itself on
-    // losing it is not brought back)
+    // The field being typed in, in any other window (a part's properties dialog, Settings), takes
+    // its text when it loses the focus, as when that window is left: a half-typed setting is
+    // applied, a label in a part's properties is saved by Cmd+S or kept when Cmd+N asks whether
+    // to save. It loses the focus and gets it back (a field that closes itself on losing it is
+    // not brought back)
     if( f && f->window() != window() ){ f->clearFocus(); if( f ) f->setFocus( Qt::OtherFocusReason ); }
 
     if     ( key == Qt::Key_N ) newCircuit();

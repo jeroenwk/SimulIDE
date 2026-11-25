@@ -705,16 +705,18 @@ writes it (D22): `Settings (⌘,)` on macOS, `Settings (Ctrl+,)` on Windows and 
   the simulation or in the Description tab they did nothing. Where the canvas has no
   focus, the key filter of the simulation keys acts (`CircuitWidget::fileKey`, in
   `eventFilter`), judged by the **focused widget**: a key press goes up from it to its
-  parents, which each ask the filter, so the receiver alone would not tell (the parent of
-  a code editor is not one). So: from a panel of the main window, with no widget focused,
-  and from another window of the app (a part's properties dialog). Not in the code editor,
-  which uses the same keys for its own file; not while a popup or a modal dialog has the
-  keyboard. A save takes a description still being typed in the Description tab (the edit
-  goes on). In another window, the field being edited loses the focus and gets it back
-  first, so its text is taken as when that window is left (a label in a part's
-  properties: saved by ⌘S, and kept when ⌘N asks whether to save).
-  `tests/regress/test_file_keys_anywhere.py` (headless) and
-  `test_props_dialog_save_quit.py` (offscreen: a headless server closes the dialog).
+  parents, which each ask the filter, so the receiver alone would not tell. So: from a
+  panel of the main window, with no widget focused, and from another window of the app
+  (a part's properties dialog). Not in the code editor, which reads them in all of it for
+  its own file (`EditorWidget::keyPressEvent`: from its output pane or its tab bar as from
+  a document, and in every window that has the editor as parent, its Find dialog); not
+  while a popup or a modal dialog has the keyboard. A save takes a description still being
+  typed in the Description tab (the edit goes on). In another window (a part's properties
+  dialog, Settings), the field being edited loses the focus and gets it back first, so its
+  text is taken as when that window is left: a label in a part's properties is saved by ⌘S,
+  and kept when ⌘N asks whether to save.
+  `tests/regress/test_file_keys_anywhere.py` (headless; the editor's output pane included)
+  and `test_props_dialog_save_quit.py` (offscreen: a headless server closes the dialog).
 - **Quitting with the caret in a field of an open properties dialog crashed**, found
   with that test: hiding the dialog took the focus from the field, which applied it to
   its part while the part's properties were being deleted. The dialog is now detached
