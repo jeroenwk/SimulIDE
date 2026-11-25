@@ -150,6 +150,7 @@ class CircuitWidget : public QWidget
         bool eventFilter( QObject* obj, QEvent* ev ) override;
         bool keysToSim();                    // Focus outside the canvas, text fields, lists, editable combos
         bool simKey( class QKeyEvent* ev );  // Space, Esc, arrows: true when used
+        bool fileKey( class QKeyEvent* ev, QWidget* to );  // Cmd+N / O / S and Shift+Cmd+S off the canvas and out of the code editor: true when it acted
         void logRunInfo( QString what );  // Speed, loads, FPS (the old info pane) in Messages
         void updtKeyOwner();                 // Frame the skip box while the simulation has the keys
         bool m_simHasKeys = false;

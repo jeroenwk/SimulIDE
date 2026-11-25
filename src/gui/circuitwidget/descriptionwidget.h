@@ -21,6 +21,7 @@ class DescriptionWidget : public QWidget
 
         void showCircuit();          // Show the current circuit's description (leaves edit mode)
         bool editing() const;
+        void applyEdit();            // A save while typing: the text so far is the circuit's, the edit goes on
         void startEdit();            // As the Edit button
         void finishEdit( bool keep );   // As Done (true) or Cancel
 

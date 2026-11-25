@@ -12,11 +12,12 @@
 const QList<Shortcut>& Shortcuts::all()
 {
     static const QList<Shortcut> list = {
-        // Existing shortcuts (Circuit::keyPressEvent)
-        { "File", "New circuit",            "Cmd+N",       "" },
-        { "File", "Open circuit",           "Cmd+O",       "" },
-        { "File", "Save circuit",           "Cmd+S",       "" },
-        { "File", "Save circuit as",        "Cmd+Shift+S", "" },
+        // Existing shortcuts (Circuit::keyPressEvent); the file keys also off the canvas
+        // (CircuitWidget::fileKey), except in the code editor
+        { "File", "New circuit",            "Cmd+N",       "Not in the code editor, which uses the same keys for its file" },
+        { "File", "Open circuit",           "Cmd+O",       "Not in the code editor, which uses the same keys for its file" },
+        { "File", "Save circuit",           "Cmd+S",       "Not in the code editor, which uses the same keys for its file" },
+        { "File", "Save circuit as",        "Cmd+Shift+S", "Not in the code editor, which uses the same keys for its file" },
         { "Edit", "Undo",                   "Cmd+Z",       "" },
         { "Edit", "Redo",                   "Cmd+Shift+Z or Cmd+Y", "" },
         { "Edit", "Copy",                   "Cmd+C",       "Selection" },

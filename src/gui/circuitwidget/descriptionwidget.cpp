@@ -74,8 +74,13 @@ void DescriptionWidget::startEdit()
     m_edit->setFocus();
 }
 
+void DescriptionWidget::applyEdit()
+{
+    if( editing() && Circuit::self() ) Circuit::self()->setDescription( m_edit->toPlainText() );
+}
+
 void DescriptionWidget::finishEdit( bool keep )
 {
-    if( keep && Circuit::self() ) Circuit::self()->setDescription( m_edit->toPlainText() );
+    if( keep ) applyEdit();
     showCircuit();
 }
