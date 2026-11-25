@@ -88,6 +88,7 @@ const QList<Shortcut>& Shortcuts::all()
         { "Pins & wiring", "Wire pinFrom to pinTo (a dot is inserted on a pin that already has a wire)", "w", "" },
         // K4: selection
         { "Selection", "Select the next part (reading order); the nearest to the cursor when none is", "Tab", "" },
+        { "Selection", "Select the part or wire nearest to the cross (a wire: network mode on it)", "Space", "Nothing selected" },
         { "Selection", "Select the previous part", "Shift+Tab", "" },
         { "Selection", "Unselect all", "Esc", "Selection" },
         { "Selection", "Unselect the part; the cursor goes a big step beyond its selected pin, "
@@ -113,6 +114,14 @@ const QList<Shortcut>& Shortcuts::all()
         { "Wires", "Cancel the wire (and its dot)", "Esc", "Drawing a wire" },
         // K6: properties
         { "Edit", "Open the selected part's properties dialog (closing it returns to the canvas)", "Space", "One part selected" },
+        { "Shapes", "Bring to front (Rectangle, Ellipse, Line, Image)", "Cmd+Shift+F", "Shapes selected" },
+        { "Shapes", "Bring forward, past the next shape it overlaps", "Opt+Cmd+Shift+F", "Shapes selected" },
+        { "Shapes", "Send backward, past the next shape it overlaps", "Opt+Cmd+Shift+B", "Shapes selected" },
+        { "Shapes", "Send to back", "Cmd+Shift+B", "Shapes selected" },
+        { "Shapes", "Highlight the corner nearest to the cross (a Line: its ends); a click on a corner handle does too", "=", "One shape selected" },
+        { "Shapes", "Next / previous corner, clockwise", "Tab / Shift+Tab", "A shape's corner highlighted" },
+        { "Shapes", "Move the corner 8 / 64 px: the shape is resized, the opposite corner stays (a drag of the handle too)", "Arrows / Cmd+Arrows", "A shape's corner highlighted" },
+        { "Shapes", "Leave the corner, the shape stays selected (any other key too, then it acts)", "= or Esc", "A shape's corner highlighted" },
         // K7: typing a value
         { "Edit", "Type the selected part's value: digits, - . , and p n u m k M G (capitals too; "
                   "4k7 = 4.7 k; no multiplier keeps the part's one). Enter sets it (one undo step), "
@@ -159,7 +168,7 @@ QString Shortcuts::shown( const QString& keys )
 QStringList Shortcuts::categories()
 {
     return { "File", "Edit", "View", "Simulation", "Selection", "Moving", "Pins & wiring",
-             "Wires", "Parts", "Part letters", "Switches" };
+             "Wires", "Shapes", "Parts", "Part letters", "Switches" };
 }
 
 QList<Shortcut> Shortcuts::table()

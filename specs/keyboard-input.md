@@ -186,14 +186,14 @@ Parts mode:
 | Tab / Shift+Tab | part nearest the cursor | next/prev part | next/prev part | revert, then next/prev |
 | Esc | – | unselect all | unselect all | revert value |
 | Enter | – | – | unselect, cursor 64 px right | commit, unselect, cursor right |
-| Space | – | – | properties dialog | – |
+| Space | the part or wire nearest the cross ([gfx-arrange.md](gfx-arrange.md) §1) | – | properties dialog | – |
 | `>` / `<` | – | – | next/prev pin → pinTo | – |
 | Cmd+`>` / Cmd+`<` | – | – | next/prev pin → pinFrom | – |
 | digit, `-` | – | – | start EditValue (numeric value only) | append (`-` first only) |
 | `.` `,` | – | – | start EditValue (`0.`) | append once |
 | part letter | add part at cursor | add part | add part | multiplier (C3) |
 | `w` | wire pinFrom→pinTo | same | same | revert, then wire |
-| `=` | network mode from the dot, corner or wire nearest the cross (K9c) | – | network mode (K9) | – |
+| `=` | network mode from the dot, corner or wire nearest the cross (K9c) | – | network mode (K9); a shape: its corner nearest the cross ([gfx-arrange.md](gfx-arrange.md) §3) | – |
 | `+` | draw a wire from the wire under the cross (K9b) | – | – | – |
 | Backspace / Delete | – | delete | delete | remove last char (C8) |
 | Shift+A–Z | switches (`Key`) | switches | switches | `M`, `G` only |

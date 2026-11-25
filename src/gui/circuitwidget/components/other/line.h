@@ -18,6 +18,9 @@ class Line : public Shape
  static Component* construct( QString type, QString id );
  static LibraryItem *libraryItem();
 
+        QList<int> handleCorners() override { return { 1, 3 }; }   // Its ends: top right, bottom left
+        bool cornerFlips() override { return true; }
+
         virtual QPainterPath shape() const override;
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
 };

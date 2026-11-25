@@ -205,9 +205,19 @@ void CircuitView::mousePressEvent( QMouseEvent* event )
     KeyboardController::self()->mousePressed( ( event->button() == Qt::LeftButton
                                              && event->modifiers() == Qt::ControlModifier )
                                            || event->button() == Qt::RightButton );
+    KeyboardController::self()->pressedAt( mapToScene( event->pos() ) );
     m_kbdPressPos   = event->pos();
     m_kbdPressEmpty = event->button() == Qt::LeftButton && event->modifiers() == Qt::NoModifier
                    && !itemAt( event->pos() ) && !m_circuit->is_constarted();
+
+    if( event->button() == Qt::LeftButton && event->modifiers() == Qt::NoModifier
+     && !m_circuit->is_constarted() && KeyboardController::self()->handlePress( event->pos() ) )
+    {                                                   // A corner handle of the selected shape
+        event->accept();                                // (specs/gfx-arrange.md): it is dragged
+        m_kbdPressEmpty = false;
+        setFocus( Qt::MouseFocusReason );
+        return;
+    }
 
     if( event->button()   == Qt::LeftButton
      && event->modifiers() & Qt::ControlModifier
@@ -240,6 +250,12 @@ void CircuitView::mousePressEvent( QMouseEvent* event )
 
 void CircuitView::mouseMoveEvent( QMouseEvent* event )
 {
+    if( KeyboardController::self()->handleMove( event->pos() ) )   // Dragging a shape's corner
+    {
+        event->accept();
+        KeyboardController::self()->mouseMoved( event->pos() );
+        return;
+    }
     if( m_waitForDragStart )
     {
         m_waitForDragStart = false;
@@ -279,6 +295,11 @@ void CircuitView::focusOutEvent( QFocusEvent* event )
 
 void CircuitView::mouseReleaseEvent( QMouseEvent* event )
 {
+    if( event->button() == Qt::LeftButton && KeyboardController::self()->handleRelease() )
+    {
+        event->accept();
+        return;
+    }
     if( event->button() == Qt::MidButton )
     {
         event->accept();

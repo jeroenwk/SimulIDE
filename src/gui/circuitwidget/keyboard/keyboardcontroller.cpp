@@ -37,6 +37,8 @@
 #include "physicalkeys.h"
 #include "connectorline.h"
 #include "utils.h"
+#include "shape.h"
+#include "zorder.h"
 
 KeyboardController* KeyboardController::self()
 {
@@ -83,6 +85,10 @@ void KeyboardController::reset()
     m_lastPart.clear();
     m_prevPart.clear();
     m_selPending = false;
+    m_corner     = -1;
+    m_cornerDrag = false;
+    m_refSet     = false;
+    m_handlesShown = QRectF();
 
     Circuit* circ = Circuit::self();     // A new Circuit (scene) for every new / opened circuit
     if( circ && circ != m_circuit )
@@ -111,6 +117,7 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     if( m_panMode && !arrow && !panKey ) setPanMode( false );   // Any other key ends pan mode
 
     hidePointer();              // Typing on the canvas: the pointer goes (pan mode shows its symbol)
+    m_lastInputMouse = false;
 
     if( zoomKey( event, mods ) ) return true;   // The view only: a value being typed stays
 
@@ -123,6 +130,17 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     }
 
     if( m_drawing ) return drawKey( event, mods );   // K9b: every key goes to the wire being drawn
+
+    if( arrangeKey( event, mods ) ) return true;     // Stacking order of shapes (also with a corner)
+
+    // A shape's corner highlighted (=, a click on its handle): Tab, arrows, = / Esc; any
+    // other key leaves the corner and acts as usual
+    if( cornerActive() )
+    {
+        if( cornerKey( event, mods ) ) return true;
+        leaveCorners();
+    }
+    else if( m_corner >= 0 ) leaveCorners();          // Its shape no longer the single selection
 
     // Contexts, in order (spec §4.1): EditValue, network mode (K9), parts mode.
     // EditValue (K7): value keys build the buffer; any other key (arrows and Cmd+R too)
@@ -179,7 +197,7 @@ bool KeyboardController::keyPress( QKeyEvent* event )
         if( key == Qt::Key_Tab ) return tabKey( 1 );
     }
     if( event->text() == "=" && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) )
-        return enterNetwork();
+        return singleShape() ? enterCorners() : enterNetwork();
     if( event->text() == "+" && ( mods == Qt::NoModifier || mods == Qt::ShiftModifier ) )
         return plusKey();                                // K9b: draw a wire from the wire here
     if( mods == Qt::NoModifier )
@@ -421,6 +439,7 @@ bool KeyboardController::placePart( QString type, QString name )
 // focus back (also with Esc: the dialog takes the key itself and rejects)
 bool KeyboardController::spaceKey()
 {
+    if( Circuit::self()->selectedItems().isEmpty() ) return selectNearest();
     Component* comp = singlePart();
     if( !comp )                               // Only wire segments selected (rubber band): their
     {                                         // colours (specs/wire-colors.md)
@@ -1205,6 +1224,12 @@ void KeyboardController::zoomAround( double factor )
 
 void KeyboardController::selectionChanged()
 {
+    if( m_corner >= 0 )                                  // The corner goes with its shape's selection
+    {
+        Shape* s = singleShape();
+        if( !s || s->getUid() != m_cornerShape ){ m_corner = -1; m_cornerDrag = false; }
+    }
+    refreshHandles();
     if( m_walk.active() && !m_walkSelecting ) leaveNetwork( false );  // Selected by other means
     if( m_value.active() )                               // The edit ends when its part is no
     {                                                    // longer the single selection (K7)
@@ -1254,6 +1279,11 @@ void KeyboardController::settleSelection()
         setPinTo( nullptr );
     }
     Component* b = singlePart();
+    if( b && !m_lastInputMouse && b->getUid() != m_lastPart && cursorPos() != snap( b->pos() ) )
+    {                                    // Selected by a key: = picks the corner nearest to
+        m_refPoint = cursorPos();        // where the cross was
+        m_refSet   = true;
+    }
     if( b && !m_rect ) parkCursor( b->pos() );   // Whatever selects one part — Tab, a click,
     if( !b || b->getUid() == m_lastPart ) return;   // the CLI — parks the hidden cross on it
 
@@ -1383,6 +1413,13 @@ void KeyboardController::mousePressed( bool keepWalk )
     if( m_walk.active() && !keepWalk ) leaveNetwork( false );   // and ends network mode (K9);
 }   // Cmd+click, right click: walkFromMouse(), the menu or the selection change decides
 
+void KeyboardController::pressedAt( QPointF scenePos )
+{
+    m_refPoint = scenePos;
+    m_refSet   = true;
+    m_lastInputMouse = true;
+}
+
 void KeyboardController::clickedEmpty( QPointF scenePos )
 {
     QPointF old = cursorPos();
@@ -1418,6 +1455,7 @@ QPointF KeyboardController::cursorPos()
 // The view never scrolls for the hidden cross: that made a mouse drag run away
 void KeyboardController::selectionMoved( QPointF delta )
 {
+    refreshHandles();
     if( Component* comp = singlePart() ) parkCursor( comp->pos() );
     else                                 parkCursor( cursorPos()+delta, false );
 }
@@ -1519,6 +1557,28 @@ void KeyboardController::paint( QPainter* painter )
         }
         painter->restore();
     }
+    if( Shape* s = singleShape() )                       // Corner handles of a single shape
+        if( !m_styling )
+        {
+            double h = handleSize();
+            painter->save();
+            m_handlesShown = QRectF();
+            bool active = cornerActive();
+            for( int c : shapeHandles( s ) )
+            {
+                QPointF p = s->cornerScene( c );
+                QRectF r( p.x()-h/2, p.y()-h/2, h, h );
+                bool on = active && c == m_corner;
+                QPen pen( on ? Theme::highlight() : Theme::line(), on ? 1.5 : 1 );
+                pen.setCosmetic( true );
+                painter->setPen( pen );
+                painter->setBrush( on ? Theme::highlight() : Theme::canvas() );
+                painter->setOpacity( on ? 1 : 0.75 );
+                painter->drawRect( r );
+                m_handlesShown |= r.adjusted(-2,-2, 2, 2 );
+            }
+            painter->restore();
+        }
     if( m_rect )                                         // The selection rectangle, dashed
     {
         painter->save();
@@ -1570,6 +1630,20 @@ QJsonObject KeyboardController::state()
     QString group = ComponentSelector::self() ? ComponentSelector::self()->selectedGroup( &groupOpen ) : QString();
     if( !group.isEmpty() ) o["libraryGroup"] = QJsonObject{ {"name", group}, {"expanded", groupOpen} };
     if( m_value.active() ) o["valueEdit"] = m_value.state();   // K7: the value being typed
+    if( Shape* sh = singleShape() )                       // specs/gfx-arrange.md: its handles
+    {
+        QJsonArray hs;
+        for( int c : shapeHandles( sh ) ){
+            QPointF p = sh->cornerScene( c );
+            hs.append( QJsonObject{ {"corner", c}, {"at", QJsonArray{ p.x(), p.y() }} } );
+        }
+        QJsonObject so{ {"uid", sh->getUid()}, {"handles", hs}, {"z", sh->zValue()},
+                        {"size", QJsonArray{ sh->hSize(), sh->vSize() }},
+                        {"pos", QJsonArray{ sh->pos().x(), sh->pos().y() }},
+                        {"flip", QJsonArray{ sh->hflip(), sh->vflip() }} };
+        if( cornerActive() ) so["corner"] = m_corner;
+        o["shape"] = so;
+    }
     if( m_drawing )                                       // K9b: the wire being drawn
     {
         QJsonArray fixed;
@@ -1665,4 +1739,258 @@ void KeyboardController::endRect( bool keep )
 void KeyboardController::keyRelease( QKeyEvent* event )
 {
     if( m_rect && event->key() == Qt::Key_Shift ) endRect( true );
+}
+
+// ----- Space with nothing selected (specs/gfx-arrange.md §1) ------------------------
+
+// The part or wire nearest the cross. A part counts by its outline (0 inside it); inside a
+// shape (Rectangle, Ellipse, Line, Image) by the distance to its edge, so the parts drawn
+// on a background shape come first; among parts the cross is inside, the smallest. A wire
+// nearer than every part: network mode on it, as a Cmd+click does
+bool KeyboardController::selectNearest()
+{
+    QPointF p = cursorPos();
+    Component* part = nullptr;
+    double partD = 1e300, partArea = 1e300;
+    for( Component* c : readingOrder() )
+    {
+        QRectF r = c->sceneBoundingRect();
+        double dx = qMax( qMax( r.left()-p.x(), p.x()-r.right() ), 0.0 );
+        double dy = qMax( qMax( r.top()-p.y(),  p.y()-r.bottom() ), 0.0 );
+        double d = qSqrt( dx*dx+dy*dy );
+        if( d == 0 && dynamic_cast<Shape*>( c ) )
+            d = qMin( qMin( p.x()-r.left(), r.right()-p.x() ), qMin( p.y()-r.top(), r.bottom()-p.y() ) );
+        double area = r.width()*r.height();
+        if( d < partD-1e-9 || ( d < partD+1e-9 && area < partArea ) ){ partD = d; partArea = area; part = c; }
+    }
+    NetworkWalk::Step seed;
+    double wireD = 1e300;
+    bool wire = NetworkWalk::nearestWire( p, &seed, &wireD );
+
+    if( wire && wireD < partD )
+    {
+        if( !m_walk.startFrom( seed ) ) return true;
+        qDebug() << "[kbd] Space: the wire" << seed.uid << "nearest to the cross," << wireD << "px";
+        m_arrowBurst = false;
+        showStep();
+        return true;
+    }
+    if( !part ){ say("Keyboard: nothing to select"); return true; }
+    qDebug() << "[kbd] Space: the part" << part->getUid() << "nearest to the cross," << partD << "px";
+    selectPart( part );
+    return true;
+}
+
+// ----- Graphical shapes: stacking order and corner handles (specs/gfx-arrange.md) ---
+
+// ⇧⌘F bring to front, ⌥⇧⌘F bring forward, ⌥⇧⌘B send backward, ⇧⌘B send to back. The
+// physical key decides (Option changes the character on macOS)
+bool KeyboardController::arrangeKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
+{
+    if( !( mods & Qt::ControlModifier ) || !( mods & Qt::ShiftModifier ) || ( mods & Qt::MetaModifier ) ) return false;
+    int key = event->key();
+    bool f = key == Qt::Key_F, b = key == Qt::Key_B;
+#if defined( Q_OS_MACOS )
+    if( event->nativeVirtualKey() == 0x03 ) f = true;          // kVK_ANSI_F
+    if( event->nativeVirtualKey() == 0x0B ) b = true;          // kVK_ANSI_B
+#endif
+    if( !f && !b ) return false;
+    bool alt = mods & Qt::AltModifier;
+    ZOrder::op_t op = f ? ( alt ? ZOrder::forward : ZOrder::toFront )
+                        : ( alt ? ZOrder::backward : ZOrder::toBack );
+    QString msg = ZOrder::apply( op, ZOrder::selectedShapes() );
+    if( !msg.isEmpty() ) say( msg );
+    return true;
+}
+
+Shape* KeyboardController::singleShape()
+{
+    return dynamic_cast<Shape*>( singlePart() );
+}
+
+QList<int> KeyboardController::shapeHandles( Shape* s )
+{
+    QList<int> hs = s->handleCorners();
+    QPointF c = s->sceneBoundingRect().center();
+    auto key = [&]( int corner ){                              // Clockwise from the top left
+        QPointF d = s->cornerScene( corner )-c;
+        double a = qAtan2( d.y(), d.x() )+3*M_PI/4+1e-6;          // Top left (-135°) first
+        while( a < 0 ) a += 2*M_PI;
+        while( a >= 2*M_PI ) a -= 2*M_PI;
+        return a;
+    };
+    std::sort( hs.begin(), hs.end(), [&]( int a, int b ){ return key( a ) < key( b ); } );
+    return hs;
+}
+
+bool KeyboardController::cornerActive()
+{
+    if( m_corner < 0 ) return false;
+    Shape* s = singleShape();
+    return s && s->getUid() == m_cornerShape;
+}
+
+bool KeyboardController::enterCorners()
+{
+    Shape* s = singleShape();
+    if( !s ) return false;
+    QPointF ref = m_refSet ? m_refPoint : s->sceneBoundingRect().topLeft();
+    int best = -1;
+    double bestD = 1e300;
+    for( int c : shapeHandles( s ) )                           // Ties: the first clockwise
+    {
+        QPointF d = s->cornerScene( c )-ref;
+        double dd = QPointF::dotProduct( d, d );
+        if( dd < bestD-1e-9 ){ bestD = dd; best = c; }
+    }
+    m_cornerShape = s->getUid();
+    m_corner      = best;
+    m_arrowBurst  = false;
+    qDebug() << "[kbd] corner" << best << "of" << m_cornerShape;
+    refreshHandles();
+    return true;
+}
+
+void KeyboardController::leaveCorners()
+{
+    if( m_corner < 0 ) return;
+    m_corner = -1;
+    m_cornerDrag = false;
+    m_arrowBurst = false;
+    qDebug() << "[kbd] corner mode ends";
+    refreshHandles();
+}
+
+bool KeyboardController::cornerKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
+{
+    int key = event->key();
+    QString text = event->text();
+    bool plain = mods == Qt::NoModifier;
+    bool arrow = key == Qt::Key_Left || key == Qt::Key_Right || key == Qt::Key_Up || key == Qt::Key_Down;
+    Shape* s = singleShape();
+
+    if( text == "=" && ( plain || mods == Qt::ShiftModifier ) ){ leaveCorners(); return true; }
+    if( key == Qt::Key_Escape && plain ){ leaveCorners(); return true; }
+    if( text == "h" && plain ){ setPanMode( true ); return true; }   // Panning keeps the corner
+
+    if( key == Qt::Key_Backtab || ( key == Qt::Key_Tab && ( plain || mods == Qt::ShiftModifier ) ) )
+    {
+        QList<int> hs = shapeHandles( s );
+        int n = hs.size(), i = hs.indexOf( m_corner );
+        int dir = ( key == Qt::Key_Tab && plain ) ? 1 : -1;
+        m_corner = hs[ ( ( i+dir ) % n + n ) % n ];
+        m_arrowBurst = false;
+        refreshHandles();
+        return true;
+    }
+    if( arrow && !( mods & ( Qt::AltModifier | Qt::MetaModifier ) ) )   // Plain, Cmd, (Shift)
+    {
+        if( m_panMode ) return arrowKey( event, mods );
+        QPointF dir;
+        if     ( key == Qt::Key_Left  ) dir = QPointF(-1, 0 );
+        else if( key == Qt::Key_Right ) dir = QPointF( 1, 0 );
+        else if( key == Qt::Key_Up    ) dir = QPointF( 0,-1 );
+        else                            dir = QPointF( 0, 1 );
+        QPointF d = dir*( ( mods & Qt::ControlModifier ) ? bigStep : smallStep );
+        Circuit* circ = Circuit::self();
+        bool newStep = !m_arrowBurst || m_burstEdit != circ->editCount() || m_burstWire != "shape:"+s->getUid();
+        setShapeCorner( s, s->cornerScene( m_corner )+d, newStep );
+        m_arrowBurst = true;
+        m_burstEdit  = circ->editCount();
+        m_burstWire  = "shape:"+s->getUid();
+        m_burstSelection.clear();
+        if( CircuitView* v = CircuitView::self() )
+        {
+            QPointF p = s->cornerScene( m_corner );
+            v->ensureVisible( QRectF( p.x()-8, p.y()-8, 16, 16 ), 32, 32 );
+        }
+        return true;
+    }
+    return false;
+}
+
+void KeyboardController::setShapeCorner( Shape* s, QPointF scenePos, bool newStep )
+{
+    if( scenePos == s->cornerScene( m_corner ) ) return;
+    if( newStep ) s->saveCornerUndo();
+    refreshHandles();                                          // Where they were
+    s->setCornerScene( m_corner, scenePos );
+    Circuit::self()->setChanged();
+    parkCursor( s->pos() );                                    // The hidden cross stays on the part
+    refreshHandles();
+}
+
+double KeyboardController::handleSize()
+{
+    CircuitView* v = CircuitView::self();
+    double zoom = v ? v->transform().m11() : 1;
+    return 7/( zoom > 0 ? zoom : 1 );
+}
+
+QRectF KeyboardController::handlesRect( Shape* s )
+{
+    double h = handleSize();
+    QRectF r;
+    for( int c : shapeHandles( s ) )
+    {
+        QPointF p = s->cornerScene( c );
+        r |= QRectF( p.x()-h, p.y()-h, 2*h, 2*h );
+    }
+    return r;
+}
+
+void KeyboardController::refreshHandles()
+{
+    Circuit* circ = Circuit::self();
+    if( !circ ) return;
+    if( !m_handlesShown.isNull() ) circ->update( m_handlesShown );
+    if( Shape* s = singleShape() ) circ->update( handlesRect( s ) );
+}
+
+bool KeyboardController::handlePress( QPoint viewPos )
+{
+    Shape* s = singleShape();
+    CircuitView* v = CircuitView::self();
+    if( !s || !v ) return false;
+    int best = -1;
+    double bestD = 7;                                          // Screen px
+    for( int c : shapeHandles( s ) )
+    {
+        QPointF d = v->mapFromScene( s->cornerScene( c ) )-viewPos;
+        double dd = qSqrt( QPointF::dotProduct( d, d ) );
+        if( dd <= bestD ){ bestD = dd; best = c; }
+    }
+    if( best < 0 ) return false;
+    m_cornerShape = s->getUid();
+    m_corner      = best;
+    m_cornerDrag  = true;
+    m_dragSaved   = false;
+    m_arrowBurst  = false;
+    m_dragPress   = v->mapToScene( viewPos );
+    m_dragCorner0 = s->cornerScene( best );
+    qDebug() << "[kbd] corner" << best << "of" << m_cornerShape << "pressed";
+    refreshHandles();
+    return true;
+}
+
+// A drag moves the corner in 4 px steps (as a part's drag), keeping its offset from the grid
+bool KeyboardController::handleMove( QPoint viewPos )
+{
+    if( !m_cornerDrag ) return false;
+    Shape* s = singleShape();
+    CircuitView* v = CircuitView::self();
+    if( !s || !v || s->getUid() != m_cornerShape ){ m_cornerDrag = false; return false; }
+    QPointF delta = toGrid( v->mapToScene( viewPos ) )-toGrid( m_dragPress );
+    QPointF to = m_dragCorner0+delta;
+    if( to == s->cornerScene( m_corner ) ) return true;
+    setShapeCorner( s, to, !m_dragSaved );
+    m_dragSaved = true;
+    return true;
+}
+
+bool KeyboardController::handleRelease()
+{
+    if( !m_cornerDrag ) return false;
+    m_cornerDrag = false;                                      // The corner stays highlighted
+    return true;
 }

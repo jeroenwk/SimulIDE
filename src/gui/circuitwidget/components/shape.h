@@ -50,9 +50,23 @@ class Shape : public Component
 
         QString borderColorStr() { return m_bs.colorStr(); }
         void setBorderColorStr( QString n );
+
+        // Corner handles (specs/gfx-arrange.md). Corners of the area: 0 top left, 1 top right,
+        // 2 bottom right, 3 bottom left, in the part's own (unrotated, unflipped) frame
+        virtual QList<int> handleCorners() { return { 0, 1, 2, 3 }; }   // Line: its two ends
+        virtual bool cornerFlips() { return false; }  // Line: dragged past the other end, it flips
+        QPointF cornerScene( int corner );
+        // Moves a corner to a scene point, the opposite corner staying where it is (size and
+        // position change; a Line flips instead of shrinking below 1 px). No undo
+        void setCornerScene( int corner, QPointF scenePos );
+        void saveCornerUndo();                         // One undo step: position, size, flips
+
+        // Arrange (Bring to Front, Forward, Send Backward, to Back) before the usual entries
+        void contextMenu( QGraphicsSceneContextMenuEvent* event, QMenu* menu ) override;
         
     protected:
         void changed();
+        QPointF cornerLocal( int corner );
 
         int m_hSize;
         int m_vSize;

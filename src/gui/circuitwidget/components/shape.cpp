@@ -10,6 +10,11 @@
 #include "stringprop.h"
 #include "doubleprop.h"
 #include "intprop.h"
+#include "zorder.h"
+#include "keytext.h"
+#include "circuitwidget.h"
+
+#include <QMenu>
 
 #define tr(str) simulideTr("Shape",str)
 
@@ -128,4 +133,71 @@ void Shape::changed()
 {
     m_changed = true;
     if( !Simulator::self()->isRunning() ) updateStep();
+}
+
+// ----- Corner handles (specs/gfx-arrange.md) ---------------------------------
+
+QPointF Shape::cornerLocal( int corner )
+{
+    double l = -m_hSize/2, t = -m_vSize/2;                  // As m_area (integer halves)
+    double r = l+m_hSize, b = t+m_vSize;
+    switch( corner & 3 ){
+        case 0: return QPointF( l, t );
+        case 1: return QPointF( r, t );
+        case 2: return QPointF( r, b );
+        default: return QPointF( l, b );
+    }
+}
+
+QPointF Shape::cornerScene( int corner ) { return mapToScene( cornerLocal( corner ) ); }
+
+void Shape::setCornerScene( int corner, QPointF scenePos )
+{
+    corner &= 3;
+    int opp = ( corner+2 ) & 3;
+    QPointF oppScene = cornerScene( opp );
+    QPointF p = mapFromScene( scenePos ), o = cornerLocal( opp );
+    double sx = ( corner == 1 || corner == 2 ) ? 1 : -1;   // The corner's side of the opposite one
+    double sy = ( corner == 2 || corner == 3 ) ? 1 : -1;
+    int w = qRound( ( p.x()-o.x() )*sx );
+    int h = qRound( ( p.y()-o.y() )*sy );
+    if( cornerFlips() )                                     // Past the other end: mirror the part
+    {
+        if( w < 0 ){ setHflip(-hflip() ); w = -w; }
+        if( h < 0 ){ setVflip(-vflip() ); h = -h; }
+    }
+    prepareGeometryChange();
+    m_hSize = qMax( 1, w );
+    m_vSize = qMax( 1, h );
+    m_area  = QRectF( -m_hSize/2, -m_vSize/2, m_hSize, m_vSize );
+    setPos( pos()+oppScene-cornerScene( opp ) );           // The opposite corner stays
+    changed();
+}
+
+void Shape::saveCornerUndo()
+{
+    Circuit* circ = Circuit::self();
+    circ->beginCircuitBatch();
+    for( QString prop : { "Pos", "H_size", "V_size", "hflip", "vflip" } )
+        circ->addCompChange( getUid(), prop, getPropStr( prop ) );
+    circ->saveChanges();
+}
+
+void Shape::contextMenu( QGraphicsSceneContextMenuEvent* event, QMenu* menu )
+{
+    if( event )
+    {
+        for( int op : { ZOrder::toFront, ZOrder::forward, ZOrder::backward, ZOrder::toBack } )
+        {
+            ZOrder::op_t o = (ZOrder::op_t)op;
+            QAction* a = menu->addAction( ZOrder::opName( o )+"\t"+KeyText::native( ZOrder::opKeys( o ) ) );
+            QObject::connect( a, &QAction::triggered, [=](){
+                if( !isSelected() ){ Circuit::self()->clearSelection(); setSelected( true ); }
+                QString msg = ZOrder::apply( o, ZOrder::selectedShapes() );
+                if( !msg.isEmpty() ) CircuitWidget::self()->eventMessage( msg, 0 );
+            });
+        }
+        menu->addSeparator();
+    }
+    Component::contextMenu( event, menu );
 }

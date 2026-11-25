@@ -28,6 +28,7 @@ class QDialog;
 class Component;
 class Pin;
 class QPainter;
+class Shape;
 
 class KeyboardController
 {
@@ -50,6 +51,13 @@ class KeyboardController
         void mouseMoved( QPoint viewPos );
         void mousePressed( bool keepWalk = false );   // Any button: ends pan mode
         void clickedEmpty( QPointF scenePos );   // Left click (no drag) on empty canvas: the cross goes there
+        void pressedAt( QPointF scenePos );      // Any press: where = picks the nearest corner of a shape
+
+        // Corner handles of the single selected shape (specs/gfx-arrange.md): a left press
+        // on one (view position) highlights it and drags it. true: the press is taken
+        bool handlePress( QPoint viewPos );
+        bool handleMove( QPoint viewPos );       // true: a handle is being dragged
+        bool handleRelease();
 
         // Cmd+click on a wire, corner or dot (K9d): network mode with that item selected,
         // highlighted as when walked to with the keyboard. kind: NetworkWalk::kind_t
@@ -112,6 +120,20 @@ class KeyboardController
         bool placePart( QString type, QString name );   // At the cross / continuing the chain
         bool libraryPartKey();                      // k: the part selected in the list (K9e)
         bool spaceKey();
+        bool selectNearest();                       // Space, nothing selected: the part or wire nearest the cross
+
+        // Graphical shapes (specs/gfx-arrange.md): stacking order and corner handles
+        bool arrangeKey( QKeyEvent* event, Qt::KeyboardModifiers mods );   // ⇧⌘F ⌥⇧⌘F ⌥⇧⌘B ⇧⌘B
+        Shape* singleShape();                       // The one part selected, if it is a shape
+        QList<int> shapeHandles( Shape* s );        // Its handle corners, clockwise from top left
+        bool cornerActive();                        // A corner of the single selected shape highlighted
+        bool enterCorners();                        // =: the corner nearest to the cross
+        void leaveCorners();
+        bool cornerKey( QKeyEvent* event, Qt::KeyboardModifiers mods );   // false: not a corner key
+        void setShapeCorner( Shape* s, QPointF scenePos, bool newStep );
+        double handleSize();                        // Scene units: 7 screen px
+        QRectF handlesRect( Shape* s );
+        void refreshHandles();
         bool wireKey();                             // w: wire pinFrom to pinTo (K8)
         bool escKey();
         bool enterKey( bool opposite = false );     // Shift+Enter: leave by the opposite pin
@@ -203,6 +225,17 @@ class KeyboardController
         bool    m_rect = false;
         QPointF m_rectAnchor;
         QRectF  m_rectShown;                    // Last painted (repaint)
+
+        QString m_cornerShape;                  // Uid of the shape whose corner is highlighted
+        int     m_corner = -1;                  // Its corner (Shape: 0 TL, 1 TR, 2 BR, 3 BL), -1 none
+        bool    m_cornerDrag = false;           // Dragged with the mouse
+        bool    m_dragSaved = false;            // The drag's undo step is saved
+        QPointF m_dragPress;                    // Scene position of the press
+        QPointF m_dragCorner0;                  // The corner where the drag started
+        QRectF  m_handlesShown;                 // Last painted handles (repaint)
+        QPointF m_refPoint;                     // Where = looks for the nearest corner: the cross
+        bool    m_refSet = false;               // before a key selected the shape, or the click
+        bool    m_lastInputMouse = false;
 
         QPointer<QDialog> m_focusDialog;        // Properties dialog that returns focus to the canvas
 };

@@ -57,7 +57,7 @@ void Image::contextMenu( QGraphicsSceneContextMenuEvent* event, QMenu* menu )
     QObject::connect( loadAction, &QAction::triggered, [=](){ slotLoad(); } );
 
     menu->addSeparator();
-    Component::contextMenu( event, menu );
+    Shape::contextMenu( event, menu );
 }
 
 void Image::slotLoad()

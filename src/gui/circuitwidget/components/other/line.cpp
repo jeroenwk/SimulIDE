@@ -51,7 +51,7 @@ void Line::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* 
     QPen pen = m_bs.pen( m_color, m_border );
     p->setPen( pen );
 
-    p->drawLine( -m_hSize/2, m_vSize/2, m_hSize/2, -m_vSize/2 );
+    p->drawLine( m_area.bottomLeft(), m_area.topRight() );   // The corner handles' ends (odd sizes too)
 
     p->setOpacity( opacity );
     Component::paintSelected( p );

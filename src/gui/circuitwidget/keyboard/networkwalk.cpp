@@ -8,6 +8,7 @@
 #include <QtMath>
 
 #include "networkwalk.h"
+#include "connectorline.h"
 #include "circuit.h"
 #include "connector.h"
 #include "component.h"
@@ -157,6 +158,28 @@ bool NetworkWalk::nearestItem( QPointF p, Step* out )
             }
         }
     }
+    return best < 1e300;
+}
+
+bool NetworkWalk::nearestWire( QPointF p, Step* out, double* dist )
+{
+    double best = 1e300;
+    for( Connector* c : *Circuit::self()->conList() )
+    {
+        if( !c->endPin() ) continue;                     // A wire being drawn
+        if( c->lineList()->isEmpty() || !c->lineList()->first()->isVisible() ) continue;   // A hidden lead
+        QList<QPoint> pts = points( c );
+        for( int i=0; i+1<pts.size(); ++i )
+        {
+            QPointF a = pts[i], b = pts[i+1], ab = b-a;
+            double l2 = QPointF::dotProduct( ab, ab );
+            double t = l2 > 0 ? qBound( 0.0, QPointF::dotProduct( p-a, ab )/l2, 1.0 ) : 0;
+            QPointF q = a+ab*t, d = q-p;
+            double dd = qSqrt( QPointF::dotProduct( d, d ) );
+            if( dd < best ){ best = dd; *out = { stepWire, c->getUid(), -1, q.toPoint(), 0 }; }
+        }
+    }
+    *dist = best;
     return best < 1e300;
 }
 
