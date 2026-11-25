@@ -25,6 +25,10 @@ Safety nets (also used by the sweeps in sweeps/):
   fix being built) does not break a long sweep;
 - resources/data is synced into the built app before the server starts: data files are
   only copied at link time, so an XML-only fix would otherwise be invisible.
+
+$REGRESS_OFFSCREEN=1 (set it before run_test) starts the instance offscreen but not headless,
+so dialogs stay open (view props, then ui type --window types in the dialog); sim.proc is the
+process, to see how `cli quit` ended. No dialog is closed by the harness: a modal one would block.
 """
 
 import filecmp
@@ -152,16 +156,20 @@ class Headless:
             binary = private_copy(binary)
             self.copy_dir = binary.split("/simulide.app/")[0] if "/simulide.app/" in binary else os.path.dirname(binary)
         self.binary = binary
+        self.offscreen = os.environ.get("REGRESS_OFFSCREEN") == "1"   # Not headless: dialogs stay open
         self.socket = "simulide-regress-%d" % os.getpid()
         self.tmp = tempfile.mkdtemp(prefix="simulide-regress-")
         self.proc = None
 
     def __enter__(self):
         logf = open(os.path.join(self.tmp, "server.log"), "w")
-        log("start %s --headless --socket %s (log %s/server.log)" % (self.binary, self.socket, self.tmp))
-        self.proc = subprocess.Popen([self.binary, "--headless", "--socket", self.socket],
-                                     stdout=logf, stderr=subprocess.STDOUT)
+        cmd = [self.binary] + ([] if self.offscreen else ["--headless"]) + ["--socket", self.socket]
+        env = dict(os.environ, QT_QPA_PLATFORM="offscreen") if self.offscreen else None
+        log("start %s%s --socket %s (log %s/server.log)" % (self.binary, "" if self.offscreen else " --headless",
+                                                           self.socket, self.tmp))
+        self.proc = subprocess.Popen(cmd, stdout=logf, stderr=subprocess.STDOUT, env=env)
         sim = RegressSim(binary=self.binary, socket=self.socket, verbose=True)
+        sim.proc = self.proc                  # For a test that ends with `cli quit`: how the process ended
         for _ in range(100):
             try:
                 sim.cli("ping", timeout=5)

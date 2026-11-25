@@ -853,6 +853,13 @@ void CircuitWidget::showDescription()
     m_descWidget->showCircuit();                 // The Messages tab stays in front: it prints the description too
 }
 
+// The Description tab in front; edit: typing the description, as its Edit button
+void CircuitWidget::showDescriptionTab( bool edit )
+{
+    m_bottomTabs->setCurrentWidget( m_descWidget );
+    if( edit && !m_descWidget->editing() ) m_descWidget->startEdit();
+}
+
 void CircuitWidget::saveCirc()
 {
     if( m_curCirc.isEmpty() ) saveCircAs();

@@ -19,6 +19,7 @@
 #include "clirefs.h"
 #include "mainwindow.h"
 #include "circuitwidget.h"
+#include "descriptionwidget.h"
 #include "triggerpane.h"
 #include "triggereditor.h"
 #include <QApplication>
@@ -273,6 +274,16 @@ void CliApi::registerView()
         return QJsonObject{ {"triggers", CircuitWidget::self()->triggersSplit() ? "split" : "tab"} };
     });
 
+    add("view description", "view description [--edit]",
+        "Show the Description tab of the bottom pane. --edit: type the description, as its Edit button (the editor has "
+        "the keyboard focus: ui type --window types there); saving the circuit takes the text typed so far, and the edit goes on.",
+        []( CliCtx& c ) -> QJsonValue
+    {
+        CircuitWidget* w = CircuitWidget::self();
+        w->showDescriptionTab( c.flag("edit") );
+        return QJsonObject{ {"editing", w->descWidget()->editing()} };
+    });
+
     add("messages", "messages [--last N] [--grep TEXT]",
         "Text of the Messages pane, one line per entry (with Log: Verbose off, debug logs are not in it; "
         "settings set logVerbose=true shows them). --last keeps the last N lines, --grep the lines that contain TEXT.",
@@ -354,6 +365,10 @@ void CliApi::registerView()
             }else{
                 comp->openProperties();
                 PropDialog* d = comp->propDialog();
+                // Offscreen, the window system does not activate a new window, as it does a dialog shown
+                // on screen: the keyboard must reach it (ui type --window). Not headless: closed at once
+                if( d && !CliApi::self()->headless() && QGuiApplication::platformName() == "offscreen" )
+                    QApplication::setActiveWindow( d );
                 QString tab = c.opt("tab");
                 if( d && !tab.isEmpty() )
                 {

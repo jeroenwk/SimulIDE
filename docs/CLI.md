@@ -453,7 +453,7 @@ the pause.
 | `ui drag <x1,y1> <x2,y2>` | Drag with the left mouse button between two scene positions (press, moves in 8 px steps, release); returns `kbd state` |
 | `ui click <x,y> [--cmd] [--double]` | Left click at a scene position on the canvas, as the mouse does (on empty canvas: clears the selection, places the keyboard cursor; `--cmd` holds Cmd: on a wire, corner or dot it starts network mode there, and in network mode marks / unmarks a wire; `--double` adds a double click: with `--cmd` on a wire, its net is marked); returns `kbd state` |
 | `ui click --widget messages\|toolbar` | Press and release on Messages or the simulation toolbar, as the mouse does: takes the keyboard focus from the canvas; returns `kbd state` |
-| `ui focus canvas\|none` | Give the canvas keyboard focus or take it away |
+| `ui focus canvas\|none\|editor` | Give the canvas keyboard focus, take it away, or give it to the code editor's current document (no file open: an error; `Cmd+N`, `Cmd+O` and `Cmd+S` then act on that file) |
 
 These commands work on any part with on-screen controls, including push
 buttons, switches, DIP switches, keypads, clocks, potentiometers, variable
@@ -499,9 +499,10 @@ look at the window and point at parts.
 | `view zoom <factor>` / `view center <comp\|x,y>` | Zoom by a factor, or center on a part or point |
 | `view show <comp ...>` | Select the parts and zoom to them |
 | `view keyframes [tab\|split]` | Show the Key frames pane: a tab of the bottom pane, or a split beside the tabs (next to Messages; remembered) |
+| `view description [--edit]` | Show the Description tab of the bottom pane. `--edit`: type the description, as its Edit button (the editor has the keyboard focus: `ui type --window` types there); saving the circuit takes the text typed so far and the edit goes on. Returns `editing` |
 | `view raise` | Bring the window to the front |
 | `view settings [app\|circuit\|simulation\|shortcuts\|close]` | Open the Settings dialog on a tab (`shortcuts`: the keyboard shortcut list, K10), or close it |
-| `view props <comp> [--tab N\|NAME] [--close]` | Open a component's property dialog (on a tab, by number or name), or close it |
+| `view props <comp> [--tab N\|NAME] [--close]` | Open a component's property dialog (on a tab, by number or name), or close it. Offscreen (not headless) the dialog also gets the keyboard focus, as a dialog shown on screen does |
 | `view export` | Show the Export dialog without blocking (the toolbar's Export button opens it modally) |
 
 Capture details:

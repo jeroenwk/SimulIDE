@@ -92,6 +92,8 @@ class CircuitWidget : public QWidget
 
         QSplitter* splitter() { return m_mainSplitter; }
         void showDescription();       // Refresh the Description tab
+        void showDescriptionTab( bool edit=false );   // The Description tab in front; edit: typing it, as its Edit button
+        DescriptionWidget* descWidget() { return m_descWidget; }
         void printDescription();      // Description in white in Messages (on load, before "Circuit Loaded")
         
     public slots:
