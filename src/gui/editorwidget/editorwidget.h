@@ -47,6 +47,7 @@ class EditorWidget : public QWidget, public CompBase
        QWidget* fileWidget( QString file ) { return m_fileList.value( file ); }   // Command line interface
        int fileTabIndex( QString file ) { return m_docWidget->indexOf( m_fileList.value( file ) ); }
        void restoreFile( QString filePath );
+       OutPanelText* outPane() { return &m_outPane; }   // CLI: ui focus editor-output
 
     public slots:
        void loadFile( QString filePath );

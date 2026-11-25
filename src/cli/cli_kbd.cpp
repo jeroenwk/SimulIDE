@@ -21,6 +21,8 @@
 #include "component.h"
 #include "pin.h"
 #include "circuitwidget.h"
+#include "editorwindow.h"
+#include "codeeditor.h"
 #include <QToolBar>
 #include <QAction>
 
@@ -364,21 +366,30 @@ void CliApi::registerKbd()
         return kbdState();
     });
 
-    add("ui focus", "ui focus canvas|none",
-        "Give the canvas keyboard focus, or take it away (as clicking elsewhere does).",
+    add("ui focus", "ui focus canvas|none|editor|editor-output",
+        "Give the canvas keyboard focus, take it away (as clicking elsewhere does), or give it to the "
+        "code editor's current document or to its output pane (ui type --window then types there; the editor's "
+        "own Cmd+N, Cmd+O and Cmd+S act on its file from anywhere in it).",
         []( CliCtx& c ) -> QJsonValue
     {
-        QString w = c.arg( 0, "canvas|none").toLower();
+        QString w = c.arg( 0, "canvas|none|editor|editor-output").toLower();
         CircuitView* v = CircuitView::self();
         bool headless = CliApi::self()->headless();
         if( w == "canvas" ){
             v->setFocus( Qt::OtherFocusReason );
             if( headless ) KeyboardController::self()->setFocused( true );
+        }else if( w == "editor" ){
+            CodeEditor* ce = EditorWindow::self() ? EditorWindow::self()->getCodeEditor() : nullptr;
+            if( !ce ) throw CliError("no file open in the code editor (editor open <file>)");
+            ce->setFocus( Qt::OtherFocusReason );
+        }else if( w == "editor-output" ){      // As a click on it: the editor reads the keys there too
+            if( !EditorWindow::self() ) throw CliError("no code editor");
+            EditorWindow::self()->outPane()->setFocus( Qt::OtherFocusReason );
         }else if( w == "none" ){
             v->clearFocus();
             if( headless ) KeyboardController::self()->setFocused( false );
         }
-        else throw CliError("focus must be canvas or none");
+        else throw CliError("focus must be canvas, none, editor or editor-output");
         return kbdState();
     });
 

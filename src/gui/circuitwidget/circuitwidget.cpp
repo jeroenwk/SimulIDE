@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QSignalBlocker>
+#include <QPointer>
 #include <QSplitter>
 #include <QTabWidget>
 #include <QToolButton>
@@ -426,7 +427,9 @@ void CircuitWidget::createActions()
     // Toolbar keys. The tooltip shows each one as this platform writes it (⌘, on macOS,
     // Ctrl+, elsewhere). File and edit keys and the zoom keys are read on the canvas
     // (Circuit::keyPressEvent, KeyboardController::zoomKey), so the code editor keeps
-    // its own Ctrl+N, Ctrl+S ...; the others are window shortcuts (QAction)
+    // its own Ctrl+N, Ctrl+O, Ctrl+S, Ctrl+Z; off the canvas the file keys are read by
+    // the key filter (fileKey, in the event filter), except there; the others are
+    // window shortcuts (QAction)
     KeyText::tipWithKey( newCircAct,    "Ctrl+N" );
     KeyText::tipWithKey( openCircAct,   "Ctrl+O" );
     KeyText::tipWithKey( saveCircAct,   "Ctrl+S" );
@@ -728,6 +731,7 @@ bool CircuitWidget::eventFilter( QObject* obj, QEvent* ev )
     if( ev->type() == QEvent::KeyPress && obj->isWidgetType() )
     {
         QWidget* w = static_cast<QWidget*>( obj );
+        if( fileKey( static_cast<QKeyEvent*>( ev ), w ) ) return true;
         if( w->window() == window() && simKey( static_cast<QKeyEvent*>( ev ) ) ) return true;
         return false;
     }
@@ -853,6 +857,13 @@ void CircuitWidget::showDescription()
     m_descWidget->showCircuit();                 // The Messages tab stays in front: it prints the description too
 }
 
+// The Description tab in front; edit: typing the description, as its Edit button
+void CircuitWidget::showDescriptionTab( bool edit )
+{
+    m_bottomTabs->setCurrentWidget( m_descWidget );
+    if( edit && !m_descWidget->editing() ) m_descWidget->startEdit();
+}
+
 void CircuitWidget::saveCirc()
 {
     if( m_curCirc.isEmpty() ) saveCircAs();
@@ -874,6 +885,7 @@ void CircuitWidget::saveCirc( QString file )
     if     (  file.endsWith(".simu") ) file = changeExt( file, ".sim1" );
     else if( !file.endsWith(".sim1") ) file.append(".sim1");
 
+    m_descWidget->applyEdit();          // A description still being typed is saved with the rest
     if( Circuit::self()->saveCircuit( file ) )
     {
         m_curCirc = file;
@@ -1328,6 +1340,45 @@ bool CircuitWidget::simKey( QKeyEvent* ev )
             return true;
     }
     return false;
+}
+
+// The file keys from anywhere (user, 2026-11-25): Cmd+N, Cmd+O, Cmd+S and Shift+Cmd+S act
+// wherever the keyboard focus is: a panel of the main window, no widget (after a start) or
+// another window of the app (a part's properties dialog). Not the canvas, which reads them itself
+// (Circuit::keyPressEvent: a value being typed is reverted first); not the code editor, which
+// reads them in all of it for its own file (EditorWidget::keyPressEvent, reached from its output
+// pane and tab bar as from a document); not while a popup or a modal dialog has the keyboard.
+// Undo and redo stay the canvas's (a text field undoes its own text)
+bool CircuitWidget::fileKey( QKeyEvent* ev, QWidget* to )
+{
+    Qt::KeyboardModifiers mods = ev->modifiers() & ~Qt::KeypadModifier;
+    if( mods != Qt::ControlModifier && mods != ( Qt::ControlModifier | Qt::ShiftModifier ) ) return false;
+    int key = ev->key();
+    if( key != Qt::Key_N && key != Qt::Key_O && key != Qt::Key_S ) return false;
+    bool shift = mods & Qt::ShiftModifier;             // Only Save As uses it (Shift+Cmd+N / O: as without)
+    // Where the key is typed: the focused widget. A key press goes up from it to its parents, each
+    // of which asks here, so the receiver alone would not tell. In the code editor it is the editor's:
+    // every widget in it, and every window that has it as parent (its Find dialog)
+    QPointer<QWidget> f = QApplication::focusWidget();
+    QWidget* ctx = f ? static_cast<QWidget*>( f ) : to;
+    if( ctx == &m_circView || m_circView.isAncestorOf( ctx ) ) return false;
+    for( QWidget* w = ctx; w; w = w->parentWidget() )
+        if( qobject_cast<EditorWidget*>( w ) ) return false;
+    if( QApplication::activePopupWidget() || QApplication::activeModalWidget() ) return false;
+    if( ev->isAutoRepeat() ) return true;               // Held down: done at the press
+
+    // The field being typed in, in any other window (a part's properties dialog, Settings), takes
+    // its text when it loses the focus, as when that window is left: a half-typed setting is
+    // applied, a label in a part's properties is saved by Cmd+S or kept when Cmd+N asks whether
+    // to save. It loses the focus and gets it back (a field that closes itself on losing it is
+    // not brought back)
+    if( f && f->window() != window() ){ f->clearFocus(); if( f ) f->setFocus( Qt::OtherFocusReason ); }
+
+    if     ( key == Qt::Key_N ) newCircuit();
+    else if( key == Qt::Key_O ) openCirc();
+    else if( shift )            saveCircAs();
+    else                        saveCirc();
+    return true;
 }
 
 void CircuitWidget::skipForward( int count )

@@ -18,6 +18,7 @@ Exit codes: 0 pass, 1 a check failed (or the test raised), 2 harness error (no b
 - `def test(sim):` builds or opens a circuit, runs it and calls `sim.check(...)`; end the file with `run_test(test)` (see `test_000_harness_divider.py`).
 - Circuits the test needs go next to it as `test_<id>_*.sim1`, or are built through the CLI in the test.
 - Expected values are physics (Ohm's law, time constants, datasheet values), not whatever the simulator printed. SimulIDE favours fast models over accuracy: a tolerance that only fails on a real bug, and a note in the docstring when the model is simplified on purpose.
+- A test that needs a dialog (a part's properties) sets `os.environ["REGRESS_OFFSCREEN"] = "1"` before `run_test`: the instance is then offscreen but not headless, so dialogs stay open (`view props` gives the dialog the keyboard focus, `ui type --window` types in it). `sim.proc` is the process, to see how `cli quit` ended. A modal dialog would block. `test_props_dialog_save_quit.py`.
 
 ## Safety nets
 

@@ -682,7 +682,7 @@ writes it (D22): `Settings (⌘,)` on macOS, `Settings (Ctrl+,)` on Windows and 
 | Button | Key (macOS) | Key (Windows, Linux) | Read by |
 |---|---|---|---|
 | Settings | ⌘, | Ctrl+, | window shortcut |
-| New / Open / Save / Save As | ⌘N ⌘O ⌘S ⇧⌘S | Ctrl+N … | the canvas (existing) |
+| New / Open / Save / Save As | ⌘N ⌘O ⌘S ⇧⌘S | Ctrl+N Ctrl+O Ctrl+S Ctrl+Shift+S | the canvas when it has the focus (existing); anywhere else the key filter (`CircuitWidget::fileKey`, 2026-11-25) |
 | Export as image | ⌘P | Ctrl+P | window shortcut |
 | Undo / Redo | ⌘Z ⇧⌘Z | Ctrl+Z Ctrl+Shift+Z | the canvas (existing) |
 | Zoom to fit | ⌥⌘0 | Ctrl+Alt+0 | the canvas (zoomKey) |
@@ -696,10 +696,32 @@ writes it (D22): `Settings (⌘,)` on macOS, `Settings (Ctrl+,)` on Windows and 
 | Instruments | F10 | F10 | window shortcut |
 | Transient noise | F12 | F12 | window shortcut |
 
-- The file and edit keys stay read by the canvas, so the code editor keeps its own
-  ⌘N ⌘O ⌘S ⌘Z (window shortcuts would take them there too). The zoom keys are read by
-  the canvas because ⌥ changes the character of 0 on macOS: 0 is also matched by its
-  physical key, as ⌘0 already was (AZERTY: the à/0 key, without Shift).
+- Undo / Redo stay read by the canvas (a text field undoes its own text), and the code
+  editor keeps its own ⌘Z (window shortcuts would take it there too). The zoom keys are
+  read by the canvas because ⌥ changes the character of 0 on macOS: 0 is also matched by
+  its physical key, as ⌘0 already was (AZERTY: the à/0 key, without Shift).
+- **⌘N, ⌘O, ⌘S and ⇧⌘S work wherever the focus is** (user, 2026-11-25). Before, only the
+  canvas read them: after a click on Messages, a speed typed in the toolbar, a start of
+  the simulation or in the Description tab they did nothing. Where the canvas has no
+  focus, the key filter of the simulation keys acts (`CircuitWidget::fileKey`, in
+  `eventFilter`), judged by the **focused widget**: a key press goes up from it to its
+  parents, which each ask the filter, so the receiver alone would not tell. So: from a
+  panel of the main window, with no widget focused, and from another window of the app
+  (a part's properties dialog). Not in the code editor, which reads them in all of it for
+  its own file (`EditorWidget::keyPressEvent`: from its output pane or its tab bar as from
+  a document, and in every window that has the editor as parent, its Find dialog); not
+  while a popup or a modal dialog has the keyboard. A save takes a description still being
+  typed in the Description tab (the edit goes on). In another window (a part's properties
+  dialog, Settings), the field being edited loses the focus and gets it back first, so its
+  text is taken as when that window is left: a label in a part's properties is saved by ⌘S,
+  and kept when ⌘N asks whether to save.
+  `tests/regress/test_file_keys_anywhere.py` (headless; the editor's output pane included)
+  and `test_props_dialog_save_quit.py` (offscreen: a headless server closes the dialog).
+- **Quitting with the caret in a field of an open properties dialog crashed**, found
+  with that test: hiding the dialog took the focus from the field, which applied it to
+  its part while the part's properties were being deleted. The dialog is now detached
+  from its part first (`PropDialog::detach`, from `CompBase::~CompBase`). The test ends
+  with `cli quit`: exit code 0.
 - Noise is F12, not F11 as proposed: macOS uses F11 for Show Desktop.
 - On a Mac keyboard the F keys need fn, unless *Use F1, F2, etc. keys as standard
   function keys* is on (System Settings > Keyboard).
@@ -716,6 +738,8 @@ Validate
 - [ ] fn+F5 starts, fn+F6 pauses / resumes, fn+F5 stops; fn+F7 … F10, fn+F12 toggle.
 - [ ] ⌘, opens Settings, ⌘P the export dialog (also with the code editor focused).
 - [ ] ⌥⌘à/0 zooms to fit, ⌃⌘à/0 to the selection, ⌘à/0 to 100 %.
+- [ ] ⌘S saves, ⌘N and ⌘O act, with the focus in Messages, the speed box, the Description
+  tab and a part's properties dialog; in the code editor they act on the file being edited.
 - [ ] Right click a part: Copy ⌘C, Rotate CW ⌘R … (no "Ctrl").
 
 ### K11 — Selection rectangle with Shift+arrows

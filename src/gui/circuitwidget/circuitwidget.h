@@ -92,6 +92,8 @@ class CircuitWidget : public QWidget
 
         QSplitter* splitter() { return m_mainSplitter; }
         void showDescription();       // Refresh the Description tab
+        void showDescriptionTab( bool edit=false );   // The Description tab in front; edit: typing it, as its Edit button
+        DescriptionWidget* descWidget() { return m_descWidget; }
         void printDescription();      // Description in white in Messages (on load, before "Circuit Loaded")
         
     public slots:
@@ -148,6 +150,7 @@ class CircuitWidget : public QWidget
         bool eventFilter( QObject* obj, QEvent* ev ) override;
         bool keysToSim();                    // Focus outside the canvas, text fields, lists, editable combos
         bool simKey( class QKeyEvent* ev );  // Space, Esc, arrows: true when used
+        bool fileKey( class QKeyEvent* ev, QWidget* to );  // Cmd+N / O / S and Shift+Cmd+S off the canvas and out of the code editor: true when it acted
         void logRunInfo( QString what );  // Speed, loads, FPS (the old info pane) in Messages
         void updtKeyOwner();                 // Frame the skip box while the simulation has the keys
         bool m_simHasKeys = false;
