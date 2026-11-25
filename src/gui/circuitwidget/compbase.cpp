@@ -19,6 +19,7 @@ CompBase::CompBase( QString type, QString id )
 }
 CompBase::~CompBase()
 {
+    if( m_propDialog ) m_propDialog->detach();   // First: hiding the dialog must not touch this part any more
     for( ComProperty* p : m_propHash.values() ) delete p;
     if( m_propDialog )
     {

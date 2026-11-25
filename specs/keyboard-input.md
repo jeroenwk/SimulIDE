@@ -715,6 +715,11 @@ writes it (D22): `Settings (⌘,)` on macOS, `Settings (Ctrl+,)` on Windows and 
   properties: saved by ⌘S, and kept when ⌘N asks whether to save).
   `tests/regress/test_file_keys_anywhere.py` (headless) and
   `test_props_dialog_save_quit.py` (offscreen: a headless server closes the dialog).
+- **Quitting with the caret in a field of an open properties dialog crashed**, found
+  with that test: hiding the dialog took the focus from the field, which applied it to
+  its part while the part's properties were being deleted. The dialog is now detached
+  from its part first (`PropDialog::detach`, from `CompBase::~CompBase`). The test ends
+  with `cli quit`: exit code 0.
 - Noise is F12, not F11 as proposed: macOS uses F11 for Show Desktop.
 - On a Mac keyboard the F keys need fn, unless *Use F1, F2, etc. keys as standard
   function keys* is on (System Settings > Keyboard).

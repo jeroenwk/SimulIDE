@@ -23,6 +23,7 @@ class PropDialog : public QDialog, private Ui::PropDialog
         PropDialog( QWidget* parent=0, QString help="" );
 
         void setComponent( CompBase* comp, bool isComp=true );
+        void detach();                   // Its part is going away: nothing is applied to it any more
         void showProp( QString name, bool show );
         void updtValues();
 

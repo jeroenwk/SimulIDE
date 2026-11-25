@@ -276,9 +276,19 @@ bool PropDialog::event( QEvent* e )
 void PropDialog::commitEdit()
 {
     QWidget* w = focusWidget();
-    if( !w ) return;
+    if( !w || !m_component ) return;
     if( QAbstractSpinBox* sb = qobject_cast<QAbstractSpinBox*>( w ) ) sb->interpretText();
     else if( w == labelBox ) on_labelBox_editingFinished();
+}
+
+// Its part is going away (CompBase::~CompBase). Hiding the dialog takes the focus from its field,
+// which applied the field's text to the part while its properties were being deleted (a crash at
+// quit with the caret in a field of an open dialog): from here on nothing of the dialog reaches it
+void PropDialog::detach()
+{
+    m_component = NULL;
+    for( QObject* o : findChildren<QObject*>() )   // No editingFinished, valueChanged ... any more
+        o->blockSignals( true );
 }
 
 void PropDialog::setUndoable( QString prop, QString val ) // Set a property as one undo step
