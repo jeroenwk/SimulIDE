@@ -45,6 +45,7 @@ class NetworkWalk
         bool startFrom( const Step& seed );    // K9c: from a wire, corner or dot (no part)
  static QList<Step> buildFrom( const Step& seed );
  static bool nearestItem( QPointF p, Step* out );   // The dot, corner or wire nearest p
+ static bool nearestWire( QPointF p, Step* out, double* dist );   // The wire nearest p (Space)
         void stop();
         bool active() { return m_active; }
 
