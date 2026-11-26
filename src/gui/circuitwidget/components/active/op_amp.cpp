@@ -43,7 +43,7 @@ OpAmp::OpAmp( QString type, QString id )
      , m_bias( id+"-bias" )
 {
     m_bias.setNumEpins( 2 );
-    m_slewRate = m_ib = m_ios = m_vos = 0;
+    m_slewRate = m_ib = m_ios = m_vos = m_gbw = 0;
     m_aux.setNumEpins( aNum );
     m_area = QRect( -18, -8*2, 36, 8*2*2 );
     setLabelPos(-16,-32, 0);
@@ -101,6 +101,8 @@ OpAmp::OpAmp( QString type, QString id )
                            , this, &OpAmp::offsetCurr, &OpAmp::setOffsetCurr ),
         new DoubProp<OpAmp>("Vos", tr("Input Offset Voltage"),"mV"
                            , this, &OpAmp::offsetVolt, &OpAmp::setOffsetVolt ),
+        new DoubProp<OpAmp>("GBW", tr("Gain-Bandwidth (0 = flat)"),"Hz"
+                           , this, &OpAmp::gbw, &OpAmp::setGbw ),
     },0} );
     enableStates( true );
 
@@ -162,6 +164,9 @@ void OpAmp::initialize()
     m_lastValid = false;
     m_slewDir = 0;
     m_grace = 0;
+    m_gbwPrev = 0;
+    m_gbwT = 0;
+    m_stampT = 0;
     m_output->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
     clearStates();
 }
@@ -192,6 +197,7 @@ void OpAmp::stamp()
     if( !oN ) return;
     oN->addToNoLinList( this );
     m_output->createCurrent();
+    if( m_gbw > 0 ) Simulator::self()->addEvent( Simulator::self()->reactStep(), this ); // Pole steps
 
     auto term = [&]( int aOut, int aIn, eNode* in ){   // gain term of one input
         if( !in || in->getNodeNumber() == 0 ) return;  // Ground or open: a constant (m_constIn)
@@ -222,8 +228,12 @@ void OpAmp::updateStep()
 
 void OpAmp::stampMode()
 {
+    // GBW: a single pole at GBW/Gain, integrated implicitly over dt since the last settled step,
+    // out = a*out(prev) + (1-a)*gain*vd with a = e^(-wp*dt): the same stamp with gain (1-a)*gain
+    // and a constant a*out(prev), so feedback loops through it stay in one solve
+    double a  = ( m_mode == LIN ) ? gbwAlpha() : 0;
     double G  = 1/m_outImp;
-    double gG = ( m_mode == LIN ) ? m_gain*G : 0;
+    double gG = ( m_mode == LIN ) ? m_gain*( 1-a )*G : 0;
     for( int i : { aOP, aON } )
     {
         ePin* p = m_aux.getEpin( i );
@@ -232,28 +242,33 @@ void OpAmp::stampMode()
         if( m_diag[i] ) p->stampAdmitance(-s );   // Same node: -s on the diagonal
         else                    p->stampSingAdm( s );
     }
-    double I = ( m_mode == LIN  ) ? G*( m_constIn+m_nudge )
+    double I = ( m_mode == LIN  ) ? G*( ( 1-a )*m_constIn+a*m_gbwPrev+m_nudge )
              : ( m_mode == SAT_P) ? G*m_voltPos
              : ( m_mode == SAT_N) ? G*m_voltNeg : G*m_slewV;
     m_output->stampCurrent( I );
     m_stampI = I;
     m_stampVpos = m_voltPos;
     m_stampVneg = m_voltNeg;
+    m_stampT = Simulator::self()->circTime();
     m_dirty = false;
 }
 
 void OpAmp::stepSettled()
 {
+    double a = gbwAlpha();
+    double vdS = m_inputP->getVoltage()-m_inputN->getVoltage()+m_vos;
+    double ideal = a*m_gbwPrev+( 1-a )*vdS*m_gain;   // With GBW, where the pole takes the output now
     if( m_output->getEnode() ){   // Into the part: G*(Vout - source), the source is in the aux pins too
-        double src = ( m_mode == LIN ) ? m_gain*( m_inputP->getVoltage()-m_inputN->getVoltage()+m_vos )
+        double src = ( m_mode == LIN ) ? ideal
                    : ( m_mode == SAT_P ) ? m_voltPos : ( m_mode == SAT_N ) ? m_voltNeg : m_slewV;
         m_output->setTrueCurrent( ( m_output->getVoltage()-src )/m_outImp );
         m_lastOut = m_output->getVoltage();
         m_lastT = Simulator::self()->circTime();
         m_lastValid = true;
         if( m_mode != SLEW ) m_grace = 0;
+        m_gbwPrev = m_lastOut;
+        m_gbwT = m_lastT;
     }
-    double ideal = ( m_inputP->getVoltage()-m_inputN->getVoltage()+m_vos )*m_gain;
     double h = 0.01;
     int r = m_region;
     if( r == 1 ){ if( ideal < m_voltPos-h ) r = 0; }
@@ -298,7 +313,8 @@ void OpAmp::voltChanged() // Called when any pin node change volt
     double vp = m_inputP->getVoltage();
     double vn = m_inputN->getVoltage();
     double vd = vp-vn+m_vos;
-    double ideal = vd*m_gain;
+    double a = gbwAlpha();
+    double ideal = a*m_gbwPrev+( 1-a )*vd*m_gain;   // a = 0 without GBW
     double out = m_output->getVoltage();
 
     if( m_mode == SLEW ){                      // The output ramps in runEvent(); only follow the rails
@@ -315,6 +331,7 @@ void OpAmp::voltChanged() // Called when any pin node change volt
     if( !nN || nN->getNodeNumber() == 0 ) cst -= vn;
     cst *= m_gain;
     if( qFabs( cst-m_constIn ) > 1e-9*( 1+qFabs( cst ) ) ){ m_constIn = cst; if( m_mode == LIN ) m_dirty = true; }
+    if( m_gbw > 0 && m_mode == LIN && sim->circTime() != m_stampT ) m_dirty = true; // New dt and out(prev)
 
     if( sim->circTime() != m_flipTime ){ m_flipTime = sim->circTime(); m_flips = 0; m_changes = 0; m_held = false; }
 
@@ -326,7 +343,7 @@ void OpAmp::voltChanged() // Called when any pin node change volt
         {
             m_checkStable = false;
             double dOut = out-m_satOut;
-            if( qFabs( dOut ) > 1e-12 && m_gain*( vd-m_satVd )/dOut > 1 && m_flips < 4 )
+            if( qFabs( dOut ) > 1e-12 && m_gain*( 1-a )*( vd-m_satVd )/dOut > 1 && m_flips < 4 )
             {                                  // Positive feedback: the LIN point is unstable
                 m_flips++;
                 mode = ( m_satOut >= m_voltPos-eps ) ? SAT_N : SAT_P;
@@ -433,8 +450,14 @@ void OpAmp::startSlew( double vs )
 // The target comes from the present inputs, which follow the output through any feedback.
 void OpAmp::runEvent()
 {
-    if( m_mode != SLEW || m_slewRate <= 0 ) return;
     Simulator* sim = Simulator::self();
+    if( m_mode != SLEW ){                      // GBW: move the pole one reactive step
+        if( m_gbw <= 0 ) return;
+        if( m_mode == LIN ) stampMode();
+        sim->addEvent( sim->reactStep(), this );
+        return;
+    }
+    if( m_slewRate <= 0 ) return;
     uint64_t step = slewStep();
     double dv = m_slewRate*step*1e-12;
     double vd = m_inputP->getVoltage()-m_inputN->getVoltage()+m_vos;
@@ -465,12 +488,28 @@ void OpAmp::runEvent()
         m_slewDir = 0;
         m_dirty = true;
         stampMode();
+        if( m_gbw > 0 ) sim->addEvent( sim->reactStep(), this );   // Back to the pole steps
         return;
     }
     m_slewV += dir*dv;
     m_slewDir = dir;
     stampMode();
     sim->addEvent( step, this );
+}
+
+double OpAmp::gbwAlpha()
+{
+    if( m_gbw <= 0 ) return 0;
+    uint64_t now = Simulator::self()->circTime();
+    double dt = ( now > m_gbwT ) ? ( now-m_gbwT )*1e-12 : 0;
+    return qExp(-2*M_PI*m_gbw/m_gain*dt );
+}
+
+void OpAmp::setGbw( double gbw )   // Hz
+{
+    if( gbw < 0 ) gbw = 0;
+    m_gbw = gbw;
+    if( Simulator::self()->isRunning() ) CircuitWidget::self()->powerCircOff();
 }
 
 void OpAmp::stampBias()
@@ -629,5 +668,9 @@ void OpAmp::simState( StateIO& s )
     s.io( m_lastValid );
     s.io( m_slewDir );
     s.io( m_grace );
+    s.io( m_gbw );
+    s.io( m_gbwPrev );
+    s.io( m_gbwT );
+    s.io( m_stampT );
     m_bias.simState( s );
 }
