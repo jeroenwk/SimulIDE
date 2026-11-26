@@ -161,6 +161,9 @@ QList<Setting>& settings()
     list.append({"logCaps", "circuit", "Messages: write charge events of capacitors whose LogCharge property is on (see also: log).",
         [](){ return QJsonValue( EventLog::self()->logCaps() ); },
         []( QString v ){ EventLog::self()->setLogCaps( parseBool( v ) ); }});
+    list.append({"flashSelect", "app", "Flash a part selected by the keyboard (Tab, Space) or a Parts pane row: a highlight square that closes in on it and fades in 0.45 s (screen only, never for the mouse). Saved in the user settings.",
+        [](){ return QJsonValue( Circuit::flashEnabled() ); },
+        []( QString v ){ Circuit::setFlashEnabled( parseBool( v ) ); }});
     list.append({"logVerbose", "circuit", "Messages: also show debug logs (qDebug lines starting with a [tag]); off shows only information, warnings and errors. Debug logs always go to stderr.",
         [](){ return QJsonValue( CircuitWidget::verboseLog() ); },
         []( QString v ){ CircuitWidget::self()->setVerboseLog( parseBool( v ) ); }});

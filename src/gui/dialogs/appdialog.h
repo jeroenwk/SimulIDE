@@ -47,6 +47,7 @@ class AppDialog : public QDialog, private Ui::AppDialog
         // Circuit Settings
         void on_drawGrid_toggled( bool draw );
         void on_showScroll_toggled( bool show );
+        void on_flashSelect_toggled( bool on );
         void on_animate_toggled( bool ani );
         void on_currentFlow_toggled( bool on );
         void on_currentMin_editingFinished();

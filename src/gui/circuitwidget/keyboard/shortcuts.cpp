@@ -28,6 +28,11 @@ const QList<Shortcut>& Shortcuts::all()
         { "Edit", "Rotate counter-clockwise", "Cmd+Shift+R", "Selection" },
         { "Edit", "Flip horizontally",      "Cmd+L",       "Selection" },
         { "Edit", "Flip vertically",        "Cmd+Shift+L", "Selection" },
+        { "Edit", "Lock the selected parts: clicks, rubber bands, Tab, Space and Cmd+A pass them by; not moved, rotated or deleted", "Cmd+Shift+K", "Selection" },
+        { "Edit", "Unlock the selected parts (select them in the Parts pane)", "Opt+Cmd+Shift+K", "Locked parts selected" },
+        { "Selection", "Tab order: the selected parts follow each other in the order they were selected, where the first of them was", "Cmd+Shift+T", "Two or more parts selected" },
+        { "Selection", "Tab order: the selected parts to the front of the walk", "Opt+Cmd+T", "Selection" },
+        { "Selection", "Tab order: the selected parts to the back of the walk", "Opt+Cmd+Shift+T", "Selection" },
         { "Selection", "Select all",        "Cmd+A",       "" },
         { "Selection", "Cancel the wire being drawn, stop linking", "Esc", "" },
         { "Parts", "Add the part bound to a letter at the keyboard cursor. A part selected (or the cross still where "

@@ -33,6 +33,8 @@
 #include "e-bjt.h"
 #include "linker.h"
 #include "keyboardcontroller.h"
+#include "pin.h"
+#include <QGraphicsProxyWidget>
 
 #define tr(str) QCoreApplication::translate("CircuitView",str)
 
@@ -207,8 +209,9 @@ void CircuitView::mousePressEvent( QMouseEvent* event )
                                            || event->button() == Qt::RightButton );
     KeyboardController::self()->pressedAt( mapToScene( event->pos() ) );
     m_kbdPressPos   = event->pos();
+    m_circuit->stopFlash();                             // The mouse is in charge now (specs/parts-pane.md)
     m_kbdPressEmpty = event->button() == Qt::LeftButton && event->modifiers() == Qt::NoModifier
-                   && !itemAt( event->pos() ) && !m_circuit->is_constarted();
+                   && !hitItem( event->pos() ) && !m_circuit->is_constarted();
 
     if( event->button() == Qt::LeftButton && event->modifiers() == Qt::NoModifier
      && !m_circuit->is_constarted() && KeyboardController::self()->handlePress( event->pos() ) )
@@ -224,7 +227,7 @@ void CircuitView::mousePressEvent( QMouseEvent* event )
      && event->modifiers() & Qt::ShiftModifier
      && !m_circuit->is_constarted() )                   // Prepare Copy by drag
     {
-        QGraphicsItem* item = itemAt( event->pos() );
+        QGraphicsItem* item = hitItem( event->pos() );   // Not a locked part
         if( item ){                                                 // Check if item exists before start drag:
             while ( item->parentItem() ) item = item->parentItem(); // Make sure the item deselected is the top graphic item.
 
@@ -291,6 +294,24 @@ void CircuitView::focusOutEvent( QFocusEvent* event )
 {
     QGraphicsView::focusOutEvent( event );
     KeyboardController::self()->setFocused( false );
+}
+
+// The item a click at pos lands on, as for itemAt(), but a locked part and its labels are
+// passed through (specs/parts-pane.md §10.2): a click there is on empty canvas (the cross
+// goes there, a drag is a rubber band). Its pins and controls (switch buttons) still count
+QGraphicsItem* CircuitView::hitItem( QPoint pos )
+{
+    for( QGraphicsItem* it : items( pos ) )
+    {
+        QGraphicsItem* top = it;
+        while( top->parentItem() ) top = top->parentItem();
+        Component* c = ( top->type() == QGraphicsItem::UserType+1 ) ? qgraphicsitem_cast<Component*>( top ) : nullptr;
+        if( c && c->isLocked() && !( it->acceptedMouseButtons() & Qt::LeftButton ) ) continue;
+        if( c && c->isLocked() && it != top && it->type() != QGraphicsProxyWidget::Type
+         && !dynamic_cast<Pin*>( it ) ) continue;      // Labels, badges, gauges of a locked part
+        return it;
+    }
+    return nullptr;
 }
 
 void CircuitView::mouseReleaseEvent( QMouseEvent* event )

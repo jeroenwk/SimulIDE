@@ -596,6 +596,7 @@ void CliApi::registerEdit()
     {
         Component* comp = CliRefs::comp( c.arg( 0, "component") );
         QPointF pos = toGrid( CliRefs::parsePoint( c.arg( 1, "x,y") ) );
+        if( comp->isLocked() ) throw CliError( comp->idLabel()+" is locked: unlock it first (unlock "+comp->idLabel()+")");
 
         Circuit* circ = Circuit::self();
         circ->beginCircuitBatch();
@@ -615,6 +616,7 @@ void CliApi::registerEdit()
         []( CliCtx& c ) -> QJsonValue
     {
         Component* comp = CliRefs::comp( c.arg( 0, "component") );
+        if( comp->isLocked() ) throw CliError( comp->idLabel()+" is locked: unlock it first (unlock "+comp->idLabel()+")");
         QString dir = c.argOr( 1, "cw").toLower();
         if     ( dir == "cw"  ) comp->rotateCW();
         else if( dir == "ccw" ) comp->rotateCCW();
@@ -627,6 +629,7 @@ void CliApi::registerEdit()
         []( CliCtx& c ) -> QJsonValue
     {
         Component* comp = CliRefs::comp( c.arg( 0, "component") );
+        if( comp->isLocked() ) throw CliError( comp->idLabel()+" is locked: unlock it first (unlock "+comp->idLabel()+")");
         QString dir = c.arg( 1, "h|v").toLower();
         if     ( dir == "h" ) comp->slotH_flip();
         else if( dir == "v" ) comp->slotV_flip();
@@ -640,6 +643,8 @@ void CliApi::registerEdit()
         if( c.pos.isEmpty() ) throw CliError("missing component");
         QList<Component*> comps;
         for( QString ref : c.pos ) comps.append( CliRefs::comp( ref ) );
+        for( Component* comp : comps )
+            if( comp->isLocked() ) throw CliError( comp->idLabel()+" is locked: unlock it first (unlock "+comp->idLabel()+")");
 
         stopSimForEdit();
         Circuit* circ = Circuit::self();

@@ -72,6 +72,7 @@ AppDialog::AppDialog( QWidget* parent )
     // Circuit Settings
     drawGrid->setChecked( Circuit::self()->drawGrid() );
     showScroll->setChecked( CircuitView::self()->showScroll() );
+    { QSignalBlocker b( flashSelect ); flashSelect->setChecked( Circuit::flashEnabled() ); }
     animate->setChecked( Circuit::self()->animate() );
     currentFlow->setChecked( CurrentFlow::self()->enabled() );
     currentMin->setText( CurrentFlow::currentStr( CurrentFlow::self()->threshold() ) );
@@ -211,6 +212,7 @@ void AppDialog::on_showScroll_toggled( bool show )
 {
     CircuitView::self()->setShowScroll( show );
 }
+void AppDialog::on_flashSelect_toggled( bool on ) { Circuit::setFlashEnabled( on ); }
 
 void AppDialog::on_animate_toggled( bool ani )
 {

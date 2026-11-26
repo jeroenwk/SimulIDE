@@ -52,6 +52,7 @@
 #include "keyframes.h"
 #include "keyframepane.h"
 #include "triggerpane.h"
+#include "partspane.h"
 #include "simhistory.h"
 #include "cliapi.h"
 
@@ -247,6 +248,8 @@ CircuitWidget::CircuitWidget( QWidget *parent  )
     connect( m_trigPane, &TriggerPane::splitToggled, this, [this]( bool on ){ setTriggersSplit( on ); } );
     connect( m_trigPane, &TriggerPane::wantShown, this, [this](){ showTriggers( false ); } );
     setTriggersSplit( MainWindow::self()->settings()->value("Circuit/triggersSplit", false ).toBool() );
+    m_partsPane = new PartsPane( this );                 // Parts: the last tab (specs/parts-pane.md)
+    m_bottomTabs->addTab( m_partsPane, tr("Parts") );
     m_bottomTabs->setCurrentWidget( m_msgWidget );
 
     m_lastCircDir = MainWindow::self()->settings()->value("lastCircDir").toByteArray();
@@ -272,6 +275,7 @@ void CircuitWidget::clear()
     m_circView.clear();
     m_infoWidget->clearLastRun();
     if( m_trigPane ) m_trigPane->follow();       // The new circuit's triggers
+    if( m_partsPane ) m_partsPane->follow();
 }
 
 void CircuitWidget::createActions()
@@ -854,6 +858,7 @@ void CircuitWidget::showDescription()
     m_scriptPane->refresh();                     // Scripts next to this circuit
     KeyFrames::self()->reload();                 // Key frames next to it
     if( m_trigPane ) m_trigPane->follow();       // Its triggers
+    if( m_partsPane ) m_partsPane->follow();     // Its parts
     m_descWidget->showCircuit();                 // The Messages tab stays in front: it prints the description too
 }
 
@@ -947,6 +952,15 @@ void CircuitWidget::showKeyFrames()
     else m_bottomTabs->setCurrentWidget( m_keyPane );
     QList<int> sizes = m_mainSplitter->sizes();          // The bottom pane folded away: open it
     if( sizes.size() == 2 && sizes.at( 1 ) < 60 ) m_mainSplitter->setSizes( { sizes.at( 0 )+sizes.at( 1 )-160, 160 } );
+}
+
+void CircuitWidget::showParts( QString uid )
+{
+    m_bottomTabs->setCurrentWidget( m_partsPane );
+    QList<int> sizes = m_mainSplitter->sizes();          // The bottom pane folded away: open it
+    if( sizes.size() == 2 && sizes.at( 1 ) < 60 ) m_mainSplitter->setSizes( { sizes.at( 0 )+sizes.at( 1 )-200, 200 } );
+    if( !uid.isEmpty() ) m_partsPane->reveal( uid );
+    else m_partsPane->syncNow();
 }
 
 void CircuitWidget::showTriggers( bool front )

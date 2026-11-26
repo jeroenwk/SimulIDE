@@ -557,6 +557,16 @@
           </widget>
          </item>
          <item>
+          <widget class="QCheckBox" name="flashSelect">
+           <property name="text">
+            <string>Flash a part selected by the keyboard or the Parts pane</string>
+           </property>
+           <property name="toolTip">
+            <string>A short highlight square round a part picked with Tab, Space or a row of the Parts pane, so you see where it is (not for the mouse)</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QCheckBox" name="animate">
            <property name="text">
             <string>Animate</string>

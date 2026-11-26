@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <algorithm>
+#include <functional>
 #include <QtMath>
 #include <math.h>
 
@@ -26,6 +27,7 @@
 #include "propdialog.h"
 #include "linker.h"
 #include "pin.h"
+#include "taborder.h"
 
 #include "doubleprop.h"
 #include "boolprop.h"
@@ -117,6 +119,11 @@ new StrProp <Component>("itemtype","","", this, &Component::itemType,  &Componen
 new StrProp <Component>("CircId"  ,"","", this, &Component::getUid,    &Component::setUid ),
 new BoolProp<Component>("mainComp","","", this, &Component::isMainComp,&Component::setMainComp ),// Related to Subcircuit:
 new StrProp <Component>("ShowProp","","", this, &Component::showProp,  &Component::setShowProp ),
+    }, groupHidden | groupNoCopy } );
+
+    addPropGroup( { "Lock", {                     // specs/parts-pane.md §10: written only when locked
+new StrProp <Component>("Locked","","", this, &Component::lockedStr, &Component::setLockedStr ),
+new StrProp <Component>("tabIndex","","", this, &Component::tabIndexStr, &Component::setTabIndexStr ),   // §12
     }, groupHidden | groupNoCopy } );
 
     addPropGroup( { "CompGraphic", {
@@ -392,6 +399,7 @@ void Component::contextMenuEvent( QGraphicsSceneContextMenuEvent* event )
         Component* parentComp = static_cast<Component*>( this->parentItem() );
         parentComp->contextMenuEvent( event );
     }
+    else if( m_locked ){ event->accept(); lockedMenu( event ); }   // Unlock, Properties, Show in Parts pane
     else if( !acceptedMouseButtons() ) event->ignore();
     else{
         event->accept();
@@ -425,6 +433,17 @@ void Component::contextMenu( QGraphicsSceneContextMenuEvent* event, QMenu* menu 
     
     QAction* propertiesAction = menu->addAction( QIcon( ":/properties.svg"),tr("Properties") );
     QObject::connect( propertiesAction, &QAction::triggered, [=](){ slotProperties(); } );
+
+    QAction* lockAction = menu->addAction( tr("Lock")+"\t"+KeyText::native("Ctrl+Shift+K") );   // specs/parts-pane.md §10
+    QObject::connect( lockAction, &QAction::triggered, [=](){
+        QList<Component*> parts;
+        if( isSelected() )
+            for( QGraphicsItem* it : Circuit::self()->selectedItems() )
+                if( Component* c = dynamic_cast<Component*>( it ) ) if( !c->parentItem() && c->itemType() != "Node" ) parts.append( c );
+        if( !parts.contains( this ) ) parts = { this };
+        Circuit::self()->lockParts( parts, true );
+    });
+    TabOrder::addMenu( menu, this );                 // Tab order submenu (specs/parts-pane.md §12)
     menu->addSeparator();
 
     QAction* rotateCWAction = menu->addAction( QIcon( ":/rotatecw.svg"),tr("Rotate CW")+"\t"+KeyText::native("Ctrl+R") );
@@ -454,6 +473,7 @@ void Component::slotCopy()
 
 void Component::slotCut()
 {
+    if( lockRefused( tr("cut") ) ) return;
     if( !isSelected() ) Circuit::self()->clearSelection();
     setSelected( true );
     Circuit::self()->copy( m_eventpoint );
@@ -462,6 +482,7 @@ void Component::slotCut()
 
 void Component::slotRemove()
 {
+    if( lockRefused( tr("deleted") ) ) return;
     if( !isSelected() ){
         Circuit::self()->clearSelection();
         setSelected( true );
@@ -515,6 +536,7 @@ void Component::slotProperties()
 
 void Component::slotH_flip()
 {
+    if( lockRefused( tr("flipped") ) ) return;
     if( !m_hidden ) Circuit::self()->saveCompChange( m_id, "hflip", getPropStr("hflip") );
     m_Hflip = -m_Hflip;
     setflip();
@@ -522,6 +544,7 @@ void Component::slotH_flip()
 
 void Component::slotV_flip()
 {
+    if( lockRefused( tr("flipped") ) ) return;
     if( !m_hidden ) Circuit::self()->saveCompChange( m_id, "vflip", getPropStr("vflip") );
     m_Vflip = -m_Vflip;
     setflip();
@@ -559,6 +582,7 @@ void Component::rotateHalf() { rotateAngle(-180); }
 
 void Component::rotateAngle( double a )
 {
+    if( lockRefused( tr("rotated") ) ) return;
     if( !m_hidden ) Circuit::self()->saveCompChange( m_id, "rotation", getPropStr("rotation") );
     Component::setRotation( rotation() + a*m_Hflip*m_Vflip );
     if( !m_hidden ) moveSignal();
@@ -797,6 +821,91 @@ void Component::setBackground( QString bck )
     
     return str;
 }*/
+
+// ----- Locked parts (specs/parts-pane.md §10) ----------------------------------
+
+void Component::setLocked( bool l )
+{
+    if( l == m_locked ) return;
+    if( l ) m_lockButtons = acceptedMouseButtons();
+    m_locked = l;
+    Qt::MouseButtons b = l ? Qt::NoButton : m_lockButtons;   // A click passes through to what is below
+    setAcceptedMouseButtons( b );
+    m_idLabel->setAcceptedMouseButtons( b );                 // Its labels are not dragged either
+    m_valLabel->setAcceptedMouseButtons( b );
+    // No hand over a locked part: the canvas's own cursor shows through. Its labels and
+    // child items (a Text's text, ...) too; pins and controls (switch buttons) keep theirs
+    QList<QGraphicsItem*> items = lockItems();
+    if( l ){
+        m_lockCursors.clear();
+        for( QGraphicsItem* it : items )
+        {
+            if( it->hasCursor() ) m_lockCursors[it] = it->cursor();
+            it->unsetCursor();
+        }
+    }else{
+        for( QGraphicsItem* it : items )                     // Only items that are still its own
+            if( m_lockCursors.contains( it ) ) it->setCursor( m_lockCursors.value( it ) );
+        if( !m_lockCursors.contains( this ) ) setCursor( Qt::OpenHandCursor );
+        m_lockCursors.clear();
+    }
+    update();
+}
+
+QList<QGraphicsItem*> Component::lockItems()
+{
+    QList<QGraphicsItem*> out = { this, m_idLabel, m_valLabel };
+    std::function<void(QGraphicsItem*)> walk = [&]( QGraphicsItem* item ){
+        for( QGraphicsItem* c : item->childItems() )
+        {
+            if( dynamic_cast<Pin*>( c ) || c->type() == QGraphicsProxyWidget::Type ) continue;
+            if( !out.contains( c ) ) out.append( c );
+            walk( c );
+        }
+    };
+    walk( this );
+    return out;
+}
+
+bool Component::lockRefused( QString verb )
+{
+    if( !m_locked || m_hidden ) return false;
+    if( Circuit::self() && Circuit::self()->restoring() ) return false;
+    Circuit::self()->noteLocked( { idLabel() }, verb );
+    return true;
+}
+
+void Component::lockedMenu( QGraphicsSceneContextMenuEvent* event )
+{
+    QMenu menu;
+    QAction* unlock = menu.addAction( tr("Unlock")+"\t"+KeyText::native("Ctrl+Alt+Shift+K") );
+    QObject::connect( unlock, &QAction::triggered, [=](){
+        QList<Component*> parts;
+        if( isSelected() )
+            for( QGraphicsItem* it : Circuit::self()->selectedItems() )
+                if( Component* c = dynamic_cast<Component*>( it ) ) if( c->isLocked() ) parts.append( c );
+        if( !parts.contains( this ) ) parts = { this };
+        Circuit::self()->lockParts( parts, false );
+    });
+    QAction* props = menu.addAction( QIcon(":/properties.svg"), tr("Properties") );
+    QObject::connect( props, &QAction::triggered, [=](){ slotProperties(); } );
+    QAction* show = menu.addAction( tr("Show in Parts pane") );
+    QString uid = m_id;
+    QObject::connect( show, &QAction::triggered, [uid](){ CircuitWidget::self()->showParts( uid ); } );
+    menu.exec( event->screenPos() );
+}
+
+void Component::addBomProps()
+{
+    if( getPropGroup("BOM") ) return;
+    addPropGroup( { "BOM", {
+new StrProp<Component>("bomMfr"     , tr("Manufacturer"),"", this, &Component::bomMfr,      &Component::setBomMfr ),
+new StrProp<Component>("bomMpn"     , tr("MPN")         ,"", this, &Component::bomMpn,      &Component::setBomMpn ),
+new StrProp<Component>("bomSupplier", tr("Supplier")    ,"", this, &Component::bomSupplier, &Component::setBomSupplier ),
+new StrProp<Component>("bomSpn"     , tr("Supplier PN") ,"", this, &Component::bomSpn,      &Component::setBomSpn ),
+new StrProp<Component>("bomNotes"   , tr("Notes")       ,"", this, &Component::bomNotes,    &Component::setBomNotes ),
+    }, 0 } );
+}
 
 void Component::paintSelected( QPainter* p )
 {

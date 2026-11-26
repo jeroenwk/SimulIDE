@@ -67,6 +67,7 @@ class CircuitWidget : public QWidget
         void setTriggersSplit( bool split );      // Triggers in the tabs or beside them
         void showTriggers( bool front=true );     // front false: unless Messages is in front
         bool triggersSplit() { return m_trigSplit; }
+        void showParts( QString uid="" );         // The Parts tab in front; uid: that part's row selected (specs/parts-pane.md)
         // Running slower than the set speed: the speed box shows the real speed in orange (realPsPerSec 0: off)
         void showRealSpeed( double realPsPerSec );
         void syncCurrentFlow( bool on ) { if( currentFlowAct->isChecked() != on ) currentFlowAct->setChecked( on ); }
@@ -189,6 +190,7 @@ class CircuitWidget : public QWidget
         class KeyFramePane* m_keyPane = nullptr;
         bool m_keySplit = false;
         class TriggerPane* m_trigPane = nullptr;
+        class PartsPane* m_partsPane = nullptr;
         bool m_trigSplit = false;
         void sizeSplits();
         void updtKeyFrameAct();

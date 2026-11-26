@@ -7,6 +7,8 @@
 #define COMPONENT_H
 
 #include <QGraphicsItem>
+#include <QCursor>
+#include <QHash>
 #include <QGraphicsSceneMouseEvent>
 
 #include "compbase.h"
@@ -106,6 +108,38 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
         void setShowProp( QString prop );
 
         bool isGraphical() { return m_graphical; }
+
+        // Locked parts (specs/parts-pane.md §10): the mouse passes through them, Tab, Space
+        // and Cmd+A skip them, they are not moved, rotated, flipped or deleted. Saved as
+        // Locked="true" (only when locked); copies are pasted unlocked
+        bool isLocked() { return m_locked; }
+        void setLocked( bool l );
+        QString lockedStr() { return m_locked ? "true" : ""; }
+        void setLockedStr( QString s ) { setLocked( s == "true" ); }
+        bool lockRefused( QString verb );   // Locked: a note in Messages ("R1 locked: not rotated"), true
+
+        // Tab order (specs/parts-pane.md §12): 0 = none (reading order, after the indexed
+        // parts); saved as tabIndex="N" only when set; copies are pasted without it
+        int  tabIndex() { return m_tabIndex; }
+        void setTabIndex( int i ) { m_tabIndex = i < 0 ? 0 : i; }
+        QString tabIndexStr() { return m_tabIndex > 0 ? QString::number( m_tabIndex ) : ""; }
+        void setTabIndexStr( QString s ) { setTabIndex( s.toInt() ); }
+
+        // BOM fields (specs/parts-pane.md §3.1): group BOM, after the part's own groups
+        // (Circuit::createItem adds it); empty ones are not saved
+        void addBomProps();
+        QString bomMfr()      { return m_bomMfr; }
+        void setBomMfr( QString s )      { m_bomMfr = s; }
+        QString bomMpn()      { return m_bomMpn; }
+        void setBomMpn( QString s )      { m_bomMpn = s; }
+        QString bomSupplier() { return m_bomSupplier; }
+        void setBomSupplier( QString s ) { m_bomSupplier = s; }
+        QString bomSpn()      { return m_bomSpn; }
+        void setBomSpn( QString s )      { m_bomSpn = s; }
+        QString bomNotes()    { return m_bomNotes; }
+        void setBomNotes( QString s )    { m_bomNotes = s; }
+
+        QString shownProperty() { return m_showProperty; }   // The value label's property, shown or not
 
         QPointF boardPos() { return m_boardPos; }
         void    setBoardPos( QPointF pos ) { m_boardPos = pos; }
@@ -223,6 +257,13 @@ class Component : public CompBase, public QGraphicsItem, public Updatable
 
         bool m_isMainComp;
         bool m_graphical;
+        bool m_locked = false;
+        int  m_tabIndex = 0;
+        Qt::MouseButtons m_lockButtons = Qt::AllButtons;   // Accepted before locking
+        QHash<QGraphicsItem*, QCursor> m_lockCursors;     // Cursors of its items before locking (put back on unlock)
+        QList<QGraphicsItem*> lockItems();                 // Its items that show a cursor: not pins or controls
+        QString m_bomMfr, m_bomMpn, m_bomSupplier, m_bomSpn, m_bomNotes;
+        void lockedMenu( QGraphicsSceneContextMenuEvent* event );
         bool m_showId;
         bool m_showVal;
 

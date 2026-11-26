@@ -77,6 +77,7 @@ class CircuitView : public QGraphicsView
 
         QPoint m_kbdPressPos;       // Keyboard cursor: a left click on empty canvas places it
         bool   m_kbdPressEmpty;
+        QGraphicsItem* hitItem( QPoint pos );   // itemAt(), passing through locked parts
 };
 
 #endif
