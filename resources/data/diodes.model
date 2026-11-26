@@ -2,6 +2,14 @@
 
 <itemlib>
     <itemset type="diode">
+        <!-- 1N5819: 1 A 40 V Schottky rectifier (a buck regulator's catch diode). Is, n and Rs
+             fitted through the datasheet's maximum instantaneous forward voltages (onsemi
+             1N5817-D, 1N5819 column, 300 us pulse test): 0.34 V at 0.1 A, 0.60 V at 1 A,
+             0.90 V at 3 A; so this is the worst-case part (a typical one reads ~0.1 V less).
+             The fit's Is, 0.86 mA, is also the datasheet's maximum reverse current at 40 V
+             (1.0 mA at 25 C). Breakdown at VRSM 48 V (at VRRM, 40 V, the leakage must still be the rated 1 mA). Ratings: IF(AV) 1 A, IFSM 25 A (one
+             60 Hz cycle). -->
+        <item name="1N5819 Schottky" satCurr_nA="859000" resist="0.112" emCoef="2.674" brkDown="48" maxCurr="1" surgeCurr="25" />
         <item name="1N5711 Schottky" satCurr_nA="315" resist="2.8" emCoef="2.03" brkDown="70" />
         <item name="1N34 germanium" satCurr_nA="0.2" resist="0.084" emCoef="2.19" brkDown="60" />
         <!-- ES1J: 1 A 600 V superfast rectifier (trr 35 ns; transient time not modelled).
