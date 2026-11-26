@@ -270,6 +270,7 @@ QJsonObject readComp( Component* comp )
         o["q"]  = num( xt->q() );
         o["fs"] = num( xt->freq() );
         o["fp"] = num( xt->fp() );
+        o["step"] = num( xt->step() );
     }
     else if( Cd4046* pl = dynamic_cast<Cd4046*>( comp ) )   // VCO timing current, phase comparator II state
     {
