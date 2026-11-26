@@ -398,8 +398,13 @@ PD_SET( setMj, mj, 0.01 )
 double Photodiode::isc() { return m_sens*1000; }
 double Photodiode::voc() { return m_data.emCoef*s_vt*log( isc()/m_data.satCur+1 ); }
 
+// Isc and Voc are views of Sensitivity and IS, saved as rounded text: when a circuit is
+// loaded or pasted, Sensitivity and IS (saved in full) already set them, so skip these.
+static bool restoring() { return Circuit::self() && ( Circuit::self()->loading() || Circuit::self()->pasting() ); }
+
 void Photodiode::setIsc( double v )
 {
+    if( restoring() ) return;
     if( v < 1e-15 ) v = 1e-15;
     double vo = voc();
     setSens( v/1000 );
@@ -408,6 +413,7 @@ void Photodiode::setIsc( double v )
 
 void Photodiode::setVoc( double v )
 {
+    if( restoring() ) return;
     if( v < 0.01 ) v = 0.01;
     setSatCur( isc()/( exp( v/( m_data.emCoef*s_vt ) )-1 ) );
 }
