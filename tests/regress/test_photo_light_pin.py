@@ -10,6 +10,7 @@ Expected by hand:
 - Phototransistor BPW85B (7.3 nA/lx base, gain 500), 10 V through 1 k to the collector,
   emitter grounded, light pin at 2 V: 200 lx, IB 1.46 uA, IC = 0.730 mA, 0.730 V across 1 k.
 - Light_Pin off: the dial lux as before (100 lx: 7 uA in the photodiode).
+- Saved with Lux_per_V 50 and reopened: 100 lx, 0.366 V across 1 k.
 """
 
 from harness import run_test
@@ -82,6 +83,17 @@ def test(sim):
     vr = 10 - c("probe", "Q.collector")[0]["voltage"]
     c("sim", "stop")
     within(sim, "phototransistor, light pin 2 V: V across 1 k", vr, 0.72, 0.74)
+
+    # Saved and reopened: the pin, its wire and the scale come back
+    import os, tempfile
+    f = os.path.join(tempfile.mkdtemp(), "light_pin.sim1")
+    c("comp", "set", "Q", "Lux_per_V=50")
+    c("circuit", "save", f)
+    c("circuit", "open", f, "--discard")
+    c("sim", "run", "--for", "1ms")
+    vr = 10 - c("probe", "Q.collector")[0]["voltage"]
+    c("sim", "stop")
+    within(sim, "reopened, 50 lx/V, light pin 2 V: V across 1 k", vr, 0.36, 0.37)
 
 
 run_test(test)

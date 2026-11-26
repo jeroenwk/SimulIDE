@@ -68,6 +68,10 @@ PhotoSensor::PhotoSensor( QString type, QString id )
     m_stamped = 0;
     m_setting = false;
     m_needUpdate = true;
+    m_lightP = nullptr;
+    m_lightPin = false;
+    m_luxPerV = 100;
+    m_pinLux = 0;
 
     setValLabelPos( 15,-20, 0 );
     setLabelPos(-16,-36, 0 );
@@ -82,6 +86,11 @@ void PhotoSensor::initialize()
 void PhotoSensor::stamp()   // Before the inner elements' own stamps (they come later in the list)
 {
     setNodes();
+    m_pinLux = 0;
+    if( m_lightPin && m_lightP->getEnode() ){
+        m_lightP->getEnode()->voltChangedCallback( this );
+        m_pinLux = qMax( 0.0, m_lightP->getVoltage() )*m_luxPerV;
+    }
     m_ePin[P_PH_IN ]->createCurrent();
     m_ePin[P_PH_OUT]->createCurrent();
     m_stamped = photoCurrent();
@@ -102,7 +111,41 @@ void PhotoSensor::updateStep()
             m_ePin[P_PH_OUT]->stampCurrent(-i );
     }   }
     if( m_propDialog ) m_propDialog->updtValues();
-    else setValLabelText( getPropStr( showProp() ) );
+    if( m_lightPin ) setValLabelText( getPropStr("Lux_per_V") );   // The dial is not used
+    else if( !m_propDialog ) setValLabelText( getPropStr( showProp() ) );
+}
+
+void PhotoSensor::voltChanged()   // The light pin's node moved
+{
+    if( !m_lightPin ) return;
+    m_pinLux = qMax( 0.0, m_lightP->getVoltage() )*m_luxPerV;
+    double i = photoCurrent();
+    if( qFabs( i-m_stamped ) <= 1e-15+1e-9*qFabs( i ) ) return;
+    m_stamped = i;
+    m_ePin[P_PH_IN ]->stampCurrent( i );
+    m_ePin[P_PH_OUT]->stampCurrent(-i );
+    Simulator::self()->notCorverged();
+}
+
+Pin* PhotoSensor::createLightPin( QPoint pos, int index, QString id )
+{
+    m_lightP = new Pin( 90, pos, id+"-light", index, this );
+    m_lightP->setEnabled( false );
+    m_lightP->setVisible( false );
+    return m_lightP;
+}
+
+void PhotoSensor::setLightPin( bool b )
+{
+    if( Simulator::self()->isRunning() ) CircuitWidget::self()->powerCircOff();
+    m_lightPin = b;
+    m_lightP->setEnabled( b );
+    m_lightP->setVisible( b );
+    if( !b ) m_lightP->removeConnector();
+    m_proxy->setVisible( !b );   // Light from the pin: no dial
+    m_needUpdate = true;
+    if( !Simulator::self()->isRunning() ) updateStep();
+    update();
 }
 
 void PhotoSensor::setVal( double v )    { m_value = v; updtValue(); }
@@ -188,6 +231,9 @@ void PhotoSensor::simState( StateIO& s )
     s.io( m_sens );
     s.io( m_stamped );
     s.io( m_needUpdate );
+    s.io( m_lightPin );
+    s.io( m_luxPerV );
+    s.io( m_pinLux );
 }
 
 // ---------------------------------------------------------------- Photodiode
@@ -214,9 +260,10 @@ Photodiode::Photodiode( QString type, QString id )
     m_areaComp = QRectF(-10,-12, 20, 20 );
     m_area = m_areaComp;
 
-    m_pin.resize( 2 );
+    m_pin.resize( 3 );
     m_pin[0] = new Pin( 180, QPoint(-16, 0 ), id+"-anode"  , 0, this );
     m_pin[1] = new Pin( 0,   QPoint( 16, 0 ), id+"-cathode", 1, this );
+    m_pin[2] = createLightPin( QPoint(-8,-16 ), 2, id );
 
     setNumEpins( P_COUNT );
 
@@ -238,6 +285,10 @@ Photodiode::Photodiode( QString type, QString id )
                                 , this, &Photodiode::getStep, &Photodiode::setStep ),
         new StrProp<Photodiode>("Model", tr("Model"), modelList( m_models.keys() )
                                , this, &Photodiode::model, &Photodiode::setModel, 0, "enum" ),
+        new BoolProp<Photodiode>("Light_Pin", tr("Light Input Pin"), ""
+                            , this, &Photodiode::lightPin, &Photodiode::setLightPin, propNoCopy ),
+        new DoubProp<Photodiode>("Lux_per_V", tr("Light Pin Scale"), "lx/V"
+                            , this, &Photodiode::luxPerV, &Photodiode::setLuxPerV ),
     },0} );
     addPropGroup( { tr("Parameters"), {
         new DoubProp<Photodiode>("Sensitivity", tr("Photocurrent per lux"), "nA"
@@ -398,10 +449,11 @@ Phototransistor::Phototransistor( QString type, QString id )
     setLabelPos( 18,-8, 0 );
     setValLabelPos( 18, 4, 0 );
 
-    m_pin.resize( 3 );
+    m_pin.resize( 4 );
     m_pin[0] = new Pin( 90,  QPoint( 8,-16 ), id+"-collector", 0, this );
     m_pin[1] = new Pin( 270, QPoint( 8, 16 ), id+"-emitter"  , 1, this );
     m_pin[2] = new Pin( 180, QPoint(-16, 0 ), id+"-base"     , 2, this );
+    m_pin[3] = createLightPin( QPoint(-8,-16 ), 3, id );
 
     setNumEpins( P_COUNT );
 
@@ -421,6 +473,10 @@ Phototransistor::Phototransistor( QString type, QString id )
                                      , this, &Phototransistor::getStep, &Phototransistor::setStep ),
         new StrProp<Phototransistor>("Model", tr("Model"), modelList( m_models.keys() )
                                     , this, &Phototransistor::model, &Phototransistor::setModel, 0, "enum" ),
+        new BoolProp<Phototransistor>("Light_Pin", tr("Light Input Pin"), ""
+                            , this, &Phototransistor::lightPin, &Phototransistor::setLightPin, propNoCopy ),
+        new DoubProp<Phototransistor>("Lux_per_V", tr("Light Pin Scale"), "lx/V"
+                            , this, &Phototransistor::luxPerV, &Phototransistor::setLuxPerV ),
         new BoolProp<Phototransistor>("Base_Pin", tr("Base Pin"), ""
                                      , this, &Phototransistor::basePin, &Phototransistor::setBasePin, propNoCopy ),
     },0} );

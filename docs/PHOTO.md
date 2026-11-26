@@ -2,12 +2,16 @@
 
 Two native light sensors (`src/gui/circuitwidget/components/active/photosensor.{h,cpp}`),
 with the light level set on the part as on the LDR: a dial (or slider) between `Min_Lux`
-and `Max_Lux`, the property `Lux`, or `comp set D1 Lux=500` from the CLI.
+and `Max_Lux`, the property `Lux`, or `comp set D1 Lux=500` from the CLI. Or from a
+voltage: with `Light_Pin` on, the part has a pin `light` and the light is
+max(0, V(light)) × `Lux_per_V` (default 100 lx/V, against ground), so a Wave Generator or
+any circuit node can modulate it (a chopped beam, an IR remote, a tachometer disc). The
+dial is then hidden and not used; the value label shows the scale.
 
 | Part | Library | Pins | Models |
 |---|---|---|---|
-| Photodiode | Active / Rectifiers | `anode`, `cathode` | BPW34 (default), Custom |
-| Phototransistor | Active / Transistors | `collector`, `emitter`, `base` (off by default: `Base_Pin`) | BPW85A, BPW85B (default), BPW85C, Custom |
+| Photodiode | Active / Rectifiers | `anode`, `cathode`, `light` (off by default: `Light_Pin`) | BPW34 (default), Custom |
+| Phototransistor | Active / Transistors | `collector`, `emitter`, `base` (off by default: `Base_Pin`), `light` (`Light_Pin`) | BPW85A, BPW85B (default), BPW85C, Custom |
 
 ## Model
 
@@ -23,6 +27,9 @@ and `Max_Lux`, the property `Lux`, or `comp set D1 Lux=500` from the CLI.
   left open) the base is an internal node. The speed comes from the junction capacitances
   times the gain, as in a real part: a large load resistor makes it slow.
 - Changing a parameter by hand makes the model Custom.
+- **Light pin.** A voltage-controlled current: the pin draws no current, and the
+  photocurrent follows its voltage at every solve (no lag of its own; the part's speed is
+  still its capacitances). `tests/regress/test_photo_light_pin.py`.
 
 ## Fit to the datasheets
 

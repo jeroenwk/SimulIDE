@@ -25,6 +25,7 @@ class eDiode;
 class eBJT;
 class eResistor;
 class eNode;
+class Pin;
 
 class PhotoSensor : public Dialed, public eElement
 {
@@ -38,6 +39,7 @@ class PhotoSensor : public Dialed, public eElement
         virtual void initialize() override;
         virtual void stamp() override;
         virtual void updateStep() override;
+        virtual void voltChanged() override;   // Light pin: lux from its voltage
 
         double getVal() { return m_value; }
         void setVal( double v );
@@ -54,7 +56,13 @@ class PhotoSensor : public Dialed, public eElement
         double sens() { return m_sens; }
         void setSens( double s );
 
-        double photoCurrent() { return m_sens*m_value; }   // A
+        double lux() { return m_lightPin ? m_pinLux : m_value; }   // lx in use: the pin's or the dial's
+        double photoCurrent() { return m_sens*lux(); }   // A
+
+        bool lightPin() { return m_lightPin; }
+        void setLightPin( bool b );
+        double luxPerV() { return m_luxPerV; }
+        void setLuxPerV( double l ) { m_luxPerV = l < 0 ? 0 : l; }
 
         virtual void setLinkedValue( double v, int i=0 ) override;
         virtual void stateRestored() override;
@@ -68,6 +76,12 @@ class PhotoSensor : public Dialed, public eElement
         virtual void updateProxy() override;
         virtual void setNodes()=0;        // Photocurrent ePins (P_PH_IN, P_PH_OUT) onto the part's nodes
         virtual void paintArrows( QPainter* p, double x, double y );
+        Pin* createLightPin( QPoint pos, int index, QString id );   // Off until Light_Pin is set
+
+        Pin*   m_lightP;     // Light input pin (Light_Pin): lux = max(0, V) * Lux_per_V
+        bool   m_lightPin;
+        double m_luxPerV;
+        double m_pinLux;
 
         enum { P_PH_IN=0, P_PH_OUT, P_BASE_COUNT };   // Photocurrent: into P_PH_IN, out of P_PH_OUT
 
