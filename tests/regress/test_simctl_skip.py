@@ -174,6 +174,12 @@ def test_keys(sim):
     key("Space")                                   # Running
     sim.cli("ui", "focus", "canvas")
     sim.check("canvas focused: Space is not ours", 1 if key("Space") == "running" else 0, 1, absolute=0)
+    # Space on the canvas selects the nearest part (specs/gfx-arrange.md §1): the first Esc
+    # unselects it, the canvas keeps the keys
+    st = sim.cli("kbd", "state")
+    sim.check("canvas Space selects the nearest part", 1 if st["selection"] else 0, 1, absolute=0, note=str(st["selection"]))
+    st = sim.cli("ui", "type", "Esc")
+    sim.check("first Esc unselects, canvas keeps the keys", 1 if not st["selection"] and st["focused"] else 0, 1, absolute=0)
     sim.cli("ui", "type", "Esc")                   # On the canvas, nothing to cancel
     sim.check("Esc on the idle canvas does not stop", 1 if sim.cli("sim", "status")["state"] == "running" else 0, 1, absolute=0)
     sim.check("then Space pauses again", 1 if key("Space") == "paused" else 0, 1, absolute=0)
