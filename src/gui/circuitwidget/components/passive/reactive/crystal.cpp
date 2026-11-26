@@ -123,7 +123,23 @@ void Crystal::setStartCurr( double i )
 void Crystal::setup()
 {
     double f = m_data.freq;
-    m_hPs = (uint64_t)qRound64( 1e12/( f*m_steps ) );
+
+    // The step is reactStep / k (k whole, the smallest one that gives at least Steps per cycle):
+    // C0's trapezoidal companion is right only at the crystal's own steps; a solve in between
+    // (a capacitor or transistor stepping at reactStep) sees C0's current reversed, and on a
+    // high-impedance node the other parts integrate that error every step (a Pierce gate is
+    // off by mV, a node with no DC path gets pumped to kV). With the crystal's grid holding
+    // every reactStep solve, there is no solve in between (tests/regress/test_crystal_reactstep_grid.py)
+    double   want = 1e12/( f*m_steps );                // ps
+    uint64_t rs   = Simulator::self()->reactStep();
+    if( rs > 0 )
+    {
+        uint64_t k = (uint64_t)ceil( (double)rs/want - 1e-9 );
+        if( k < 1 ) k = 1;
+        while( k < rs && rs % k ) k++;                 // A whole number of ps
+        m_hPs = rs/k;
+    }
+    else m_hPs = (uint64_t)qRound64( want );
     if( m_hPs < 1 ) m_hPs = 1;
     m_h = m_hPs*1e-12;
 

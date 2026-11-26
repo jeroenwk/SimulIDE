@@ -11,10 +11,10 @@ L1–C1–R1 with the shunt capacitance C0 across it.
 | `C1` | motional capacitance (pF: 18 fF is 0.018 pF; SimulIDE reads no `f` prefix) | |
 | `R1` | motional resistance (ESR) | Q = 2π fs L1 / R1 |
 | `C0` | shunt capacitance | fp = fs √(1 + C1/C0) |
-| `Steps` | integration steps per cycle of fs (default 40, at least 8) | |
+| `Steps` | at least this many integration steps per cycle of fs (default 40, at least 8); the step is reactStep / k, the largest that gives as many | see "Step on the reactStep grid" |
 | `Start_Current` | motional current at t = 0 (0 = none) | skips the start-up |
 
-CLI `read`: `i_motional`, `l1`, `q`, `fs`, `fp`.
+CLI `read`: `i_motional`, `l1`, `q`, `fs`, `fp`, `step` (the integration step in use, s).
 
 ## Why its own integration
 
@@ -27,6 +27,23 @@ discrete series resonance falls exactly on fs. The crystal reads the voltage sol
 own step times (`stepSettled()`) and stamps the next step's companion currents at the next
 event: other parts' events in between would otherwise shift the sample time, and that phase
 error damps a high-Q loop.
+
+### Step on the reactStep grid
+
+The step is reactStep / k, with k the smallest whole number that gives at least `Steps` per
+cycle of fs (4 MHz, `Steps` 40: 5 ns at reactStep 5 ns, 1 ns at 1 ns, 6.25 ns at the default
+1 µs). C0's trapezoidal companion, i(n+1) = 2 C0/h · (v(n+1) − v(n)) − i(n), is right only at
+the crystal's own step times: a solve in between, just after a crystal step, sees C0's
+current reversed (−i(n)). The motional branch, dominated by L1, keeps its current there, so
+only C0 is wrong. Capacitors and transistors step at reactStep from the moment their voltage
+starts changing, so in a running oscillator they solve on the reactStep grid; when the
+crystal's own grid holds it, no solve falls in between. Before this (fixed step 1/(fs × Steps),
+6.25 ns at 4 MHz) a JFET Pierce's gate (C0, Cgs and 10 MΩ) was off by about 9 mV at each
+crystal-only solve at reactStep 5 ns, and at reactStep 1 ns the node between the coupling
+capacitor and the crystal, which has no DC path, was pumped to −7 kV [SIMULATED]
+(`tests/regress/test_crystal_reactstep_grid.py`). Still off the grid: a capacitor or inductor
+with its own `ReaStep`, the noise step, and a reactive part that starts moving between two
+grid points after being still (its chain then runs on its own phase).
 
 ## Using it
 
@@ -42,8 +59,9 @@ error damps a high-Q loop.
   (3.5 ms) at 4 MHz, 60 000 cycles (2 s) at 32.768 kHz. A symmetric circuit sits at its DC
   point for ever without noise. `Start_Current` (e.g. 0.05 mA) starts the motional branch
   ringing at once; lowering Q (a larger R1) shortens the start-up.
-- Simulation cost: an event every 1 / (fs × Steps): 160 million per simulated second at
-  4 MHz. Simulate milliseconds, not seconds.
+- Simulation cost: an event every crystal step (`read` → `step`): 200 million per
+  simulated second at 4 MHz with reactStep 5 ns, 1 000 million at 1 ns (the capacitors step
+  that often anyway). Simulate milliseconds, not seconds.
 
 ## Values of the models
 

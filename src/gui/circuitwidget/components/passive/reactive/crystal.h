@@ -70,6 +70,7 @@ class Crystal : public Comp2Pin, public eResistor
         double q()   { return 6.283185307179586*m_data.freq*l1()/m_data.r1; }
         double fp()  { return m_data.freq*sqrt( 1+m_data.c1/m_data.c0 ); }   // Parallel (anti-) resonance
         double motionalCurrent() { return m_imPrev; }   // A, pin 0 to pin 1 through L1-C1-R1
+        double step() { return m_h; }                   // s, integration step (reactStep / k)
 
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w ) override;
 
