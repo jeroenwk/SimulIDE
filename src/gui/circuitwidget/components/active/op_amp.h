@@ -51,6 +51,8 @@ class OpAmp : public Component, public eElement
         void setOffsetCurr( double ios );
         double offsetVolt() { return m_vos; }             // V, added to V+ - V-
         void setOffsetVolt( double vos );
+        double gbw() { return m_gbw; }                    // Hz, gain-bandwidth product
+        void setGbw( double gbw );
 
         virtual void runEvent() override;                 // Slew steps
 
@@ -73,6 +75,7 @@ class OpAmp : public Component, public eElement
         void stampBias();
         void startSlew( double vs );
         uint64_t slewStep();         // ps between slew steps
+        double gbwAlpha();           // GBW pole: share of the last output kept (0 without GBW)
 
         enum { LIN=0, SAT_P, SAT_N, SLEW };   // SLEW: output a source at m_slewV, moved by events
         enum { aOP=0, aON, aPO, aNO, aNum };  // Internal pins, see stamp()
@@ -106,6 +109,10 @@ class OpAmp : public Component, public eElement
 
         double m_slewRate;           // V/s, 0 = none
         double m_ib, m_ios, m_vos;
+        double m_gbw;                // Hz, 0 = flat gain
+        double m_gbwPrev;            // Output at the last settled step (the pole's state)
+        uint64_t m_gbwT;             // Time of m_gbwPrev
+        uint64_t m_stampT;           // Time of the last stampMode()
         double m_slewV;              // SLEW: output source voltage
         double m_lastOut;            // Output at the last solved step (slew check)
         uint64_t m_lastT;
