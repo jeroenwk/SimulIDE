@@ -52,7 +52,7 @@ def test(sim):
     within(sim, "Isc 2 mA, Voc 0.5 V: into 1 ohm (mA)", cell(sim, ["Isc=2 mA", "Voc=0.5"], 1000, 1) * 1e3, 1.98, 2.02)
 
     c("circuit", "new", "--discard")
-    c("comp", "add", "Photodiode", "--label", "D", "--at", "0,0", "Sensitivity=100000", "IS=5e-10")
+    c("comp", "add", "Photodiode", "--label", "D", "--at", "0,0", "Sensitivity=100000 nA", "IS=500 pA")
     got = c("comp", "get", "D")
     txt = str(got)
     import re

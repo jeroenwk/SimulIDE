@@ -125,6 +125,10 @@ class Photodiode : public PhotoSensor
         void setVj( double v );
         double mj();
         void setMj( double v );
+        double isc();                 // A, short-circuit current at 1 klx = Sensitivity*1000 lx
+        void setIsc( double v );      // Keeps Voc
+        double voc();                 // V, open-circuit voltage at 1 klx (no shunt) = N*Vt*ln(Isc/IS+1)
+        void setVoc( double v );      // Sets IS
 
         double diodeCurrent();   // Anode to cathode, at the pins (A)
 

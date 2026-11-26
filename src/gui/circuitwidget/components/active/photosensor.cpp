@@ -35,8 +35,12 @@ static inline bool same( double a, double b ) { return qAbs( a-b ) <= 1e-9*qMax(
 QHash<QString, photodiodeData_t> Photodiode::m_models = {
     //               sens      IS       N    BV     Rsh    Cj0     Vj   M
     { "BPW34",     { 70e-9,  6.2e-11, 1.0, 60,  5e9,  70e-12, 0.7, 0.62 } },
+    // Small silicon cell (about 60 x 40 mm) [INFERRED, typical]: 100 mA and 0.60 V in full sun
+    // (100 klx), so Isc 1 mA and Voc 0.481 V at 1 klx; shunt 1 M, Cj0 10 nF, breakdown 10 V
+    { "Solar cell",{ 1e-6,   0.1/( exp( 0.6/0.025865 )-1 ), 1.0, 10, 1e6, 10e-9, 0.7, 0.5 } },
     { "Custom",    { 70e-9,  6.2e-11, 1.0, 60,  5e9,  70e-12, 0.7, 0.62 } },
 };
+static const double s_vt = 0.025865;   // eDiode's thermal voltage
 QHash<QString, phototranData_t> Phototransistor::m_models = {
     //               sens (base) gain  IS      BVceo  Cje      Cjc
     { "BPW85A",    { 4.2e-9,  500,  1e-13,  70,  60e-12,  6e-12 } },
@@ -250,6 +254,10 @@ Photodiode::Photodiode( QString type, QString id )
                                 , this, &Photodiode::brkDown, &Photodiode::setBrkDown ),
         new DoubProp<Photodiode>("Shunt", tr("Shunt (dark current)"), "GΩ"
                                 , this, &Photodiode::rShunt, &Photodiode::setRShunt ),
+        new DoubProp<Photodiode>("Isc", tr("Short-circuit Current at 1 klx"), "mA"
+                                , this, &Photodiode::isc, &Photodiode::setIsc ),
+        new DoubProp<Photodiode>("Voc", tr("Open-circuit Voltage at 1 klx"), "V"
+                                , this, &Photodiode::voc, &Photodiode::setVoc ),
     },0} );
     addPropGroup( { tr("Capacitance"), {
         new DoubProp<Photodiode>("Cj0", tr("Junction Capacitance at 0 V"), "pF"
@@ -335,6 +343,23 @@ PD_SET( setRShunt, rShunt, 1 )
 PD_SET( setCj0, cj0, 0 )
 PD_SET( setVj, vj, 0.1 )
 PD_SET( setMj, mj, 0.01 )
+
+double Photodiode::isc() { return m_sens*1000; }
+double Photodiode::voc() { return m_data.emCoef*s_vt*log( isc()/m_data.satCur+1 ); }
+
+void Photodiode::setIsc( double v )
+{
+    if( v < 1e-15 ) v = 1e-15;
+    double vo = voc();
+    setSens( v/1000 );
+    setVoc( vo );
+}
+
+void Photodiode::setVoc( double v )
+{
+    if( v < 0.01 ) v = 0.01;
+    setSatCur( isc()/( exp( v/( m_data.emCoef*s_vt ) )-1 ) );
+}
 
 double Photodiode::diodeCurrent()   // Into the anode pin, through the part
 {

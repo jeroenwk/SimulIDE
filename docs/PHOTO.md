@@ -6,7 +6,7 @@ and `Max_Lux`, the property `Lux`, or `comp set D1 Lux=500` from the CLI.
 
 | Part | Library | Pins | Models |
 |---|---|---|---|
-| Photodiode | Active / Rectifiers | `anode`, `cathode` | BPW34 (default), Custom |
+| Photodiode | Active / Rectifiers | `anode`, `cathode` | BPW34 (default), Solar cell, Custom |
 | Phototransistor | Active / Transistors | `collector`, `emitter`, `base` (off by default: `Base_Pin`) | BPW85A, BPW85B (default), BPW85C, Custom |
 
 ## Model
@@ -23,6 +23,13 @@ and `Max_Lux`, the property `Lux`, or `comp set D1 Lux=500` from the CLI.
   left open) the base is an internal node. The speed comes from the junction capacitances
   times the gain, as in a real part: a large load resistor makes it slow.
 - Changing a parameter by hand makes the model Custom.
+- **Solar cells.** `Isc` (short-circuit current at 1 klx) and `Voc` (open-circuit voltage at
+  1 klx, without the shunt) set Sensitivity = Isc / 1000 lx and IS = Isc / (e^(Voc/(N·Vt)) − 1),
+  Vt = 25.865 mV; setting Isc keeps Voc. Voc rises by N·Vt·ln 10 = 60 mV per decade of light.
+  The model "Solar cell" is a small silicon cell (about 60 × 40 mm) [INFERRED, typical]:
+  100 mA and 0.60 V in full sun (100 klx, raise `Max_Lux`), Isc 1 mA and Voc 0.481 V at
+  1 klx, shunt 1 MΩ, Cj0 10 nF. Put cells in series for a panel (nine for Scherz Fig. 5.21's
+  4.5 V); scale Isc with the area. `tests/regress/test_photodiode_solar_cell.py`.
 
 ## Fit to the datasheets
 
