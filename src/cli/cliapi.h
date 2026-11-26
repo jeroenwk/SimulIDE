@@ -110,6 +110,7 @@ class CliApi
         void registerView();      // cli_view.cpp
         void registerKbd();       // cli_kbd.cpp
         void registerTrigger();   // cli_trigger.cpp
+        void registerParts();     // cli_parts.cpp
 
         QMap<QString, CliCommand> m_cmds;
 

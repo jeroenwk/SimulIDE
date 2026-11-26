@@ -8,6 +8,7 @@
 #include <QClipboard>
 #include <QMimeData>
 #include <QSet>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QtMath>
 #include <QUrl>
@@ -84,6 +85,12 @@ Circuit::Circuit( qreal x, qreal y, qreal width, qreal height, CircuitView*  par
 
     connect( &m_bckpTimer, &QTimer::timeout,
                      this,&Circuit::saveBackup, Qt::UniqueConnection );
+    connect( this, &QGraphicsScene::selectionChanged, this, [this](){ filterLockedSelection(); } );
+    m_flashTimer.setInterval( 16 );
+    connect( &m_flashTimer, &QTimer::timeout, this, [this](){
+        if( m_flashClock.elapsed() > 450 ){ m_flashTimer.stop(); m_flashUids.clear(); }
+        update( m_flashArea );
+    });
 
     qDebug() << endl << "-------------------------------------------------";
     qDebug() << "                   NEW CIRCUIT                   "<<endl;
@@ -91,6 +98,9 @@ Circuit::Circuit( qreal x, qreal y, qreal width, qreal height, CircuitView*  par
 
 Circuit::~Circuit()
 {
+    m_deleting = true;                    // The scene's own destructor removes the items: no
+    disconnect( this, &QGraphicsScene::selectionChanged, nullptr, nullptr );   // selection hooks then
+    m_flashTimer.stop();
     delete m_simulator;   // Waits for the worker: the triggers' checks are no longer used
     delete m_triggers;
 
@@ -665,6 +675,7 @@ Component* Circuit::createItem( QString type, QString id, bool map )
         comp = item->createItemFnPtr()( type, id );
         break;
     }
+    if( comp ) comp->addBomProps();   // After the part's own groups (specs/parts-pane.md §3.1)
     if( map ) m_compMap[id] = comp;
     return comp;
 }
@@ -672,6 +683,8 @@ Component* Circuit::createItem( QString type, QString id, bool map )
 void Circuit::removeItems()                     // Remove Selected items
 {
     if( m_conStarted ) return;
+    dropLockedSelection( tr("deleted") );        // specs/parts-pane.md §10.2
+    if( selectedItems().isEmpty() ) return;
     m_busy = true;
     if( m_simulator->isRunning() ) CircuitWidget::self()->powerCircOff();
 
@@ -729,6 +742,8 @@ void Circuit::removeComp( Component* comp )
     if( !m_compRemoved ) return;
 
     if( m_compList.contains( comp ) ) m_compList.removeOne( comp );
+    m_selOrder.removeAll( comp );
+    m_lockSelOk.remove( comp );
     removeItem( comp );
     m_compMap.remove( comp->getUid() );
     if( !m_removedComps.contains( comp ) ) m_removedComps.append( comp );
@@ -1042,7 +1057,7 @@ void Circuit::copy( QPointF eventpoint )
     }   }
     QString circuit;
     QStringList uids;
-    for( CompBase* comp : complist ){ circuit += comp->toString(); uids << comp->getUid(); }
+    for( CompBase* comp : complist ){ circuit += comp->toString().replace("Locked=\"true\" ", "").remove( QRegularExpression("tabIndex=\"\\d+\" ") ); uids << comp->getUid(); }   // Pasted unlocked
     for( CompBase* con  :  conlist ) circuit += con->toString();
     circuit += m_triggers->copyXml( uids );   // Their own single-signal triggers (§9)
 
@@ -1350,6 +1365,8 @@ void Circuit::mouseReleaseEvent( QGraphicsSceneMouseEvent* event )
 
 void Circuit::mouseMoveEvent( QGraphicsSceneMouseEvent* event )
 {
+    m_mouseScene = event->scenePos();                      // ⌥ over a locked part: its lock mark
+    updtLockHover( event->modifiers() & Qt::AltModifier );
     if( m_conStarted && !KeyboardController::self()->drawing() )   // A keyboard wire follows the cross
     {
         event->accept();
@@ -1385,6 +1402,7 @@ void Circuit::keyPressEvent( QKeyEvent* event )
         return;
     }
     int key = event->key();
+    if( key == Qt::Key_Alt ) updtLockHover( true );
 
     if( ( !m_conStarted || KeyboardController::self()->drawing() )   // K9b: its own wire
      && KeyboardController::self()->keyPress( event ) )
@@ -1441,6 +1459,7 @@ void Circuit::keyPressEvent( QKeyEvent* event )
         }
         if( key == Qt::Key_X )
         {
+            dropLockedSelection( tr("cut") );
             QRectF itemsRect = m_graphicView->selectedRect();
             copy( itemsRect.center() );
             removeItems();
@@ -1466,25 +1485,22 @@ void Circuit::keyPressEvent( QKeyEvent* event )
         else if( key == Qt::Key_O ) CircuitWidget::self()->openCirc();
         else if( key == Qt::Key_A )
         {
-            for( Component* com : m_compList ) com->setSelected( true );
+            for( Component* com : m_compList ) if( !com->isLocked() ) com->setSelected( true );   // Not locked ones (§10.2)
             for( Node*      nod : m_nodeList ) nod->setSelected( true );
             for( Connector* con : m_connList ) con->setSelected( true );
         }
-        else if( key == Qt::Key_R )
+        else if( key == Qt::Key_R || key == Qt::Key_L )
         {
-            if ( event->modifiers() & Qt::ShiftModifier ) {
-                for( Component* com : m_compList ) if( com->isSelected() ) com->rotateCCW();
-            } else {
-                for( Component* com : m_compList ) if( com->isSelected() ) com->rotateCW();
+            QStringList locked;
+            for( Component* com : m_compList )
+            {
+                if( !com->isSelected() ) continue;
+                if( com->isLocked() ){ locked << com->idLabel(); continue; }   // specs/parts-pane.md §10.2
+                bool shift = event->modifiers() & Qt::ShiftModifier;
+                if( key == Qt::Key_R ){ if( shift ) com->rotateCCW();  else com->rotateCW(); }
+                else                  { if( shift ) com->slotV_flip(); else com->slotH_flip(); }
             }
-        }
-        else if( key == Qt::Key_L )
-        {
-            if ( event->modifiers() & Qt::ShiftModifier ) {
-                for( Component* com : m_compList ) if( com->isSelected() ) com->slotV_flip();
-            } else {
-                for( Component* com : m_compList ) if( com->isSelected() ) com->slotH_flip();
-            }
+            if( !locked.isEmpty() ) noteLocked( locked, key == Qt::Key_R ? tr("rotated") : tr("flipped") );
         }
         else QGraphicsScene::keyPressEvent( event );
     }
@@ -1507,6 +1523,7 @@ void Circuit::keyPressEvent( QKeyEvent* event )
 
 void Circuit::keyReleaseEvent( QKeyEvent* event )
 {
+    if( event->key() == Qt::Key_Alt ) updtLockHover( false );
     KeyboardController::self()->keyRelease( event );     // Shift up: a selection rectangle ends
     if( !event->isAutoRepeat()
      && !( event->modifiers() & Qt::ControlModifier ) )  // Deliver Key events ( switches )
@@ -1633,6 +1650,7 @@ void Circuit::moveSelection( QPointF delta, bool newStep )
     QList<Connector*> conMoveList;
     QSet<Connector*>  conSeen;
     QList<Component*> compMoveList;
+    QStringList lockedOut;
 
     if( newStep ) beginCircuitBatch();
 
@@ -1651,6 +1669,7 @@ void Circuit::moveSelection( QPointF delta, bool newStep )
         else if( item->type() == QGraphicsItem::UserType+1 )     // Component selected
         {
             Component* comp = qgraphicsitem_cast<Component*>( item );
+            if( comp->isLocked() ){ lockedOut << comp->idLabel(); continue; }   // specs/parts-pane.md §10.2
             if( newStep ) addCompChange( comp->getUid(), "Pos", comp->getPropStr("Pos") );
             compMoveList.append( comp );
             for( Pin* pin : comp->getPins() )     // Connectors attached to selected Component
@@ -1663,7 +1682,12 @@ void Circuit::moveSelection( QPointF delta, bool newStep )
                     conMoveList.append( con );
                     if( newStep ) addCompChange( con->getUid(), "pointList", con->pListStr() );
     }   }   }   }
-    if( newStep ) saveChanges();
+    if( newStep )
+    {
+        if( m_circChange.size() ) saveChanges();     // Ends the batch
+        else if( m_cicuitBatch > 0 ) m_cicuitBatch--; // Nothing to move (all locked): no step, and the batch closed
+    }
+    if( newStep && !lockedOut.isEmpty() ) noteLocked( lockedOut, tr("moved") );
 
     for( QGraphicsItem* item : itemlist )                        // Move ConnectorLines
         if( item->type() == QGraphicsItem::UserType+2 ) qgraphicsitem_cast<ConnectorLine*>( item )->moveSimple( delta );
@@ -1681,7 +1705,240 @@ void Circuit::moveSelection( QPointF delta, bool newStep )
 
 void Circuit::drawForeground( QPainter* painter, const QRectF& )
 {
+    drawLocks( painter );
+    drawFlash( painter );
     KeyboardController::self()->paint( painter );
+}
+
+// ----- Locked parts (specs/parts-pane.md §10) ----------------------------------
+
+QList<Component*> Circuit::selectedParts()
+{
+    QList<Component*> parts;
+    for( Component* c : m_compList )
+        if( c->isSelected() && !c->parentItem() && c->itemType() != "Node" ) parts.append( c );
+    return parts;
+}
+
+QString Circuit::lockParts( QList<Component*> parts, bool lock )
+{
+    QList<Component*> todo;
+    for( Component* c : parts )
+        if( c && m_compList.contains( c ) && c->itemType() != "Node" && !c->parentItem() && c->isLocked() != lock ) todo.append( c );
+    QString msg;
+    if( todo.isEmpty() )
+    {
+        if( parts.isEmpty() ) msg = lock ? tr("Lock: nothing selected") : tr("Unlock: nothing selected");
+        else msg = lock ? tr("Already locked") : tr("Not locked");
+        qInfo().noquote() << msg;
+        return msg;
+    }
+    beginUndoStep();
+    QStringList labels;
+    for( Component* c : todo )
+    {
+        addCompChange( c->getUid(), "Locked", c->lockedStr() );
+        c->setLocked( lock );
+        labels << c->idLabel();
+        if( lock && c->isSelected() ) m_lockSelOk.insert( c );   // Stays selected now
+    }
+    calcCircuitChanges();
+    endCircuitBatch();
+    setChanged();
+    msg = ( lock ? tr("Locked %1") : tr("Unlocked %1") ).arg( labels.join(", ") );
+    qInfo().noquote() << msg;
+    update();
+    return msg;
+}
+
+void Circuit::selectParts( QList<Component*> parts, bool add )
+{
+    m_selectingParts = true;
+    if( !add ) clearSelection();
+    for( Component* c : parts )
+    {
+        if( !c || ( !m_compList.contains( c ) && !m_nodeList.contains( (Node*)c ) ) ) continue;   // Junctions too (CLI select)
+        if( c->isLocked() ) m_lockSelOk.insert( c );
+        c->setSelected( true );
+    }
+    m_selectingParts = false;
+    filterLockedSelection();                       // Prunes m_lockSelOk, updates the selection order
+}
+
+void Circuit::filterLockedSelection()
+{
+    if( m_selectingParts ) return;
+    if( m_deleting || m_loading ){ m_selOrder.clear(); m_lockSelOk.clear(); return; }   // Parts being freed
+    QList<Component*> drop;
+    for( Component* c : m_compList )
+    {
+        if( !c->isLocked() ){ m_lockSelOk.remove( c ); continue; }
+        if( !c->isSelected() ){ m_lockSelOk.remove( c ); continue; }
+        if( !m_lockSelOk.contains( c ) ) drop.append( c );   // A rubber band, Cmd+A...: not a locked part
+    }
+    if( !drop.isEmpty() )
+    {
+        m_selectingParts = true;
+        for( Component* c : drop ) c->setSelected( false );
+        m_selectingParts = false;
+    }
+    updtSelOrder();
+}
+
+// The selected parts in the order they were selected: those no longer selected go, the
+// newly selected ones are added (several at once, a rubber band: in reading order)
+void Circuit::updtSelOrder()
+{
+    if( m_deleting || m_loading ){ m_selOrder.clear(); return; }
+    QList<Component*> now = selectedParts();
+    QList<Component*> keep;
+    for( Component* c : m_selOrder ) if( now.contains( c ) ) keep << c;
+    QList<Component*> added;
+    for( Component* c : now ) if( !keep.contains( c ) ) added << c;
+    if( added.size() > 1 )
+    {
+        QList<Component*> reading = KeyboardController::self()->readingOrder();
+        std::stable_sort( added.begin(), added.end(), [&reading]( Component* a, Component* b ){
+            return reading.indexOf( a ) < reading.indexOf( b ); } );
+    }
+    m_selOrder = keep+added;
+}
+
+QList<Component*> Circuit::selectionOrder()
+{
+    updtSelOrder();
+    return m_selOrder;
+}
+
+void Circuit::noteLocked( QStringList labels, QString verb )
+{
+    if( labels.isEmpty() ) return;
+    qInfo().noquote() << tr("%1 locked: not %2").arg( labels.join(", ") ).arg( verb );
+}
+
+bool Circuit::dropLockedSelection( QString verb )
+{
+    QList<Component*> locked;
+    for( Component* c : m_compList ) if( c->isSelected() && c->isLocked() ) locked.append( c );
+    if( locked.isEmpty() ) return false;
+    QStringList labels;
+    m_selectingParts = true;
+    for( Component* c : locked ){ labels << c->idLabel(); c->setSelected( false ); m_lockSelOk.remove( c ); }
+    m_selectingParts = false;
+    noteLocked( labels, verb );
+    return true;
+}
+
+bool Circuit::flashEnabled()
+{
+    return MainWindow::self()->settings()->value("Circuit/flashSelect", true ).toBool();
+}
+
+void Circuit::setFlashEnabled( bool on )
+{
+    MainWindow::self()->settings()->setValue("Circuit/flashSelect", on );
+    if( !on && Circuit::self() ) Circuit::self()->stopFlash();
+}
+
+void Circuit::flashParts( QList<Component*> parts )
+{
+    if( !flashEnabled() ) return;
+    m_flashUids.clear();
+    m_flashArea = QRectF();
+    for( Component* c : parts )
+    {
+        if( !c || !m_compList.contains( c ) ) continue;
+        m_flashUids << c->getUid();
+        QRectF r = c->sceneBoundingRect().adjusted( -24, -24, 24, 24 );
+        m_flashArea = m_flashArea.isNull() ? r : m_flashArea.united( r );
+    }
+    if( m_flashUids.isEmpty() ) return;
+    m_flashClock.restart();
+    m_flashTimer.start();
+    update( m_flashArea );
+}
+
+void Circuit::stopFlash()
+{
+    if( m_flashUids.isEmpty() ) return;
+    m_flashTimer.stop();
+    m_flashUids.clear();
+    update( m_flashArea );
+}
+
+QStringList Circuit::flashing()
+{
+    if( m_flashUids.isEmpty() || m_flashClock.elapsed() > 450 ) return {};
+    return m_flashUids;
+}
+
+void Circuit::drawFlash( QPainter* painter )
+{
+    if( m_flashUids.isEmpty() ) return;
+    CircuitView* v = CircuitView::self();
+    if( !v || painter->device() != v->viewport() ) return;   // Not in exports and captures
+    double t = qMin( m_flashClock.elapsed()/450.0, 1.0 );   // 0.45 s
+    double in = qMin( t/0.5, 1.0 );
+    double ease = 1-( 1-in )*( 1-in )*( 1-in );             // Fast, then slowing down on the part
+    double margin = 3+14*( 1-ease );
+    double opacity = 0.85*( t < 0.5 ? 1.0 : 1.0-( t-0.5 )/0.5 );
+    painter->save();
+    painter->setRenderHint( QPainter::Antialiasing, true );
+    painter->setOpacity( opacity );
+    painter->setPen( QPen( Theme::highlight(), 1.8 ) );
+    painter->setBrush( Qt::NoBrush );
+    for( Component* c : m_compList )
+    {
+        if( !m_flashUids.contains( c->getUid() ) ) continue;
+        QRectF r = c->sceneBoundingRect().adjusted( -margin, -margin, margin, margin );
+        painter->drawRoundedRect( r, 3, 3 );
+    }
+    painter->restore();
+}
+
+void Circuit::updtLockHover( bool alt )
+{
+    QString uid;
+    if( alt )
+        for( Component* c : m_compList )
+        {
+            if( !c->isLocked() || !c->isVisible() || c->parentItem() ) continue;
+            if( c->sceneBoundingRect().contains( m_mouseScene ) ){ uid = c->getUid(); break; }
+        }
+    if( uid == m_lockHover ) return;
+    m_lockHover = uid;
+    update();
+}
+
+void Circuit::drawLocks( QPainter* painter )
+{
+    CircuitView* v = CircuitView::self();
+    if( !v || painter->device() != v->viewport() ) return;   // Not in exports and captures
+    painter->save();
+    painter->setRenderHint( QPainter::Antialiasing, true );
+    for( Component* c : m_compList )
+    {
+        if( !c->isLocked() || !c->isVisible() || c->parentItem() ) continue;
+        QRectF r = c->sceneBoundingRect();
+        if( c->isSelected() )                      // Selected from the pane: dashed outline
+        {
+            QPen pen( Theme::highlight(), 1.2, Qt::DashLine );
+            painter->setPen( pen );
+            painter->setBrush( Qt::NoBrush );
+            painter->drawRect( r.adjusted( -1, -1, 1, 1 ) );
+        }
+        if( c->getUid() == m_lockHover )           // ⌥ held over it: a small lock at its top right
+        {
+            QPointF o( r.right()-2, r.top()-4 );
+            QRectF body( o.x()-6, o.y()-1, 9, 7 );
+            painter->setPen( QPen( Theme::highlight(), 1.4 ) );
+            painter->setBrush( Qt::NoBrush );
+            painter->drawArc( QRectF( body.x()+1.5, body.y()-5, 6, 9 ), 0, 180*16 );
+            painter->setBrush( Theme::highlight() );
+            painter->drawRoundedRect( body, 1, 1 );
+        }
+    }
+    painter->restore();
 }
 
 void Circuit::updatePin( ePin* epin, QString oldId, QString newId )

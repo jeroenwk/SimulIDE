@@ -186,6 +186,7 @@ CliApi::CliApi()
     registerView();
     registerKbd();
     registerTrigger();
+    registerParts();
 }
 CliApi::~CliApi(){ m_pSelf = nullptr; }
 
@@ -304,7 +305,7 @@ void CliApi::exec( const QJsonObject& req, std::function<void(QJsonObject)> done
     }
     // name=value words reach only the commands that read them; anywhere else they were dropped
     // without a word (scope set SC InputImped=1G, create-circuit #266)
-    static const QStringList takesSets = {"comp add","comp set","settings set","editor compiler","serial send"};
+    static const QStringList takesSets = {"comp add","comp set","settings set","editor compiler","serial send","parts set"};
     if( !ctx.sets.isEmpty() && !takesSets.contains( cmd ) )
     {
         QStringList given;

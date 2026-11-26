@@ -109,6 +109,9 @@ class KeyboardController
 
         QJsonObject state();                     // CLI: kbd state
 
+        // Tab's walk (K4): top-level, visible, unlocked parts, rows top to bottom, left to right
+        QList<Component*> readingOrder();
+
     private:
         KeyboardController();
 
@@ -124,6 +127,8 @@ class KeyboardController
 
         // Graphical shapes (specs/gfx-arrange.md): stacking order and corner handles
         bool arrangeKey( QKeyEvent* event, Qt::KeyboardModifiers mods );   // ⇧⌘F ⌥⇧⌘F ⌥⇧⌘B ⇧⌘B
+        bool lockKey( QKeyEvent* event, Qt::KeyboardModifiers mods );
+        bool tabOrderKey( QKeyEvent* event, Qt::KeyboardModifiers mods );   // ⇧⌘T ⌥⌘T ⇧⌥⌘T (§12)   // ⇧⌘K lock, ⌥⇧⌘K unlock (specs/parts-pane.md §10)
         Shape* singleShape();                       // The one part selected, if it is a shape
         QList<int> shapeHandles( Shape* s );        // Its handle corners, clockwise from top left
         bool cornerActive();                        // A corner of the single selected shape highlighted
@@ -163,7 +168,6 @@ class KeyboardController
 
         void selectPart( Component* comp );
         Component* compByUid( QString uid );
-        QList<Component*> readingOrder();
         void pairPins( Component* a, Component* b );
 
         void updatePin( QString id );

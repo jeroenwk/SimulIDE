@@ -20,6 +20,7 @@
 #include "label.h"
 
 #include "keyboardcontroller.h"
+#include "taborder.h"
 #include "wirestyledialog.h"
 #include "circuitview.h"
 #include "circuit.h"
@@ -132,6 +133,8 @@ bool KeyboardController::keyPress( QKeyEvent* event )
     if( m_drawing ) return drawKey( event, mods );   // K9b: every key goes to the wire being drawn
 
     if( arrangeKey( event, mods ) ) return true;     // Stacking order of shapes (also with a corner)
+    if( lockKey( event, mods ) ) return true;        // Lock / unlock the selected parts
+    if( tabOrderKey( event, mods ) ) return true;    // ⇧⌘T as selected, ⌥⌘T front, ⇧⌥⌘T back
 
     // A shape's corner highlighted (=, a click on its handle): Tab, arrows, = / Esc; any
     // other key leaves the corner and acts as usual
@@ -265,15 +268,15 @@ Component* KeyboardController::compByUid( QString uid )
 
 Component* KeyboardController::lastPart() { return compByUid( m_lastPart ); }
 
-// Parts (no junctions, no hidden parts, no parts inside boards) in reading order:
+// Parts (no junctions, no hidden parts, no parts inside boards, no locked parts) in reading order:
 // rows top to bottom (centres within 16 px are one row), left to right in a row
 QList<Component*> KeyboardController::readingOrder()
 {
     QList<Component*> parts;
     for( Component* c : *Circuit::self()->compList() )
-        if( c->itemType() != "Node" && c->isVisible() && !c->parentItem() ) parts.append( c );
+        if( c->itemType() != "Node" && c->isVisible() && !c->parentItem() && !c->isLocked() ) parts.append( c );
 
-    std::sort( parts.begin(), parts.end(), []( Component* a, Component* b ){
+    std::stable_sort( parts.begin(), parts.end(), []( Component* a, Component* b ){
         return a->sceneBoundingRect().center().y() < b->sceneBoundingRect().center().y(); });
 
     QList<Component*> out, row;
@@ -307,7 +310,7 @@ void KeyboardController::selectPart( Component* comp )
 
 bool KeyboardController::tabKey( int dir )
 {
-    QList<Component*> order = readingOrder();
+    QList<Component*> order = TabOrder::walk();   // Its own order when set (specs/parts-pane.md §12)
     if( order.isEmpty() ) return true;       // Keep Tab on the canvas anyway
 
     Component* cur = nullptr;
@@ -329,6 +332,7 @@ bool KeyboardController::tabKey( int dir )
         }
     }
     selectPart( next );
+    Circuit::self()->flashParts( { next } );   // Where it is (keyboard, not the mouse)
     return true;
 }
 
@@ -1778,6 +1782,7 @@ bool KeyboardController::selectNearest()
     if( !part ){ say("Keyboard: nothing to select"); return true; }
     qDebug() << "[kbd] Space: the part" << part->getUid() << "nearest to the cross," << partD << "px";
     selectPart( part );
+    Circuit::self()->flashParts( { part } );   // Where it is (keyboard, not the mouse)
     return true;
 }
 
@@ -1800,6 +1805,39 @@ bool KeyboardController::arrangeKey( QKeyEvent* event, Qt::KeyboardModifiers mod
                         : ( alt ? ZOrder::backward : ZOrder::toBack );
     QString msg = ZOrder::apply( op, ZOrder::selectedShapes() );
     if( !msg.isEmpty() ) say( msg );
+    return true;
+}
+
+// ⇧⌘K locks the selected parts, ⌥⇧⌘K unlocks them (specs/parts-pane.md §10.1). With ⌥ the
+// physical key decides (Option changes the character on macOS)
+bool KeyboardController::lockKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
+{
+    if( !( mods & Qt::ControlModifier ) || !( mods & Qt::ShiftModifier ) || ( mods & Qt::MetaModifier ) ) return false;
+    bool k = event->key() == Qt::Key_K;
+#if defined( Q_OS_MACOS )
+    if( event->nativeVirtualKey() == 0x28 ) k = true;          // kVK_ANSI_K
+#endif
+    if( !k ) return false;
+    Circuit::self()->lockParts( Circuit::self()->selectedParts(), !( mods & Qt::AltModifier ) );
+    return true;
+}
+
+// Tab order (specs/parts-pane.md §12): ⇧⌘T the selected parts in the order they were
+// selected, ⌥⌘T to the front of the walk, ⇧⌥⌘T to the back. The physical T decides
+bool KeyboardController::tabOrderKey( QKeyEvent* event, Qt::KeyboardModifiers mods )
+{
+    if( !( mods & Qt::ControlModifier ) || ( mods & Qt::MetaModifier ) ) return false;
+    bool t = event->key() == Qt::Key_T;
+#if defined( Q_OS_MACOS )
+    if( event->nativeVirtualKey() == 0x11 ) t = true;          // kVK_ANSI_T
+#endif
+    if( !t ) return false;
+    bool shift = mods & Qt::ShiftModifier, alt = mods & Qt::AltModifier;
+    if( !shift && !alt ) return false;                         // ⌘T alone: not ours
+    Circuit* circ = Circuit::self();
+    if( !alt )      TabOrder::asSelected( circ->selectionOrder() );
+    else if( shift ) TabOrder::toBack( circ->selectedParts() );
+    else             TabOrder::toFront( circ->selectedParts() );
     return true;
 }
 

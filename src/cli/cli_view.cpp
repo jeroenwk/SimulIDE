@@ -416,8 +416,7 @@ void CliApi::registerView()
         {
             QList<Component*> comps;
             for( QString ref : c.pos ) comps.append( CliRefs::comp( ref ) );   // Resolve all first
-            if( !c.flag("add") ) circ->clearSelection();
-            for( Component* comp : comps ) comp->setSelected( true );
+            circ->selectParts( comps, c.flag("add") );   // Locked parts too, as the Parts pane (specs/parts-pane.md §10.3)
         }
         QJsonArray rows;
         for( Component* comp : selectedComps() ) rows.append( CliRefs::compJson( comp, false ) );

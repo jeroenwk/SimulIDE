@@ -52,6 +52,7 @@ static QJsonObject kbdState()
         for( Pin* q : c->pinsClockwise() ) cw.append( CliRefs::pinRef( q ) );
         o["pinsClockwise"] = cw;
     }
+    if( Circuit::self() ) o["flashing"] = QJsonArray::fromStringList( Circuit::self()->flashing() );   // specs/parts-pane.md
     return o;
 }
 
@@ -256,7 +257,8 @@ void CliApi::registerKbd()
 
     add("ui mouse", "ui mouse <x,y>",
         "Move the mouse over the canvas to a scene position (no button), as a real mouse move. "
-        "The view scrolls to show the point first.",
+        "The view scrolls to show the point first. The reply's cursor_shape is the pointer an item there "
+        "sets (openhand, closedhand, arrow, pointinghand, cross or a Qt number), \"view\" when none does.",
         []( CliCtx& c ) -> QJsonValue
     {
         QStringList xy = c.arg( 0, "x,y").split(',');
@@ -267,7 +269,18 @@ void CliApi::registerKbd()
         QPoint vp = v->mapFromScene( p );
         QMouseEvent move( QEvent::MouseMove, vp, v->viewport()->mapToGlobal( vp ), Qt::NoButton, Qt::NoButton, Qt::NoModifier );
         QApplication::sendEvent( v->viewport(), &move );
-        return kbdState();
+        QJsonObject st = kbdState();
+        QString cur = "view";                            // As QGraphicsView picks it: the first item
+        for( QGraphicsItem* it : v->items( vp ) )        // under the pointer that has a cursor
+            if( it->hasCursor() ){
+                Qt::CursorShape sh = it->cursor().shape();
+                cur = sh == Qt::OpenHandCursor ? "openhand" : sh == Qt::ClosedHandCursor ? "closedhand"
+                    : sh == Qt::ArrowCursor ? "arrow" : sh == Qt::PointingHandCursor ? "pointinghand"
+                    : sh == Qt::CrossCursor ? "cross" : QString::number( int( sh ) );
+                break;
+            }
+        st["cursor_shape"] = cur;                        // "view": none of its own (the canvas's)
+        return st;
     });
 
     add("ui toolbar", "ui toolbar",

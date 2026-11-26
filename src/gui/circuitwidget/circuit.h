@@ -8,6 +8,7 @@
 
 #include <QGraphicsScene>
 #include <QTimer>
+#include <QElapsedTimer>
 
 #include "component.h"
 #include "connector.h"
@@ -103,6 +104,27 @@ class Circuit : public QGraphicsScene
 
         Triggers* triggers() { return m_triggers; }   // Its triggers (specs/triggers.html), saved with it
 
+        // Locked parts (specs/parts-pane.md §10)
+        // lock or unlock parts: one undo step, a line in Messages; returns that line
+        QString lockParts( QList<Component*> parts, bool lock );
+        // Select parts as the Parts pane and CLI select do: locked ones too (the mouse and
+        // a rubber band can't). add: keep the current selection
+        void selectParts( QList<Component*> parts, bool add=false );
+        // "R1, R2 locked: not moved" in Messages
+        void noteLocked( QStringList labels, QString verb );
+        // The selection's locked parts are unselected, with a note (cut, deleted): true if any
+        bool dropLockedSelection( QString verb );
+        QList<Component*> selectedParts();             // Selected top-level parts, no junctions
+        QList<Component*> selectionOrder();            // The same, in the order they were selected (§12)
+
+        // A highlight square that closes in on the parts and fades (~0.7 s), so the eye finds
+        // them: keyboard selection (Tab, Space) and the Parts pane, not the mouse. Screen only
+        void flashParts( QList<Component*> parts );
+        QStringList flashing();                        // Uids still flashing (CLI kbd state)
+        void stopFlash();                              // A mouse press on the canvas ends it
+ static bool flashEnabled();                           // App setting Circuit/flashSelect (default on)
+ static void setFlashEnabled( bool on );
+
         Component* createItem( QString name, QString id, bool map=true );
 
         QString newSceneId() { return QString::number(++m_seqNumber); }
@@ -171,6 +193,7 @@ class Circuit : public QGraphicsScene
 
         void drawBackground( QPainter* painter, const QRectF &rect );
         void drawForeground( QPainter* painter, const QRectF &rect ) override;
+        void drawLocks( QPainter* painter );      // Dashed outline of selected locked parts, ⌥-hover lock mark
 
     signals:
         void keyEvent( QString key, bool pressed );
@@ -262,6 +285,21 @@ class Circuit : public QGraphicsScene
         Simulator* m_simulator;
         Triggers*  m_triggers;
         QHash<QString, QString> m_pasteUids;   // Pasting: old uid -> new uid (their triggers follow)
+
+        void filterLockedSelection();          // selectionChanged: locked parts only when selected by selectParts
+        QSet<Component*> m_lockSelOk;          // Locked parts selected by selectParts
+        QList<Component*> m_selOrder;          // Selected parts in the order they were selected
+        void updtSelOrder();
+        bool m_selectingParts = false;
+        QString m_lockHover;                   // Locked part under the pointer with ⌥ held (its lock mark)
+        QPointF m_mouseScene;                  // Last pointer position on the canvas
+        void updtLockHover( bool alt );
+
+        QStringList   m_flashUids;
+        QElapsedTimer m_flashClock;
+        QTimer        m_flashTimer;
+        QRectF        m_flashArea;                     // Scene area to repaint
+        void drawFlash( QPainter* painter );
 
         //--- Undo/Redo ----------------------------------
 
