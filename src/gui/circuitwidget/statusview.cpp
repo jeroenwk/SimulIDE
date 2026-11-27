@@ -19,6 +19,7 @@
 #include "theme.h"
 #include "mcu.h"
 #include "scriptcpu.h"
+#include "connectorline.h"
 
 StatusView* StatusView::self()
 {
@@ -173,11 +174,36 @@ void StatusBadge::setBlocks( const QList<StatusView::Block>& blocks )
         if( b.level > m_worst ) m_worst = b.level;
     }
     m_pills.clear();
-    double bottom = body.top()-16;        // Above the part's name label
+    // Where: above the part (over its name label), else beside it or below, the first place no
+    // wire runs through (a wire into a transistor's top pin ran under the badge, create-circuit
+    // #747). Blocks of rows, each centred on cx; `bottom` is the last row's bottom
+    double blockW = 0;
+    for( double w : widths ) blockW = qMax( blockW, w );
+    double blockH = rows.size()*(h+rowGap)-rowGap;
+    QPointF c = body.center();
+    QList<QPointF> spots = {                                   // (cx, bottom)
+        { c.x(), body.top()-18 },                              // above, centred
+        { body.center().x()-blockW/2-2, body.top()-18 },       // above, left of the centre line
+        { body.center().x()+blockW/2+2, body.top()-18 },       // above, right of it
+        { body.right()+6+blockW/2, c.y()+blockH/2 },           // right
+        { body.left()-6-blockW/2, c.y()+blockH/2 },            // left
+        { c.x(), body.bottom()+16+blockH } };                  // below
+    QPointF spot = spots.first();
+    if( QGraphicsScene* sc = m_comp->scene() )
+    {
+        for( const QPointF& sp : spots ){
+            QRectF r( sp.x()-blockW/2, sp.y()-blockH, blockW, blockH );
+            bool wire = false;
+            for( QGraphicsItem* it : sc->items( r, Qt::IntersectsItemShape ) )
+                if( it->type() == ConnectorLine::Type ){ wire = true; break; }
+            if( !wire ){ spot = sp; break; }
+        }
+    }
+    double bottom = spot.y()+rowGap;
     for( int r=0; r<rows.size(); ++r )
     {
         double y = bottom-(rows.size()-r)*(h+rowGap);
-        double x = body.center().x()-widths[r]/2;
+        double x = spot.x()-widths[r]/2;
         for( Pill& p : rows[r] )
         {
             p.rect.moveTo( x, y );
@@ -192,6 +218,16 @@ void StatusBadge::setBlocks( const QList<StatusView::Block>& blocks )
     m_body = body;
     update();
 }
+
+QRectF StatusBadge::pillsRect() const
+{
+    QRectF r;
+    if( m_worst < 0 ) return r;
+    for( const Pill& p : m_pills ) r |= p.rect;
+    return r;
+}
+
+StatusBadge* StatusBadge::of( Component* comp ) { return badgeOf( comp ); }
 
 void StatusBadge::paint( QPainter* p, const QStyleOptionGraphicsItem*, QWidget* )
 {

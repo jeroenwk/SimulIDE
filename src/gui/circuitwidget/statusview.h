@@ -58,6 +58,8 @@ class StatusBadge : public QGraphicsItem       // Child of the part; draws in sc
         int type() const override { return Type; }
 
         void setBlocks( const QList<StatusView::Block>& blocks );
+        QRectF pillsRect() const;     // The pills, scene coordinates (empty: none shown)
+        static StatusBadge* of( Component* comp );
 
         virtual QRectF boundingRect() const override { return m_bounds; }
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w ) override;
