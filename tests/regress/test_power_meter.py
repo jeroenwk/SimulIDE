@@ -337,6 +337,7 @@ def section_save(sim):
     os.close(fd)
     try:
         c("sim", "stop")
+        c("comp", "set", "PM", "Show_PF=false")
         c("circuit", "save", path)
         with open(path, encoding="utf-8") as f:          # A file that says RMS (no reading of this meter): Mean
             text = f.read().replace('Reading="Mean"', 'Reading="RMS"')
@@ -349,6 +350,9 @@ def section_save(sim):
         sim.check("save and reopen: still a PowerMeter", 1 if g["type"] == "PowerMeter" else 0, 1)
         sim.check("RMS in a file loads as Mean (its Reading property)", 1 if props.get("Reading") == "Mean" else 0, 1)
         sim.check("save and reopen: Avg_Time kept", 1 if props.get("Avg_Time") == "40 ms" else 0, 1)
+        shown = {q["name"]: q["value"] for q in g["properties"] if q["name"].startswith("Show_")}
+        sim.check("save and reopen: Show_PF off kept, Show_Volt on", 1 if shown.get("Show_PF") in ("false", False)
+                  and shown.get("Show_Volt") in ("true", True) else 0, 1, note=str(shown))
         c("sim", "run", "--for", "250ms")
         r = read(sim)
         sim.check("save and reopen: it measures again", r["value"], P12_R165, tol=1e-4)
@@ -381,10 +385,118 @@ def section_back(sim):
     sim.check("the run went on from where it was", 1 if int(c("sim", "status")["time_ps"]) >= int(before) else 0, 1)
 
 
+def section_avgtime(sim):
+    # Avg_Time shortened during a run starts a block from that moment (docs/POWER_METER.md), for the
+    # Power Meter and for the meters it derives from. The block that ran kept its old start: its end
+    # (old start + the new length) lay before the time integrated to, and end - last wrapped round
+    # as an unsigned count of ps: a V r.m.s. near 1e5 V for one block
+    c = sim.cli
+    c("circuit", "new", "--discard")
+    c("comp", "add", "WaveGen", "--label", "AC", "--at", "0,0", "Always_On=true", "Freq=50", "Semi_Ampli=10",
+      "Mid_Volt=0", "Steps=20000")
+    c("comp", "add", "PowerMeter", "--label", "PM", "--at", "80,0", "Reading=Mean")
+    c("comp", "add", "Amperimeter", "--label", "AM", "--at", "240,0", "Reading=Mean")
+    c("comp", "add", "Resistor", "--label", "R1", "--at", "320,-40", "Resistance=100")
+    c("comp", "add", "Ground", "--label", "G", "--at", "400,80")
+    c("wire", "add", "AC.outnod", "PM.lPin")
+    c("wire", "add", "PM.rPin", "AM.lPin")
+    c("wire", "add", "AM.rPin", "R1.lPin")
+    c("wire", "add", "R1.rPin", "G.Gnd")
+    c("sim", "run", "--for", "60ms")
+    c("comp", "set", "PM", "Avg_Time=4ms")
+    c("comp", "set", "AM", "Avg_Time=4ms")
+    c("sim", "run", "--for", "2ms")
+    # The block runs from 60 ms (three whole cycles: phase 0) to now, 62 ms (36 deg): so far,
+    # V r.m.s. = 10 sqrt((1 - sin(2a)/2a) / 2) with a = 0.2 pi, the power V^2/R, the current's mean
+    # 0.1 (1 - cos a) / a
+    a_ = 0.2 * math.pi
+    v_so_far = 10.0 * math.sqrt((1 - math.sin(2 * a_) / (2 * a_)) / 2)
+    r, a = read(sim), sim.read("AM")
+    sim.check("Avg_Time shortened: V r.m.s. of the block so far", r["v_rms"], v_so_far, tol=1e-2)
+    sim.check("Avg_Time shortened: I r.m.s. of the block so far", r["i_rms"], v_so_far / 100.0, tol=1e-2)
+    sim.check("Avg_Time shortened: power of the block so far", r["value"], v_so_far ** 2 / 100.0, tol=2e-2)
+    sim.check("Avg_Time shortened: the ammeter's mean so far", a["value"], 0.1 * (1 - math.cos(a_)) / a_, tol=1e-2)
+    c("sim", "run", "--for", "20ms")                     # Five whole 4 ms blocks later: a block of the sine
+    r = read(sim)
+    between(sim, "Avg_Time shortened, a block later: power", r["value"], 0.12 - 1e-3, 0.88 + 1e-3)
+    between(sim, "Avg_Time shortened, a block later: V r.m.s.", r["v_rms"], 0, 10.0 + 1e-3)
+    c("comp", "set", "PM", "Avg_Time=100ms")             # Longer again: a block of 100 ms from now
+    c("sim", "run", "--for", "100ms")
+    sim.check("Avg_Time 100 ms again: power", read(sim)["value"], 0.5, tol=1e-3)
+
+
+def body(g):
+    x, y, w, h = g["body"]
+    return x, y, x + w, y + h
+
+
+def pins(g):
+    return {p["id"].split("-")[-1]: tuple(p["pos"]) for p in g["pins"]}
+
+
+def section_look(sim):
+    # As the Ammeter and the Voltmeter: the output pin outside the face, the name above it, the
+    # lines of the face left-aligned (no padding), V and I marked "rms" (they are always over the
+    # block) and the power "avg" in Mean, four significant digits. Voltage, current and power factor each shown or not (Show_Volt,
+    # Show_Curr, Show_PF): the face is as tall as its lines, the pins stay, the CLI reads them all
+    c = sim.cli
+    build_dc(sim)
+    g = c("comp", "get", "PM")
+    x0, y0, x1, y1 = body(g)
+    ox, oy = pins(g)["outnod"]
+    sim.check("output pin outside the face (right of it)", 1 if ox > x1 else 0, 1, note="pin %s, face %s" % ((ox, oy), g["body"]))
+    sim.check("output pin within the face's height", 1 if y0 <= oy <= y1 else 0, 1)
+    name = [l for l in g.get("labels", []) if l["kind"] == "name"]
+    lx, ly, lw, lh = name[0]["rect"] if name else (0, 0, 0, 0)
+    sim.check("name label above the face, not on it", 1 if name and ly + lh <= y0 + 1 else 0, 1,
+              note="label %s, face %s" % (name[0]["rect"] if name else None, g["body"]))
+    props = {q["name"]: q["value"] for q in g["properties"]}
+    for p in ("Show_Volt", "Show_Curr", "Show_PF"):
+        sim.check(p + " offered, on by default", 1 if props.get(p) in ("true", True) else 0, 1)
+
+    c("sim", "run", "--for", "250ms")
+    d = read(sim).get("display") or []
+    sim.check("Instant: four lines on the face", len(d), 4, note=str(d))
+    sim.check("lines left-aligned (none starts with a space)", 1 if d and all(not l.startswith(" ") for l in d) else 0, 1, note=str(d))
+    sim.check("Instant: the lines", 1 if d == ["872.7 mW", "12.00 V rms", "72.73 mA rms", "PF 1.000"] else 0, 1, note=str(d))
+    c("comp", "set", "PM", "Reading=Mean")
+    c("sim", "run", "--for", "250ms")
+    d = read(sim).get("display") or []
+    sim.check("Mean: power avg, V and I rms", 1 if d == ["872.7 mW avg", "12.00 V rms", "72.73 mA rms", "PF 1.000"] else 0, 1, note=str(d))
+
+    tall = y1 - y0
+    pins_before = pins(c("comp", "get", "PM"))
+    c("comp", "set", "PM", "Show_Volt=false")
+    r = read(sim)
+    sim.check("Show_Volt off: no V line", 1 if (r.get("display") or [None])[1:2] == ["72.73 mA rms"] else 0, 1, note=str(r.get("display")))
+    sim.check("Show_Volt off: the CLI still reads V r.m.s.", r["v_rms"], 12.0, tol=1e-5)
+    c("comp", "set", "PM", "Show_Curr=false", "Show_PF=false")
+    g = c("comp", "get", "PM")
+    r = read(sim)
+    sim.check("only the power shown: one line", 1 if r.get("display") == ["872.7 mW avg"] else 0, 1, note=str(r.get("display")))
+    sim.check("only the power shown: the CLI still reads the power factor", r["power_factor"], 1.0, tol=1e-9)
+    x0, y0, x1, y1 = body(g)
+    sim.check("one line: the face is three lines shorter (a line about 14 px)", (tall - (y1 - y0)) / 3.0, 14, absolute=2)
+    sim.check("the pins stay where they were", 1 if pins(g) == pins_before else 0, 1)
+    name = [l for l in g.get("labels", []) if l["kind"] == "name"]
+    sim.check("one line: the name follows the face down", 1 if name and name[0]["rect"][1] + name[0]["rect"][3] <= y0 + 1
+              and name[0]["rect"][1] + name[0]["rect"][3] >= y0 - 8 else 0, 1, note=str(name))
+
+    # Four significant digits, rounded: 9.9996 V shows 10.00 V, not 10.000 V
+    c("sim", "stop")
+    c("comp", "set", "PM", "Show_Volt=true", "Reading=Instant")
+    c("comp", "set", "BAT", "Voltage=9.9996")
+    c("sim", "run", "--for", "50ms")
+    d = read(sim).get("display") or []
+    sim.check("9.9996 V shows as 10.00 V", 1 if d[1:2] == ["10.00 V rms"] else 0, 1, note=str(d))
+    c("sim", "stop")
+
+
 def test(sim):
     for name, fn in [("dc", section_dc), ("sign", section_sign), ("ground", section_ground), ("ac", section_ac),
                      ("reactive", section_reactive), ("distorted", section_distorted), ("output", section_output),
-                     ("save", section_save), ("back", section_back)]:
+                     ("save", section_save), ("back", section_back),
+                     ("avgtime", section_avgtime), ("look", section_look)]:
         if want(name):
             fn(sim)
 
