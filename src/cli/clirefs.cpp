@@ -208,6 +208,8 @@ QJsonObject compJson( Component* c, bool detail, bool all )
         {"label", c->idLabel() },
         {"pos",   QJsonArray{ c->x(), c->y() } } };
     if( c->rotation() != 0 ) o["rotation"] = c->rotation();
+    if( c->hflip() < 0 ) o["hflip"] = true;   // Flipped (comp flip h / v): the text direction
+    if( c->vflip() < 0 ) o["vflip"] = true;   // of its labels depends on it (create-circuit #671)
     addGeometry( o, c );
 
     if( !detail ){
