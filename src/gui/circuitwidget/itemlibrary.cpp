@@ -96,6 +96,7 @@
 #include "rail.h"
 #include "rectangle.h"
 #include "relay.h"
+#include "rotaryswitch.h"
 #include "fuse.h"
 #include "resistor.h"
 #include "resistordip.h"
@@ -175,6 +176,7 @@ void ItemLibrary::loadItems()
     addItem( Switch::libraryItem() );
     addItem( SwitchDip::libraryItem() );
     addItem( Relay::libraryItem() );
+    addItem( RotarySwitch::libraryItem() );
     addItem( Fuse::libraryItem() );
     addItem( KeyPad::libraryItem() );
     // Passive

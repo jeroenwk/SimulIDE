@@ -208,6 +208,7 @@
         <file alias="servo.png">../src/icons/components/servo.png</file>
         <file alias="steeper.png">../src/icons/components/steeper.png</file>
         <file alias="relay-spst.png">../src/icons/components/relay-spst.png</file>
+        <file alias="rotaryswitch.png">../src/icons/components/rotaryswitch.png</file>
         <file alias="voltreg.png">../src/icons/components/voltreg.png</file>
         <file alias="bjt.png">../src/icons/components/bjt.png</file>
         <file alias="diac.png">../src/icons/components/diac.png</file>
