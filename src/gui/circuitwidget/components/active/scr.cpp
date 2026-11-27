@@ -141,14 +141,9 @@ void SCR::updateStep()
     voltChanged();
 }
 
-void SCR::voltChanged()
+// Latch condition from the present pin values
+bool SCR::latched()
 {
-    Simulator::self()->addToSettled( this );   // Latch state from this step's final values
-    double voltAC = m_pin[0]->getVoltage() - m_pin[1]->getVoltage();
-    double voltGC = m_pin[2]->getVoltage() - m_pin[1]->getVoltage();
-    if( qFabs( voltAC ) < .01 && qFabs( voltGC ) < .01 ) return;  // Converged
-    Simulator::self()->notCorverged();
-
     double anodCurr =  m_resistor->current();
     double cathCurr = -m_resistGa->current() - anodCurr;
     double cmult = 1/m_trigCurr;
@@ -163,22 +158,45 @@ void SCR::voltChanged()
     bool state = -cathCurr*cmult + iHold*amult > 1;
     static const bool dbg = getenv("SIMULIDE_DEBUG_SCR");
     if( dbg )
-        qDebug() << "[SCR]" << m_elmId << "t" << Simulator::self()->circTime() << "vAC" << voltAC << "vGC" << voltGC
+        qDebug() << "[SCR]" << m_elmId << "t" << Simulator::self()->circTime()
+                 << "vAC" << m_pin[0]->getVoltage() - m_pin[1]->getVoltage()
+                 << "vGC" << m_pin[2]->getVoltage() - m_pin[1]->getVoltage()
                  << "Ia" << anodCurr << "Ik" << cathCurr << "Ihold" << iHold << "state" << m_state << "->" << state;
+    return state;
+}
 
-    if( m_state != state )
+void SCR::voltChanged()
+{
+    Simulator::self()->addToSettled( this );   // Latch state from this step's final values
+    double voltAC = m_pin[0]->getVoltage() - m_pin[1]->getVoltage();
+    double voltGC = m_pin[2]->getVoltage() - m_pin[1]->getVoltage();
+    if( qFabs( voltAC ) < .01 && qFabs( voltGC ) < .01 ) return;  // Converged
+    Simulator::self()->notCorverged();
+
+    // Turning on follows the iterations; turning off waits for the step's solution
+    // (stepSettled): while another part iterates (a UJT firing into the gate) the solver passes
+    // through values far from it (the gate at -49 V), and an SCR latched off by one of them
+    // dropped out for ~55 us at every gate pulse (create-circuit #497)
+    if( !m_state && latched() )
     {
-        m_state = state;
-        double res = state ? 0.0105 : 10e5;
-        m_resistor->setRes( res );
+        m_state = true;
+        m_resistor->setRes( 0.0105 );
     }
 }
+
+void SCR::runEvent() {;}  // Turned off in stepSettled: this event solves the circuit with it
 
 // Part state (docs/PART_STATES.md): ON = conducting (amber, like a switch that is on), else OFF.
 // m_state alone means "triggered": with gate current it stays set while the part blocks (reverse
 // half-cycle, series diode), so ON also needs a main current above 10 % of the holding current
 void SCR::stepSettled()
 {
+    if( m_state && !latched() )   // The solution of this step lets it go: off from now on
+    {
+        m_state = false;
+        m_resistor->setRes( 10e5 );
+        Simulator::self()->addEvent( 0, this );
+    }
     if( m_state && m_resistor->current() > 0.1*m_holdCurr ) reportState("ON",  stWait );
     else                                    reportState("OFF", stOff );
 }

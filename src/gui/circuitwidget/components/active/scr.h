@@ -29,6 +29,7 @@ class SCR : public Component, public eElement
         virtual void updateStep() override;
         virtual void voltChanged() override;
         virtual void stepSettled() override;
+        virtual void runEvent() override;
 
         double gateRes() { return m_gateRes; }
         void setGateRes( double r ) { m_gateRes = r; m_changed = true; }
@@ -42,6 +43,7 @@ class SCR : public Component, public eElement
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* o, QWidget* w ) override;
 
     private:
+        bool latched();
         double m_gateRes;
         double m_trigCurr;
         double m_holdCurr;
