@@ -247,7 +247,7 @@ QJsonObject readComp( Component* comp )
     }
     else if( PhotoSensor* ps = dynamic_cast<PhotoSensor*>( comp ) )   // Light, photocurrent and the main current
     {
-        o["lux"]     = num( ps->getVal() );
+        o["lux"]     = num( ps->lux() );   // the light pin's with Light_Pin on, not the hidden dial (#772)
         o["i_photo"] = num( ps->photoCurrent() );
         if( Photodiode* pd = dynamic_cast<Photodiode*>( comp ) ) o["current"] = num( pd->diodeCurrent() );
         else if( Phototransistor* pt = dynamic_cast<Phototransistor*>( comp ) ) o["i_collector"] = num( pt->collectorCurrent() );
