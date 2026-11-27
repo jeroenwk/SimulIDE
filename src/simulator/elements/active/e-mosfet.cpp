@@ -141,8 +141,11 @@ void eMosfet::voltChanged()
     if( m_gmOn ){
         double lim = 1+0.5*qFabs( ( m_Pchannel ? -m_vgs0 : m_vgs0 )-m_Gth );
         double dv = Vgs-m_vgs0;
+        bool limited = ( dv > lim ) || ( dv < -lim );
         if( dv > lim ) Vgs = m_vgs0+lim;
         else if( dv < -lim ) Vgs = m_vgs0-lim;
+        // Still off at the limited point, the solution may not move: no node calls it again
+        if( limited ) Simulator::self()->callAgain( this );
         m_vgs0 = Vgs;
         current = channel( Vgs, Vds );
     }

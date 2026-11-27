@@ -272,6 +272,13 @@ void Simulator::solveCircuit()
                 m_nonLinear->voltChanged();
                 m_nonLinear = m_nonLinear->nextChanged;
             }
+            if( m_nlAgain ){                       // Called again at this pass (callAgain)
+                eElement* last = m_nlAgain;
+                while( last->nextChanged ) last = last->nextChanged;
+                last->nextChanged = m_nonLinear;
+                m_nonLinear = m_nlAgain;
+                m_nlAgain = nullptr;
+            }
             if( m_nlBudget && (m_NLstep++ >= m_nlBudget) )  // Max iterations reached: take the step
             {                                               // unconverged, report it (Messages), and
                 m_warning = 1;                              // allow the next steps 1000 iterations
@@ -338,6 +345,7 @@ void Simulator::resetSim()
     m_changedNode = NULL;
     m_voltChanged = NULL;
     m_nonLinear = NULL;
+    m_nlAgain = nullptr;
     m_settled = nullptr;      // Elements may be gone: drop the list, a new generation forgets the flags
     m_settledGen++;
     m_startSettle.clear();
@@ -752,7 +760,7 @@ bool Simulator::simCore( StateIO& s )
     s.io( m_nlBudget );
     s.io( m_stepScale );
 
-    if( !s.saving() ){ m_changedNode = nullptr; m_voltChanged = nullptr; m_nonLinear = nullptr; }
+    if( !s.saving() ){ m_changedNode = nullptr; m_voltChanged = nullptr; m_nonLinear = nullptr; m_nlAgain = nullptr; }
     if( !s.mark( 0x45444f4e ) ) return false;                  // NODE
     for( eNode* n : m_eNodeList ) n->simState( s );
 
@@ -821,6 +829,8 @@ void Simulator::syncAfterRestore()
     for( int i=0; i<m_eNodeList.size(); ++i ) m_eNodeList.at( i )->restoreVolt( volts[i] );
     for( eElement* e = m_voltChanged; e; e = e->nextChanged ) e->added = false;
     for( eElement* e = m_nonLinear;   e; e = e->nextChanged ) e->added = false;
+    for( eElement* e = m_nlAgain;     e; e = e->nextChanged ) e->added = false;
+    m_nlAgain = nullptr;
     m_voltChanged = nullptr;
     m_nonLinear = nullptr;
     m_changedNode = nullptr;
