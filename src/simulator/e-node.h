@@ -63,6 +63,7 @@ class eNode
         // Current from this node into the element through epin (A), from the
         // admitances and currents the element stamped. Sums to 0 over all pins.
         double pinCurrent( ePin* epin );
+        double othersCurrent( ePin* epin, double* gMax );   // KCL: what flows into every other stamp here
         bool   hasStamps( ePin* epin );   // epin stamped anything here (false: passive pin)
 
         QList<int> getConnections();

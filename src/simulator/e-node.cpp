@@ -1,3 +1,4 @@
+#include <QtMath>
 /***************************************************************************
  *   Copyright (C) 2012 by Santiago González                               *
  *                                                                         *
@@ -185,6 +186,24 @@ double eNode::pinCurrent( ePin* epin )
     for( Connection* c = m_firstCurrent; c; c = c->next )
         if( c->epin == epin ) current -= c->value;
     return current;
+}
+
+// The current into the element of `epin` by KCL: minus what flows into every other stamp of
+// this node. For a near-ideal element (an ammeter's 1 uOhm) g*(V - V_other) loses the current
+// in the rounding of V (0.2 nA per volt at 1e6 S, create-circuit #687); the other stamps are
+// usually far smaller conductances. gMax: the largest of those (how good the sum is).
+double eNode::othersCurrent( ePin* epin, double* gMax )
+{
+    Simulator* sim = Simulator::self();
+    double current = 0, g = 0;
+    for( Connection* c = m_firstAdmit; c; c = c->next )
+        if( c->epin != epin ){ current += c->value*( m_volt - sim->eNodeVolt( c->node ) ); g = qMax( g, qFabs( c->value ) ); }
+    for( Connection* c = m_firstSingAdm; c; c = c->next )
+        if( c->epin != epin ){ current -= c->value*sim->eNodeVolt( c->node ); g = qMax( g, qFabs( c->value ) ); }
+    for( Connection* c = m_firstCurrent; c; c = c->next )
+        if( c->epin != epin ) current -= c->value;
+    if( gMax ) *gMax = g;
+    return -current;
 }
 
 bool eNode::hasStamps( ePin* epin )
