@@ -33,6 +33,8 @@ A round body with the knob in the middle. The commons are the pins on the left. 
 
 Pins on a side are 16 px apart; a wire connects 8 px outside the body. The body is 80 px across, or 96 when a side carries 4 pins (also with 4 poles): then the names of two neighbouring sides do not meet in their corner.
 
+![Ten switches: 1×12, 2×6, 4×3, 3×4 turned 90°, 1×4 turned 180° and flipped, 1×3 flipped, 2×5, 1×5, 2×4, 1×12: the knob stays in the middle and upright, the names stay horizontal](ROTARY_SWITCH.jpg)
+
 The knob is a dial widget of 40 px. Its pointer stands at −(positions − 1) × 15° + 30° × (position − 1), clockwise from 12 o'clock: the sweep is centred on 12 o'clock, with a tick per detent. However the part is turned or flipped, the knob stays in the middle of the body, upright and unmirrored, and the names stay horizontal and unmirrored (they sit where their pins are). An item in Qt turns about its `transformOriginPoint` and mirrors about its corner; the part undoes its own turn and mirror on each of them (`placeLabels()`, `placeKnob()`).
 
 ## Using it
