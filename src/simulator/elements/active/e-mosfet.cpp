@@ -14,7 +14,6 @@
 
 eMosfet::eMosfet( QString id )
        : eResistor( id )
-       , m_vccs( id )
        , m_cgs( id+"-Cgs" )
        , m_cgd( id+"-Cgd" )
 {
@@ -32,10 +31,6 @@ eMosfet::eMosfet( QString id )
     m_threshold = 3;
 
     m_ePin.resize(3);
-    m_vccs.setNumEpins( 5 );
-    m_gm = m_gds = m_ieq = 0;
-    m_vgs0 = m_nudge = 0;
-    m_gmOn = false;
 }
 eMosfet::~eMosfet(){}
 
@@ -44,40 +39,6 @@ void eMosfet::initialize()
     m_step = 0;
     m_gateV = 0;
     m_lastCurrent = 0;
-    m_gm = m_gds = m_ieq = 0;
-    m_vgs0 = 0;
-    m_nudge = 0;
-}
-
-static eNode s_gndNode("");   // Node 0: a term on a node's own column goes to the diagonal
-
-// Drain current into D of the model (it was voltChanged's): square law with the satK slope,
-// at most Vds/RDSon; off below the threshold (cero_doub across D-S)
-double eMosfet::channel( double vgs, double vds )
-{
-    double sg = m_Pchannel ? -1 : 1;
-    vgs *= sg; vds *= sg;
-    double gateV = vgs-m_Gth;
-    if( gateV <= 0 ) return sg*cero_doub*vds;
-    double admit = 1/m_RDSon;
-    double maxCurrDS = vds*admit;
-    double satK = 1+vds/100;
-    double v = ( vds > gateV ) ? gateV : vds;
-    double ds = ( gateV*v-v*v/2 )*satK/m_kRDSon;
-    if( ds > maxCurrDS ) ds = maxCurrDS;
-    return sg*ds;
-}
-
-void eMosfet::stampGm( double gm )
-{
-    if( !m_gmOn ) return;
-    double a[5] = { gm, -gm, -gm, gm, 0 };   // Row D: +gm*Vg -gm*Vs; row S: -gm*Vg +gm*Vs
-    for( int i=0; i<5; ++i ){
-        ePin* e = m_vccs.getEpin( i );
-        if( !e->getEnode() ) continue;
-        if( m_gmDiag[i] ) e->stampAdmitance( a[i] );   // Own column: g*V on the diagonal
-        else              e->stampSingAdm(-a[i] );     // Other column: -s*V_k
-    }
 }
 
 void eMosfet::stamp()
@@ -99,23 +60,6 @@ void eMosfet::stamp()
         m_ePin[1]->getEnode()->addToNoLinList(this);
     }
     if( m_ePin[2]->isConnected() ) m_ePin[2]->getEnode()->addToNoLinList(this);
-
-    for( int i=0; i<5; ++i ){ m_vccs.getEpin( i )->setEnode( nullptr ); m_gmDiag[i] = false; }
-    eNode* nD = m_ePin[0]->getEnode();
-    eNode* nS = m_ePin[1]->getEnode();
-    eNode* nG = m_ePin[2]->isConnected() ? m_ePin[2]->getEnode() : nullptr;
-    m_gmOn = nD && nS && nG;
-    if( m_gmOn ){
-        eNode* row[5] = { nD, nD, nS, nS, nG };
-        eNode* col[5] = { nG, nS, nG, nS, nD };
-        for( int i=0; i<5; ++i ){
-            if( row[i]->getNodeNumber() == 0 || col[i]->getNodeNumber() == 0 ) continue; // Ground: no row, or V = 0
-            ePin* e = m_vccs.getEpin( i );
-            e->setEnode( row[i] );
-            if( col[i] == row[i] ){ e->setEnodeComp( &s_gndNode ); m_gmDiag[i] = true; }
-            else e->addSingAdm( col[i]->getNodeNumber(), 0 );
-        }
-    }
 }
 
 void eMosfet::voltChanged()
@@ -126,49 +70,44 @@ void eMosfet::voltChanged()
     double Vgs = Vg-Vs;
     double Vds = Vd-Vs;
 
-    double current = channel( Vgs, Vds );
-    double gate = ( m_Pchannel ? -Vgs : Vgs )-m_Gth;
-    m_gateV = ( gate > 0 ) ? gate : 0;
+    if( m_Pchannel ){ Vgs = -Vgs; Vds = -Vds; }
+    
+    double gateV = Vgs - m_Gth;
+    
+    if( gateV < 0 ) gateV = 0;
 
-    // Converged when the model's current at the solved voltages is the one the stamped
-    // linearization gave there (within 1e-4 of itself, at least 1 nA, at most m_accuracy)
-    double predicted = m_gds*Vds+( m_gmOn ? m_gm*Vgs : 0 )-m_ieq;
-    double tol = qMax( 1e-9, 1e-4*qMax( qFabs( current ), qFabs( predicted ) ) );
-    if( qFabs( current-predicted ) < qMin( tol, m_accuracy ) && m_gds > 0 ) return; // Converged
-    Simulator::self()->notCorverged();
+    double admit = cero_doub;
+    double current = 0;
+    
+    if( gateV > 0 )
+    {
+        admit = 1/m_RDSon;
+        double maxCurrDS = Vds*admit;
+        double satK = 1+Vds/100;
 
-    // Newton: the slopes of the model (central differences), at a Vgs limited to a step from the
-    // last one (as SPICE's fetlim): the model has no gate slope off and at its RDSon cap, so a
-    // loop that swung the gate from off to +1000 V landed where gm = 0 and swung back (#426)
-    if( m_gmOn ){
-        double lim = 1+0.5*qFabs( ( m_Pchannel ? -m_vgs0 : m_vgs0 )-m_Gth );
-        double dv = Vgs-m_vgs0;
-        bool limited = ( dv > lim ) || ( dv < -lim );
-        if( dv > lim ) Vgs = m_vgs0+lim;
-        else if( dv < -lim ) Vgs = m_vgs0-lim;
-        // Still off at the limited point the solution may not move, and no node calls it again:
-        // a 1 nA offset that flips sign at each limited step moves the drain (as the op amp's nudge)
-        m_nudge = limited ? ( ( m_nudge > 0 ) ? -1e-9 : 1e-9 ) : 0;
-        m_vgs0 = Vgs;
-        current = channel( Vgs, Vds );
+        if( Vds > gateV ) Vds =gateV;
+
+        double DScurrent = (gateV*Vds-qPow(Vds,2)/2)*satK/m_kRDSon;
+        if( DScurrent > maxCurrDS ) DScurrent = maxCurrDS;
+        current = maxCurrDS-DScurrent;
     }
-    double h = 1e-6*( 1+qFabs( Vgs ) );
-    double k = 1e-6*( 1+qFabs( Vds ) );
-    double gm  = m_gmOn ? ( channel( Vgs+h, Vds )-channel( Vgs-h, Vds ) )/( 2*h ) : 0;
-    double gds = ( channel( Vgs, Vds+k )-channel( Vgs, Vds-k ) )/( 2*k );
-    if( gds < cero_doub ) gds = cero_doub;
-
-    if( gds != m_admit ){
-        eResistor::setAdmit( gds );
+    if( m_Pchannel ) current = -current;
+    
+    if( admit != m_admit ){
+        eResistor::setAdmit( admit );
         eResistor::stamp();
     }
-    if( gm != m_gm ) stampGm( gm );
-    m_gm  = gm;
-    m_gds = gds;
-    m_ieq = gds*Vds+gm*Vgs-current+m_nudge;   // I_D = gds*Vds + gm*Vgs - ieq through this point
+    m_gateV = gateV;
+
+    // Converged when the current changes by less than 1e-4 of itself (at least 1 nA). A fixed
+    // 5 uA was 1 % of a 0.4 mA small-signal amplifier: its output came out in steps
+    double tol = qMax( 1e-9, 1e-4*qMax( qFabs(current), qFabs(m_lastCurrent) ) );
+    if( qFabs(current-m_lastCurrent) < qMin( tol, m_accuracy ) ) return; // Converged
+    Simulator::self()->notCorverged();
+
     m_lastCurrent = current;
-    m_ePin[0]->stampCurrent( m_ieq );     // Into the node: -ieq into the element
-    m_ePin[1]->stampCurrent(-m_ieq );
+    m_ePin[0]->stampCurrent( current );
+    m_ePin[1]->stampCurrent(-current );
 }
 
 void eMosfet::noiseSources( QList<NoiseSrc>& list )   // Channel thermal noise 4kT·(2/3)·gm
@@ -233,9 +172,4 @@ void eMosfet::simState( StateIO& s )
     s.io( m_Gth );
     s.io( m_Pchannel );
     s.io( m_depletion );
-    s.io( m_gm );
-    s.io( m_gds );
-    s.io( m_ieq );
-    s.io( m_vgs0 );
-    s.io( m_nudge );
 }
