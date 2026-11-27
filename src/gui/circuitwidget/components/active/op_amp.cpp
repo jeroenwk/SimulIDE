@@ -41,8 +41,11 @@ OpAmp::OpAmp( QString type, QString id )
      , eElement( id )
      , m_aux( id+"-aux" )
      , m_bias( id+"-bias" )
+     , m_sup( id )                     // ePins "<id>-ePinN": counted in the supply Pins' current
 {
     m_bias.setNumEpins( 2 );
+    m_sup.setNumEpins( 8 );
+    m_supDir = m_supFlips = 0;
     m_slewRate = m_ib = m_ios = m_vos = m_gbw = 0;
     m_aux.setNumEpins( aNum );
     m_area = QRect( -18, -8*2, 36, 8*2*2 );
@@ -167,6 +170,8 @@ void OpAmp::initialize()
     m_gbwPrev = 0;
     m_gbwT = 0;
     m_stampT = 0;
+    m_supDir = 0;
+    m_supFlips = 0;
     m_output->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
     clearStates();
 }
@@ -213,7 +218,53 @@ void OpAmp::stamp()
     };
     term( aOP, aPO, pN );
     term( aON, aNO, nN );
+
+    // #506: the output current comes from a supply pin, the V+ one when sourcing and the V- one
+    // when sinking. That pin's node gets the output's own terms with the opposite sign, so the
+    // current drawn there is the current delivered (see stampSupply)
+    for( int i=0; i<8; ++i ) m_sup.getEpin( i )->setEnode( nullptr );
+    if( m_powerPins ){
+        eNode* cols[3] = { oN, pN, nN };
+        for( int k=0; k<2; ++k ){
+            eNode* sN = m_pin[3+k]->getEnode();
+            if( !sN || sN->getNodeNumber() == 0 ) continue;   // Ground: nothing to stamp
+            for( int j=0; j<3; ++j ){
+                ePin* e = m_sup.getEpin( 4*k+j );
+                e->setEnode( sN );
+                m_supDiag[k][j] = false;
+                eNode* cn = cols[j];
+                if( !cn || cn->getNodeNumber() == 0 ) continue;   // A constant (in m_constIn)
+                if( cn == sN ){ e->setEnodeComp( &s_gnd ); m_supDiag[k][j] = true; }
+                else e->addSingAdm( cn->getNodeNumber(), 0 );
+            }
+            m_sup.getEpin( 4*k )->createCurrent();
+            if( oN->getNodeNumber() != 0 && oN != sN ){         // Zero entry back: same solver group
+                ePin* b = m_sup.getEpin( 4*k+3 );
+                b->setEnode( oN );
+                b->addSingAdm( sN->getNodeNumber(), 0 );
+            }
+        }
+    }
     m_dirty = true;
+}
+
+void OpAmp::stampSupply( double G, double gG )
+{
+    // Current delivered by the output: I + gG*(V+ - V-) - G*Vout (I = the stamped constant part).
+    // Drawn from the supply node: in its equation -s*V_k - i, so s = +G at Vout, -gG at V+,
+    // +gG at V-, i = -I
+    for( int k=0; k<2; ++k ){
+        ePin* e0 = m_sup.getEpin( 4*k );
+        if( !e0->getEnode() ) continue;
+        bool on = ( m_supDir == k+1 );
+        double s[3] = { on ? G : 0, on ? -gG : 0, on ? gG : 0 };
+        for( int j=0; j<3; ++j ){
+            ePin* e = m_sup.getEpin( 4*k+j );
+            if( m_supDiag[k][j] ) e->stampAdmitance(-s[j] );
+            else                  e->stampSingAdm( s[j] );
+        }
+        e0->stampCurrent( on ? -m_stampI : 0 );
+    }
 }
 
 void OpAmp::updateStep()
@@ -247,6 +298,7 @@ void OpAmp::stampMode()
              : ( m_mode == SAT_N) ? G*m_voltNeg : G*m_slewV;
     m_output->stampCurrent( I );
     m_stampI = I;
+    if( m_powerPins ) stampSupply( G, gG );
     m_stampVpos = m_voltPos;
     m_stampVneg = m_voltNeg;
     m_stampT = Simulator::self()->circTime();
@@ -333,7 +385,7 @@ void OpAmp::voltChanged() // Called when any pin node change volt
     if( qFabs( cst-m_constIn ) > 1e-9*( 1+qFabs( cst ) ) ){ m_constIn = cst; if( m_mode == LIN ) m_dirty = true; }
     if( m_gbw > 0 && m_mode == LIN && sim->circTime() != m_stampT ) m_dirty = true; // New dt and out(prev)
 
-    if( sim->circTime() != m_flipTime ){ m_flipTime = sim->circTime(); m_flips = 0; m_changes = 0; m_held = false; }
+    if( sim->circTime() != m_flipTime ){ m_flipTime = sim->circTime(); m_flips = 0; m_changes = 0; m_held = false; m_supFlips = 0; }
 
     double eps = 1e-6*( 1+qFabs( m_voltPos )+qFabs( m_voltNeg ) );
     int mode = m_mode;
@@ -415,6 +467,20 @@ void OpAmp::voltChanged() // Called when any pin node change volt
         if( qFabs( dv ) > maxDv*1.001+1e-6 ){
             startSlew( m_lastOut+( dv > 0 ? maxDv : -maxDv ) );
             return;
+        }
+    }
+    // #506: which supply pin the output current goes through, from this solve's current (its
+    // rounding at Out_Imped's conductance: a few 1e-16 of the volts). Only a clear sign changes it
+    if( m_powerPins && !m_dirty ){
+        double src = ( m_mode == LIN ) ? ideal
+                   : ( m_mode == SAT_P ) ? m_voltPos : ( m_mode == SAT_N ) ? m_voltNeg : m_slewV;
+        double io = ( src-out )/m_outImp;
+        double floor = 4e-16*( 1+qFabs( src )+qFabs( out ) )/m_outImp+1e-12;
+        int dir = ( io > floor ) ? 1 : ( io < -floor ) ? 2 : m_supDir;
+        if( dir != m_supDir && m_supFlips < 6 ){
+            m_supFlips++;
+            m_supDir = dir;
+            m_dirty = true;
         }
     }
     if( !m_dirty && !m_checkStable && !waiting ) return;   // Converged

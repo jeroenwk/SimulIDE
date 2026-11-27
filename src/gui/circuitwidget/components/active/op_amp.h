@@ -120,6 +120,11 @@ class OpAmp : public Component, public eElement
         int    m_slewDir;            // Direction of the last slew step (0 = none yet)
         double m_grace;              // Jump allowed once after leaving SLEW (V)
         eElement m_bias;             // Bias currents: ePin 0 on V+, 1 on V-
+        eElement m_sup;              // Supply currents (#506): ePins 0-2 on V+, 3 on the output; 4-7 the same for V-
+        int    m_supDir;             // Supply pin carrying the output current: 0 none, 1 V+ (sourcing), 2 V- (sinking)
+        int    m_supFlips;           // Direction changes in this time step
+        bool   m_supDiag[2][3];      // That column is the supply node itself: on the diagonal
+        void   stampSupply( double G, double gG );
 
         int m_region;                // Part state: -1 none, 0 linear, 1 SAT+, 2 SAT- (stepSettled)
 
