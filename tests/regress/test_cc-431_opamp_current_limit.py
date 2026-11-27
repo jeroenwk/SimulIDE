@@ -20,7 +20,7 @@ from harness import run_test
 def follower(sim, vin, rl, imax):
     c = sim.cli
     c("circuit", "new", "--discard")
-    props = ["Volt_Pos=12", "Volt_Neg=-12"] + (["I_Max=%g" % imax] if imax else [])
+    props = ["Volt_Pos=12", "Volt_Neg=-12"] + (["I_Max=%g mA" % (imax * 1e3)] if imax else [])
     c("comp", "add", "opAmp", "--label", "U", "--at", "0,0", *props)
     c("comp", "add", "Fixed Voltage", "--label", "VI", "--at", "-100,-8", "Voltage=%g" % vin, "Out=true")
     c("comp", "add", "Resistor", "--label", "RL", "--at", "100,40", "--rotate", "90", "Resistance=%g" % rl)
@@ -52,7 +52,7 @@ def test(sim):
 
     c = sim.cli
     c("circuit", "new", "--discard")
-    c("comp", "add", "opAmp", "--label", "U", "--at", "0,0", "Volt_Pos=12", "Volt_Neg=0", "I_Max=0.025")
+    c("comp", "add", "opAmp", "--label", "U", "--at", "0,0", "Volt_Pos=12", "Volt_Neg=0", "I_Max=25 mA")
     c("comp", "add", "Fixed Voltage", "--label", "VI", "--at", "-100,-8", "Voltage=5", "Out=true")
     c("comp", "add", "Rail", "--label", "VP", "--at", "100,-100", "Voltage=12")
     c("comp", "add", "BJT", "--label", "Q", "--at", "100,0", "Gain=100")
