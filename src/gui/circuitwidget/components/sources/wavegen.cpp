@@ -46,6 +46,8 @@ WaveGen::WaveGen( QString type, QString id )
     m_floating = false;
     m_impChanged = false;
     m_levelChanged = false;
+    m_phaseOff = 0;
+    m_runPeriod = 0;
     m_outImp   = 0;        // 0 = ideal (the old behaviour): 1 nΩ, or 1 mΩ per pin when floating
     m_voltBase = -2.5;
     m_phaseShift = 0;
@@ -127,6 +129,8 @@ void WaveGen::stamp()
     m_index = 0;
     m_time = 0;           // Not the last run's
     m_nextStep = 0;
+    m_phaseOff = 0;       // A fresh run starts at phase 0
+    m_runPeriod = 0;
 
     if( m_bipolar && m_floating )
     {
@@ -155,7 +159,7 @@ void WaveGen::stamp()
 
 void WaveGen::runEvent()
 {
-    m_time = fmod( (Simulator::self()->circTime()-m_lastTime) - m_stepsPC*m_phaseShift/360, m_fstepsPC );
+    m_time = fmod( (Simulator::self()->circTime()-m_lastTime) + m_phaseOff - m_stepsPC*m_phaseShift/360, m_fstepsPC );
     // fmod keeps the sign of its dividend: during the first phase delay the time is negative
     if( m_time < 0 )                          // wrap into [0, period)
     {
@@ -344,7 +348,20 @@ void WaveGen::updateStep()
 {
     if( m_impChanged ){ m_impChanged = false; applyOutImp(); }
     bool restart = m_changed;              // ClockBase restarts the wave: nothing else to do
+    // A frequency change of a running wave goes on from the same phase: ClockBase restarts it at
+    // phase 0 and forces the pin low, while m_lastVout kept the last value, so the output stayed
+    // low until the next computed edge (create-circuit #644). A fresh run, or a wave switched
+    // back on, starts at phase 0.
+    double frac = -1;
+    uint64_t now = Simulator::self()->circTime();
+    if( restart && m_isRunning && m_runPeriod > 0 && now >= m_lastTime )
+        frac = fmod( (double)(now-m_lastTime) + m_phaseOff, m_runPeriod )/m_runPeriod;
     ClockBase::updateStep();
+    if( restart ){
+        m_phaseOff = frac > 0 ? frac*m_fstepsPC : 0;
+        m_runPeriod = m_isRunning ? m_fstepsPC : 0;
+        m_lastVout = -1;                   // ClockBase forced the pin low: write it again
+    }
     if( m_levelChanged && !restart && m_isRunning )
     {
         Simulator::self()->cancelEvents( this );
@@ -605,4 +622,6 @@ void WaveGen::simState( StateIO& s )
     s.io( m_maxValue );
     s.io( m_minValue );
     s.io( m_mult );
+    s.io( m_phaseOff );     // last: older key frames end before them
+    s.io( m_runPeriod );
 }

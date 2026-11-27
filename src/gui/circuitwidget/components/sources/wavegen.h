@@ -105,7 +105,9 @@ class WaveGen : public ClockBase
         bool m_bipolar;
         bool m_floating;
         bool m_impChanged;
-        bool m_levelChanged;   // a level or shape set during a run: re-evaluated at the next frame (#773)
+        bool m_levelChanged;
+        double m_phaseOff;     // ps added to the time since m_lastTime: the phase kept across a frequency change (#644)
+        double m_runPeriod;    // the period the running wave used (0: not running yet)   // a level or shape set during a run: re-evaluated at the next frame (#773)
 
         double m_outImp;   // Output impedance (create-circuit #386), between Out and Gnd/ground
 
