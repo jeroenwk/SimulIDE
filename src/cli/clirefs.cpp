@@ -7,6 +7,7 @@
 #include <QGraphicsProxyWidget>
 
 #include "clirefs.h"
+#include "statusview.h"
 #include "cliapi.h"
 #include "circuit.h"
 #include "component.h"
@@ -211,6 +212,10 @@ QJsonObject compJson( Component* c, bool detail, bool all )
     if( c->hflip() < 0 ) o["hflip"] = true;   // Flipped (comp flip h / v): the text direction
     if( c->vflip() < 0 ) o["vflip"] = true;   // of its labels depends on it (create-circuit #671)
     addGeometry( o, c );
+    if( StatusBadge* b = StatusBadge::of( c ) ){   // The state badge while running (create-circuit #747)
+        QRectF r = b->pillsRect();
+        if( !r.isEmpty() ) o["badge"] = rectJson( r );
+    }
 
     if( !detail ){
         o["pins"] = (int)c->getPins().size();
