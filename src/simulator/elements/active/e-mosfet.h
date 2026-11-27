@@ -43,6 +43,8 @@ class eMosfet : public eResistor
         
     protected:
         void updateValues();
+        double channel( double vgs, double vds );   // Drain current (into D) of the model at these
+        void stampGm( double gm );                  // The gm terms (VCCS from G-S into D-S)
 
         double m_accuracy;
         double m_lastCurrent;
@@ -53,6 +55,18 @@ class eMosfet : public eResistor
         double m_Gth;
 
         bool m_Pchannel;
+
+        // Newton (create-circuit #426, #529): the channel is linearized at (m_vgs0, m_vds0), with
+        // gm from the gate as a VCCS in the matrix (m_vccs ePins "<id>-ePinN": 0, 1 on D for the
+        // G and S columns, 2, 3 on S, 4 on G for the solver group). It used to stamp RDSon and a
+        // current source with no gate term: a loop through the gate (an op amp regulating the
+        // source current) was solved by fixed-point iteration and diverged at loop gain > 1
+        eElement m_vccs;
+        double m_gm, m_gds, m_ieq;       // Stamped: I_D = m_gds*Vds + m_gm*Vgs - m_ieq
+        double m_vgs0;                   // Vgs of the last linearization (limited steps)
+        double m_nudge;                  // A limited step: +-1 nA so the solver calls back
+        bool   m_gmOn;                    // The gate is connected: the gm terms are stamped
+        bool   m_gmDiag[5];
 
         eJunctionCap m_cgs;
         eJunctionCap m_cgd;
