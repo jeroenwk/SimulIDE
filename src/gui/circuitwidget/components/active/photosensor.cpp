@@ -79,6 +79,7 @@ PhotoSensor::PhotoSensor( QString type, QString id )
 
     setValLabelPos( 15,-20, 0 );
     setLabelPos(-16,-36, 0 );
+    PhotoSensor::updateProxy();  // the dial where a loaded circuit puts it, not Dialed's default
 }
 PhotoSensor::~PhotoSensor(){}
 
