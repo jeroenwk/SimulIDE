@@ -779,6 +779,12 @@ void OpAmp::simState( StateIO& s )
     s.io( m_lastValid );
     s.io( m_slewDir );
     s.io( m_grace );
+    s.io( m_supDir );       // #506
+    s.io( m_supFlips );
+    s.io( m_supDiag );
+    s.io( m_iMax );         // #431
+    s.io( m_ilimDir );
+    s.io( m_impNow );
     s.io( m_gbw );
     s.io( m_gbwPrev );
     s.io( m_gbwT );

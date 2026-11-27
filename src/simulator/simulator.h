@@ -163,16 +163,6 @@ class Simulator : public QObject
         simState_t simState() { return m_state; }
 
         inline void notCorverged() { m_converged = false; }
-        // A non-linear element whose own update did not move any node (a MOSFET stepping its
-        // limited Vgs, #426) is called again at the next pass, not from the node changes
-        inline void callAgain( eElement* el )
-        {
-            m_converged = false;
-            if( el->added ) return;
-            el->added = true;
-            el->nextChanged = m_nlAgain;
-            m_nlAgain = el;
-        }
 
         // Call el->stepSettled() once this time step has converged (once per step, however often called)
         inline void addToSettled( eElement* el )
@@ -297,7 +287,6 @@ class Simulator : public QObject
         eNode*    m_changedNode;
         eElement* m_voltChanged;
         eElement* m_nonLinear;
-        eElement* m_nlAgain = nullptr;   // callAgain(): the next non-linear pass
         eElement* m_settled = nullptr;
         eElement* m_stepWatch = nullptr;
         SimWatch* m_simWatch = nullptr;

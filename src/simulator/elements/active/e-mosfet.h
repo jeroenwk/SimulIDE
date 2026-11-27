@@ -64,6 +64,7 @@ class eMosfet : public eResistor
         eElement m_vccs;
         double m_gm, m_gds, m_ieq;       // Stamped: I_D = m_gds*Vds + m_gm*Vgs - m_ieq
         double m_vgs0;                   // Vgs of the last linearization (limited steps)
+        double m_nudge;                  // A limited step: +-1 nA so the solver calls back
         bool   m_gmOn;                    // The gate is connected: the gm terms are stamped
         bool   m_gmDiag[5];
 
