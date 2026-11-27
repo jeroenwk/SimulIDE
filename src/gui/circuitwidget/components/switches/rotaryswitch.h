@@ -58,8 +58,9 @@ class RotaryKnob : public QDial
 
 // Rotary switch (docs/ROTARY_SWITCH.md): 1 to 4 poles, 3 to 12 positions, 30° per detent, as
 // the SR25 / SR26 deck (poles × positions at most 12: one contact per pole and position). A
-// round body with the knob in the middle; the commons on the left, the throws on the right,
-// the top and the bottom, each with its name inside the rim, horizontal whatever side it is on
+// round body with the knob in the middle; the commons on the left, the throws clockwise as on
+// the deck (the top from the left, down the right side, the bottom from the right), each with
+// its name inside the rim, horizontal whatever side it is on
 // and however the part is turned or flipped. Each contact is a resistor (Contact_Res) from its pole's common to
 // its throw. While running, a step has the switch's timing: break before make after
 // Transit_Time, or make before break with the other contact opening after Overlap_Time, and

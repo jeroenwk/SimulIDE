@@ -19,21 +19,21 @@ The `Rotary_SW4`, `Rotary_SW8` and `Rotary_SW16` of Logic / Tools are something 
 
 ## Pins and look
 
-A round body with the knob in the middle. The commons are the pins on the left. The throws are named after their pole and position (`A1`, `A2`, ... `B1`, ...) and placed, in that order, on the right, the top and the bottom: as even as the count allows, the right taking the remainder first. Each name lies inside the rim next to its pin, horizontal whatever side the pin is on.
+A round body with the knob in the middle. The commons are the pins on the left. The throws are named after their pole and position (`A1`, `A2`, ... `B1`, ...) and placed, in that order, clockwise, as the pins are numbered on the deck seen from its pins: along the top from left to right, down the right side, then along the bottom from right to left. They are spread as even as the count allows, the top taking the remainder first. Each name lies inside the rim next to its pin, horizontal whatever side the pin is on.
 
-| Poles × positions | Right | Top | Bottom | Body |
+| Poles × positions | Top, from the left | Right, from the top | Bottom, from the right | Body |
 |---|---|---|---|---|
 | 1 × 3 | A1 | A2 | A3 | 80 px |
 | 1 × 4 | A1, A2 | A3 | A4 | 80 px |
 | 1 × 5 | A1, A2 | A3, A4 | A5 | 80 px |
 | 1 × 6, 2 × 3 | 2 | 2 | 2 | 80 px |
-| 2 × 4 | A1, A2, A3 | A4, B1, B2 | B3, B4 | 80 px |
-| 2 × 5 | A1–A4 | A5, B1, B2 | B3, B4, B5 | 96 px |
+| 2 × 4 | A1, A2, A3 | A4, B1, B2 | B4, B3 | 80 px |
+| 2 × 5 | A1–A4 | A5, B1, B2 | B5, B4, B3 | 96 px |
 | 1 × 12, 2 × 6, 3 × 4, 4 × 3 | 4 | 4 | 4 | 96 px |
 
 Pins on a side are 16 px apart; a wire connects 8 px outside the body. The body is 80 px across, or 96 when a side carries 4 pins (also with 4 poles): then the names of two neighbouring sides do not meet in their corner.
 
-![Ten switches: 1×12, 2×6, 4×3, 3×4 turned 90°, 1×4 turned 180° and flipped, 1×3 flipped, 2×5, 1×5, 2×4, 1×12: the knob stays in the middle and upright, the names stay horizontal](ROTARY_SWITCH.jpg)
+![Ten switches: 1×12, 2×6, 4×3, 3×4 turned 90°, 1×4 turned 180° and flipped, 1×3 flipped, 2×5, 1×5, 2×4, 1×12: the throws run clockwise, the knob stays in the middle and upright, the names stay horizontal](ROTARY_SWITCH.jpg)
 
 The knob is a dial widget of 40 px. Its pointer stands at −(positions − 1) × 15° + 30° × (position − 1), clockwise from 12 o'clock: the sweep is centred on 12 o'clock, with a tick per detent. However the part is turned or flipped, the knob stays in the middle of the body, upright and unmirrored, and the names stay horizontal and unmirrored (they sit where their pins are). An item in Qt turns about its `transformOriginPoint` and mirrors about its corner; the part undoes its own turn and mirror on each of them (`placeLabels()`, `placeKnob()`).
 
@@ -69,5 +69,5 @@ The simulator keeps one event per element, so the part has one timer: it is canc
 
 ## Tests and demo
 
-- `tests/regress/test_rotary_switch.py` (186 checks): the contacts in every position for 1 × 3, 1 × 4, 1 × 12, 2 × 6, 3 × 4 and 4 × 3; the limits of poles and positions; the contact resistance; the timing of a step (transit, overlap, chatter at the make and at the break, two quick steps); save and reopen; a `Key`; saved key frames and `sim history check`; the knob's place and the pins' grid in 24 turn and flip states.
+- `tests/regress/test_rotary_switch.py` (196 checks): the contacts in every position for 1 × 3, 1 × 4, 1 × 12, 2 × 6, 3 × 4 and 4 × 3; the limits of poles and positions; the throws clockwise in ten settings; the contact resistance; the timing of a step (transit, overlap, chatter at the make and at the break, two quick steps); save and reopen; a `Key`; saved key frames and `sim history check`; the knob's place and the pins' grid in 24 turn and flip states.
 - `tests/circuits/rotary_switch_lights.sim1`: the lights of the microscope (12 V, two LEDs of 330 Ω each, off / LED 1 / LED 2 / both).

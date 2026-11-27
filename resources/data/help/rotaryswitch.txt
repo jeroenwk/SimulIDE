@@ -1,6 +1,6 @@
 Rotary switch: 1 to 4 poles, 3 to 12 positions, 30° per detent.
 
-A round body with the knob in the middle. The commons (A, B, C, D) are the pins on the left; the throws (A1, A2, ..., B1, ...) are on the right, the top and the bottom. In position n, each common is connected to its throw n: A to A2, B to B2, ... while the simulation runs.
+A round body with the knob in the middle. The commons (A, B, C, D) are the pins on the left; the throws (A1, A2, ..., B1, ...) run clockwise, as the pins are numbered on the deck: along the top from left to right, down the right side, then along the bottom from right to left. In position n, each common is connected to its throw n: A to A2, B to B2, ... while the simulation runs.
 
 Use it: drag the knob, click it (one detent clockwise, Shift + click the other way), turn the mouse wheel over it, press Shift + its Key, or set Position.
 

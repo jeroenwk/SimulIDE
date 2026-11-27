@@ -380,9 +380,9 @@ void RotarySwitch::setupPins()
 
     int P = m_poles, N = m_positions, T = P*N;
 
-    int nRight  = ( T+2 )/3;                       // The throws: the right, the top, the bottom
-    int nTop    = ( T-nRight+1 )/2;
-    int nBottom = T - nRight - nTop;
+    int nTop    = ( T+2 )/3;                       // The throws, clockwise as on the deck: along the top from left to
+    int nRight  = ( T-nTop+1 )/2;                  //   right, down the right side, then along the bottom from right to
+    int nBottom = T - nTop - nRight;               //   left, as even as the count allows, the top taking the remainder first
 
     int end = pinEnd( P, nRight, nTop, nBottom );
     m_radius = end - 8;
@@ -392,9 +392,9 @@ void RotarySwitch::setupPins()
         addPin( 180, QPoint( -end, rowOffset( p, P ) ), QString( POLES[p] ), p );
 
     int t = 0;
-    for( int i=0; i<nRight;  ++i, ++t ) addPin( 0,   QPoint(  end, rowOffset( i, nRight ) ),   throwName( t, N ), P+t );
-    for( int i=0; i<nTop;    ++i, ++t ) addPin( 90,  QPoint( rowOffset( i, nTop ),    -end ),  throwName( t, N ), P+t );
-    for( int i=0; i<nBottom; ++i, ++t ) addPin( 270, QPoint( rowOffset( i, nBottom ),  end ),  throwName( t, N ), P+t );
+    for( int i=0; i<nTop;    ++i, ++t ) addPin( 90,  QPoint( rowOffset( i, nTop ),            -end ),  throwName( t, N ), P+t );
+    for( int i=0; i<nRight;  ++i, ++t ) addPin( 0,   QPoint(  end, rowOffset( i, nRight ) ),          throwName( t, N ), P+t );
+    for( int i=0; i<nBottom; ++i, ++t ) addPin( 270, QPoint( rowOffset( nBottom-1-i, nBottom ), end ), throwName( t, N ), P+t );
 
     m_contact.resize( T );
     m_ePin.resize( 2*T );

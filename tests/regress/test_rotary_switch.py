@@ -1,6 +1,7 @@
 """Rotary switch part (docs/ROTARY_SWITCH.md): the contacts in every position, 1 to 4 poles,
-3 to 12 positions and their limits, the contact resistance, the timing of a step (break before
-make, make before break, bounce), the knob (click, dial), save and reopen, going back in time.
+3 to 12 positions and their limits, the throws clockwise, the contact resistance, the timing of a
+step (break before make, make before break, bounce), the knob (click, dial), save and reopen,
+going back in time.
 
 Expected values are Ohm's law on the test circuit (5 V through 100 Ohm into the common, 1 kOhm
 from every throw to ground: the made throw sits at 5 x 1000 / 1100 = 4.5455 V, the others at
@@ -350,10 +351,28 @@ def section_looks(sim):
                 check_throws(sim, where, poles, positions, 1)
 
 
+def section_clockwise(sim):
+    # The throws run clockwise, as the pins are numbered on the deck seen from its pins: along the
+    # top from left to right, down the right side, then along the bottom from right to left. The
+    # commons stay on the left
+    c = sim.cli
+    for poles, positions in [(1, 3), (1, 4), (1, 5), (2, 3), (2, 4), (2, 5), (1, 12), (2, 6), (3, 4), (4, 3)]:
+        c("circuit", "new", "--discard")
+        c("comp", "add", "RotarySwitch", "--label", "SW", "--at", "0,0", "Poles=%d" % poles, "Positions=%d" % positions)
+        pos = {p["label"]: p["pos"] for p in c("comp", "get", "SW")["pins"] if p["label"] in throws(poles, positions)}
+        on = {s: [t for t in pos if (s == "top" and pos[t][1] < -24 or s == "bottom" and pos[t][1] > 24
+                                      or s == "right" and pos[t][0] > 24)] for s in ("top", "right", "bottom")}
+        top = sorted(on["top"], key=lambda t: pos[t][0])
+        right = sorted(on["right"], key=lambda t: pos[t][1])
+        bottom = sorted(on["bottom"], key=lambda t: pos[t][0], reverse=True)
+        flag(sim, "%d x %d: the throws clockwise: top, right, bottom from the right" % (poles, positions),
+             top + right + bottom == throws(poles, positions) and len(top) + len(right) + len(bottom) == poles * positions)
+
+
 def test(sim):
     for name, fn in [("contacts", section_contacts), ("poles", section_poles), ("limits", section_limits),
                      ("resistance", section_resistance), ("timing", section_timing), ("save", section_save),
-                     ("back", section_back), ("looks", section_looks)]:
+                     ("back", section_back), ("clockwise", section_clockwise), ("looks", section_looks)]:
         if want(name):
             fn(sim)
 

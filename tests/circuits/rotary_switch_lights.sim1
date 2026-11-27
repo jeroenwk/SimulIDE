@@ -1,38 +1,23 @@
 <circuit version="1.1.0-SR2" rev="261127" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" animate="0" >
 <description>
-# Rotary switch: the lights of a microscope
+# The lights of a microscope on the Rotary Switch (demo of the part)
 
-A demonstration of the Rotary Switch part ([ROTARY_SWITCH.md](../../docs/ROTARY_SWITCH.md)), Switches in the component list. Source: a circuit given in words, the lights of an analogue microscope (`electronics/microscope/specs/SPEC.md` §3.2–3.3): 12 V, a 4-position knob for two LEDs (off, LED 1, LED 2, both), each LED with its own series resistor.
+A circuit given in words, the demo of the Rotary Switch part (`docs/ROTARY_SWITCH.md`): 12 V, a **Rotary Switch** with 2 poles and 4 positions feeding two white LEDs, each through 330 Ω.
 
-## Parts and values
+- Position 1: both LEDs dark (nothing is wired to A1, A3, B1, B2).
+- Position 2 (I): LED1, 26.7 mA.
+- Position 3 (II): LED2, 26.7 mA.
+- Position 4 (III): both, 26.7 mA each.
 
-| Part | Value | Why |
-|---|---|---|
-| `BAT` | 12 V | Chosen: the lights run on 12 V from a battery or an adapter. |
-| `SW` | Rotary Switch, 2 poles, 4 positions | Chosen: pole A feeds LED 1 (its throws A2 and A4 are wired together), pole B feeds LED 2 (B3 and B4); position 1 connects nothing. A1, A3, B1 and B2 are open on purpose. |
-| `R1`, `R2` | 330 Ω | Chosen: (12 − 3.2) V / 330 Ω = 26.7 mA per LED, within the LED's recommended 30 mA. |
-| `LED1`, `LED2` | White, `Threshold` 3 V, `Resistance` 7 Ω | Chosen: a stand-in for the listing's LED (3.0 to 3.4 V, 30 mA recommended). |
+Pole A's throws A2 and A4 are wired together to LED1, pole B's B3 and B4 to LED2, both commons to the + of the battery. The throws run clockwise as on the deck: A1 to A3 along the top, A4, B1, B2 down the right side, B3 and B4 along the bottom from the right.
 
-## How to use it
+Expected: I = (12 − 3.2) / 330 = 26.7 mA through a lit LED. Simulated [SIMULATED]: 26.70 mA. The LED model (3.0 V threshold, 7 Ω) stands in for a 5 mm white LED of 3.0 to 3.4 V.
 
-Run: LED 1 lights (position 2). Drag the knob, click it (one detent clockwise), turn the wheel over it, or `ui dial SW &lt;0..3&gt;`:
-
-| Position | LED 1 | LED 2 |
-|---|---|---|
-| 1 | off | off |
-| 2 | 26.7 mA | off |
-| 3 | off | 26.7 mA |
-| 4 | 26.7 mA | 26.7 mA |
-
-Expected: (12 − 3.2) / 330 = 26.7 mA; simulated [SIMULATED]: 26.70 mA in each case (the current through R1 and R2).
-
-## Warnings left
-
-None from the layout check (0 errors, 0 warnings). The circuit tool's fidelity report notes `LED2` as "drawn mirrored against the source": that reads the placement hints of the netlist, not the circuit (polarity OK: each anode is on the side of its resistor).
+Warning left: the wire from A2 crosses the label `SW` at the top left of the body.
 
 ## create-circuit skill
 
-- Version: 1.30.0 (commit 0f4f59f)
+- Version: 1.31.0 (commit 0f4f59f+changes)
 - Circuit: rotary_switch_lights.sim1
 
 ### Limitations found while building it
@@ -43,9 +28,9 @@ None reported.
 
 <item itemtype="RotarySwitch" CircId="RotarySwitch-1" mainComp="false" ShowProp="Position" Show_id="true" Show_Val="true" Pos="-48,-48" rotation="0" hflip="1" vflip="1" label="SW" idLabPos="-11.5,-63" labelrot="0" valLabPos="6.5,-63" valLabRot="0" labelAuto="true" Poles="2" Positions="4" Position="2" Shorting="false" Contact_Res="50 mΩ" Transit_Time="0 ms" Overlap_Time="1 ms" Bounce_Time="0 ms" Bounces="5" />
 
-<item itemtype="Resistor" CircId="Resistor-2" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="32,-80" rotation="90" hflip="1" vflip="1" label="R1" idLabPos="-18,8.5" labelrot="0" valLabPos="-5,8.5" valLabRot="0" labelAuto="true" Resistance="330 Ω" Cp="0 pF" />
+<item itemtype="Resistor" CircId="Resistor-2" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="32,-96" rotation="90" hflip="1" vflip="1" label="R1" idLabPos="-18,8.5" labelrot="0" valLabPos="-5,8.5" valLabRot="0" labelAuto="true" Resistance="330 Ω" Cp="0 pF" />
 
-<item itemtype="Led" CircId="Led-3" mainComp="false" Show_id="true" Show_Val="false" Pos="80,-80" rotation="90" hflip="1" vflip="1" label="LED1" idLabPos="-9,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Color="White" Grounded="false" Show_State="false" Threshold="3 V" MaxCurrent="30 mA" PeakCurrent="0 mA" Resistance="7 Ω" Cj0="0 pF" Vj="0.7 V" Mj="0.33" />
+<item itemtype="Led" CircId="Led-3" mainComp="false" Show_id="true" Show_Val="false" Pos="80,-96" rotation="90" hflip="1" vflip="1" label="LED1" idLabPos="-9,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Color="White" Grounded="false" Show_State="false" Threshold="3 V" MaxCurrent="30 mA" PeakCurrent="0 mA" Resistance="7 Ω" Cj0="0 pF" Vj="0.7 V" Mj="0.33" />
 
 <item itemtype="Resistor" CircId="Resistor-4" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="32,0" rotation="90" hflip="1" vflip="1" label="R2" idLabPos="-19,8.5" labelrot="0" valLabPos="-4,8.5" valLabRot="0" labelAuto="true" Resistance="330 Ω" Cp="0 pF" />
 
@@ -59,13 +44,13 @@ None reported.
 
 <item itemtype="Node" CircId="Node-9" mainComp="false" Pos="-104,-40" />
 
-<item itemtype="Node" CircId="Node-10" mainComp="false" Pos="8,-48" />
+<item itemtype="Node" CircId="Node-10" mainComp="false" Pos="-48,8" />
 
-<item itemtype="Node" CircId="Node-11" mainComp="false" Pos="-48,8" />
+<item itemtype="Node" CircId="Node-11" mainComp="false" Pos="8,-64" />
 
 <item itemtype="Node" CircId="Node-12" mainComp="false" Pos="80,24" />
 
-<item itemtype="Connector" uid="Connector-1" startpinid="Resistor-2-lPin" endpinid="Led-3-lPin" pointList="32,-96,32,-112,80,-112,80,-96" />
+<item itemtype="Connector" uid="Connector-1" startpinid="Resistor-2-lPin" endpinid="Led-3-lPin" pointList="32,-112,32,-128,80,-128,80,-112" />
 
 <item itemtype="Connector" uid="Connector-2" startpinid="Resistor-4-lPin" endpinid="Led-5-lPin" pointList="32,-16,32,-32,80,-32,80,-16" />
 
@@ -75,21 +60,21 @@ None reported.
 
 <item itemtype="Connector" uid="Connector-6" startpinid="Node-9-2" endpinid="Battery-6-lPin" pointList="-104,-40,-104,-32,-96,-32,-96,32" />
 
-<item itemtype="Connector" uid="Connector-8" startpinid="RotarySwitch-1-A4" endpinid="Node-10-1" pointList="-64,-96,-64,-112,8,-112,8,-48" />
+<item itemtype="Connector" uid="Connector-8" startpinid="Resistor-4-rPin" endpinid="Node-10-1" pointList="32,16,32,32,-48,32,-48,8" />
 
-<item itemtype="Connector" uid="Connector-9" startpinid="Resistor-2-rPin" endpinid="Node-10-0" pointList="32,-64,32,-48,8,-48" />
+<item itemtype="Connector" uid="Connector-9" startpinid="RotarySwitch-1-B4" endpinid="Node-10-0" pointList="-56,0,-56,8,-48,8" />
 
-<item itemtype="Connector" uid="Connector-10" startpinid="Node-10-2" endpinid="RotarySwitch-1-A2" pointList="8,-48,0,-48" />
+<item itemtype="Connector" uid="Connector-10" startpinid="Node-10-2" endpinid="RotarySwitch-1-B3" pointList="-48,8,-40,8,-40,0" />
 
-<item itemtype="Connector" uid="Connector-12" startpinid="Resistor-4-rPin" endpinid="Node-11-1" pointList="32,16,32,32,-48,32,-48,8" />
+<item itemtype="Connector" uid="Connector-12" startpinid="RotarySwitch-1-A2" endpinid="Node-11-1" pointList="-48,-96,-48,-112,8,-112,8,-64" />
 
-<item itemtype="Connector" uid="Connector-13" startpinid="RotarySwitch-1-B4" endpinid="Node-11-0" pointList="-40,0,-40,8,-48,8" />
+<item itemtype="Connector" uid="Connector-13" startpinid="Resistor-2-rPin" endpinid="Node-11-0" pointList="32,-80,32,-64,8,-64" />
 
-<item itemtype="Connector" uid="Connector-14" startpinid="Node-11-2" endpinid="RotarySwitch-1-B3" pointList="-48,8,-56,8,-56,0" />
+<item itemtype="Connector" uid="Connector-14" startpinid="Node-11-2" endpinid="RotarySwitch-1-A4" pointList="8,-64,0,-64" />
 
 <item itemtype="Connector" uid="Connector-15" startpinid="Battery-6-rPin" endpinid="Ground-7-Gnd" pointList="-96,64,-96,80" />
 
-<item itemtype="Connector" uid="Connector-17" startpinid="Led-3-rPin" endpinid="Node-12-1" pointList="80,-64,80,-48,112,-48,112,24,80,24" />
+<item itemtype="Connector" uid="Connector-17" startpinid="Led-3-rPin" endpinid="Node-12-1" pointList="80,-80,80,-48,112,-48,112,24,80,24" />
 
 <item itemtype="Connector" uid="Connector-18" startpinid="Led-5-rPin" endpinid="Node-12-0" pointList="80,16,80,24" />
 
