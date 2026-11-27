@@ -388,7 +388,12 @@ void CliApi::registerSettings()
 
         // Validate names first so nothing is half applied on a typo
         for( auto& ch : changes )
-            if( !findSetting( ch.first ).set ) throw CliError( ch.first+" is read only");
+            if( !findSetting( ch.first ).set ){
+                QString hint = ch.first == "stepsPerSec"     // it follows from them (create-circuit #511)
+                    ? ": it follows from the speed and stepSize; set stepSize (the solver step) or reactStep "
+                      "(the step of capacitors and inductors)" : "";
+                throw CliError( ch.first+" is read only"+hint );
+            }
 
         QJsonArray rows;
         for( auto& ch : changes )
