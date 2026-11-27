@@ -174,6 +174,7 @@ void SubCircuit::loadSubCircuit( QString file )
     }
     QString numId = m_id;
     numId.remove( m_device+"-");
+    m_innerPrefix = numId+"@";
 
     Circuit* circ = Circuit::self();
     QList<Linker*> linkList;   // Linked  Component list

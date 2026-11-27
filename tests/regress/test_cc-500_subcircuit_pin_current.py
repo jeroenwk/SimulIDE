@@ -18,7 +18,8 @@ def test(sim):
     c("comp", "add", "Resistor", "--label", "R", "--at", "120,80", "Resistance=1000")
     c("comp", "add", "Ground", "--label", "G", "--at", "200,120")
     c("wire", "add", "V.outnod", "U1.Ai")
-    c("wire", "add", "V.outnod", "U1.Ae")
+    c("comp", "add", "Fixed Voltage", "--label", "VE", "--at", "-120,80", "Voltage=5", "Out=true")
+    c("wire", "add", "VE.outnod", "U1.Ae")   # Its own net: pins on one net share its total
     c("wire", "add", "U1.Ao", "R.lPin")
     c("wire", "add", "R.rPin", "G.Gnd")
     c("sim", "run", "--for", "1ms")

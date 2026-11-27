@@ -23,7 +23,7 @@ class ePin
 
         bool isConnected() { return (m_enode!=NULL); }
 
-        double getCurrent();                                   // Into the element (A)
+        virtual double getCurrent();                           // Into the element (A)
 
         // True terminal current published by the element's own model (e.g. eBJT,
         // whose matrix stamps are a linearization with large cancelling terms).

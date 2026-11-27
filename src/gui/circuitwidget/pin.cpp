@@ -22,6 +22,9 @@
 #include "connectorline.h"
 #include "circuit.h"
 #include "simulator.h"
+#include "subcircuit.h"
+#include "e-node.h"
+#include "tunnel.h"
 
 // Pin label sizes in the parts were chosen for Ubuntu Mono (0.5 em wide). JetBrains Mono is
 // 0.6 em wide: scale by 5/6 so labels keep their width inside packages (min 4 px)
@@ -503,3 +506,24 @@ void Pin::paint( QPainter* painter, const QStyleOptionGraphicsItem* option, QWid
             painter->drawLine( 2,-2, 0, 0);// Draw upper half Output arrow
         }
 }   }
+
+double Pin::getCurrent()   // Into the component (A)
+{
+    // A subcircuit's pin is the pin of a Tunnel of it, which stamps nothing: the current into
+    // the subcircuit through it is what the parts inside draw from its node (create-circuit
+    // #500), through their own stamps (so the pins of a nested subcircuit, 0 A, add nothing).
+    // Everything inside has an id that starts with the subcircuit's prefix ("7@"), including
+    // ePins that are not Pins (a MuxAnalog's switch resistors). Two pins of it on one net
+    // both give the net's total: the split between them is not defined
+    eNode* node = getEnode();
+    if( !node || !m_component || hasTrueCurrent() ) return ePin::getCurrent();
+    SubCircuit* sub = dynamic_cast<SubCircuit*>( m_component->parentItem() );
+    if( !sub || !sub->getPinTunnels().contains( (Tunnel*)m_component ) ) return ePin::getCurrent();
+    QString prefix = sub->innerPrefix();
+    if( prefix.isEmpty() ) return ePin::getCurrent();
+
+    double current = 0;
+    for( ePin* e : node->getEpins() )
+        if( e != this && e->getId().startsWith( prefix ) ) current += e->ePin::getCurrent();
+    return current;
+}

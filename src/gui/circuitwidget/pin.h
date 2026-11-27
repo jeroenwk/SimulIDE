@@ -67,6 +67,9 @@ class Pin : public QGraphicsItem, public ePin, public Updatable
         
         Component* component() { return m_component; }
 
+        // Into the component (A). A subcircuit's pin has no stamps: the parts inside on its node
+        double getCurrent() override;
+
         Connector* connector() { return my_connector; }
         void setConnector( Connector* c );
         void removeConnector();

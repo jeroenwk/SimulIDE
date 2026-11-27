@@ -36,6 +36,9 @@ class SubCircuit : public Chip
 
         QList<Component*>* compList() { return &m_compList; }
 
+        // Start of the ids of everything inside ("7@"), nested subcircuits' parts included
+        QString innerPrefix() { return m_innerPrefix; }
+
     protected:
         void loadSubCircuit( QString file );
 
@@ -51,6 +54,7 @@ class SubCircuit : public Chip
  static QString m_subcDir;      // Subcircuit Path
 
         QList<Component*>       m_compList;
+        QString                 m_innerPrefix;
         QList<Tunnel*>          m_subcTunnels;
         QHash<QString, Tunnel*> m_pinTunnels;
 };
