@@ -71,6 +71,7 @@ class Simulator : public QObject
 
         // GUI thread: let the worker finish the time step it is solving and stop there, so what
         // the GUI and the CLI read next is a converged step, not a Newton iteration in progress
+        void waitWorker();   // holdWorker's wait, told in Messages past 10 s (#617)
         void holdWorker();
         void resumeWorker();
         void resumeSim( bool user=false );
