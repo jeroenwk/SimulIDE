@@ -124,6 +124,7 @@ class Triggers : public QObject, public SimWatch, public Updatable, public State
         // changes at each such pause (sim run --until-trigger, sim run --for, skips)
         int lastStopId() { return m_stopId; }
         uint64_t lastStopTime() { return m_stopTime; }
+        bool busy() { return m_preBusy || m_pausePending; }   // A key frame −Δ being made (its pause to come)
         int stopCount() { return m_stopCount; }
         QString lastStopText();
 
@@ -231,6 +232,8 @@ class Triggers : public QObject, public SimWatch, public Updatable, public State
         bool m_firstDone = false;     // The run's first solved step is done (start states don't fire)
         uint64_t m_keepUntil = 0;     // A key frame −Δ in progress: the hits up to the trigger stay
         bool m_preBusy = false;       // A key frame −Δ is being made
+        bool m_pausePending = false;  // A pause trigger fired with it: applied when it is done (#615)
+        void pendingPause();          // That pause, and the fired() a run --until-trigger waits for
         bool m_wasPaused = false;
         QVector<int> m_countNew;      // Count-only hits since the last summary, by trigger id
 

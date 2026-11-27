@@ -1216,13 +1216,18 @@ void Triggers::updateStep()   // GUI thread, worker idle
         if( pausing ){
             m_stopId = stopId;
             m_stopTime = stopTime;
-            m_stopCount++;
         }
         bool running = sim->isRunning() && !sim->isPaused();
         for( int id : keyIds )
             if( Trigger* t = find( id ) ) keyFrame( t, sim->circTime(), running && !pausing );
-        if( pausing && sim->isRunning() && !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
-        if( pausing ) emit fired( m_stopId );
+        // A key frame −Δ goes back and replays to this step: pausing now cancelled that skip and
+        // left the run Δ before the trigger, the event undone (#615). Pause when it is done
+        if( pausing && m_preBusy ) m_pausePending = true;
+        else if( pausing ){
+            m_stopCount++;
+            if( sim->isRunning() && !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
+            emit fired( m_stopId );
+        }
     }
     if( m_dirty && sim->isRunning() ){ m_dirty = false; compile( false ); }
 
@@ -1280,6 +1285,7 @@ void Triggers::keyFrame( Trigger* t, uint64_t hitTime, bool resumeAfter )
         if( !ok ){
             self->m_preBusy = false; self->m_keepUntil = 0;
             qWarning().noquote() << "[triggers] key frame before the trigger: "+msg;
+            self->pendingPause();
             return;
         }
         QString err;
@@ -1290,6 +1296,7 @@ void Triggers::keyFrame( Trigger* t, uint64_t hitTime, bool resumeAfter )
         if( !err.isEmpty() ){
             self->m_preBusy = false; self->m_keepUntil = 0;
             qWarning().noquote() << "[triggers] back to the trigger: "+err;
+            self->pendingPause();
             return;
         }
         SimSkip::self()->whenDone( [self, resumeAfter, stopAt]( bool, QString )
@@ -1299,9 +1306,20 @@ void Triggers::keyFrame( Trigger* t, uint64_t hitTime, bool resumeAfter )
             self->m_keepUntil = 0;
             Simulator* sim = Simulator::self();
             if( stopAt > sim->circTime() ) sim->setStopAt( stopAt );
-            if( resumeAfter && sim->isRunning() && sim->isPaused() ) CircuitWidget::self()->pauseCirc();   // Resumes
+            if( self->m_pausePending ) self->pendingPause();
+            else if( resumeAfter && sim->isRunning() && sim->isPaused() ) CircuitWidget::self()->pauseCirc();   // Resumes
         });
     });
+}
+
+void Triggers::pendingPause()
+{
+    if( !m_pausePending ) return;
+    m_pausePending = false;
+    m_stopCount++;
+    Simulator* sim = Simulator::self();
+    if( sim->isRunning() && !sim->isPaused() ) CircuitWidget::self()->pauseCirc();
+    emit fired( m_stopId );
 }
 
 void Triggers::restored()   // GUI thread: a keyframe was loaded

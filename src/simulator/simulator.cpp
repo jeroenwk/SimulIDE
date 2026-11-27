@@ -5,6 +5,8 @@
 
 #include <qtconcurrentrun.h>
 #include <QHash>
+#include <QThread>
+#include <QElapsedTimer>
 #include <math.h>
 
 #include "simulator.h"
@@ -620,13 +622,32 @@ void Simulator::pauseSim() // Only pause simulation, don't update UI
 // where no solved step goes above 2.2 A, and Kirchhoff's current law broken by amps). It now
 // finishes the step first, unless that takes over 50 ms (breakStep). A CLI command arriving while
 // the worker runs waited for nothing at all and raced it; it now waits here too.
+// A wait of over 10 s says so in Messages, with the step it waits for: a CLI command that never
+// replied (create-circuit #617, seen once) is then a solver step that did not end, or not this
+void Simulator::waitWorker()
+{
+    QElapsedTimer t; t.start();
+    bool told = false;
+    while( !m_CircuitFuture.isFinished() ){
+        if( t.nsecsElapsed() < 2000000 ) QThread::yieldCurrentThread();   // Most waits: a step's end
+        else QThread::msleep( 1 );
+        if( !told && t.elapsed() > 10000 ){
+            told = true;
+            qWarning().noquote() << "Simulator: waiting "+QString::number( t.elapsed()/1000 )
+                                    +" s for the solver step at "+siStr( m_circTime*1e-12, "s" )+" to end";
+        }
+    }
+    if( told ) qInfo().noquote() << "Simulator: the step at "+siStr( m_circTime*1e-12, "s" )+" ended after "
+                                    +QString::number( t.elapsed()/1000.0, 'f', 1 )+" s";
+}
+
 void Simulator::holdWorker()
 {
     if( m_CircuitFuture.isFinished() ) return;
-    if( m_state != SIM_RUNNING ){ m_CircuitFuture.waitForFinished(); return; }  // Pausing or stopping
+    if( m_state != SIM_RUNNING ){ waitWorker(); return; }  // Pausing or stopping
     m_holdSince = m_RefTimer.nsecsElapsed();
     m_state = SIM_WAITING;
-    m_CircuitFuture.waitForFinished();
+    waitWorker();
     m_state = SIM_RUNNING;
 }
 

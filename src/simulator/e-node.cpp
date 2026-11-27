@@ -206,6 +206,22 @@ double eNode::othersCurrent( ePin* epin, double* gMax )
     return -current;
 }
 
+// The current into the elements of this node whose pins' ids do not start with prefix: what a
+// part with that id prefix delivers to the rest (an op amp's output current at 1 nOhm, where
+// (Vsrc - Vout)/Z is lost in the rounding of V: create-circuit #431)
+double eNode::currentExcept( const QString& prefix )
+{
+    Simulator* sim = Simulator::self();
+    double current = 0;
+    for( Connection* c = m_firstAdmit; c; c = c->next )
+        if( !c->epin->getId().startsWith( prefix ) ) current += c->value*( m_volt - sim->eNodeVolt( c->node ) );
+    for( Connection* c = m_firstSingAdm; c; c = c->next )
+        if( !c->epin->getId().startsWith( prefix ) ) current -= c->value*sim->eNodeVolt( c->node );
+    for( Connection* c = m_firstCurrent; c; c = c->next )
+        if( !c->epin->getId().startsWith( prefix ) ) current -= c->value;
+    return current;
+}
+
 bool eNode::hasStamps( ePin* epin )
 {
     for( Connection* c = m_firstAdmit;   c; c = c->next ) if( c->epin == epin ) return true;

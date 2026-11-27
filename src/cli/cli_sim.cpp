@@ -519,6 +519,7 @@ void CliApi::registerSim()
             }
             if( *pausedAtFrame < 0 )
             {
+                if( trig && trig->busy() ) return false;   // A key frame −Δ: back and on to the trigger (#615)
                 if( trig && trig->stopCount() != stops && sim->isPaused() ) *byTrigger = true;   // Ended early (§8)
                 else if( !target || sim->circTime() < target ) return false;
                 if( !sim->isPaused() ) CircuitWidget::self()->pauseCirc();

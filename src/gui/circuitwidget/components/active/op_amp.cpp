@@ -41,8 +41,13 @@ OpAmp::OpAmp( QString type, QString id )
      , eElement( id )
      , m_aux( id+"-aux" )
      , m_bias( id+"-bias" )
+     , m_sup( id )                     // ePins "<id>-ePinN": counted in the supply Pins' current
 {
     m_bias.setNumEpins( 2 );
+    m_sup.setNumEpins( 8 );
+    m_supDir = m_supFlips = 0;
+    m_iMax = 0;
+    m_ilimDir = 0;
     m_slewRate = m_ib = m_ios = m_vos = m_gbw = 0;
     m_aux.setNumEpins( aNum );
     m_area = QRect( -18, -8*2, 36, 8*2*2 );
@@ -90,6 +95,9 @@ OpAmp::OpAmp( QString type, QString id )
 
         new DoubProp<OpAmp>("Out_Imped", tr("Output Impedance"),"Ω"
                            , this, &OpAmp::outImp, &OpAmp::setOutImp ),
+
+        new DoubProp<OpAmp>("I_Max", tr("Output Current Limit (0 = none)"),"mA"
+                           , this, &OpAmp::iMax, &OpAmp::setIMax ),
         showStateProp()
     },0} );
     addPropGroup( { tr("Errors"), {
@@ -167,6 +175,10 @@ void OpAmp::initialize()
     m_gbwPrev = 0;
     m_gbwT = 0;
     m_stampT = 0;
+    m_supDir = 0;
+    m_supFlips = 0;
+    m_ilimDir = 0;
+    m_impNow = m_outImp;
     m_output->setTrueCurrent( std::numeric_limits<double>::quiet_NaN() );
     clearStates();
 }
@@ -213,7 +225,53 @@ void OpAmp::stamp()
     };
     term( aOP, aPO, pN );
     term( aON, aNO, nN );
+
+    // #506: the output current comes from a supply pin, the V+ one when sourcing and the V- one
+    // when sinking. That pin's node gets the output's own terms with the opposite sign, so the
+    // current drawn there is the current delivered (see stampSupply)
+    for( int i=0; i<8; ++i ) m_sup.getEpin( i )->setEnode( nullptr );
+    if( m_powerPins ){
+        eNode* cols[3] = { oN, pN, nN };
+        for( int k=0; k<2; ++k ){
+            eNode* sN = m_pin[3+k]->getEnode();
+            if( !sN || sN->getNodeNumber() == 0 ) continue;   // Ground: nothing to stamp
+            for( int j=0; j<3; ++j ){
+                ePin* e = m_sup.getEpin( 4*k+j );
+                e->setEnode( sN );
+                m_supDiag[k][j] = false;
+                eNode* cn = cols[j];
+                if( !cn || cn->getNodeNumber() == 0 ) continue;   // A constant (in m_constIn)
+                if( cn == sN ){ e->setEnodeComp( &s_gnd ); m_supDiag[k][j] = true; }
+                else e->addSingAdm( cn->getNodeNumber(), 0 );
+            }
+            m_sup.getEpin( 4*k )->createCurrent();
+            if( oN->getNodeNumber() != 0 && oN != sN ){         // Zero entry back: same solver group
+                ePin* b = m_sup.getEpin( 4*k+3 );
+                b->setEnode( oN );
+                b->addSingAdm( sN->getNodeNumber(), 0 );
+            }
+        }
+    }
     m_dirty = true;
+}
+
+void OpAmp::stampSupply( double G, double gG )
+{
+    // Current delivered by the output: I + gG*(V+ - V-) - G*Vout (I = the stamped constant part).
+    // Drawn from the supply node: in its equation -s*V_k - i, so s = +G at Vout, -gG at V+,
+    // +gG at V-, i = -I
+    for( int k=0; k<2; ++k ){
+        ePin* e0 = m_sup.getEpin( 4*k );
+        if( !e0->getEnode() ) continue;
+        bool on = ( m_supDir == k+1 );
+        double s[3] = { on ? G : 0, on ? -gG : 0, on ? gG : 0 };
+        for( int j=0; j<3; ++j ){
+            ePin* e = m_sup.getEpin( 4*k+j );
+            if( m_supDiag[k][j] ) e->stampAdmitance(-s[j] );
+            else                  e->stampSingAdm( s[j] );
+        }
+        e0->stampCurrent( on ? -m_stampI : 0 );
+    }
 }
 
 void OpAmp::updateStep()
@@ -222,6 +280,7 @@ void OpAmp::updateStep()
     m_changed = false;
 
     m_output->setImpedance( m_outImp );
+    m_impNow = m_outImp;
     m_dirty = true;
     voltChanged();
 }
@@ -232,7 +291,10 @@ void OpAmp::stampMode()
     // out = a*out(prev) + (1-a)*gain*vd with a = e^(-wp*dt): the same stamp with gain (1-a)*gain
     // and a constant a*out(prev), so feedback loops through it stay in one solve
     double a  = ( m_mode == LIN ) ? gbwAlpha() : 0;
-    double G  = 1/m_outImp;
+    // ILIM (#431): a current source of I_Max, its output impedance 1 GOhm (not 0: a matrix row)
+    double imp = ( m_mode == ILIM ) ? 1e9 : m_outImp;
+    if( imp != m_impNow ){ m_output->setImpedance( imp ); m_impNow = imp; }
+    double G  = 1/imp;
     double gG = ( m_mode == LIN ) ? m_gain*( 1-a )*G : 0;
     for( int i : { aOP, aON } )
     {
@@ -244,9 +306,11 @@ void OpAmp::stampMode()
     }
     double I = ( m_mode == LIN  ) ? G*( ( 1-a )*m_constIn+a*m_gbwPrev+m_nudge )
              : ( m_mode == SAT_P) ? G*m_voltPos
-             : ( m_mode == SAT_N) ? G*m_voltNeg : G*m_slewV;
+             : ( m_mode == SAT_N) ? G*m_voltNeg
+             : ( m_mode == ILIM ) ? m_ilimDir*m_iMax : G*m_slewV;
     m_output->stampCurrent( I );
     m_stampI = I;
+    if( m_powerPins ) stampSupply( G, gG );
     m_stampVpos = m_voltPos;
     m_stampVneg = m_voltNeg;
     m_stampT = Simulator::self()->circTime();
@@ -261,7 +325,8 @@ void OpAmp::stepSettled()
     if( m_output->getEnode() ){   // Into the part: G*(Vout - source), the source is in the aux pins too
         double src = ( m_mode == LIN ) ? ideal
                    : ( m_mode == SAT_P ) ? m_voltPos : ( m_mode == SAT_N ) ? m_voltNeg : m_slewV;
-        m_output->setTrueCurrent( ( m_output->getVoltage()-src )/m_outImp );
+        if( m_mode == ILIM ) m_output->setTrueCurrent(-( m_stampI-m_output->getVoltage()/m_impNow ) );
+        else                 m_output->setTrueCurrent( ( m_output->getVoltage()-src )/m_outImp );
         m_lastOut = m_output->getVoltage();
         m_lastT = Simulator::self()->circTime();
         m_lastValid = true;
@@ -278,9 +343,12 @@ void OpAmp::stepSettled()
         else if( ideal <= m_voltNeg-h ) r = 2;   // exactly on a 0 V rail, that is not SAT-
         else r = 0;
     }
+    if( m_mode == ILIM ) r = 3;
+    else if( r == 3 ) r = 0;
     if( r == m_region ) return;
     m_region = r;
-    if     ( r == 0 ) reportState("LINEAR", stOn );
+    if     ( r == 3 ) reportState("I LIMIT", stWait );
+    else if( r == 0 ) reportState("LINEAR", stOn );
     else if( r == 1 ) reportState("SAT+",   stWait );
     else              reportState("SAT-",   stWait );
 }
@@ -333,11 +401,19 @@ void OpAmp::voltChanged() // Called when any pin node change volt
     if( qFabs( cst-m_constIn ) > 1e-9*( 1+qFabs( cst ) ) ){ m_constIn = cst; if( m_mode == LIN ) m_dirty = true; }
     if( m_gbw > 0 && m_mode == LIN && sim->circTime() != m_stampT ) m_dirty = true; // New dt and out(prev)
 
-    if( sim->circTime() != m_flipTime ){ m_flipTime = sim->circTime(); m_flips = 0; m_changes = 0; m_held = false; }
+    if( sim->circTime() != m_flipTime ){ m_flipTime = sim->circTime(); m_flips = 0; m_changes = 0; m_held = false; m_supFlips = 0; }
 
     double eps = 1e-6*( 1+qFabs( m_voltPos )+qFabs( m_voltNeg ) );
     int mode = m_mode;
-    if( mode == LIN )
+    if( mode == ILIM )                         // Out of the limit when the output it wants is back
+    {                                          // on this side of the output (or no limit any more)
+        double want = qBound( m_voltNeg, ideal, m_voltPos );
+        if( m_iMax <= 0 || m_ilimDir*( want-out ) <= 0 )
+            mode = ( ideal >= m_voltPos ) ? SAT_P : ( ideal <= m_voltNeg ) ? SAT_N : LIN;
+        else if( m_ilimDir > 0 && out > m_voltPos+eps ) mode = SAT_P;   // The load lifts it past a rail
+        else if( m_ilimDir < 0 && out < m_voltNeg-eps ) mode = SAT_N;
+    }
+    else if( mode == LIN )
     {
         if( m_checkStable )                    // First LIN solve after a rail
         {
@@ -373,6 +449,12 @@ void OpAmp::voltChanged() // Called when any pin node change volt
     // iteration budget (minutes of CPU) and took the step with the op amp in LIN far beyond its
     // rails (kV outputs; create-circuit #368). After MAX_CHANGES changes in one step, sit on the
     // rail the ideal output points to until the next step: the swing then plays out in time.
+    // Output current limit (#431): from a solve in this region, beyond I_Max: a current source
+    if( m_iMax > 0 && mode == m_mode && mode != ILIM && !m_dirty ){
+        double io = loadCurrent( ideal );
+        if( s_trace ) OPAMP_LOG << "ilim check: io" << io << "mode" << mode;
+        if( qFabs( io ) > m_iMax*1.001 ){ mode = ILIM; m_ilimDir = ( io > 0 ) ? 1 : -1; }
+    }
     static const int MAX_CHANGES = 12;
     if( m_held ) mode = m_mode;
     else if( mode != m_mode && ++m_changes > MAX_CHANGES ){
@@ -403,7 +485,7 @@ void OpAmp::voltChanged() // Called when any pin node change volt
 
     // Slew rate: the output may move at most SR*dt since the last solved step. A solve that went
     // further (a step input, a rail change) is replaced by a source ramping from there (SLEW)
-    if( m_slewRate > 0 && m_lastValid && !waiting && !m_dirty ){
+    if( m_slewRate > 0 && m_lastValid && !waiting && !m_dirty && m_mode != ILIM ){
         // The inputs were constant until the previous solved step (else this op amp was solved
         // there too): the output may have moved since then, at most one reactive step (a
         // sampled waveform's step) after an idle gap
@@ -417,9 +499,35 @@ void OpAmp::voltChanged() // Called when any pin node change volt
             return;
         }
     }
+    // #506: which supply pin the output current goes through, from this solve's current. Only a
+    // clear sign changes it
+    if( m_powerPins && !m_dirty ){
+        double io = loadCurrent( ideal );
+        double floor = 1e-9*( 1+qFabs( io ) );
+        int dir = ( io > floor ) ? 1 : ( io < -floor ) ? 2 : m_supDir;
+        if( dir != m_supDir && m_supFlips < 6 ){
+            m_supFlips++;
+            m_supDir = dir;
+            m_dirty = true;
+        }
+    }
     if( !m_dirty && !m_checkStable && !waiting ) return;   // Converged
     sim->notCorverged();
     if( m_dirty ) stampMode();
+}
+
+// What the output delivers: the current the rest of its node draws. Not (Vsrc - Vout)/Out_Imped:
+// at 1 nOhm the rounding of the node voltages (µV) made that kiloamps. On ground (no node
+// equation) from the source, exact there since Vout is 0
+double OpAmp::loadCurrent( double ideal )
+{
+    eNode* oN = m_output->getEnode();
+    if( !oN ) return 0;
+    if( oN->getNodeNumber() != 0 ) return oN->currentExcept( m_elmId+"-" );
+    if( m_mode == ILIM ) return m_stampI;
+    double src = ( m_mode == LIN ) ? ideal
+               : ( m_mode == SAT_P ) ? m_voltPos : ( m_mode == SAT_N ) ? m_voltNeg : m_slewV;
+    return src/m_outImp;
 }
 
 uint64_t OpAmp::slewStep()   // Steps of 0.2 % of the supply span, 1 ns to 10 us
@@ -472,9 +580,12 @@ void OpAmp::runEvent()
     // when the direction reverses: with feedback the target is the open-loop gain times the
     // error, which changes sign as the output crosses the linear solution
     if( qFabs( dist ) <= dv || ( m_slewDir != 0 && dir != m_slewDir ) ){
-        double ideal = m_gain*vd;
-        if     ( ideal >= m_voltPos ) m_mode = SAT_P;
-        else if( ideal <= m_voltNeg ) m_mode = SAT_N;
+        // A rail only when the ramp reached it. Ended by a reversal (feedback), gain*vd is far
+        // past a rail at any output but the linear one (Gain 1e5: 60 uV of error): that went to
+        // SAT, solved the output at the rail, and slewed back, in 60 mV hops for ever (#650)
+        bool reached = qFabs( dist ) <= dv;
+        if     ( reached && target >= m_voltPos ) m_mode = SAT_P;
+        else if( reached && target <= m_voltNeg ) m_mode = SAT_N;
         else{
             m_mode = LIN;
             m_linIter = 0;
@@ -668,6 +779,12 @@ void OpAmp::simState( StateIO& s )
     s.io( m_lastValid );
     s.io( m_slewDir );
     s.io( m_grace );
+    s.io( m_supDir );       // #506
+    s.io( m_supFlips );
+    s.io( m_supDiag );
+    s.io( m_iMax );         // #431
+    s.io( m_ilimDir );
+    s.io( m_impNow );
     s.io( m_gbw );
     s.io( m_gbwPrev );
     s.io( m_gbwT );
