@@ -4,6 +4,8 @@ A native part (`src/gui/circuitwidget/components/meters/powermeter.{h,cpp}`), Me
 
 The simulator had no wattmeter: an ammeter shows a current, and the same current at 6 V is half the energy of 12 V. This part shows that at once.
 
+![Three Power Meters: the lights of a microscope on 12 V (641 mW, power factor 1.000); a rectifier with a capacitor on 10 V peak, 50 Hz (80 mW, power factor 0.37); and one with the source on its black lead (−873 mW, −1.000)](POWER_METER.jpg)
+
 | Property | Default | |
 |---|---|---|
 | `Reading` | `Instant` | The power now, or `Mean`: the mean over `Avg_Time`. There is no r.m.s. of a power, so `RMS` is not offered (the CLI refuses it; in a file it loads as `Mean`). |
