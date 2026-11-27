@@ -14,6 +14,7 @@
 
 #include <cmath>
 #include <memory>
+#include <functional>
 
 #include <QDebug>
 #include <QJsonArray>
@@ -25,6 +26,7 @@
 #include "e-element.h"
 #include "e-node.h"
 #include "iopin.h"
+#include "photosensor.h"
 #include "pin.h"
 #include "simulator.h"
 #include "updatable.h"
@@ -41,6 +43,7 @@ struct Channel           // One measured quantity
     QString kind;        // "pin" (voltage) or "comp" (voltage across pin 0 - pin 1, current into pin 0)
     Pin* p0 = nullptr;
     Pin* p1 = nullptr;
+    std::function<double()> cur;   // the part's own current at p0, when the pins do not carry it all
 
     double v = 0, i = 0;                                   // Value held since lastT
     double sumV = 0, sumV2 = 0, sumI = 0, sumI2 = 0;       // Integrals (unit * ps)
@@ -49,15 +52,15 @@ struct Channel           // One measured quantity
     void read( bool extremes=true )   // extremes false: a value no solved step has given yet
     {
         v = p1 ? p0->getVoltage() - p1->getVoltage() : p0->getVoltage();
-        if( kind == "comp" ) i = p0->getCurrent();
+        i = cur ? cur() : p0->getCurrent();   // into the part at p0 (a pin channel too: #760)
         if( !extremes ) return;
         minV = std::min( minV, v ); maxV = std::max( maxV, v );
-        if( kind == "comp" ){ minI = std::min( minI, i ); maxI = std::max( maxI, i ); }
+        minI = std::min( minI, i ); maxI = std::max( maxI, i );
     }
     void hold( double dt )   // The held values lasted dt ps
     {
         sumV += v*dt; sumV2 += v*v*dt;
-        if( kind == "comp" ){ sumI += i*dt; sumI2 += i*i*dt; }
+        sumI += i*dt; sumI2 += i*i*dt;
     }
 };
 
@@ -127,8 +130,7 @@ class Averager : public eElement, public Updatable
                 QJsonObject v{ {"mean", num( c.sumV/T )}, {"rms", num( std::sqrt( c.sumV2/T ) )},
                                {"min", num( c.minV )}, {"max", num( c.maxV )} };
                 o["voltage"] = v;
-                if( c.kind == "comp" )
-                    o["current"] = QJsonObject{ {"mean", num( c.sumI/T )}, {"rms", num( std::sqrt( c.sumI2/T ) )},
+                o["current"] = QJsonObject{ {"mean", num( c.sumI/T )}, {"rms", num( std::sqrt( c.sumI2/T ) )},
                                                 {"min", num( c.minI )}, {"max", num( c.maxI )} };
                 list.append( o );
             }
@@ -179,8 +181,8 @@ void CliApi::registerAverage()
 {
     add("sim average", "sim average --for <time> <pin|comp> [...]",
         "Run (starting or resuming as needed) for a span of simulated time, then pause, and give the time-weighted "
-        "mean, RMS, min and max of every converged solver step: the voltage at a pin (R1.lPin), or for a two-pin "
-        "component (R1, C1, L1) the voltage across it (pin 0 - pin 1) and the current into pin 0. Exact for "
+        "mean, RMS, min and max of every converged solver step: the voltage at a pin (R1.lPin) and the current into "
+        "the part at it, or for a two-pin component (R1, C1, L1) the voltage across it (pin 0 - pin 1) and the current into pin 0. Exact for "
         "switching waveforms, unlike means of scope samples.",
         []( CliCtx& c ) -> QJsonValue
     {
@@ -198,7 +200,9 @@ void CliApi::registerAverage()
                 ch.kind = "pin"; ch.p0 = CliRefs::pin( ref );
             }else{
                 Component* comp = CliRefs::comp( ref );
-                std::vector<Pin*> pins = comp->getPins();
+                std::vector<Pin*> pins;
+                for( Pin* p : comp->getPins() )      // a hidden pin is not there (a Photodiode's
+                    if( p && p->isVisible() ) pins.push_back( p );   // light pin without Light_Pin)
                 QString type = comp->itemType();
                 if( ( type == "Amperimeter" || type == "Voltimeter" ) && pins.size() == 3 ){
                     // A meter: its two terminals, so the reading is the meter's current (into
@@ -209,6 +213,17 @@ void CliApi::registerAverage()
                 if( pins.size() != 2 ) throw CliError( ref+" has "+QString::number( pins.size() )
                                                        +" pins: name a pin (e.g. "+ref+".<pin>) instead");
                 ch.kind = "comp"; ch.p0 = pins[0]; ch.p1 = pins[1];
+            }
+            // A photo part's photocurrent flows through internal pins: the visible ones carry only
+            // the diode's or the BJT's part of it (sim average of a Photodiode gave ~1e-19 A, #735)
+            Component* owner = ch.p0 ? ch.p0->component() : nullptr;
+            if( Photodiode* pd = dynamic_cast<Photodiode*>( owner ) ){
+                std::vector<Pin*> pp = owner->getPins();
+                if( ch.p0 == pp[0] )      ch.cur = [pd](){ return  pd->diodeCurrent(); };
+                else if( ch.p0 == pp[1] ) ch.cur = [pd](){ return -pd->diodeCurrent(); };
+            }
+            else if( Phototransistor* pt = dynamic_cast<Phototransistor*>( owner ) ){
+                if( ch.p0 == owner->getPins()[0] ) ch.cur = [pt](){ return pt->collectorCurrent(); };
             }
             chans.append( ch );
         }
