@@ -100,10 +100,12 @@ class WaveGen : public ClockBase
         double normalize( double data );
         
         void applyOutImp();
+        void levelChanged();
 
         bool m_bipolar;
         bool m_floating;
         bool m_impChanged;
+        bool m_levelChanged;   // a level or shape set during a run: re-evaluated at the next frame (#773)
 
         double m_outImp;   // Output impedance (create-circuit #386), between Out and Gnd/ground
 

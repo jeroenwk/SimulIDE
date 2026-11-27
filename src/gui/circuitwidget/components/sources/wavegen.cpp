@@ -45,6 +45,7 @@ WaveGen::WaveGen( QString type, QString id )
     m_bipolar  = false;
     m_floating = false;
     m_impChanged = false;
+    m_levelChanged = false;
     m_outImp   = 0;        // 0 = ideal (the old behaviour): 1 nΩ, or 1 mΩ per pin when floating
     m_voltBase = -2.5;
     m_phaseShift = 0;
@@ -266,12 +267,22 @@ void WaveGen::setSemiAmpli( double v )
 {
     m_voltBase = m_voltMid-v;
     m_voltage = v*2;
+    levelChanged();
 }
 
 void WaveGen::setMidVolt( double v )
 {
     m_voltBase = v-m_voltage/2;
     m_voltMid = v;
+    levelChanged();
+}
+
+// A level or shape set during a run (paused or not) is applied at the next frame, from the
+// same phase: a Square only re-evaluated at its next edge, up to half a period later (50 ms
+// at 10 Hz), so a continued run kept the old level (create-circuit #773, #505).
+void WaveGen::levelChanged()
+{
+    if( Simulator::self() && Simulator::self()->isRunning() ) m_levelChanged = true;
 }
 
 void WaveGen::setBipolar(bool b )
@@ -332,7 +343,15 @@ void WaveGen::setOutImp( double imp )
 void WaveGen::updateStep()
 {
     if( m_impChanged ){ m_impChanged = false; applyOutImp(); }
+    bool restart = m_changed;              // ClockBase restarts the wave: nothing else to do
     ClockBase::updateStep();
+    if( m_levelChanged && !restart && m_isRunning )
+    {
+        Simulator::self()->cancelEvents( this );
+        m_lastVout = -1;                   // write the pins even if the wave's value is the same
+        Simulator::self()->addEvent( 0, this );
+    }
+    m_levelChanged = false;
 }
 
 void WaveGen::setWaveType( QString type )
@@ -354,6 +373,7 @@ void WaveGen::setWaveType( QString type )
     m_wavePixmap = new QPixmap( pixmapPath );
     updtProperties();
     update();
+    levelChanged();
 }
 
 void WaveGen::updtProperties()
