@@ -1,21 +1,27 @@
 # PLL 4046 and VCO 566
 
 Two native parts (`src/gui/circuitwidget/components/active/pllvco.{h,cpp}`), Active / Other
-Active, drawn as boxes with named pins. Both are relaxation oscillators built the way the
+Active, drawn as boxes with named pins. Each pin's current (`comp get`) includes what the
+part's internal elements draw there (create-circuit #655). Both are relaxation oscillators built the way the
 chips are: the timing current really flows through the external R1 (and R2) and charges
 the external timing capacitor between two thresholds, so the parts drawn in a book's
 circuit set the frequency. Logic and switching decisions are taken on each step's
 converged values and applied 1 ps later.
 
-**Set `reactStep` well below the period** (Settings, or `settings set reactStep=10ns`): the
-timing capacitor is a library capacitor, and the thresholds are seen at its steps, so a
-step of 1 % of the half period gives about 1 % frequency error.
+**The frequency does not depend on `reactStep`** (create-circuit #653, #660, #738). The timing
+capacitor is a library capacitor that commits its charge only at its own steps (between them its
+node shows where the step will end). Each half period ends on the last committed voltage, and
+the voltage it fell short of (or passed) its threshold by is carried into the next threshold, so
+the mean frequency is exact at any step (4046 at 10 kHz: 10008 Hz at 1 µs, it read 10417) and
+each edge sits within one step of its ideal time. A coarse step still shows on the waveform
+(the ramps are steps of I·dt/C) and on the edge timing: keep `reactStep` well below the period
+when the edges themselves matter.
 
 ## PLL 4046 (CD4046B)
 
 | Pin (number) | Model |
 |---|---|
-| SIG IN (14), COMP IN (3) | Logic inputs at VDD/2 with 5 % hysteresis; SIG IN self-biased to VDD/2 through 1 MΩ [DOC R14], so it can be AC coupled |
+| SIG IN (14), COMP IN (3) | Logic inputs at VDD/2 with 5 % hysteresis; SIG IN self-biased to VDD/2 through 1 MΩ [DOC R14], so it can be AC coupled. A signal must cross VDD/2 ± 5 %: a 566's square (V+/2 to 0.95 V+) DC-coupled into SIG never goes low, so couple it through a capacitor as the datasheet does (create-circuit #610) |
 | VCO IN (9) | High impedance. Pin 11 is held at it, so I1 = VCO IN / R1 |
 | R1 (11), R2 (12) | Held at VCO IN and at VDD (1 Ω): I = VCOin/R1 + VDD/R2 |
 | C1A (6), C1B (7) | I charges C1 into one side while the other is held at VSS (10 Ω); reversed when the charged side is 2.5 V above the other: f = I / (10 V · C1), so fmax = 1/(R1 C1) at VCO IN = 10 V, fmin = 1/(R2 C1) |
@@ -37,7 +43,7 @@ delays (100–350 ns), the input amplifier's sensitivity, supply current, temper
 
 | Pin | Model |
 |---|---|
-| VC (5) | Control voltage, 1 MΩ to GND [DOC]; keep it between ¾ V+ and V+ |
+| VC (5) | Control voltage, 1 MΩ to GND [DOC] (`comp get` gives its current); keep it between ¾ V+ and V+: the state (Show State, CLI `read`) is RUNNING there, VC LOW below (the model keeps the linear law, the real part does not), STOPPED at V+ |
 | R1 (6) | Held at VC: I = (V+ − VC) / R1 through R1 from V+ |
 | C1 (7) | Charged by +I and discharged by −I between 3/8 and 5/8 of the supply: f0 = 2 (V+ − VC) / (R1 C1 V+) [DOC p. 401] |
 | TRI (4) | Buffered triangle, 50 Ω [DOC]: 2.4 Vpp at 12 V |

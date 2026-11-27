@@ -4,7 +4,7 @@ A build reported a deadlock: with R2 open the VCO has no minimum frequency, at V
 stands still, and the loop never started. That circuit's SIG input saw no edges (a 566 square
 DC-coupled, #610); with edges at SIG, phase comparator II drives the filter up from 0 V and the
 loop locks. Expected: VDD 10, R1 100k, C1 1 nF, R2 open, PC2 -> 10k -> 100 nF -> VCO IN,
-VCO OUT -> COMP IN, 2 kHz at SIG: VCO OUT at 2 kHz (within 1 %) after 50 ms.
+VCO OUT -> COMP IN, 2 kHz at SIG: VCO OUT at 2 kHz (within 1 %) after 100 ms (the filter settles in ~60 ms).
 """
 from harness import run_test
 
@@ -26,7 +26,7 @@ def test(sim):
                  ("U.vcoout", "U.comp"), ("U.pc2", "RF.lPin"), ("RF.rPin", "CF.lPin"), ("CF.rPin", "G.Gnd"),
                  ("RF.rPin", "U.vcoin"), ("U.vcoout", "F.lPin")):
         c("wire", "add", a, b)
-    c("sim", "run", "--for", "50ms")
+    c("sim", "run", "--for", "100ms")
     sim.check("VCO locked to 2 kHz (Hz)", c("read", "F")["value"], 2000, tol=0.01)
     c("sim", "stop")
 

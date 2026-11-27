@@ -71,6 +71,27 @@ class PllVcoBase : public Component, public eElement
         QString m_title;
 };
 
+// The timing capacitor's crossing, on the solver's capacitor (create-circuit #653, #660): the
+// capacitor commits its charge only at its own steps, and between them a node shows where the
+// step will end. Reversing the current on that (as soon as it passes the threshold) undoes the
+// step: each half ended one step early (f 1 % high at 1 us, 4 % for a 4046 at 10 kHz). So the
+// half ends on the last committed value (the node before its last jump), and the voltage it
+// travelled short (or long) is carried into the next threshold: no drift whatever the step.
+struct RampCarry
+{
+    void reset() { err = 0; last = 0; plateau = 0; started = false; }
+    void see( double v ) { if( v != last ){ plateau = last; last = v; } }   // Each settled value
+    // A half that started at `start` and ended at the committed `end` (direction d, nominal
+    // travel `nominal`): the travel to make in the next half
+    double next( double start, double end, double d, double nominal ){
+        if( started ) err = qBound(-0.5*nominal, err+d*( end-start )-nominal, 0.5*nominal );
+        started = true;
+        return nominal-err;
+    }
+    double err = 0, last = 0, plateau = 0;
+    bool started = false;
+};
+
 class Cd4046 : public PllVcoBase
 {
     public:
@@ -119,6 +140,9 @@ class Cd4046 : public PllVcoBase
         bool   m_sig, m_cmp; // Input logic levels
         bool   m_up, m_dn;   // Phase comparator II flip-flops
         bool   m_inh;
+        RampCarry m_ramp;    // VCO: committed differential voltage, carried travel
+        double m_start;      // Differential voltage this half started at
+        double m_target;     // ... and ends at
 };
 
 class Ne566 : public PllVcoBase
@@ -155,8 +179,12 @@ class Ne566 : public PllVcoBase
         eResistor* m_supply;   // Supply current
 
         bool   m_charging;
+        int    m_range;      // Control voltage: -1 not known, 0 below 0.75 V+, 1 in range, 2 at V+
         double m_i;
         double m_iStamped;
+        RampCarry m_ramp;    // Committed pin 7 voltage, carried travel
+        double m_start;      // Pin 7 voltage this half started at
+        double m_target;     // ... and ends at
 };
 
 #endif

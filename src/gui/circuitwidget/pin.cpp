@@ -518,7 +518,18 @@ double Pin::getCurrent()   // Into the component (A)
     eNode* node = getEnode();
     if( !node || !m_component || hasTrueCurrent() ) return ePin::getCurrent();
     SubCircuit* sub = dynamic_cast<SubCircuit*>( m_component->parentItem() );
-    if( !sub || !sub->getPinTunnels().contains( (Tunnel*)m_component ) ) return ePin::getCurrent();
+    if( !sub || !sub->getPinTunnels().contains( (Tunnel*)m_component ) )
+    {
+        // A part that loads or drives its pin's node through internal elements (a VCO's input
+        // resistance, its Norton outputs: create-circuit #655) adds their ePins' currents: they
+        // are the part's own (id "<uid>-ePinN"), on this node, and not one of its Pins
+        double current = ePin::getCurrent();
+        QString prefix = m_component->getUid()+"-ePin";
+        for( ePin* e : node->getEpins() )
+            if( e != this && e->getId().startsWith( prefix ) && !dynamic_cast<Pin*>( e ) )
+                current += e->ePin::getCurrent();
+        return current;
+    }
     QString prefix = sub->innerPrefix();
     if( prefix.isEmpty() ) return ePin::getCurrent();
 

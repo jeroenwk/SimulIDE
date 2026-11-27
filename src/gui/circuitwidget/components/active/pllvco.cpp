@@ -216,6 +216,9 @@ void Cd4046::initialize()
     m_sig = m_cmp = false;
     m_up = m_dn = false;
     m_inh = false;
+    m_ramp.reset();
+    m_start = 0;
+    m_target = 2.5;
 }
 
 void Cd4046::stamp()
@@ -281,7 +284,15 @@ void Cd4046::stepSettled()
     if( !m_inh ){                              // VCO: reverse at 2.5 V across C1, the side charged positive
         double v6 = m_pin[P_C1A]->getVoltage(), v7 = m_pin[P_C1B]->getVoltage();
         double vd = m_phaseA ? v6-v7 : v7-v6;
-        if( vd >= 2.5 ) m_phaseA = !m_phaseA;
+        m_ramp.see( vd );
+        if( vd >= m_target ){                  // Ends on the committed value (RampCarry)
+            double end = m_ramp.plateau;
+            double travel = m_ramp.next( m_start, end, 1, 5.0 );   // -2.5 to +2.5 [DOC]
+            m_phaseA = !m_phaseA;
+            m_start = -end;                    // The charged side goes to VSS: the other is at -end
+            m_target = m_start+travel;
+            m_ramp.last = m_ramp.plateau = m_start;
+        }
     }
     later();
 }
@@ -337,6 +348,9 @@ void Cd4046::simState( StateIO& s )
     s.io( m_up );
     s.io( m_dn );
     s.io( m_inh );
+    s.io( m_ramp.err ); s.io( m_ramp.last ); s.io( m_ramp.plateau ); s.io( m_ramp.started );
+    s.io( m_start );
+    s.io( m_target );
 }
 
 // ---------------------------------------------------------------- NE566
@@ -386,6 +400,9 @@ Ne566::Ne566( QString type, QString id )
     m_supply = new eResistor( id+"-supply" );
     m_supply->setEpin( 0, m_ePin[E_S1] );
     m_supply->setEpin( 1, m_ePin[E_S2] );
+
+    addPropGroup( { tr("Main"), { showStateProp() }, 0 } );
+    enableStates( true );
 }
 Ne566::~Ne566(){}
 
@@ -402,6 +419,11 @@ void Ne566::initialize()
     m_charging = true;
     m_i = 0;
     m_iStamped = 0;
+    m_ramp.reset();
+    m_start = 0;
+    m_target = -1;      // Set from the supply at the first step
+    m_range = -1;
+    clearStates();
 }
 
 void Ne566::stamp()
@@ -430,9 +452,33 @@ void Ne566::stepSettled()
     double gnd = m_pin[P_GND]->getVoltage();
     double vs  = m_pin[P_VP]->getVoltage()-gnd;
     m_i = qMax( 0.0, -m_r1.current() );             // Into pin 6 through R1 from V+
+    // Control range 0.75 V+ <= VC <= V+ [DOC]: below it the real part leaves its linear law
+    // (the model keeps it), at V+ no current flows (create-circuit #654). 50 mV hysteresis
+    double vc = m_pin[P_VC]->getVoltage()-gnd;
+    int r = m_range;
+    if( r != 0 && vc < 0.75*vs-0.05 ) r = 0;
+    else if( r != 1 && vc >= 0.75*vs && vc < vs-0.05 ) r = 1;
+    else if( r != 2 && vc >= vs ) r = 2;
+    if( r != m_range && vs > 1 ){
+        m_range = r;
+        if     ( r == 0 ) reportState("VC LOW",  stWait );   // Out of range: f follows the formula
+        else if( r == 1 ) reportState("RUNNING", stOn );
+        else              reportState("STOPPED", stOff );    // VC at V+: no timing current
+    }
     double v7 = m_pin[P_C1]->getVoltage()-gnd;
-    if     (  m_charging && v7 >= 0.625*vs ) m_charging = false;   // Thresholds 3/8, 5/8 of the
-    else if( !m_charging && v7 <= 0.375*vs ) m_charging = true;    // supply [INFERRED: V+/4 swing]
+    m_ramp.see( v7 );
+    // Thresholds 3/8, 5/8 of the supply [INFERRED: V+/4 swing]; each half ends on the committed
+    // voltage and carries what it travelled short into the next (RampCarry)
+    if( !m_ramp.started && m_target < 0 ) m_target = 0.625*vs;
+    double d = m_charging ? 1 : -1;
+    if( d*( v7-m_target ) >= 0 ){
+        double end = m_ramp.plateau;           // (the first rise, from 0 V, carries nothing)
+        double travel = m_ramp.next( m_start, end, d, 0.25*vs );
+        m_charging = !m_charging;
+        m_start = end;
+        m_target = end-d*travel;
+        m_ramp.last = m_ramp.plateau = end;
+    }
     later();
 }
 
@@ -457,6 +503,10 @@ void Ne566::simState( StateIO& s )
     PllVcoBase::simState( s );
     for( NortonOut* n : { &m_sq, &m_tri, &m_r1 } ) n->simState( s );
     s.io( m_charging );
+    s.io( m_range );
     s.io( m_i );
     s.io( m_iStamped );
+    s.io( m_ramp.err ); s.io( m_ramp.last ); s.io( m_ramp.plateau ); s.io( m_ramp.started );
+    s.io( m_start );
+    s.io( m_target );
 }
