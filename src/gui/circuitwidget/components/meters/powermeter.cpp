@@ -20,6 +20,8 @@
 #include "theme.h"
 #include "appfonts.h"
 #include "simulator.h"
+#include "label.h"
+#include "boolprop.h"
 
 #define tr(str) simulideTr("PowerMeter",str)
 
@@ -39,15 +41,17 @@ LibraryItem* PowerMeter::libraryItem()
 PowerMeter::PowerMeter( QString type, QString id )
            : Meter( type, id, false )      // There is no r.m.s. of a power: Instant or Mean
 {
-    m_area = QRectF( -42, -52, 84, 60 );    // The ammeter's pins (it goes in their place), a taller face
     m_unit = "W";
     setRes( 1e-6 );                        // As the ammeter: a short in the lead
-
-    QFont f( AppFonts::sans(), 10, QFont::Bold );
-    f.setPixelSize(11);
-    m_display.setFont(f);
-    m_display.setText( " 0.000 W\n  0.000 V\n  0.000 A\nPF  ----" );
-    setflip();
+                                           // The ammeter's font, colours and margins (Meter)
+    addProperty( tr("Main"), new BoolProp<PowerMeter>("Show_Volt", tr("Show Voltage"), ""
+                           , this, &PowerMeter::showVolt, &PowerMeter::setShowVolt ) );
+    addProperty( tr("Main"), new BoolProp<PowerMeter>("Show_Curr", tr("Show Current"), ""
+                           , this, &PowerMeter::showCurr, &PowerMeter::setShowCurr ) );
+    addProperty( tr("Main"), new BoolProp<PowerMeter>("Show_PF", tr("Show Power Factor"), ""
+                           , this, &PowerMeter::showPf, &PowerMeter::setShowPf ) );
+    setFace();
+    setLabelPos( -m_halfW, m_top-18, 0 );  // Above the face (the part's default; auto layout from it)
 }
 
 PowerMeter::~PowerMeter(){}
@@ -86,14 +90,57 @@ void PowerMeter::stamp()
 void PowerMeter::setReading( QString r )
 {
     if( r.trimmed().toLower() == "rms" ) r = "Mean";
-    Meter::setReading( r );
-    Simulator* sim = Simulator::self();
-    if( !sim->isRunning() ) return;         // Started from stamp()
-    sim->pauseSim();                        // Changed during a run: from now
-    restartAt( sim->circTime() );
-    m_ePin[0]->changeCallBack( this );
+    Meter::setReading( r );                 // During a run: restartBlock() from now
+}
+
+void PowerMeter::restartBlock( uint64_t t )
+{
+    Meter::restartBlock( t );
+    restartAt( t );
+    m_ePin[0]->changeCallBack( this );      // V and I are integrated in every reading
     m_ePin[1]->changeCallBack( this );
-    sim->resumeSim();
+}
+
+void PowerMeter::setShowVolt( bool s ){ if( s == m_showV  ) return; m_showV  = s; setFace(); }
+void PowerMeter::setShowCurr( bool s ){ if( s == m_showI  ) return; m_showI  = s; setFace(); }
+void PowerMeter::setShowPf  ( bool s ){ if( s == m_showPF ) return; m_showPF = s; setFace(); }
+
+// The face as the ammeter's: the same font, 2 px from the frame on the left and at the top, one
+// line per value shown. Its width fits the widest line any value gives, so the output pin (at the
+// right, as the ammeter's at y -8) and the leads never move; its height follows the lines shown,
+// the bottom staying at 8 above the leads, and the name follows it (auto layout)
+void PowerMeter::setFace()
+{
+    int n = 1 + (m_showV ? 1:0) + (m_showI ? 1:0) + (m_showPF ? 1:0);
+    QFontMetrics fm( m_display.font() );
+    int w = 0;
+    for( QString l : { "-888.8 GW avg", "-888.8 GV rms", "-888.8 GA rms", "PF -1.000" } )
+        w = qMax( w, fm.horizontalAdvance( l ) );
+    int halfW = ( ( w + 4 + 1 )/2 + 7 )/8*8; // On the grid, as the ammeter's 24
+    QString sample = "0";
+    for( int i=1; i<n; ++i ) sample += "\n0";
+    QGraphicsSimpleTextItem probe;
+    probe.setFont( m_display.font() );
+    probe.setText( sample );
+    int h = qCeil( probe.boundingRect().height() ) + 4;
+
+    prepareGeometryChange();
+    m_halfW = halfW;
+    m_top   = 8 - h;
+    m_area  = QRectF( -m_halfW, m_top, 2*m_halfW, h );
+    m_outPin->setPos( m_halfW+8, -8 );
+    m_outPin->isMoved();
+    setflip();                               // The display's place
+    if( Simulator::self()->isRunning() ) m_display.setText( faceLines().join("\n") );
+    else{                                    // Before a run: zeros, as the ammeter's " 0.000"
+        QStringList l = { QString("0.000 W") + ( m_reading == rMean ? " avg" : "" ) };
+        if( m_showV  ) l << "0.000 V rms";
+        if( m_showI  ) l << "0.000 A rms";
+        if( m_showPF ) l << "PF ----";
+        m_display.setText( l.join("\n") );
+    }
+    layoutLabels();
+    update();
 }
 
 void PowerMeter::stepSettled()                  // Once per converged step that changed a pin
@@ -213,39 +260,58 @@ double PowerMeter::powerFactor()
     return qBound( -1.0, meanPower()/(v*i), 1.0 );
 }
 
-// "641.3 mW": an SI prefix and four significant digits, as the other meters' valToUnit gives
-QString PowerMeter::eng( double v, const QString& unit )
+// "641.3 mW": an SI prefix and four significant digits, as the other meters' valToUnit gives:
+// 0 below 1 n, "----" from 1000 G up. Rounded before the decimals are chosen (9.9996 V: "10.00 V")
+QString PowerMeter::eng( double v, const QString& unit, bool* over )
 {
     static const char* prefixes[] = { "p", "n", "u", "m", "", "k", "M", "G" };
+    if( over ) *over = false;
     double a = qFabs(v);
-    if( a < 5e-16 ) return QString( "0.000 %1" ).arg( unit );
-    int k = qBound( 0, (int)std::floor( std::log10(a)/3.0 ) + 4, 7 );
-    double s = a * std::pow( 10.0, -3.0*(k-4) );
-    if( s > 999.95 ){                        // log10(a) fell just short of a power of a thousand
-        if( k == 7 ) return QString( "---- %1" ).arg( unit );
-        k += 1;
-        s = a * std::pow( 10.0, -3.0*(k-4) );
+    if( a < 1e-9 ) return QString( "0.000 %1" ).arg( unit );
+    double s = a*1e12;
+    int k = 0;
+    for(;;){
+        while( s >= 1000 && k < 7 ){ s /= 1000; k++; }
+        if( s >= 1000 ){ if( over ) *over = true; return QString( "---- %1" ).arg( unit ); }
+        int decimals = s < 10 ? 3 : s < 100 ? 2 : 1;
+        double r = QString::number( s, 'f', decimals ).toDouble();
+        if( r >= 1000 && k < 7 ){ s = r; continue; }   // 999.96: 1.000 k
+        if( r >= 1000 ){ if( over ) *over = true; return QString( "---- %1" ).arg( unit ); }
+        decimals = r < 10 ? 3 : r < 100 ? 2 : 1;
+        return QString( "%1%2 %3%4" ).arg( v < 0 ? "-" : "" ).arg( QString::number( r, 'f', decimals ) )
+                                     .arg( prefixes[k] ).arg( unit );
     }
-    int decimals = s < 10 ? 3 : s < 100 ? 2 : 1;
-    return QString( "%1%2 %3%4" ).arg( v < 0 ? "-" : "" ).arg( QString::number( s, 'f', decimals ) )
-                                 .arg( prefixes[k] ).arg( unit );
 }
 
-void PowerMeter::updateStep()
+// Left-aligned, one value a line: the power (" avg" in Mean), then the r.m.s. voltage and current
+// (always over the block: " rms") and the power factor, each if shown
+QStringList PowerMeter::faceLines()
 {
     Simulator* sim = Simulator::self();
     double p = measured();                   // As the other meters: now, or the block's mean
     double v = 0, i = 0, pm = 0;
     if( sim->isRunning() || sim->isPaused() ) valuesAt( sim->circTime(), v, i, pm );
-    else { v = m_ePin[0]->getVoltage(); i = currentThrough(); pm = p; }
+    else { v = qFabs( m_ePin[0]->getVoltage() ); i = qFabs( currentThrough() ); pm = p; }
 
-    m_dispValue = p;
-    QString pf = "----";
-    if( v > pfMinV && i > pfMinI ) pf = QString::number( qBound( -1.0, pm/(v*i), 1.0 ), 'f', 3 );
-    QString text = eng( p, "W" ) + ( m_reading == rMean ? " avg" : "" )
-                 + "\n " + eng( v, "V" )
-                 + "\n " + eng( i, "A" )
-                 + "\nPF " + pf;
+    QStringList lines;
+    lines << eng( p, "W" ) + ( m_reading == rMean ? " avg" : "" );
+    if( m_showV ) lines << eng( v, "V" ) + " rms";
+    if( m_showI ) lines << eng( i, "A" ) + " rms";
+    if( m_showPF ){
+        QString pf = "----";
+        if( v > pfMinV && i > pfMinI ) pf = QString::number( qBound( -1.0, pm/(v*i), 1.0 ), 'f', 3 );
+        lines << "PF " + pf;
+    }
+    return lines;
+}
+
+void PowerMeter::updateStep()
+{
+    m_dispValue = measured();
+    bool over = false;
+    eng( m_dispValue, "W", &over );
+    if( over ) m_crashed = true;             // As the other meters past 999 G
+    QString text = faceLines().join("\n");
     if( text != m_display.text() ) m_display.setText( text );
 
     if( m_outLive ) return;                  // Set by the simulation (runEvent)
@@ -256,10 +322,10 @@ void PowerMeter::updateStep()
 void PowerMeter::setflip()
 {
     Component::setflip();
-
-    int xlabelpos = -40*m_Hflip;             // The display is 80 wide and 52 high
-    int ylabelpos = -50*m_Vflip;
-    if( m_Vflip < 0 ) ylabelpos -= 48;
+    // 2 px inside the face's top left corner, as the ammeter's. Flipped, the face's corner in the
+    // part's coordinates is mirrored and the display, flipped back, starts from it
+    int xlabelpos = ( -m_halfW+2 )*m_Hflip;
+    int ylabelpos = m_Vflip > 0 ? m_top+2 : 6;   // Flipped: the face runs from -8 down
 
     m_display.setPos( xlabelpos, ylabelpos );
     m_display.setTransform( QTransform::fromScale( m_Hflip, m_Vflip ) );
@@ -269,7 +335,7 @@ void PowerMeter::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWi
 {
     Component::paint( p, option, widget );
     p->setBrush( Theme::screenBg() );
-    p->drawRoundedRect( QRectF(-42,-52, 84, 60 ), 1, 1 );
+    p->drawRoundedRect( m_area, 1, 1 );
     Component::paintSelected( p );
 }
 

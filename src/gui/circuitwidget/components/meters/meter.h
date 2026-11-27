@@ -49,6 +49,9 @@ class Meter : public Component, public eResistor
         virtual double instant() = 0;    // The value now (V across, A through)
         double currentThrough();        // Into the meter at lPin, now: as exactly as the nodes allow
         virtual double measured();       // What the display shows: instant(), or the last block's mean / RMS
+        // A Reading or an Avg_Time changed during a run: the block starts at t (worker idle).
+        // Virtual: a subclass restarts its own block too
+        virtual void restartBlock( uint64_t t );
 
         enum { rInstant = 0, rMean, rRms } m_reading;
         QString  m_readingStr;

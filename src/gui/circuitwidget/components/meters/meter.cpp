@@ -84,23 +84,42 @@ void Meter::setReading( QString r )
     else                   { m_reading = rInstant; m_readingStr = "Instant"; }
 
     Simulator* sim = Simulator::self();
-    if( !sim->isRunning() || m_reading == rInstant ) return;   // Started from stamp()
-    sim->pauseSim();                                           // Changed during a run: from now
-    m_blockStart = m_lastT = sim->circTime();
-    m_sum = m_sum2 = 0;
-    m_haveResult = false;
-    m_held = instant();
-    m_ePin[0]->changeCallBack( this );
-    m_ePin[1]->changeCallBack( this );
+    if( !sim->isRunning() ) return;          // Started from stamp()
+    sim->pauseSim();                         // Changed during a run: from now
+    restartBlock( sim->circTime() );
     sim->resumeSim();
 }
 
+// A shorter block kept its start: its end fell before the time integrated to, and end - m_lastT
+// wrapped round (PR #104 review). As a Reading changed during a run: a block from now
 void Meter::setAvgTime( double t )
 {
     if( t <= 0 ) return;
     m_avgTime = t;
     m_block = (uint64_t)( t*1e12 + 0.5 );
     if( m_block == 0 ) m_block = 1;
+
+    Simulator* sim = Simulator::self();
+    if( !sim->isRunning() ) return;          // Started from stamp()
+    sim->pauseSim();
+    restartBlock( sim->circTime() );
+    sim->resumeSim();
+}
+
+void Meter::restartBlock( uint64_t t )
+{
+    m_blockStart = m_lastT = t;
+    m_sum = m_sum2 = 0;
+    m_haveResult = false;
+    m_held = instant();
+    if( m_reading != rInstant || m_outLive ){
+        m_ePin[0]->changeCallBack( this );
+        m_ePin[1]->changeCallBack( this );
+    }
+    if( m_outLive ){                         // The block-end event of the old block: from now
+        Simulator::self()->cancelEvents( this );
+        Simulator::self()->addEvent( 0, this );
+    }
 }
 
 void Meter::initialize()

@@ -91,6 +91,7 @@ QJsonObject readComp( Component* comp )
         o["i_rms"]  = num( pm->currRms() );
         o["apparent"] = num( pm->apparentPower() );
         o["power_factor"] = num( pm->powerFactor() );
+        o["display"] = QJsonArray::fromStringList( pm->faceLines() );   // The face's lines, as shown
     }
     else if( Meter* m = dynamic_cast<Meter*>( comp ) )
     {

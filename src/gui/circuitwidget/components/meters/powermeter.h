@@ -31,6 +31,15 @@ class PowerMeter : public Meter
         double apparentPower();           // V r.m.s. x I r.m.s.
         double powerFactor();             // Mean power / apparent power, -1 to 1
 
+        bool showVolt() { return m_showV; }    // The face's optional lines: the power always shows
+        void setShowVolt( bool s );
+        bool showCurr() { return m_showI; }
+        void setShowCurr( bool s );
+        bool showPf() { return m_showPF; }
+        void setShowPf( bool s );
+
+        QStringList faceLines();              // The face's lines, as the display shows them (CLI: read)
+
         virtual double measured() override;
         virtual void setReading( QString r ) override;
         virtual void initialize() override;
@@ -43,7 +52,9 @@ class PowerMeter : public Meter
         virtual void setflip() override;
         virtual double instant() override;
 
+        virtual void restartBlock( uint64_t t ) override;   // Its own block too
         void  restartAt( uint64_t t );    // The block starts here (worker idle)
+        void  setFace();                  // Face size from the lines shown; output pin and name outside it
         void  integrateVI( uint64_t t );  // Worker thread (stepSettled): the held V and I up to t
         void  closeBlock( double sumV2, double sumI2, double sumP );
         void  valuesAt( uint64_t t, double& vrms, double& irms, double& pmean );   // No state change: GUI thread
@@ -55,7 +66,11 @@ class PowerMeter : public Meter
         double   m_vRms = 0, m_iRms = 0, m_pMean = 0;   // The block that closed last
         bool     m_pmHaveResult = false;
 
-        static QString eng( double v, const QString& unit );   // "641.3 mW"
+        bool     m_showV = true, m_showI = true, m_showPF = true;
+        int      m_halfW = 48;              // The face: m_halfW each side of the pins, from m_top to 8
+        int      m_top = -52;
+
+        static QString eng( double v, const QString& unit, bool* over=nullptr );   // "641.3 mW"
 
         static const double pfMinV;         // No power factor below this r.m.s. voltage ...
         static const double pfMinI;         // ... or this r.m.s. current

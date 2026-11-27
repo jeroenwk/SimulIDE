@@ -136,9 +136,11 @@ def section_dc(sim):
     # It goes where an ammeter is: the same pins at the same places, 1 uOhm like it
     c("comp", "add", "Amperimeter", "--label", "AM", "--at", "200,-160")
     pm, am = c("comp", "get", "PM"), c("comp", "get", "AM")
-    pp = [(p["id"], p["pos"][0] - pm["pos"][0], p["pos"][1] - pm["pos"][1]) for p in pm["pins"]]
-    ap = [(p["id"], p["pos"][0] - am["pos"][0], p["pos"][1] - am["pos"][1]) for p in am["pins"]]
-    sim.check("pins where the ammeter's are", 1 if pp == ap else 0, 1)
+    pp = [(p["id"].split("-")[-1], p["pos"][0] - pm["pos"][0], p["pos"][1] - pm["pos"][1]) for p in pm["pins"]]
+    ap = [(p["id"].split("-")[-1], p["pos"][0] - am["pos"][0], p["pos"][1] - am["pos"][1]) for p in am["pins"]]
+    sim.check("leads where the ammeter's are", 1 if pp[:2] == ap[:2] else 0, 1, note="%s %s" % (pp, ap))
+    sim.check("output pin at the ammeter's height, right of the wider face",
+              1 if pp[2][0] == "outnod" and pp[2][2] == ap[2][2] and pp[2][1] > ap[2][1] else 0, 1)
     c("comp", "remove", "AM")
     v = c("sim", "average", "--for", "50ms", "PM.lPin", "PM.rPin")["channels"]   # Averaged by pin: the meter has three
     dv = abs(v[0]["voltage"]["mean"] - v[1]["voltage"]["mean"])
@@ -441,6 +443,7 @@ def section_look(sim):
     # Show_Curr, Show_PF): the face is as tall as its lines, the pins stay, the CLI reads them all
     c = sim.cli
     build_dc(sim)
+    c("comp", "set", "PM", "Show_id=true")              # Meters hide their name by default
     g = c("comp", "get", "PM")
     x0, y0, x1, y1 = body(g)
     ox, oy = pins(g)["outnod"]

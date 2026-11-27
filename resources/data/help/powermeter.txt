@@ -12,6 +12,13 @@ toward the source (+) and the black pin toward the circuit. It shows:
 The voltage is taken against ground: in the ground lead it reads zero.
 With the source on the black pin the power and the power factor read negative.
 
+Properties:
+- Reading: Instant or Mean (the power line; marked "avg" in Mean).
+- Avg_Time: the block for the mean power, the r.m.s. values and the power
+  factor. Changed during a run, a new block starts then.
+- Show Voltage, Show Current, Show Power Factor: the face's lines (the power
+  always shows). The face gets shorter; the CLI reads every value.
+
 Pins:
 - Red Pin: toward the source (+).
 - Black Pin: toward the circuit.

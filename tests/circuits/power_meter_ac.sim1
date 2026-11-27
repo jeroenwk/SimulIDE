@@ -31,13 +31,13 @@ None reported.
 
 <item itemtype="Diode" CircId="Diode-1" mainComp="false" ShowProp="Model" Show_id="true" Show_Val="true" Pos="0,-32" rotation="0" hflip="1" vflip="1" label="D1" idLabPos="-21.5,12" labelrot="0" valLabPos="-7.5,12" valLabRot="0" labelAuto="true" Model="1N4007" Show_State="false" Threshold="0.718503 V" MaxCurrent="1 A" SurgeCurrent="30 A" Resistance="0.0341512 Ω" BrkDownV="1000 V" SatCurrent="7.02767 nA" EmCoef="1.80803" Cj0="0 pF" Vj="0.7 V" Mj="0.33" />
 
-<item itemtype="PowerMeter" CircId="PowerMeter-2" mainComp="false" Show_id="true" Show_Val="false" Pos="-80,-16" rotation="0" hflip="1" vflip="1" label="PM2" idLabPos="-8.5,-66" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Reading="Mean" Avg_Time="100 ms" />
+<item itemtype="PowerMeter" CircId="PowerMeter-2" mainComp="false" Show_id="true" Show_Val="false" Pos="-112,-16" rotation="0" hflip="1" vflip="1" label="PM2" idLabPos="-8.5,-66" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Reading="Mean" Avg_Time="100 ms" />
 
 <item itemtype="Resistor" CircId="Resistor-3" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="96,-16" rotation="90" hflip="1" vflip="1" label="R3" idLabPos="-21,8.5" labelrot="0" valLabPos="-6,8.5" valLabRot="0" labelAuto="true" Resistance="1000 Ω" Cp="0 pF" />
 
 <item itemtype="elCapacitor" CircId="elCapacitor-4" mainComp="false" ShowProp="Capacitance" Show_id="true" Show_Val="true" Pos="64,0" rotation="90" hflip="1" vflip="1" label="C1" idLabPos="-19.5,12" labelrot="0" valLabPos="-5.5,12" valLabRot="0" labelAuto="true" Capacitance="100 µF" Resistance="1 µΩ" InitVolt="0 V" MaxVolt="0 V" ChargeScale="0 V" LogCharge="false" ReaStep="0 ns" />
 
-<item itemtype="WaveGen" CircId="WaveGen-5" mainComp="false" Show_id="true" Show_Val="false" Pos="-112,32" rotation="0" hflip="1" vflip="1" label="AC" idLabPos="-4,-22" labelrot="0" valLabPos="-16,8" valLabRot="0" labelAuto="true" Out="true" Running="true" Wave_Type="Sine" Freq="50 Hz" Phase="0 _º" Steps="20000 _Steps" Duty="50 _%" Always_On="true" Bipolar="false" Floating="false" Semi_Ampli="10 V" Mid_Volt="0 V" Out_Imped="0 Ω" />
+<item itemtype="WaveGen" CircId="WaveGen-5" mainComp="false" Show_id="true" Show_Val="false" Pos="-144,32" rotation="0" hflip="1" vflip="1" label="AC" idLabPos="-4,-22" labelrot="0" valLabPos="-16,8" valLabRot="0" labelAuto="true" Out="true" Running="true" Wave_Type="Sine" Freq="50 Hz" Phase="0 _º" Steps="20000 _Steps" Duty="50 _%" Always_On="true" Bipolar="false" Floating="false" Semi_Ampli="10 V" Mid_Volt="0 V" Out_Imped="0 Ω" />
 
 <item itemtype="Ground" CircId="Ground-6" mainComp="false" Show_id="false" Show_Val="false" Pos="64,48" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
 
@@ -45,9 +45,9 @@ None reported.
 
 <item itemtype="Node" CircId="Node-8" mainComp="false" Pos="64,-32" />
 
-<item itemtype="Connector" uid="Connector-1" startpinid="PowerMeter-2-lPin" endpinid="WaveGen-5-outnod" pointList="-88,0,-88,32,-96,32" />
+<item itemtype="Connector" uid="Connector-1" startpinid="PowerMeter-2-lPin" endpinid="WaveGen-5-outnod" pointList="-120,0,-120,32,-128,32" />
 
-<item itemtype="Connector" uid="Connector-2" startpinid="PowerMeter-2-rPin" endpinid="Diode-1-lPin" pointList="-72,0,-72,8,-32,8,-32,-32,-16,-32" />
+<item itemtype="Connector" uid="Connector-2" startpinid="PowerMeter-2-rPin" endpinid="Diode-1-lPin" pointList="-104,0,-104,8,-32,8,-32,-32,-16,-32" />
 
 <item itemtype="Connector" uid="Connector-4" startpinid="Diode-1-rPin" endpinid="Node-8-1" pointList="16,-32,64,-32" />
 

@@ -4,12 +4,13 @@ A native part (`src/gui/circuitwidget/components/meters/powermeter.{h,cpp}`), Me
 
 The simulator had no wattmeter: an ammeter shows a current, and the same current at 6 V is half the energy of 12 V. This part shows that at once.
 
-![Three Power Meters: the lights of a microscope on 12 V (641 mW, power factor 1.000); a rectifier with a capacitor on 10 V peak, 50 Hz (80 mW, power factor 0.37); and one with the source on its black lead (−873 mW, −1.000)](POWER_METER.jpg)
+![Three Power Meters: the lights of a microscope on 12 V (641 mW, power factor 1.000); a rectifier with a capacitor on 10 V peak, 50 Hz (80 mW avg, power factor 0.372); and one with the source on its black lead (−872.7 mW, −1.000)](POWER_METER.jpg)
 
 | Property | Default | |
 |---|---|---|
 | `Reading` | `Instant` | The power now, or `Mean`: the mean over `Avg_Time`. There is no r.m.s. of a power, so `RMS` is not offered (the CLI refuses it; in a file it loads as `Mean`). |
 | `Avg_Time` | 100 ms | The block of simulated time over which the mean power, the r.m.s. voltage, the r.m.s. current and the power factor are taken, whatever `Reading` is. |
+| `Show_Volt`, `Show_Curr`, `Show_PF` | on | Show Voltage, Show Current, Show Power Factor: the face's lines for the r.m.s. voltage, the r.m.s. current and the power factor. The power always shows. The face is as tall as the lines shown; the pins stay where they are, and the CLI reads every value. |
 
 ## What it measures
 
@@ -24,18 +25,18 @@ The voltage is taken against ground: in the ground lead the red pin sits a few h
 
 ## Pins and look
 
-The same pins as the ammeter, at the same places: `lPin` (red) and `rPin` (black), 16 px apart, pointing down, and `outnod` at the right. The meter is 1 µΩ, as the ammeter. The face is 84 × 60 px, above the pins, in four lines:
+The ammeter's leads, at the same places: `lPin` (red) and `rPin` (black), 16 px apart, pointing down. The meter is 1 µΩ, as the ammeter. The face looks like the ammeter's and the voltmeter's (the same font, colours and frame, the text 2 px from its left and top edges), 96 px wide, above the leads, one line per value, left-aligned:
 
 ```
- 641.3 mW       the power (" avg" when the reading is Mean)
- 12.00 V        r.m.s.
- 53.40 mA       r.m.s.
-PF 1.000        the power factor, or "----"
+641.3 mW        the power (" avg" when the reading is Mean)
+12.00 V rms     the r.m.s. voltage (Show_Volt)
+53.41 mA rms    the r.m.s. current (Show_Curr)
+PF 1.000        the power factor, or "----" (Show_PF)
 ```
 
-A value is four significant digits with an SI prefix (p, n, u, m, none, k, M, G), as the other meters give it. The face turns and flips with the part, as theirs.
+A value is four significant digits with an SI prefix (p, n, u, m, none, k, M, G), as the other meters give it: 0 below 1 n, `----` from 1000 G up. The face turns and flips with the part, as theirs. The name, when shown (`Show_id`; meters hide it by default), goes above the face and follows it when lines are hidden.
 
-`outnod` gives the power as a voltage, 1 V = 1 W (the reading, so the mean in `Mean`), wired or not.
+`outnod` sticks out at the right of the face, at the ammeter's height (24 px above the leads' ends), 56 px right of the middle. It gives the power as a voltage, 1 V = 1 W (the reading, so the mean in `Mean`), wired or not.
 
 ## Using it
 
@@ -62,7 +63,7 @@ A `Meter` (the ammeter's and the voltmeter's base): 1 µΩ in the lead, the curr
 
 At every converged step that changes one of its pins (`stepSettled()`, worker thread) the part integrates the voltage and current it has held since the previous step: their squares and their product, each weighted by the time it was held. `Avg_Time` cuts that into blocks, as the other meters' mean and r.m.s. The display and the CLI read the running block (so far), or the last one that closed, without touching the state.
 
-`Reading` decides only the power line: the value now (`instant()`), or the block's mean. The voltage, the current and the power factor are always over the block, also with `Reading` `Instant`: an instantaneous power factor is no quantity. With `Reading` `Instant` on AC the power line follows p(t), as the ammeter's follows i(t): sampled by the display's frames, it flickers. A `Reading` or an `Avg_Time` changed during a run starts a block from that moment.
+`Reading` decides only the power line: the value now (`instant()`), or the block's mean. The voltage, the current and the power factor are always over the block, also with `Reading` `Instant`: an instantaneous power factor is no quantity. With `Reading` `Instant` on AC the power line follows p(t), as the ammeter's follows i(t): sampled by the display's frames, it flickers. A `Reading` or an `Avg_Time` changed during a run starts a block from that moment (`Meter::restartBlock`, for the ammeter and the voltmeter too: a shorter `Avg_Time` used to leave the running block's end before the time integrated to, and the next reading was garbage for one block).
 
 ## Limits
 
@@ -77,6 +78,6 @@ At every converged step that changes one of its pins (`stepSettled()`, worker th
 
 ## Tests and demo
 
-- `tests/regress/test_power_meter.py` (80 checks): DC in both orientations, a supply below ground, a battery on charge (the source's power is the sum of what the rest takes), the ground lead, AC into a resistor with `Instant` read at four phases and `Mean`, the window (`Avg_Time` 20 ms and 4 ms), a capacitor, an RC, a half-wave rectifier at two amplitudes, a rectifier with a capacitor (its r.m.s. current against `sim average` of the pin), the output pin, save and reopen (also `RMS` in a file), the pins where the ammeter's are, and going back in time.
+- `tests/regress/test_power_meter.py` (107 checks): DC in both orientations, a supply below ground, a battery on charge (the source's power is the sum of what the rest takes), the ground lead, AC into a resistor with `Instant` read at four phases and `Mean`, the window (`Avg_Time` 20 ms and 4 ms), a capacitor, an RC, a half-wave rectifier at two amplitudes, a rectifier with a capacitor (its r.m.s. current against `sim average` of the pin), the output pin, save and reopen (also `RMS` in a file, and `Show_PF`), the leads where the ammeter's are, going back in time, `Avg_Time` shortened during a run (with an ammeter beside it), and the face: the output pin and the name outside it, the lines, their marks and digits, and each line hidden.
 - `tests/circuits/power_meter_dc.sim1`: the lights of the microscope on 12 V, both LEDs on: 641 mW, power factor 1.000.
 - `tests/circuits/power_meter_ac.sim1`: a 10 V peak, 50 Hz sine through a rectifier into 100 µF and 1 kΩ: 80 mW, power factor 0.37.
