@@ -3,32 +3,35 @@
 <!-- JFET models for the JFET component (e-jfet.cpp): SPICE level 1 (Shichman-Hodges).
      beta (A/V2), vto (pinch-off, V, negative for both N and P channel, as in SPICE),
      lambda (1/V), is (gate junction saturation current, A), n (emission coefficient, default 1).
-     IDSS = beta * vto^2. Not modelled: RD/RS (a few ohms), capacitances, temperature, breakdown.
+     cgs, cgd (pF, at 0 V), pb (V) and m: the gate junction capacitances (SPICE CGS, CGD, PB, M; when
+     absent: 0 pF, pb 1, m 0.5, the SPICE defaults). IDSS = beta * vto^2. Not modelled: RD/RS (a few
+     ohms), temperature, impact ionization (Alpha, Vk). 2N5484-6 and 2N5460 use the file's J2N lines,
+     whose IDSS falls inside the datasheet ranges; 2N5457 has no capacitances there.
      Values from LTspice's standard.jft (https://ltwiki.org/index.php?title=Standard.jft);
      the manufacturer is the "mfg" of each SPICE line. MPF102 uses that file's MPF102A line. -->
 
 <itemlib>
     <itemset type="NJF">
-        <item name="2N3819" beta="1.304e-3"   vto="-3"       lambda="2.25e-3"   is="33.57e-15" /><!-- Vishay -->
-        <item name="2N4416" beta="989.4e-6"   vto="-3.06"    lambda="5.5e-3"    is="33.57e-15" /><!-- Fairchild -->
+        <item name="2N3819" beta="1.304e-3"   vto="-3"       lambda="2.25e-3"   is="33.57e-15" cgs="2.414" cgd="1.6" pb="1" m="0.3622" /><!-- Vishay -->
+        <item name="2N4416" beta="989.4e-6"   vto="-3.06"    lambda="5.5e-3"    is="33.57e-15" cgs="2.414" cgd="1.6" pb="1" m="0.3622" /><!-- Fairchild -->
         <item name="2N5457" beta="1.125e-3"   vto="-1.372"   lambda="2.3e-3"    is="181.3e-15" />
-        <item name="2N5484" beta="3.0e-3"     vto="-1.5"     lambda="10e-3"     is="0.25e-12"  /><!-- Siliconix -->
-        <item name="2N5485" beta="3.5e-3"     vto="-2.0"     lambda="10e-3"     is="0.25e-12"  /><!-- Siliconix -->
-        <item name="2N5486" beta="4.0e-3"     vto="-4.0"     lambda="10e-3"     is="0.25e-12"  /><!-- Siliconix -->
-        <item name="BF245A" beta="1.16621e-3" vto="-1.7372"  lambda="1.77211e-2" is="2.91797e-16" /><!-- Philips -->
-        <item name="BF245B" beta="1.09045e-3" vto="-2.3085"  lambda="2.31754e-2" is="2.59121e-16" /><!-- Philips -->
-        <item name="BF245C" beta="5.43157e-4" vto="-5.0014"  lambda="2.71505e-2" is="3.64346e-16" /><!-- Philips -->
-        <item name="J111"   beta="3.25e-3"    vto="-5.3638"  lambda="2.0e-2"    is="2.17605e-15" /><!-- Philips -->
-        <item name="J112"   beta="5.97264e-3" vto="-2.3303"  lambda="2.31986e-2" is="8.87988e-16" /><!-- Philips -->
-        <item name="J113"   beta="9.25964e-3" vto="-1.2854"  lambda="3.03839e-2" is="9.8687e-16"  /><!-- Philips -->
-        <item name="MMBF5103" beta="5.97264e-3" vto="-2.3303" lambda="2.31986e-2" is="8.87988e-16" /><!-- No published model: onsemi's datasheet says "Sourced from Process 51, see J111"; the J112 (same process) fits its limits (VGS(off) -1.2..-2.7 V, IDSS 10..40 mA), so its values are used -->
-        <item name="J201"   beta="1.621e-3"   vto="-0.6"     lambda="2.236e-3"  is="114.5e-15" />
-        <item name="J310"   beta="2.88371e-3" vto="-3.8366"  lambda="2.00998e-2" is="4.189e-16"  /><!-- Philips -->
-        <item name="MPF102" beta="1.04e-3"    vto="-3.41"    lambda="2e-3"      is="33.57e-15" />
+        <item name="2N5484" beta="2.224e-3"   vto="-1.2"     lambda="2.5e-3"    is="33.57e-15" cgs="2.414" cgd="1.6" /><!-- LTspice J2N5484 line (the Siliconix 2N5484 line gives IDSS 6.8 mA outside the datasheet) -->
+        <item name="2N5485" beta="1.039e-3"   vto="-2.5"     lambda="4.25e-3"   is="33.57e-15" cgs="2.414" cgd="1.6" /><!-- LTspice J2N5485 line (the Siliconix 2N5485 line gives IDSS 14 mA outside the datasheet) -->
+        <item name="2N5486" beta="736.9e-6"   vto="-3.889"   lambda="9.5e-3"    is="33.57e-15" cgs="2.414" cgd="1.6" /><!-- LTspice J2N5486 line (the Siliconix 2N5486 line gives IDSS 64 mA outside the datasheet) -->
+        <item name="BF245A" beta="1.16621e-3" vto="-1.7372"  lambda="1.77211e-2" is="2.91797e-16" cgs="2.2" cgd="2.2" pb="0.781" /><!-- Philips -->
+        <item name="BF245B" beta="1.09045e-3" vto="-2.3085"  lambda="2.31754e-2" is="2.59121e-16" cgs="2.0" cgd="2.2" pb="0.991" /><!-- Philips -->
+        <item name="BF245C" beta="5.43157e-4" vto="-5.0014"  lambda="2.71505e-2" is="3.64346e-16" cgs="2.0" cgd="2.0" pb="1.247" /><!-- Philips -->
+        <item name="J111"   beta="3.25e-3"    vto="-5.3638"  lambda="2.0e-2"    is="2.17605e-15" cgs="11" cgd="13" pb="0.702" /><!-- Philips -->
+        <item name="J112"   beta="5.97264e-3" vto="-2.3303"  lambda="2.31986e-2" is="8.87988e-16" cgs="10.5" cgd="12" pb="0.610" /><!-- Philips -->
+        <item name="J113"   beta="9.25964e-3" vto="-1.2854"  lambda="3.03839e-2" is="9.8687e-16"  cgs="10.5" cgd="12" pb="0.504" /><!-- Philips -->
+        <item name="MMBF5103" beta="5.97264e-3" vto="-2.3303" lambda="2.31986e-2" is="8.87988e-16" cgs="10.5" cgd="12" pb="0.610" /><!-- No published model: onsemi's datasheet says "Sourced from Process 51, see J111"; the J112 (same process) fits its limits (VGS(off) -1.2..-2.7 V, IDSS 10..40 mA), so its values are used -->
+        <item name="J201"   beta="1.621e-3"   vto="-0.6"     lambda="2.236e-3"  is="114.5e-15" cgs="2.992" cgd="4.667" pb="0.5" m="0.2271" />
+        <item name="J310"   beta="2.88371e-3" vto="-3.8366"  lambda="2.00998e-2" is="4.189e-16"  cgs="7.4" cgd="6.2" pb="0.758" /><!-- Philips -->
+        <item name="MPF102" beta="1.04e-3"    vto="-3.41"    lambda="2e-3"      is="33.57e-15" cgs="2.414" cgd="1.6" pb="1" m="0.3622" />
     </itemset>
     <itemset type="PJF">
-        <item name="2N5460" beta="1.0e-3"     vto="-3.4"     lambda="10e-3"     is="1.5e-12"   /><!-- Siliconix -->
-        <item name="J175"   beta="2.84523e-3" vto="-3.632"   lambda="2.0e-2"    is="7.74158e-16" /><!-- Philips -->
-        <item name="J176"   beta="2.89414e-3" vto="-2.3"     lambda="2.0e-2"    is="4.51393e-16" /><!-- Philips -->
+        <item name="2N5460" beta="1.107e-3"   vto="-1.75"    lambda="20e-3"     is="222.4e-15" cgs="2.92" cgd="2.34" /><!-- LTspice J2N5460 line (the Siliconix 2N5460 line gives IDSS 11.6 mA outside the datasheet) -->
+        <item name="J175"   beta="2.84523e-3" vto="-3.632"   lambda="2.0e-2"    is="7.74158e-16" cgs="15.7" cgd="17" pb="0.319" /><!-- Philips -->
+        <item name="J176"   beta="2.89414e-3" vto="-2.3"     lambda="2.0e-2"    is="4.51393e-16" cgs="10" cgd="10.5" pb="0.706" /><!-- Philips -->
     </itemset>
 </itemlib>

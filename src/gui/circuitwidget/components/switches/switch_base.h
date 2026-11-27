@@ -29,6 +29,11 @@ class SwitchBase : public MechContact
         // (seconds; 0 = a clean change), ending in the new state
         double bounceTime() { return m_bounceTime; }
         void setBounceTime( double t ) { m_bounceTime = ( t > 0 ) ? t : 0; }
+        // Armature transit (create-circuit #523): on a change the pole touches nothing for
+        // Transit_Time before it makes (a break is at once); the bounce burst starts at the make
+        double transitTime() { return m_transit; }
+        void setTransitTime( double t ) { m_transit = ( t > 0 ) ? t : 0; }
+
         int  bounces() { return m_bounces; }
         void setBounces( int n ) { m_bounces = ( n < 1 ) ? 1 : ( n > 100 ) ? 100 : n; }
 
@@ -60,6 +65,8 @@ class SwitchBase : public MechContact
         QString m_key;
 
         double m_bounceTime;
+        double m_transit;
+        bool   m_inTransit;  // Waiting for the make at the end of the transit
         int    m_bounces;
         bool   m_target;     // State the burst ends in
         int    m_bounceLeft; // Changes still to come in the burst (0 = none running)
@@ -67,6 +74,7 @@ class SwitchBase : public MechContact
         bool   m_contact;    // State the contacts are in (m_closed: the one asked for)
         bool   m_started;    // First frame of the run applies the contact cleanly
         void   nextBounce();
+        void   make( bool want );   // The new contact: clean, or the start of a bounce burst
         
         CustomButton* m_button;
         QGraphicsProxyWidget* m_proxy;

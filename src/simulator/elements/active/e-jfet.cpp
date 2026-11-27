@@ -49,6 +49,7 @@ eJfet::eJfet( QString id )
     m_lambda = 2.25e-3;
     m_satCur = 33.57e-15;
     m_emCoef = 1;
+    m_bv     = 0;
     m_model  = "Custom";
     updateVcrit();
 }
@@ -138,8 +139,8 @@ void eJfet::voltChanged()
     else if( qFabs( vgs-m_vgs ) < 1e-3 && qFabs( vgd-m_vgd ) < 1e-3 ) return; // Converged
     Simulator::self()->notCorverged();
 
-    vgs = limitStep( vgs, m_vgs );     // The gate junctions are exponential: limit the Newton step
-    vgd = limitStep( vgd, m_vgd );
+    vgs = limitGate( vgs, m_vgs );     // The gate junctions are exponential: limit the Newton step
+    vgd = limitGate( vgd, m_vgd );
     m_vgs = vgs;
     m_vgd = vgd;
     double vds = vgs - vgd;
@@ -159,12 +160,9 @@ void eJfet::voltChanged()
     id += gMin*vds;
 
     // Gate junctions, gate to source and gate to drain
-    double expGS = qExp( vgs/m_vt );
-    double expGD = qExp( vgd/m_vt );
-    double igs = m_satCur*( expGS-1 ) + gMin*vgs;
-    double igd = m_satCur*( expGD-1 ) + gMin*vgd;
-    double g1  = m_satCur/m_vt*expGS + gMin;
-    double g2  = m_satCur/m_vt*expGD + gMin;
+    double igs, igd, g1, g2;
+    junction( vgs, &igs, &g1 );
+    junction( vgd, &igd, &g2 );
 
     // Current sources of the linearization (N-channel), then the actual polarity
     double iEqD = id  - a*vgs - b*vds;
@@ -192,6 +190,29 @@ void eJfet::voltChanged()
     DRAIN ->setTrueCurrent( p*( id - igd ) );
     SOURCE->setTrueCurrent( p*(-id - igs ) );
     GATE  ->setTrueCurrent( p*( igs + igd ) );
+}
+
+void eJfet::junction( double v, double* i, double* g )
+{
+    double e = qExp( qMin( v/m_vt, 80.0 ) );
+    *i = m_satCur*( e-1 ) + gMin*v;
+    *g = m_satCur/m_vt*e + gMin;
+    if( m_bv > 0 && v < 0 ){            // Reverse breakdown beyond -BV
+        double eb = qExp( qMin( ( -v-m_bv )/m_vt, 80.0 ) );
+        *i -= m_satCur*eb;
+        *g += m_satCur/m_vt*eb;
+    }
+}
+
+double eJfet::limitGate( double vnew, double vold )
+{
+    vnew = limitStep( vnew, vold );
+    if( m_bv > 0 && vnew < 0 ){         // The breakdown exponential, mirrored: -V-BV as a forward voltage
+        double xn = -vnew-m_bv, xo = -vold-m_bv;
+        double xl = limitStep( xn, xo );
+        if( xl != xn ) vnew = -xl-m_bv;
+    }
+    return vnew;
 }
 
 double eJfet::limitStep( double vnew, double vold ) // As the BJT: pnjlim of SPICE
@@ -270,6 +291,9 @@ void eJfet::setModel( QString model )
     m_lambda = d.lambda;
     m_satCur = d.satCur;
     m_emCoef = d.emCoef;
+    m_cgs.setCj0( d.cgs ); m_cgd.setCj0( d.cgd );   // A model brings its capacitances (create-circuit #628)
+    setPb( d.pb );
+    setMjg( d.mj );
     updateVcrit();
 }
 
@@ -302,6 +326,10 @@ void eJfet::getModels() // Static: resources/data/jfets.model
                     d.lambda = item.attribute("lambda").toDouble();
                     d.satCur = item.attribute("is").toDouble();
                     d.emCoef = item.hasAttribute("n") ? item.attribute("n").toDouble() : 1;
+                    d.cgs = item.attribute("cgs").toDouble()*1e-12;   // pF; absent: 0
+                    d.cgd = item.attribute("cgd").toDouble()*1e-12;
+                    d.pb  = item.hasAttribute("pb") ? item.attribute("pb").toDouble() : 1;   // SPICE defaults
+                    d.mj  = item.hasAttribute("m")  ? item.attribute("m").toDouble()  : 0.5;
                     QString name = item.attribute("name");
                     if( d.beta > 0 && d.vto < 0 && d.satCur > 0 ){
                         m_jfets.insert( name, d );
@@ -343,6 +371,7 @@ void eJfet::simState( StateIO& s )
     s.io( m_lambda );
     s.io( m_satCur );
     s.io( m_emCoef );
+    s.io( m_bv );
     s.io( m_vt );
     s.io( m_vCrit );
     s.io( m_vgs );

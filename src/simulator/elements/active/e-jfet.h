@@ -26,6 +26,8 @@ struct jfetData_t{
     double lambda;  // 1/V
     double satCur;  // A, gate junction
     double emCoef;
+    double cgs, cgd; // F, gate junction capacitances at 0 V (0 = none)
+    double pb, mj;   // Their junction potential and grading coefficient
 };
 
 class eJfet : public eElement
@@ -50,6 +52,11 @@ class eJfet : public eElement
         void setPb( double v ) { m_cgs.setVj( v ); m_cgd.setVj( v ); }
         double mjg() { return m_cgs.mj(); }
         void setMjg( double m ) { m_cgs.setMj( m ); m_cgd.setMj( m ); }
+
+        // Gate breakdown (BV, V; 0 = none): each gate junction conducts in reverse beyond -BV,
+        // Is*exp((-V-BV)/(N*Vt)), like the diode's breakdown
+        double bv() { return m_bv; }
+        void setBv( double bv ) { m_bv = ( bv > 0 ) ? bv : 0; m_changed = true; }
 
         bool pChannel() { return m_pChannel; }
         virtual void setPchannel( bool p ) { m_pChannel = p; m_changed = true; }
@@ -78,6 +85,8 @@ class eJfet : public eElement
     protected:
         void channel( double vgs, double vds, double* id, double* gm, double* gds );
         double limitStep( double vnew, double vold );
+        double limitGate( double vnew, double vold );   // limitStep, and the breakdown side
+        void junction( double v, double* i, double* g ); // One gate junction: current, conductance
 
         void updateVcrit();
 
@@ -90,6 +99,7 @@ class eJfet : public eElement
         double m_lambda;
         double m_satCur;
         double m_emCoef;
+        double m_bv;
         double m_vt;     // N·kT/q
         double m_vCrit;
 

@@ -51,6 +51,9 @@ Push::Push( QString type, QString id )
         new DoubProp<Push>("Bounce_Time", tr("Bounce Time (0 = none)"), "ms"
                         , this, &Push::bounceTime, &Push::setBounceTime ),
 
+        new DoubProp<Push>("Transit_Time", tr("Transit Time (0 = none)"), "ms"
+                        , this, &Push::transitTime, &Push::setTransitTime ),
+
         new IntProp <Push>("Bounces", tr("Bounces"), ""
                         , this, &Push::bounces, &Push::setBounces, 0,"uint" ),
     }, 0} );

@@ -232,7 +232,7 @@ while the simulation runs. A scripted core reports with
   BVceo or BVebo that is set; MOSFETs **OFF** / **ACTIVE** /
   **OHMIC**; SCRs, triacs and diacs **OFF** or **ON** (amber, conducting); op
   amps **LINEAR** / **SAT+** / **SAT-** (amber, at a rail); voltage regulators
-  **REGULATING** / **DROPOUT** (amber) / **OFF**; diodes **OFF** / **ON** /
+  **REGULATING** / **DROPOUT** (amber) / **MIN LOAD** (amber, `Min_Load` > 0: load below the operating current) / **OFF**; diodes **OFF** / **ON** /
   **BREAKDOWN** / **OVER** (the averaged current above Max Current, IF(AV)) /
   **SURGE** (a peak above Surge Current, IFSM, held 100 ms), zeners **REGULATING** in breakdown, LEDs **OFF** /
   **ON** / **OVER** (the averaged current above Max Current, IF) / **PEAK** (a step above Peak
@@ -481,7 +481,9 @@ one and to the new one again, the gaps shrinking by 0.7 each time, all within
 Bounce_Time (2·Bounces+1 changes), ending in the new state. The burst is the same
 every time (no randomness). E.g. `comp set S1 Bounce_Time=2ms Bounces=4`, then
 `ui click S1`: a debouncer (RC + Schmitt trigger, SR latch) sees what a real contact
-gives it. The contacts at the start of a run are set cleanly.
+gives it. The contacts at the start of a run are set cleanly. `Transit_Time` (0 = none) is
+the armature's travel: on a change the pole first touches nothing (an SPST closing stays
+open; a break is at once) and makes after Transit_Time, then the bounce burst starts.
 
 ### Keyboard input on the canvas
 

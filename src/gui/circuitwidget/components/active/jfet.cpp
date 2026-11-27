@@ -73,6 +73,9 @@ Jfet::Jfet( QString type, QString id )
 
         new DoubProp<Jfet>("EmCoef", tr("Gate Emission Coefficient"),""
                           , this, &Jfet::emCoef, &Jfet::setEmCoef ),
+
+        new DoubProp<Jfet>("BV", tr("Gate Breakdown Voltage (0 = none)"),"V"
+                          , this, &Jfet::bv, &Jfet::setBv ),
     },0} );
 
     addPropGroup( { tr("Capacitance"), {

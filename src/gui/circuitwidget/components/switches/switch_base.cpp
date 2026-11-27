@@ -24,6 +24,8 @@ SwitchBase::SwitchBase( QString type, QString id )
     m_changed = true;
     m_key = "";
     m_bounceTime = 0;
+    m_transit    = 0;
+    m_inTransit  = false;
     m_bounces    = 5;
     m_target     = false;
     m_bounceLeft = 0;
@@ -58,6 +60,7 @@ void SwitchBase::setSwitch( bool closed )
 void SwitchBase::initialize()
 {
     m_bounceLeft = 0;
+    m_inTransit = false;
     m_started = false;
 }
 
@@ -66,22 +69,40 @@ void SwitchBase::updateStep()
     if( !m_changed ) return;
     m_changed = false;
 
-    if( m_bounceLeft ) return;   // A burst is running: it ends in its own target state
+    if( m_bounceLeft || m_inTransit ) return;   // A burst or a transit is running: it ends in its own target state
 
     bool want = m_closed;
-    bool bounce = m_started && m_bounceTime > 0 && want != m_contact
-               && Simulator::self()->isRunning();
+    bool moving = m_started && want != m_contact && Simulator::self()->isRunning();
     m_started = true;
 
-    setSwitch( want );           // First touch (or the clean change)
+    if( moving && m_transit > 0 && ( m_numthrows > 1 || want ) ){
+        m_target = want;                     // Leave the old contact now, make the new one later
+        if( m_numthrows > 1 ) setHover();    // (an SPST closing: still open)
+        m_inTransit = true;
+        uint64_t ps = (uint64_t)( m_transit*1e12 );
+        Simulator::self()->addEvent( ps ? ps : 1, this );
+        m_changed = false;
+        update();
+        return;
+    }
+    if( moving && m_bounceTime > 0 ) make( want );
+    else{
+        setSwitch( want );                   // The clean change (or the first state)
+        m_changed = false;
+    }
+    update();
+}
+
+void SwitchBase::make( bool want )
+{
+    setSwitch( want );                       // First touch
     m_changed = false;
-    if( bounce ){
+    if( m_bounceTime > 0 ){
         m_target = want;
         m_bounceN = 0;
         m_bounceLeft = 2*m_bounces;
         nextBounce();
     }
-    update();
 }
 
 // Gaps shrink by 0.7 each change (the contact's swing dies down) and add up to Bounce_Time
@@ -96,6 +117,11 @@ void SwitchBase::nextBounce()
 
 void SwitchBase::runEvent()
 {
+    if( m_inTransit ){                       // End of the transit: the make
+        m_inTransit = false;
+        make( m_target );
+        return;
+    }
     if( !m_bounceLeft ) return;
     m_bounceLeft--;
     m_bounceN++;
@@ -204,6 +230,8 @@ void SwitchBase::simState( StateIO& s )
     s.io( m_bounceN );
     s.io( m_contact );
     s.io( m_started );
+    s.io( m_transit );
+    s.io( m_inTransit );
 }
 
 void SwitchBase::stateRestored()

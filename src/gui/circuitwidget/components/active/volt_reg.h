@@ -40,6 +40,12 @@ class VoltReg : public Component, public eResistor
         double iAdj() { return m_iAdj; }
         void setIAdj( double i ) { m_iAdj = i; m_changed = true; }
 
+        // Minimum load (A, 0 = none; LM317: 3.5 mA typ, 10 mA max): the regulator's operating
+        // current, from the input out of the output pin, and a pass element that only sources.
+        // Below it the pass turns off and that current lifts the output (create-circuit #508)
+        double minLoad() { return m_iMin; }
+        void setMinLoad( double i ) { m_iMin = qMax( 0.0, i ); m_changed = true; }
+
         virtual void paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget* widget );
 
     protected:
@@ -47,9 +53,11 @@ class VoltReg : public Component, public eResistor
         double m_drop;
         double m_iAdj;
         double m_lastCurrent;
+        double m_iMin;
+        int    m_pass;               // Min_Load: 0 on, 1 off (load below the operating current), 2 off near the input
 
         bool m_connected;
-        int  m_region;               // Part state: -1 none, 0 off, 1 dropout, 2 regulating
+        int  m_region;               // Part state: -1 none, 0 off, 1 dropout, 2 regulating, 3 under minimum load
 };
 
 #endif

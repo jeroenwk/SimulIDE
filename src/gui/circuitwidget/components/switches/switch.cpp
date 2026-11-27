@@ -58,6 +58,9 @@ Switch::Switch( QString type, QString id )
         new DoubProp<Switch>("Bounce_Time", tr("Bounce Time (0 = none)"), "ms"
                         , this, &Switch::bounceTime, &Switch::setBounceTime ),
 
+        new DoubProp<Switch>("Transit_Time", tr("Transit Time (0 = none)"), "ms"
+                        , this, &Switch::transitTime, &Switch::setTransitTime ),
+
         new IntProp <Switch>("Bounces", tr("Bounces"), ""
                         , this, &Switch::bounces, &Switch::setBounces, 0,"uint" ),
     },0} );

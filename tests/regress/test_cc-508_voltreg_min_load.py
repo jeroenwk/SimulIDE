@@ -10,6 +10,9 @@ output and ADJ, R1 out-ADJ, R2 ADJ-ground, Vin 30 V, Min_Load 5 mA:
 - R1 124, R2 372: divider 10.1 mA > 5 mA, regulates 1.25*(1+372/124) = 5.00 V;
 - R1 1.2k, R2 3.6k: divider 1.04 mA < 5 mA, the pass is off and the 5 mA flow into the
   4.8k divider: 24.0 V (state not REGULATING);
+- the same from Vin 10 V: no headroom for 24 V; within Dropout (0.7 V) of the input the
+  operating current falls with the headroom (Min_Load * (Vin-Vout) / Dropout, a 140 ohm path),
+  so 10 * 4800/4940 = 9.717 V, below the input;
 - the same with a 1k load on the output: 5 mA + 1 mA > 5 mA, regulates 5.00 V again;
 - Min_Load 0, R1 1.2k, R2 3.6k: 5.00 V (unchanged model).
 """
@@ -18,10 +21,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from harness import run_test
 
 
-def reg(sim, r1, r2, props=(), load=None):
+def reg(sim, r1, r2, props=(), load=None, vin=30):
     c = sim.cli
     c("circuit", "new", "--discard")
-    c("comp", "add", "Fixed Voltage", "--label", "VIN", "--at", "-200,0", "Voltage=30", "Out=true")
+    c("comp", "add", "Fixed Voltage", "--label", "VIN", "--at", "-200,0", "Voltage=%g" % vin, "Out=true")
     c("comp", "add", "VoltReg", "--label", "U", "--at", "0,0", "Voltage=1.25", *props)
     c("comp", "add", "Resistor", "--label", "R1", "--at", "60,60", "Resistance=%g" % r1)
     c("comp", "add", "Resistor", "--label", "R2", "--at", "0,120", "--rotate", "90", "Resistance=%g" % r2)
@@ -49,6 +52,8 @@ def test(sim):
     v, st = reg(sim, 1200, 3600, ("Min_Load=5m",))
     sim.check("R1 1.2k: under minimum load, output rises (%s)" % st, v, 24.0, tol=0, absolute=0.05)
     sim.check("R1 1.2k: not REGULATING (%s)" % st, int(not str(st).startswith("REGULATING")), 1, absolute=0)
+    v, st = reg(sim, 1200, 3600, ("Min_Load=5m",), vin=10)
+    sim.check("R1 1.2k from 10 V: stays below the input (%s)" % st, v, 9.717, tol=0, absolute=0.01)
     v, st = reg(sim, 1200, 3600, ("Min_Load=5m",), load=1000)
     sim.check("R1 1.2k + 1k load: regulates (%s)" % st, v, 5.0, tol=0, absolute=2e-3)
     v, st = reg(sim, 1200, 3600)
