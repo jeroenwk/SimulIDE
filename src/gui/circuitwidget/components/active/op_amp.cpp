@@ -580,9 +580,12 @@ void OpAmp::runEvent()
     // when the direction reverses: with feedback the target is the open-loop gain times the
     // error, which changes sign as the output crosses the linear solution
     if( qFabs( dist ) <= dv || ( m_slewDir != 0 && dir != m_slewDir ) ){
-        double ideal = m_gain*vd;
-        if     ( ideal >= m_voltPos ) m_mode = SAT_P;
-        else if( ideal <= m_voltNeg ) m_mode = SAT_N;
+        // A rail only when the ramp reached it. Ended by a reversal (feedback), gain*vd is far
+        // past a rail at any output but the linear one (Gain 1e5: 60 uV of error): that went to
+        // SAT, solved the output at the rail, and slewed back, in 60 mV hops for ever (#650)
+        bool reached = qFabs( dist ) <= dv;
+        if     ( reached && target >= m_voltPos ) m_mode = SAT_P;
+        else if( reached && target <= m_voltNeg ) m_mode = SAT_N;
         else{
             m_mode = LIN;
             m_linIter = 0;
