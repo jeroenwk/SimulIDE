@@ -1,0 +1,38 @@
+Rotary switch: 1 to 4 poles, 3 to 12 positions, 30° per detent.
+
+A round body with the knob in the middle. The commons (A, B, C, D) are the pins on the left; the throws (A1, A2, ..., B1, ...) run clockwise, as the pins are numbered on the deck: along the top from left to right, down the right side, then along the bottom from right to left. In position n, each common is connected to its throw n: A to A2, B to B2, ... while the simulation runs.
+
+Use it: drag the knob, click it (one detent clockwise, Shift + click the other way), turn the mouse wheel over it, press Shift + its Key, or set Position.
+
+Property: (default value)
+
+- Poles: (1)
+   Number of commons. Poles x Positions is at most 12, as on the SR25 / SR26 deck.
+
+- Positions: (4)
+   Number of detents, 3 to 12.
+
+- Position: (1)
+   Where the knob stands, 1 to Positions.
+
+- Shorting: (no)
+   Yes: make before break. While it changes position the next throw connects first, the other one opens after Overlap Time.
+   No: break before make. The pole touches nothing for Transit Time.
+
+- Key: ()
+   Capital letter. Press Shift + this letter while the simulation runs to turn the switch one detent clockwise.
+
+- Contact Resistance: (50 mOhm)
+   Of a closed contact.
+
+- Transit Time: (0 ms)
+   Not shorting only: how long the pole touches nothing.
+
+- Overlap Time: (1 ms)
+   Shorting only: how long both throws are connected.
+
+- Bounce Time: (0 ms)
+   Each contact chatters for this long when it makes (not shorting) or breaks (shorting).
+
+- Bounces: (5)
+   Changes of the chatter.

@@ -80,6 +80,7 @@ class Pin : public QGraphicsItem, public ePin, public Updatable
         Pin* connectPin( bool connect );
 
         QString getLabelText() { return m_labelText; }
+        QGraphicsSimpleTextItem* labelItem() { return &m_label; }   // The item the name is drawn in (a child of the component)
         virtual void setLabelText( QString label, bool over=true );
         void setLabelPos();
         void setLabelColor( QColor color );
