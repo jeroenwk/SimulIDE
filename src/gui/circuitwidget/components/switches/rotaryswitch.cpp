@@ -197,7 +197,7 @@ RotarySwitch::RotarySwitch( QString type, QString id )
 
     QObject::connect( m_knob, &QAbstractSlider::valueChanged, [=](int v){ dialChanged(v); } );
     m_keyEventConn = QObject::connect( Circuit::self(), &Circuit::keyEvent
-                          , [=]( QString k, bool pressed ){ if( pressed && k == m_key ) step( 1 ); } );
+                          , [=]( QString k, bool pressed ){ if( !pressed && k == m_key ) step( 1 ); } );   // On release, as the Switch
 
     setShowProp( "Position" );
 
@@ -240,8 +240,10 @@ RotarySwitch::RotarySwitch( QString type, QString id )
 
 RotarySwitch::~RotarySwitch()
 {
-    for( eResistor* c : m_contact ) delete c;
+    for( eResistor* c : m_contact ) delete c;      // The contacts first: they hold the ePins
+    for( uint i=0; i<m_ePin.size(); i += 2 ) delete m_ePin[i];   // The ones we made (the others are pins)
     m_contact.clear();
+    m_ePin.clear();
 }
 
 //--- Properties --------------------------------------------------------------
@@ -317,19 +319,12 @@ QString RotarySwitch::propHelp( QString prop )
 
 Pin* RotarySwitch::addPin( int angle, QPoint pos, QString name, int index )
 {
-    QSet<QGraphicsItem*> had;                      // The names we had: the pin adds one
-    for( QGraphicsItem* child : childItems() ) if( dynamic_cast<QGraphicsSimpleTextItem*>( child ) ) had << child;
-
     Pin* pin = new Pin( angle, pos, m_id+"-"+name, index, this );
     pin->setLabelText( name );                     // The pin's own name: the CLI and the triggers use it
     pin->setLabelColor( QColor( 0, 0, 0 ) );       // In the theme's text colour, on the body's own colour
 
-    QGraphicsSimpleTextItem* text = nullptr;      // Its text item, a child of ours
-    for( QGraphicsItem* child : childItems() )
-        if( !had.contains( child ) ) if( QGraphicsSimpleTextItem* t = dynamic_cast<QGraphicsSimpleTextItem*>( child ) ){ text = t; break; }
-
     m_pin.push_back( pin );
-    if( !text ) return pin;
+    QGraphicsSimpleTextItem* text = pin->labelItem();   // The item the pin draws its name in: a child of ours
 
     // Where the name lies, horizontal, just inside the rim on the pin's row. The rim is 5 px
     // beyond the pin's row at the text's outer edge (reach); its centre is half a text further in
@@ -432,6 +427,16 @@ void RotarySwitch::setClosed( int pole, int pos, bool closed )
 
 void RotarySwitch::initialize()
 {
+    // Every contact of a pole starts from its common: the contact's common-side ePin takes the
+    // common's node. Here, not in stamp(): initialize() runs before any element stamps, in
+    // whatever order the elements are in, and the contact's own stamp() needs the node by then.
+    // (A removed part has no ePins left until it is deleted: then there is nothing to set)
+    for( uint i=0; i+1 < m_ePin.size(); i += 2 )
+    {
+        int pole = int( (i/2) / m_positions );
+        m_ePin[i]->setEnode( pole < int(m_pin.size()) ? m_pin[pole]->getEnode() : nullptr );
+    }
+
     m_started    = false;
     m_mode       = modeNone;
     m_bounceLeft = 0;
@@ -440,17 +445,13 @@ void RotarySwitch::initialize()
 
 void RotarySwitch::stamp()
 {
-    for( int p=0; p<m_poles; ++p )                 // Every contact of a pole starts from its common
-    {
-        eNode* enode = m_pin[p]->getEnode();
-        for( int k=0; k<m_positions; ++k ) m_ePin[ 2*(p*m_positions+k) ]->setEnode( enode );
-    }
     rest();
     m_started = true;                              // From here on a step has its timing
 }
 
 void RotarySwitch::updateStep()
 {
+    if( m_contact.empty() ) return;                // Removed: the contacts are gone until it is deleted
     if( !m_changed ) return;
     m_changed = false;
 
@@ -464,6 +465,8 @@ void RotarySwitch::rest()
     Simulator::self()->cancelEvents( this );
     m_mode = modeNone;
     m_bounceLeft = 0;
+
+    if( m_contact.empty() ) return;                // Removed: the contacts are gone, and the part lives on until it is deleted
 
     for( int p=0; p<m_poles; ++p )
     {
@@ -485,15 +488,16 @@ void RotarySwitch::moveTo( int pos )
     {
         for( int p=0; p<m_poles; ++p )
         {
-            m_chatter[p] = -1;
+            // The contact to open with a bounce is the one made last, m_at (the step before
+            // this one). A step cut short during its overlap can have left two closed: the
+            // older one opens at once. None closed (coming from an open position): none opens
+            int leaving = -1;
             for( int k=0; k<m_positions; ++k )
-            {
-                bool leaving = ( k != pos ) && isClosed( p, k ) && m_chatter[p] == -1;
-                if( leaving ) m_chatter[p] = k;    // The contact that was made: it breaks with a bounce
-                setClosed( p, k, leaving );
-            }
-            setClosed( p, pos, true );
-            if( m_chatter[p] >= 0 ) pending = true;
+                if( k != pos && isClosed( p, k ) && ( leaving < 0 || k == m_at ) ) leaving = k;
+
+            m_chatter[p] = leaving;
+            for( int k=0; k<m_positions; ++k ) setClosed( p, k, k == pos || k == leaving );
+            if( leaving >= 0 ) pending = true;
         }
         m_endClosed = false;
         delay = m_overlap;
@@ -619,17 +623,26 @@ void RotarySwitch::stateRestored()
 
 void RotarySwitch::remove()
 {
-    for( eResistor* c : m_contact ) delete c;
+    if( Simulator::self() ) Simulator::self()->cancelEvents( this );   // A step under way must not fire once the contacts are gone
+    m_mode    = modeNone;
+    m_changed = false;
+    for( eResistor* c : m_contact ) delete c;      // As in the destructor: the contacts, then our ePins
+    for( uint i=0; i<m_ePin.size(); i += 2 ) delete m_ePin[i];
     m_contact.clear();
+    m_ePin.clear();
     QObject::disconnect( m_keyEventConn );
     Component::remove();
 }
 
 //--- Looks -------------------------------------------------------------------
 
+// The angle is absolute, as Component::setAngle(): setPropStr("rotation") uses it for loading,
+// for `comp set` and for undo and redo (Circuit::restoreState sets the saved angle back)
 void RotarySwitch::setAngle( double angle )
 {
-    RotarySwitch::rotateAngle( angle );
+    Component::setAngle( angle );
+    placeKnob();
+    if( !m_hidden ) moveSignal();                  // The pins' labels, then ours (placeLabels)
 }
 
 // The knob stays in the middle of the body, upright and unmirrored, however the part is turned
@@ -641,7 +654,7 @@ void RotarySwitch::placeKnob()
     m_proxy->setPos( -20*m_Hflip, -20*m_Vflip );
 }
 
-void RotarySwitch::rotateAngle( double a )
+void RotarySwitch::rotateAngle( double a )        // By an angle, with the undo step and the lock
 {
     Component::rotateAngle( a );                   // ... and moveSignal(): the names
     placeKnob();

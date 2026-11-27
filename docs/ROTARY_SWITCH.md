@@ -10,7 +10,7 @@ The `Rotary_SW4`, `Rotary_SW8` and `Rotary_SW16` of Logic / Tools are something 
 | `Positions` | 4 | 3 to 12. Clamped so that poles × positions is at most 12: 2 poles go up to 6, 3 poles to 4, 4 poles to 3. |
 | `Position` | 1 | Where the knob stands, 1 to `Positions`. Saved with the circuit; it is the part's shown value. |
 | `Shorting` | no | Yes: make before break. No: break before make. See "Timing of a step". |
-| `Key` | none | A capital letter. Shift + that letter turns the switch one detent clockwise while the simulation runs. |
+| `Key` | none | A capital letter. Shift + that letter, let go, turns the switch one detent clockwise while the simulation runs (on release, as the Switch). |
 | `Contact_Res` | 50 mΩ | Resistance of a closed contact. |
 | `Transit_Time` | 0 ms | Not shorting: how long the pole touches nothing. |
 | `Overlap_Time` | 1 ms | Shorting: how long both throws are connected. |
@@ -59,7 +59,7 @@ A step made while the simulation runs takes the switch's timing; when the simula
 - **Break before make** (`Shorting` no): every contact opens at once; after `Transit_Time` the new throw makes.
 - **Make before break** (`Shorting` yes): the new throw makes at once; after `Overlap_Time` the other one opens. A pole that had no contact made (coming from an open position) has nothing to open.
 - **Chatter**: when `Bounce_Time` is more than 0, the contact that changes chats: it is closed, then changes `2 × Bounces` times (ending closed, at a make) or `2 × Bounces + 1` times (ending open, at a break), within `Bounce_Time`, the gaps shrinking by 0.7 each time, as on the Switch. The other contacts change cleanly.
-- A second step while one is under way cuts it short and starts from the contacts as they are then.
+- A second step while one is under way cuts it short and starts from the contacts as they are then. With make before break, a step cut short during its overlap may have left two throws closed: the one made last opens after the new overlap, with its bounce; the older one opens at once.
 
 The simulator keeps one event per element, so the part has one timer: it is cancelled when a step is cut short.
 
@@ -69,5 +69,5 @@ The simulator keeps one event per element, so the part has one timer: it is canc
 
 ## Tests and demo
 
-- `tests/regress/test_rotary_switch.py` (196 checks): the contacts in every position for 1 × 3, 1 × 4, 1 × 12, 2 × 6, 3 × 4 and 4 × 3; the limits of poles and positions; the throws clockwise in ten settings; the contact resistance; the timing of a step (transit, overlap, chatter at the make and at the break, two quick steps); save and reopen; a `Key`; saved key frames and `sim history check`; the knob's place and the pins' grid in 24 turn and flip states.
+- `tests/regress/test_rotary_switch.py` (206 checks): the contacts in every position for 1 × 3, 1 × 4, 1 × 12, 2 × 6, 3 × 4 and 4 × 3; the limits of poles and positions; the throws clockwise in ten settings; the contact resistance; the timing of a step (transit, overlap, chatter at the make and at the break, two quick steps in both timings); save and reopen; a `Key` on its release; saved key frames and `sim history check`; the angle set absolutely (undo, redo, `comp set`, a reopened file); the knob's place and the pins' grid in 24 turn and flip states.
 - `tests/circuits/rotary_switch_lights.sim1`: the lights of the microscope (12 V, two LEDs of 330 Ω each, off / LED 1 / LED 2 / both).

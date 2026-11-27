@@ -231,6 +231,22 @@ def section_timing(sim):
     c("sim", "run", "--for", "5ms")
     check_throws(sim, "two quick steps, after the second transit", 1, 4, 3)
 
+    # Two steps quickly, make before break: the second cuts the first overlap short. The contact
+    # made last (throw 2) is the one that opens after the second overlap; the older one (throw 1,
+    # still closed from the first step) opens at once
+    build(sim, Shorting="true", Overlap_Time="5ms")
+    c("ui", "dial", "SW", "1")
+    c("sim", "run", "--for", "1ms")
+    v = volts(sim, ["SW.A1", "SW.A2", "SW.A3"])
+    flag(sim, "shorting, two quick steps: 1 and 2 made in the first overlap", v[0] > 1 and v[1] > 1 and v[2] < 1)
+    c("ui", "dial", "SW", "2")
+    c("sim", "run", "--for", "10us")
+    v = volts(sim, ["SW.A1", "SW.A2", "SW.A3"])
+    flag(sim, "shorting, two quick steps: the older contact opens at once, the last made one waits",
+         v[0] < 1 and v[1] > 1 and v[2] > 1)
+    c("sim", "run", "--for", "6ms")
+    check_throws(sim, "shorting, two quick steps, after the second overlap", 1, 4, 3)
+
 
 def sample(sim, n, dt, pins):
     out = []
@@ -271,13 +287,16 @@ def section_save(sim):
         check_throws(sim, "reopened: position 3", 3, 4, 3, rc=0.2)
         flag(sim, "reopened: the knob shows the position", sim.cli("ui", "controls", "SW")["controls"][0]["value"] == 2)
 
-        # A key turns it one detent
-        sim.cli("ui", "key", "S", "tap")
+        # The key acts on release, as the Switch: the press alone does not turn it
+        sim.cli("ui", "key", "S", "down")
+        sim.cli("sim", "run", "--for", "1ms")
+        flag(sim, "Shift+S pressed: no turn yet", prop(sim, "Position") == "3")
+        sim.cli("ui", "key", "S", "up")
         sim.cli("sim", "run", "--for", "1ms")
         v = volts(sim, ["SW.A3", "SW.A4", "SW.C3", "SW.C4"])
-        flag(sim, "Shift+S: the next throws are made (with the old ones, inside the overlap)", v[1] > 1 and v[3] > 1)
+        flag(sim, "Shift+S released: the next throws are made (with the old ones, inside the overlap)", v[1] > 1 and v[3] > 1)
         sim.cli("sim", "run", "--for", "5ms")
-        check_throws(sim, "Shift+S, after the overlap", 3, 4, 4, rc=0.2)
+        check_throws(sim, "Shift+S released, after the overlap", 3, 4, 4, rc=0.2)
     finally:
         try:
             os.remove(path)
@@ -369,10 +388,55 @@ def section_clockwise(sim):
              top + right + bottom == throws(poles, positions) and len(top) + len(right) + len(bottom) == poles * positions)
 
 
+def section_turn(sim):
+    # setAngle() sets the angle, it does not turn by it: undo and redo of a turn, `comp set` of the
+    # rotation on a turned part, and a reopened file all give the angle asked for, with the knob in
+    # the middle of the body (the part is at 0,0 there)
+    c = sim.cli
+    build(sim)
+
+    def state():
+        g = c("comp", "get", "SW")
+        return g.get("rotation", 0), g["pins"][1]["pos"], g["controls"][0]
+
+    def centred(knob):
+        x, y, w, h = knob
+        return abs(x + w / 2) <= 1 and abs(y + h / 2) <= 1
+
+    pin0, knob = state()[1], state()[2]
+    c("comp", "rotate", "SW", "cw")
+    pin90 = state()[1]
+    flag(sim, "turn: rotate cw gives 90 deg, the knob in the middle", state()[0] == 90 and pin90 != pin0 and centred(state()[2]))
+    c("undo")
+    flag(sim, "turn: undo gives 0 deg again, pins and knob back",
+         state()[0] == 0 and state()[1] == pin0 and centred(state()[2]))
+    c("redo")
+    flag(sim, "turn: redo gives 90 deg again", state()[0] == 90 and state()[1] == pin90 and centred(state()[2]))
+    c("comp", "set", "SW", "rotation=90")
+    flag(sim, "turn: the rotation set to 90 on a part at 90 stays there", state()[0] == 90 and state()[1] == pin90)
+    c("comp", "set", "SW", "rotation=0")
+    flag(sim, "turn: the rotation set to 0 turns a turned part back",
+         state()[0] == 0 and state()[1] == pin0 and centred(state()[2]))
+    c("comp", "rotate", "SW", "cw")
+    fd, path = tempfile.mkstemp(suffix=".sim1")
+    os.close(fd)
+    try:
+        c("sim", "stop")
+        c("circuit", "save", path)
+        c("circuit", "open", path, "--discard")
+        flag(sim, "turn: a turned part reopens at 90 deg, the knob in the middle",
+             state()[0] == 90 and state()[1] == pin90 and centred(state()[2]))
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+
+
 def test(sim):
     for name, fn in [("contacts", section_contacts), ("poles", section_poles), ("limits", section_limits),
                      ("resistance", section_resistance), ("timing", section_timing), ("save", section_save),
-                     ("back", section_back), ("clockwise", section_clockwise), ("looks", section_looks)]:
+                     ("back", section_back), ("turn", section_turn), ("clockwise", section_clockwise), ("looks", section_looks)]:
         if want(name):
             fn(sim)
 
