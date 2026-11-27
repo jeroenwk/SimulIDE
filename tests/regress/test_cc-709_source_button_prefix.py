@@ -1,8 +1,8 @@
 """A Current or Voltage Source's button shows its value with a unit prefix
 (create-circuit #709).
 
-It printed two decimals in base units: 1 uA read "0.00 A". Expected: "1.000 uA" for 1 uA,
-"5.000 V" for 5 V, "2.500 mA" for 2.5 mA.
+It printed two decimals in base units: 1 uA read "0.00 A". Expected: "1.00 uA" for 1 uA,
+"5.00 V" for 5 V, "2.50 mA" for 2.5 mA (four characters: the button holds no more).
 """
 
 from harness import run_test

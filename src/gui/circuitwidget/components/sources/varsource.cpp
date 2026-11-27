@@ -9,6 +9,7 @@
 #include <QPainter>
 
 #include "varsource.h"
+#include "utils.h"
 #include "simulator.h"
 #include "circuit.h"
 #include "custombutton.h"
@@ -64,8 +65,20 @@ void VarSource::updateButton()
     QString msg;
     bool checked = m_button->isChecked();
     
-    if( checked )
-          msg = QString::number( m_outValue,'f', 2 ).left(5)+" "+m_unit;
+    if( checked ){        // with a unit prefix, as the meters: 1 uA read "0.00 A" (create-circuit #709)
+        QString mult = " ";
+        int decimals = 3;
+        double value = qFabs( m_outValue );
+        QString sign = m_outValue < 0 ? "-" : "";
+        if( value < 1e-12 ) value = 0;
+        else{
+            value *= 1e12;
+            valToUnit( value, mult, decimals )
+        }
+        QString n = QString::number( value,'f', decimals ).left(4);   // the button holds 4 digits
+        if( n.endsWith('.') ) n.chop( 1 );
+        msg = sign+n+mult+m_unit;
+    }
     else  msg = QString("---"+m_unit);
         
     m_button->setText( msg );
