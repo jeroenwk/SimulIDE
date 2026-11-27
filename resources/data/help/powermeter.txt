@@ -1,0 +1,18 @@
+Power meter with output pin.
+
+Put it in the lead of a source whose other terminal is ground, the red pin
+toward the source (+) and the black pin toward the circuit. It shows:
+- the power that the red side delivers to the black side: the red pin's
+  voltage to ground times the current into the red pin. Now, or the mean over
+  Avg_Time (property Reading).
+- the r.m.s. voltage at the red pin and the r.m.s. current, over Avg_Time.
+- the power factor: the mean power divided by (V r.m.s. x I r.m.s.).
+  1.000 for a battery or a resistor; less when voltage and current are out of
+  phase or the current is distorted (a capacitor, a rectifier with a capacitor).
+The voltage is taken against ground: in the ground lead it reads zero.
+With the source on the black pin the power and the power factor read negative.
+
+Pins:
+- Red Pin: toward the source (+).
+- Black Pin: toward the circuit.
+- Right Pin: Output reading as voltage (1 V = 1 W).

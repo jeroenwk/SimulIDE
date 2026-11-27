@@ -1,0 +1,71 @@
+<circuit version="1.1.0-SR2" rev="261127" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" skip="100000000000" animate="0" >
+<description>
+# A Power Meter on the lights of the microscope
+
+The demo of the **Power Meter** for a DC supply (`docs/POWER_METER.md`): a 12 V battery feeding two white LEDs through 330 Ω each, with the meter in the battery's + lead, its red lead toward the battery.
+
+Run: both LEDs light, 26.7 mA each, and the meter reads **640.9 mW**, 12.00 V, 53.41 mA, power factor **1.000** (a battery and resistors: voltage and current in phase and steady).
+
+An ammeter in this lead would read 53.4 mA, the same as on a 6 V pack at the same light: the meter shows the other factor of the energy, the voltage, and their product.
+
+| Part | Value | Why |
+|---|---|---|
+| `BAT` | 12 V | The microscope's plan: 12 V from a battery or an adapter. |
+| `PM1` | Power Meter, `Reading` Instant | The new part, in the + lead. |
+| `R1`, `R2` | 330 Ω | One resistor per LED: 26.7 mA at 12 V. |
+| `LED1`, `LED2` | White, 3.0 V, 7 Ω | A stand-in for the microscope's LEDs. |
+
+Open on purpose: `PM1.outnod`, which gives the power as a voltage (1 V = 1 W).
+
+## create-circuit skill
+
+- Version: 1.31.0 (commit 6746f6a)
+- Circuit: power_meter_dc.sim1
+
+### Limitations found while building it
+
+None reported.
+</description>
+
+
+<item itemtype="Resistor" CircId="Resistor-1" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="0,-64" rotation="90" hflip="1" vflip="1" label="R1" idLabPos="-18,8.5" labelrot="0" valLabPos="-5,8.5" valLabRot="0" labelAuto="true" Resistance="330 Ω" Cp="0 pF" />
+
+<item itemtype="Led" CircId="Led-2" mainComp="false" Show_id="true" Show_Val="false" Pos="48,-64" rotation="90" hflip="1" vflip="1" label="LED1" idLabPos="-9,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Color="White" Grounded="false" Show_State="false" Threshold="3 V" MaxCurrent="30 mA" PeakCurrent="0 mA" Resistance="7 Ω" Cj0="0 pF" Vj="0.7 V" Mj="0.33" />
+
+<item itemtype="PowerMeter" CircId="PowerMeter-3" mainComp="false" Show_id="true" Show_Val="false" Pos="-80,-48" rotation="0" hflip="1" vflip="1" label="PM1" idLabPos="-8,-66" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Reading="Instant" Avg_Time="100 ms" />
+
+<item itemtype="Battery" CircId="Battery-4" mainComp="false" ShowProp="Voltage" Show_id="true" Show_Val="true" Pos="-88,16" rotation="90" hflip="1" vflip="1" label="BAT" idLabPos="-18,14" labelrot="0" valLabPos="2,14" valLabRot="0" labelAuto="true" Voltage="12 V" Resistance="1 mΩ" />
+
+<item itemtype="Resistor" CircId="Resistor-5" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="0,16" rotation="90" hflip="1" vflip="1" label="R2" idLabPos="-19,8.5" labelrot="0" valLabPos="-4,8.5" valLabRot="0" labelAuto="true" Resistance="330 Ω" Cp="0 pF" />
+
+<item itemtype="Led" CircId="Led-6" mainComp="false" Show_id="true" Show_Val="false" Pos="48,16" rotation="90" hflip="-1" vflip="-1" label="LED2" idLabPos="-10,-24" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Color="White" Grounded="false" Show_State="false" Threshold="3 V" MaxCurrent="30 mA" PeakCurrent="0 mA" Resistance="7 Ω" Cj0="0 pF" Vj="0.7 V" Mj="0.33" />
+
+<item itemtype="Ground" CircId="Ground-7" mainComp="false" Show_id="false" Show_Val="false" Pos="-88,64" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Ground" CircId="Ground-8" mainComp="false" Show_id="false" Show_Val="false" Pos="80,32" rotation="0" hflip="1" vflip="1" label="G2" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Node" CircId="Node-9" mainComp="false" Pos="0,-16" />
+
+<item itemtype="Node" CircId="Node-10" mainComp="false" Pos="48,-16" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="PowerMeter-3-lPin" endpinid="Battery-4-lPin" pointList="-88,-32,-88,0" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="Resistor-1-lPin" endpinid="Led-2-lPin" pointList="0,-80,0,-96,48,-96,48,-80" />
+
+<item itemtype="Connector" uid="Connector-3" startpinid="Resistor-5-rPin" endpinid="Led-6-lPin" pointList="0,32,0,48,48,48,48,32" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="PowerMeter-3-rPin" endpinid="Node-9-1" pointList="-72,-32,-72,-16,0,-16" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Resistor-5-lPin" endpinid="Node-9-0" pointList="0,0,0,-16" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="Node-9-2" endpinid="Resistor-1-rPin" pointList="0,-16,0,-48" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Battery-4-rPin" endpinid="Ground-7-Gnd" pointList="-88,32,-88,48" />
+
+<item itemtype="Connector" uid="Connector-10" startpinid="Ground-8-Gnd" endpinid="Node-10-1" pointList="80,16,80,-16,48,-16" />
+
+<item itemtype="Connector" uid="Connector-11" startpinid="Led-6-rPin" endpinid="Node-10-0" pointList="48,0,48,-16" />
+
+<item itemtype="Connector" uid="Connector-12" startpinid="Node-10-2" endpinid="Led-2-rPin" pointList="48,-16,48,-48" />
+
+</circuit>

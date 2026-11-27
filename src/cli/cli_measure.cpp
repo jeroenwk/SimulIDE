@@ -49,6 +49,7 @@
 #include "noisesource.h"
 #include "lm2575.h"
 #include "mf5.h"
+#include "powermeter.h"
 #include "plotbase.h"
 #include "datachannel.h"
 #include "oscope.h"
@@ -80,7 +81,18 @@ QJsonObject readComp( Component* comp )
 {
     QJsonObject o{ {"uid", comp->getUid() }, {"type", comp->itemType() } };
 
-    if( Meter* m = dynamic_cast<Meter*>( comp ) )
+    if( PowerMeter* pm = dynamic_cast<PowerMeter*>( comp ) )   // docs/POWER_METER.md
+    {
+        o["value"]  = num( pm->value() );      // The power: now, or the block's mean (Reading)
+        o["unit"]   = pm->unit();
+        o["reading"] = pm->reading();
+        o["over"]   = Cli::timeStr( (uint64_t)( pm->avgTime()*1e12 + 0.5 ) );   // V, I and the power factor: always over this
+        o["v_rms"]  = num( pm->voltRms() );
+        o["i_rms"]  = num( pm->currRms() );
+        o["apparent"] = num( pm->apparentPower() );
+        o["power_factor"] = num( pm->powerFactor() );
+    }
+    else if( Meter* m = dynamic_cast<Meter*>( comp ) )
     {
         o["value"] = num( m->value() );
         o["unit"]  = m->unit();

@@ -1,0 +1,62 @@
+<circuit version="1.1.0-SR2" rev="261127" stepSize="1000000" stepsPS="1000000" NLsteps="100000" reaStep="1000000" skip="100000000000" animate="0" >
+<description>
+# A Power Meter on a rectifier with a capacitor
+
+The demo of the **Power Meter** on AC (`docs/POWER_METER.md`): a 10 V peak, 50 Hz sine through a 1N4007 into a 100 µF capacitor and a 1 kΩ load, with the meter in the sine's lead, its red lead toward the generator and `Reading` on Mean.
+
+Run: the meter reads **80.1 mW**, 7.071 V r.m.s., 30.47 mA r.m.s., power factor **0.372**. The capacitor only tops up near the sine's peaks, so the current flows in short pulses (0.31 A at the most) while the voltage is a sine: the apparent power is 215 mVA, of which 80 mW is real. The rest is the reservoir's charging and discharging, back and forth, cycle after cycle: no energy, but current all the same.
+
+`Reading` on Instant would show the power jumping with each pulse. A 100 Ω load instead of 1 kΩ gives a power factor of 0.41; a sine straight into a resistor gives 1.000 (`power_meter_dc.sim1` is the DC case).
+
+| Part | Value | Why |
+|---|---|---|
+| `AC` | 10 V peak, 50 Hz, `Steps` 20,000 | A smooth sine: at the generator's 100 steps a cycle a capacitor sees a staircase. |
+| `PM2` | Power Meter, `Reading` Mean | The new part, in the generator's lead. |
+| `D1` | 1N4007 | The rectifier. |
+| `C1` | 100 µF | The reservoir capacitor. |
+| `R3` | 1 kΩ | The load. |
+
+Open on purpose: `PM2.outnod`, which gives the power as a voltage (1 V = 1 W).
+
+## create-circuit skill
+
+- Version: 1.31.0 (commit 6746f6a)
+- Circuit: power_meter_ac.sim1
+
+### Limitations found while building it
+
+None reported.
+</description>
+
+
+<item itemtype="Diode" CircId="Diode-1" mainComp="false" ShowProp="Model" Show_id="true" Show_Val="true" Pos="0,-32" rotation="0" hflip="1" vflip="1" label="D1" idLabPos="-21.5,12" labelrot="0" valLabPos="-7.5,12" valLabRot="0" labelAuto="true" Model="1N4007" Show_State="false" Threshold="0.718503 V" MaxCurrent="1 A" SurgeCurrent="30 A" Resistance="0.0341512 Ω" BrkDownV="1000 V" SatCurrent="7.02767 nA" EmCoef="1.80803" Cj0="0 pF" Vj="0.7 V" Mj="0.33" />
+
+<item itemtype="PowerMeter" CircId="PowerMeter-2" mainComp="false" Show_id="true" Show_Val="false" Pos="-80,-16" rotation="0" hflip="1" vflip="1" label="PM2" idLabPos="-8.5,-66" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" Reading="Mean" Avg_Time="100 ms" />
+
+<item itemtype="Resistor" CircId="Resistor-3" mainComp="false" ShowProp="Resistance" Show_id="true" Show_Val="true" Pos="96,-16" rotation="90" hflip="1" vflip="1" label="R3" idLabPos="-21,8.5" labelrot="0" valLabPos="-6,8.5" valLabRot="0" labelAuto="true" Resistance="1000 Ω" Cp="0 pF" />
+
+<item itemtype="elCapacitor" CircId="elCapacitor-4" mainComp="false" ShowProp="Capacitance" Show_id="true" Show_Val="true" Pos="64,0" rotation="90" hflip="1" vflip="1" label="C1" idLabPos="-19.5,12" labelrot="0" valLabPos="-5.5,12" valLabRot="0" labelAuto="true" Capacitance="100 µF" Resistance="1 µΩ" InitVolt="0 V" MaxVolt="0 V" ChargeScale="0 V" LogCharge="false" ReaStep="0 ns" />
+
+<item itemtype="WaveGen" CircId="WaveGen-5" mainComp="false" Show_id="true" Show_Val="false" Pos="-112,32" rotation="0" hflip="1" vflip="1" label="AC" idLabPos="-4,-22" labelrot="0" valLabPos="-16,8" valLabRot="0" labelAuto="true" Out="true" Running="true" Wave_Type="Sine" Freq="50 Hz" Phase="0 _º" Steps="20000 _Steps" Duty="50 _%" Always_On="true" Bipolar="false" Floating="false" Semi_Ampli="10 V" Mid_Volt="0 V" Out_Imped="0 Ω" />
+
+<item itemtype="Ground" CircId="Ground-6" mainComp="false" Show_id="false" Show_Val="false" Pos="64,48" rotation="0" hflip="1" vflip="1" label="G1" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Ground" CircId="Ground-7" mainComp="false" Show_id="false" Show_Val="false" Pos="96,32" rotation="0" hflip="1" vflip="1" label="G2" idLabPos="-16,8" labelrot="0" valLabPos="-16,20" valLabRot="0" labelAuto="true" />
+
+<item itemtype="Node" CircId="Node-8" mainComp="false" Pos="64,-32" />
+
+<item itemtype="Connector" uid="Connector-1" startpinid="PowerMeter-2-lPin" endpinid="WaveGen-5-outnod" pointList="-88,0,-88,32,-96,32" />
+
+<item itemtype="Connector" uid="Connector-2" startpinid="PowerMeter-2-rPin" endpinid="Diode-1-lPin" pointList="-72,0,-72,8,-32,8,-32,-32,-16,-32" />
+
+<item itemtype="Connector" uid="Connector-4" startpinid="Diode-1-rPin" endpinid="Node-8-1" pointList="16,-32,64,-32" />
+
+<item itemtype="Connector" uid="Connector-5" startpinid="Resistor-3-lPin" endpinid="Node-8-0" pointList="96,-32,96,-40,64,-40,64,-32" />
+
+<item itemtype="Connector" uid="Connector-6" startpinid="Node-8-2" endpinid="elCapacitor-4-lPin" pointList="64,-32,64,-16" />
+
+<item itemtype="Connector" uid="Connector-7" startpinid="elCapacitor-4-rPin" endpinid="Ground-6-Gnd" pointList="64,16,64,32" />
+
+<item itemtype="Connector" uid="Connector-8" startpinid="Resistor-3-rPin" endpinid="Ground-7-Gnd" pointList="96,0,96,16" />
+
+</circuit>

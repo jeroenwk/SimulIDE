@@ -14,7 +14,7 @@ class IoPin;
 class Meter : public Component, public eResistor
 {
     public:
-        Meter( QString type, QString id );
+        Meter( QString type, QString id, bool rms = true );   // rms: RMS is one of the readings
         ~Meter();
 
         virtual void simState( StateIO& s ) override;   // Keyframes (specs/sim-control.md §4.5)
@@ -29,7 +29,7 @@ class Meter : public Component, public eResistor
         void setSwitchPins( bool s );
 
         QString reading() { return m_readingStr; }  // Instant, Mean or RMS (create-circuit #109)
-        void setReading( QString r );
+        virtual void setReading( QString r );   // Virtual: a subclass restarts its own block here
         double avgTime() { return m_avgTime; }      // Seconds of simulated time per Mean/RMS block
         void setAvgTime( double t );
 
@@ -47,7 +47,8 @@ class Meter : public Component, public eResistor
         virtual void setflip() override;
 
         virtual double instant() = 0;    // The value now (V across, A through)
-        double measured();               // What the display shows: instant(), or the last block's mean / RMS
+        double currentThrough();        // Into the meter at lPin, now: as exactly as the nodes allow
+        virtual double measured();       // What the display shows: instant(), or the last block's mean / RMS
 
         enum { rInstant = 0, rMean, rRms } m_reading;
         QString  m_readingStr;

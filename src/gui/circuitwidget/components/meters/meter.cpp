@@ -8,6 +8,8 @@
 #include <QPainter>
 
 #include "theme.h"
+#include "e-node.h"
+#include "e-pin.h"
 #include "meter.h"
 #include "appfonts.h"
 #include "simulator.h"
@@ -21,7 +23,7 @@
 
 #define tr(str) simulideTr("Meter",str)
 
-Meter::Meter( QString type, QString id )
+Meter::Meter( QString type, QString id, bool rms )
      : Component( type, id )
      , eResistor( id )
      , m_display( this )
@@ -63,9 +65,10 @@ Meter::Meter( QString type, QString id )
     initialize();
 
     addPropGroup( { tr("Main"), {
-        new StrProp <Meter>("Reading", tr("Reading"), "Instant,Mean,RMS;"+tr("Instant")+","+tr("Mean")+","+tr("RMS")
+        new StrProp <Meter>("Reading", tr("Reading"), QString("Instant,Mean")+( rms ? ",RMS" : "" )+";"
+                            + tr("Instant")+","+tr("Mean")+( rms ? ","+tr("RMS") : "" )
                            , this, &Meter::reading, &Meter::setReading, 0, "enum" ),
-        new DoubProp<Meter>("Avg_Time", tr("Mean/RMS over"), "ms"
+        new DoubProp<Meter>("Avg_Time", rms ? tr("Mean/RMS over") : tr("Mean/r.m.s. over"), "ms"
                            , this, &Meter::avgTime, &Meter::setAvgTime ),
     }, 0 } );
 
@@ -320,6 +323,21 @@ void Meter::paint( QPainter* p, const QStyleOptionGraphicsItem* option, QWidget*
     p->drawPolygon(points, 3);*/
 
     Component::paintSelected( p );
+}
+
+// The meter is 1 uOhm: dV*1e6 loses the current in the rounding of the node voltages (steps of
+// 0.2 nA per volt, create-circuit #687). The current that leaves the meter is also what the rest
+// of the node takes (KCL): read it on the side whose other stamps are the softest.
+double Meter::currentThrough()
+{
+    eNode* nl = m_ePin[0]->getEnode();
+    eNode* nr = m_ePin[1]->getEnode();
+    double gl = 1e300, gr = 1e300, il = 0, ir = 0;
+    if( nl ) il =  nl->othersCurrent( m_ePin[0], &gl );   // into the meter at lPin
+    if( nr ) ir = -nr->othersCurrent( m_ePin[1], &gr );   // out of the meter at rPin
+    double g = qMin( gl, gr );
+    if( g > 1e3 ) return current();                       // both sides stiff: dV/R is as good
+    return gl <= gr ? il : ir;
 }
 
 void Meter::simState( StateIO& s )
