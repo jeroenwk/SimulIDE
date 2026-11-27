@@ -75,6 +75,8 @@ Diode::Diode( QString type, QString id, bool zener )
         showStateProp()
     },0} );
     enableStates( zener );   // Zeners show their state, diodes only on request (many in a circuit)
+    setShowProp("Model");    // the model as its value label, as a Resistor its resistance (#749)
+    setValLabelText( model() );
 
     addPropGroup( { tr("Electric"), {
         new DoubProp<Diode>("Threshold" , tr("Forward Voltage"),"V"
@@ -123,7 +125,13 @@ bool Diode::setPropStr( QString prop, QString val )
         m_isZener = zenerV > 0;
         eDiode::setBrkDownV( zenerV );
     }
-    else return Component::setPropStr( prop, val );
+    else{
+        bool ok = Component::setPropStr( prop, val );
+        // The value label shows the model (create-circuit #749): a string property does not
+        // refresh it, and a parameter set by hand turns the model Custom
+        if( m_showVal && m_showProperty == "Model" ) setValLabelText( model() );
+        return ok;
+    }
     return true;
 }
 

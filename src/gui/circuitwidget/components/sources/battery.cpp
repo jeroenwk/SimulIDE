@@ -54,6 +54,8 @@ Battery::Battery( QString type, QString id )
         new DoubProp<Battery>("Resistance", tr("Resistance"),"mΩ"
                              , this, &Battery::res,  &Battery::setRes ),
     },0 } );
+    setShowProp("Voltage");      // its voltage as the value label, as a Resistor (create-circuit #749)
+    setPropStr("Voltage", "5");
 }
 Battery::~Battery() {}
 
