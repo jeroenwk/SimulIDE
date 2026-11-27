@@ -44,7 +44,10 @@ OpAmp::OpAmp( QString type, QString id )
      , m_sup( id )                     // ePins "<id>-ePinN": counted in the supply Pins' current
 {
     m_bias.setNumEpins( 2 );
-    m_sup.setNumEpins( 8 );
+    m_sup.setNumEpins( 12 );
+    m_railOn[0] = m_railOn[1] = false;
+    m_railDiag[0][0] = m_railDiag[0][1] = m_railDiag[1][0] = m_railDiag[1][1] = false;
+    m_railNow = -1;
     m_supDir = m_supFlips = 0;
     m_iMax = 0;
     m_ilimDir = 0;
@@ -229,7 +232,19 @@ void OpAmp::stamp()
     // #506: the output current comes from a supply pin, the V+ one when sourcing and the V- one
     // when sinking. That pin's node gets the output's own terms with the opposite sign, so the
     // current drawn there is the current delivered (see stampSupply)
-    for( int i=0; i<8; ++i ) m_sup.getEpin( i )->setEnode( nullptr );
+    for( int i=0; i<12; ++i ) m_sup.getEpin( i )->setEnode( nullptr );
+    m_railOn[0] = m_railOn[1] = false;
+    m_railNow = -1;
+    if( m_powerPins && oN->getNodeNumber() != 0 ){
+        for( int r=0; r<2; ++r ){                // Output row, rail column (SAT+/SAT-)
+            eNode* rN = m_pin[3+r]->getEnode();
+            if( !rN || rN->getNodeNumber() == 0 || rN == oN ) continue;
+            m_railOn[r] = true;
+            ePin* e = m_aux.getEpin( aR0+r );
+            e->setEnode( oN );
+            e->addSingAdm( rN->getNodeNumber(), 0 );
+        }
+    }
     if( m_powerPins ){
         eNode* cols[3] = { oN, pN, nN };
         for( int k=0; k<2; ++k ){
@@ -245,6 +260,15 @@ void OpAmp::stamp()
                 else e->addSingAdm( cn->getNodeNumber(), 0 );
             }
             m_sup.getEpin( 4*k )->createCurrent();
+            for( int r=0; r<2; ++r ){                         // Supply row, rail column
+                m_railDiag[k][r] = false;
+                if( !m_railOn[r] ) continue;
+                ePin* e = m_sup.getEpin( 8+2*k+r );
+                e->setEnode( sN );
+                eNode* rN = m_pin[3+r]->getEnode();
+                if( rN == sN ){ e->setEnodeComp( &s_gnd ); m_railDiag[k][r] = true; }
+                else e->addSingAdm( rN->getNodeNumber(), 0 );
+            }
             if( oN->getNodeNumber() != 0 && oN != sN ){         // Zero entry back: same solver group
                 ePin* b = m_sup.getEpin( 4*k+3 );
                 b->setEnode( oN );
@@ -269,6 +293,13 @@ void OpAmp::stampSupply( double G, double gG )
             ePin* e = m_sup.getEpin( 4*k+j );
             if( m_supDiag[k][j] ) e->stampAdmitance(-s[j] );
             else                  e->stampSingAdm( s[j] );
+        }
+        for( int r=0; r<2; ++r ){   // Tied to rail r: +G*V_r in the current delivered, s = -G
+            ePin* e = m_sup.getEpin( 8+2*k+r );
+            if( !e->getEnode() ) continue;
+            double sr = ( on && r == m_railNow ) ? -G : 0;
+            if( m_railDiag[k][r] ) e->stampAdmitance(-sr );
+            else                   e->stampSingAdm( sr );
         }
         e0->stampCurrent( on ? -m_stampI : 0 );
     }
@@ -304,7 +335,14 @@ void OpAmp::stampMode()
         if( m_diag[i] ) p->stampAdmitance(-s );   // Same node: -s on the diagonal
         else                    p->stampSingAdm( s );
     }
+    int rail = ( m_mode == SAT_P ) ? 0 : ( m_mode == SAT_N ) ? 1 : -1;
+    m_railNow = ( rail >= 0 && m_railOn[rail] ) ? rail : -1;   // Tied to the rail's node: no constant
+    for( int r=0; r<2; ++r ){
+        ePin* e = m_aux.getEpin( aR0+r );
+        if( e->getEnode() ) e->stampSingAdm( ( r == m_railNow ) ? G : 0 );   // G*Vout - G*V_rail
+    }
     double I = ( m_mode == LIN  ) ? G*( ( 1-a )*m_constIn+a*m_gbwPrev+m_nudge )
+             : ( m_railNow >= 0 ) ? 0
              : ( m_mode == SAT_P) ? G*m_voltPos
              : ( m_mode == SAT_N) ? G*m_voltNeg
              : ( m_mode == ILIM ) ? m_ilimDir*m_iMax : G*m_slewV;
@@ -472,8 +510,8 @@ void OpAmp::voltChanged() // Called when any pin node change volt
         m_satOut = out;
     }
     if( mode != m_mode ){ m_mode = mode; m_dirty = true; }
-    else if( mode == SAT_P && qFabs( m_voltPos-m_stampVpos ) > m_accuracy ) m_dirty = true;
-    else if( mode == SAT_N && qFabs( m_voltNeg-m_stampVneg ) > m_accuracy ) m_dirty = true;
+    else if( mode == SAT_P && !m_railOn[0] && qFabs( m_voltPos-m_stampVpos ) > m_accuracy ) m_dirty = true;
+    else if( mode == SAT_N && !m_railOn[1] && qFabs( m_voltNeg-m_stampVneg ) > m_accuracy ) m_dirty = true;
 
     if( s_trace ) OPAMP_LOG << "t" << sim->circTime() << "vp" << vp << "vn" << vn << "out" << out
                             << "ideal" << ideal << "mode" << m_mode << "dirty" << m_dirty << "check" << m_checkStable;
@@ -782,6 +820,9 @@ void OpAmp::simState( StateIO& s )
     s.io( m_supDir );       // #506
     s.io( m_supFlips );
     s.io( m_supDiag );
+    s.io( m_railOn );
+    s.io( m_railDiag );
+    s.io( m_railNow );
     s.io( m_iMax );         // #431
     s.io( m_ilimDir );
     s.io( m_impNow );
