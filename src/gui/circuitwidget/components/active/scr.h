@@ -49,9 +49,11 @@ class SCR : public Component, public eElement
         bool m_state;
 
         eNode*     m_midEnode;
+        eNode*     m_gateEnode;   // between GateRes and the gate-cathode junction (#496)
         eResistor* m_resistor;
         eResistor* m_resistGa;
         eDiode*    m_diode;
+        eDiode*    m_gateDiode;   // gate-cathode PN junction: blocks a reverse gate drive
 };
 
 #endif

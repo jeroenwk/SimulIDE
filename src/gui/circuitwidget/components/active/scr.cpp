@@ -53,10 +53,12 @@ SCR::SCR( QString type, QString id )
     m_pin[2]->setPinAngle(-40 );
     m_pin[2]->setLength( 12 );
 
-    setNumEpins( 4 );
+    setNumEpins( 6 );
 
     // Pin0--diode1--ePin0--midEnode--ePin1--resistor--Pin1
-    // Pin2-------------------------resistGa--ePin2---|
+    // Pin2--resistGa--ePin2--gateEnode--ePin3--gateDiode--ePin4--|
+    // The gate was a resistor to the cathode: a negative gate drive pulled the cathode and its
+    // load below ground. A real gate-cathode is a PN junction (create-circuit #496).
     m_diode = new eDiode( id+"-dio1" );
     m_diode->setEpin( 0, m_pin[0] );
     m_diode->setEpin( 1, m_ePin[0] );
@@ -69,6 +71,11 @@ SCR::SCR( QString type, QString id )
     m_resistGa = new eResistor( m_elmId+"-resistorC");
     m_resistGa->setEpin( 0, m_pin[2] );
     m_resistGa->setEpin( 1, m_ePin[2] );
+
+    m_gateDiode = new eDiode( id+"-gateDio" );
+    m_gateDiode->setEpin( 0, m_ePin[3] );
+    m_gateDiode->setEpin( 1, m_ePin[4] );
+    m_gateDiode->setModel( "Diode Default" );
 
     Simulator::self()->addToUpdateList( this );
 
@@ -90,12 +97,14 @@ SCR::~SCR()
     delete m_diode;
     delete m_resistor;
     delete m_resistGa;
+    delete m_gateDiode;
 }
 
 void SCR::initialize()
 {
     clearStates();
     m_midEnode = new eNode( m_elmId+"-mideNode");
+    m_gateEnode = new eNode( m_elmId+"-gateeNode");
 }
 
 void SCR::stamp()
@@ -112,7 +121,9 @@ void SCR::stamp()
     m_diode->getEpin(1)->setEnode( m_midEnode );
 
     m_resistor->getEpin(0)->setEnode( m_midEnode );
-    m_resistGa->getEpin(1)->setEnode( nodeC );
+    m_resistGa->getEpin(1)->setEnode( m_gateEnode );
+    m_gateDiode->getEpin(0)->setEnode( m_gateEnode );
+    m_gateDiode->getEpin(1)->setEnode( nodeC );
 
     if( nodeA ) nodeA->addToNoLinList( this );
     if( nodeC ) nodeC->addToNoLinList( this );
