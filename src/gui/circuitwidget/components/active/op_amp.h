@@ -80,7 +80,7 @@ class OpAmp : public Component, public eElement
         double gbwAlpha();           // GBW pole: share of the last output kept (0 without GBW)
 
         enum { LIN=0, SAT_P, SAT_N, SLEW, ILIM };   // SLEW: output a source at m_slewV, moved by events; ILIM: a current source at +-I_Max
-        enum { aOP=0, aON, aPO, aNO, aNum };  // Internal pins, see stamp()
+        enum { aOP=0, aON, aPO, aNO, aR0, aR1, aNum };  // Internal pins, see stamp(); aR0/aR1: output row, rail column
 
         eElement m_aux;
         int    m_mode;               // LIN: out = gain*(V+ - V-) stamped in the matrix; SAT_P/N: out = rail
@@ -122,13 +122,21 @@ class OpAmp : public Component, public eElement
         int    m_slewDir;            // Direction of the last slew step (0 = none yet)
         double m_grace;              // Jump allowed once after leaving SLEW (V)
         eElement m_bias;             // Bias currents: ePin 0 on V+, 1 on V-
-        eElement m_sup;              // Supply currents (#506): ePins 0-2 on V+, 3 on the output; 4-7 the same for V-
+        eElement m_sup;              // Supply currents (#506): ePins 0-2 on V+, 3 on the output; 4-7 the same for V-;
+                                     // 8+2k+r: supply k's row, rail r's column (a rail on a node, below)
         double m_iMax;               // Output current limit, A (0 = none): ILIM above it (#431)
         int    m_ilimDir;            // ILIM: +1 sourcing, -1 sinking
         double m_impNow;             // The output's impedance as stamped (Out_Imped, or 1 GOhm in ILIM)
         int    m_supDir;             // Supply pin carrying the output current: 0 none, 1 V+ (sourcing), 2 V- (sinking)
         int    m_supFlips;           // Direction changes in this time step
         bool   m_supDiag[2][3];      // That column is the supply node itself: on the diagonal
+        // On a rail whose supply pin is on a matrix node, the output is tied to that node in the
+        // matrix (1/Out_Imped between them) instead of a source at its voltage of the last solve:
+        // a floating supply (the chip's ground on a non-isolated buck) moved with the output and
+        // the next solve followed it, a cycle that never settled (create-circuit #426 follow-up)
+        bool   m_railOn[2];          // Rail r (0 V+, 1 V-) is on a node other than ground and the output's
+        bool   m_railDiag[2][2];     // Supply k's row, rail r's column: the same node (diagonal)
+        int    m_railNow;            // Rail tied to in the matrix as stamped: 0, 1, or -1 none
         void   stampSupply( double G, double gG );
         double loadCurrent( double ideal );   // A, delivered by the output to the rest of its node
 
