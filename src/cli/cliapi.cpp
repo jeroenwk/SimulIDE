@@ -245,7 +245,9 @@ bool CliApi::parseArgv( QJsonArray argv, QString& cmd, CliCtx& ctx, QString& err
                 ctx.opts[key] = tokens.at( ++i );
             else ctx.opts[key] = true;
         }
-        else if( t.contains('=') && !t.startsWith('=') && !t.startsWith('-') && !t.startsWith('>') && !t.startsWith('<') )
+        // a setting's name never has a '.': U1.IA=B is the 74HC85's pin IA=B (create-circuit #548)
+        else if( t.contains('=') && !t.startsWith('=') && !t.startsWith('-') && !t.startsWith('>') && !t.startsWith('<')
+              && !t.left( t.indexOf('=') ).contains('.') )
         {
             int eq = t.indexOf('=');
             ctx.sets[t.left( eq )] = t.mid( eq+1 );
