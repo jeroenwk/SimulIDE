@@ -122,7 +122,9 @@ Commands that would throw away unsaved changes refuse unless you pass `--discard
 - `comp add` is atomic: if a property is invalid, nothing is added.
 - `comp add`, `comp list` and `comp get` give each part's drawn outline as
   `body` [x, y, w, h] in scene coordinates (pins stick out of it) and, under
-  `labels`, every visible label (`kind` name or value, `text`, `rect`). Layout
+  `labels`, every visible label (`kind` name or value, `text`, `rect`), and under
+  `controls` the [x, y, w, h] of each visible widget on the part (a dial, a
+  button), which may lie outside `body`. Layout
   checks use them (`electronics/.claude/skills/create-circuit/layout_check.py`).
 - Hidden properties (shown by `comp get --all`) can be changed with `comp set`
   too. For scope settings, `scope set` is easier.

@@ -4,6 +4,7 @@
  ***( see copyright.txt file at root folder )*******************************/
 
 #include <QJsonArray>
+#include <QGraphicsProxyWidget>
 
 #include "clirefs.h"
 #include "cliapi.h"
@@ -163,7 +164,7 @@ QString propValue( Component* comp, QString name )
 
 // Where the part is drawn, for layout checks: "body" = its drawing area in scene
 // coordinates [x, y, w, h] (pins stick out of it), "labels" = each visible label
-// (name, value) with its text and scene rectangle.
+// (name, value) with its text and scene rectangle, "controls" = its visible widgets.
 static QJsonArray rectJson( QRectF r )
 {
     r = r.normalized();
@@ -186,6 +187,17 @@ static void addGeometry( QJsonObject& o, Component* c )
             {"rect", rectJson( l->sceneBoundingRect() ) } } );
     }
     if( !labels.isEmpty() ) o["labels"] = labels;
+
+    // "controls" = each visible widget drawn on the part (a dial, a button), which may
+    // lie outside the body: a dial below a photodiode can hide a neighbour's wire
+    QJsonArray controls;
+    for( QGraphicsItem* item : c->childItems() )
+    {
+        QGraphicsProxyWidget* w = qgraphicsitem_cast<QGraphicsProxyWidget*>( item );
+        if( !w || !w->isVisibleTo( c ) || w->boundingRect().isEmpty() ) continue;
+        controls.append( rectJson( w->sceneBoundingRect() ) );
+    }
+    if( !controls.isEmpty() ) o["controls"] = controls;
 }
 
 QJsonObject compJson( Component* c, bool detail, bool all )
