@@ -19,6 +19,7 @@ class eElement
     public:
         void clearChanged() { m_changed = false; }   // Each start: from a known state (parts that need it set it in initialize/stamp)
         eElement( QString id );
+        eElement( QString id, bool listed );   // listed false: a probe of the CLI, not part of the circuit (no keyframe state, #613)
         virtual ~eElement();
 
         virtual void initialize(){;}

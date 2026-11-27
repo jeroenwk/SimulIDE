@@ -20,6 +20,18 @@ eElement::eElement( QString id )
 
     if( Simulator::self() ) Simulator::self()->addToElementList( this );
 }
+eElement::eElement( QString id, bool listed )
+{
+    m_elmId = id;
+    nextChanged = NULL;
+    nextEvent  = NULL;
+    eventTime = 0;
+    m_pendingTime = 0;
+    added = false;
+    m_step = 0;
+
+    if( listed && Simulator::self() ) Simulator::self()->addToElementList( this );
+}
 eElement::~eElement()
 {
     m_ePin.clear();

@@ -68,7 +68,7 @@ class Averager : public eElement, public Updatable
 {
     public:
         Averager( QList<Channel> chans, uint64_t span )
-            : eElement("cli-averager"), m_ch( chans ), m_span( span ) {}
+            : eElement("cli-averager", false ), m_ch( chans ), m_span( span ) {}   // Not in the circuit (#613)
 
         ~Averager() { detach(); }
 
@@ -116,12 +116,27 @@ class Averager : public eElement, public Updatable
             }
         }
 
+        // Paused before the end (a pause trigger, the user): the span ends here (#614)
+        void stopEarly( uint64_t t )
+        {
+            if( m_phase != RUNNING ) return;
+            if( t < m_end ){ m_end = t; m_early = true; }
+            advance( m_end );
+            detach();
+            m_phase = PAUSED;
+            AVG_LOG << "paused at" << t << "ps before the end of the span:" << m_steps << "settled steps";
+        }
+
         Phase phase() { return m_phase; }
         void setDone() { m_phase = DONE; }
 
         QJsonValue result()
         {
             double T = (double)(m_end - m_start);
+            if( T <= 0 ){                       // Paused at the start: the values of that step
+                T = 1;
+                for( Channel& c : m_ch ){ c.sumV = c.v; c.sumV2 = c.v*c.v; c.sumI = c.i; c.sumI2 = c.i*c.i; }
+            }
             QJsonArray list;
             for( Channel& c : m_ch )
             {
@@ -138,6 +153,10 @@ class Averager : public eElement, public Updatable
                            {"span_ps", QString::number( m_end - m_start )},
                            {"steps", (double)m_steps}, {"channels", list} };
             if( Cli::noiseDuring( m_start, m_end ) ) r["noise"] = Cli::noiseJson();   // Noisy numbers say so
+            if( m_early ){
+                r["paused_early"] = true;
+                r["note"] = "paused at "+Cli::timeStr( m_end )+" before the end of the span (a pause trigger or a pause): the values are over the part that ran";
+            }
             return r;
         }
 
@@ -174,6 +193,7 @@ class Averager : public eElement, public Updatable
         QList<eNode*>  m_nodes;
         uint64_t m_span, m_start = 0, m_end = 0, m_last = 0, m_steps = 0;
         Phase m_phase = WAIT_START;
+        bool m_early = false;
 };
 }
 
@@ -247,7 +267,8 @@ void CliApi::registerAverage()
         int generation = Cli::runGeneration();
         Simulator* owner = sim;
         auto pausedFrames = std::make_shared<int>( 0 );
-        Cli::pollUntil( [reply, av, generation, owner, pausedFrames]() -> bool
+        auto earlyFrames = std::make_shared<int>( 0 );
+        Cli::pollUntil( [reply, av, generation, owner, pausedFrames, earlyFrames]() -> bool
         {
             Simulator* sim = Simulator::self();
             auto finish = [&](){ if( sim == owner ){ sim->remFromUpdateList( av.get() ); sim->setStopAt( 0 ); } };
@@ -256,6 +277,11 @@ void CliApi::registerAverage()
             }
             if( !sim->isRunning() ){
                 finish(); reply->fail("simulation stopped before the end of the span"); return true;
+            }
+            if( av->phase() == Averager::RUNNING ){   // Paused by something else before the end (#614)
+                if( !sim->isPaused() ){ *earlyFrames = 0; return false; }
+                if( ++*earlyFrames < 3 ) return false;
+                av->stopEarly( sim->circTime() );
             }
             if( av->phase() != Averager::PAUSED ) return false;
             if( ++*pausedFrames < 2 ) return false;          // Let displays update, as sim run does
