@@ -34,7 +34,7 @@ eMosfet::eMosfet( QString id )
     m_ePin.resize(3);
     m_vccs.setNumEpins( 5 );
     m_gm = m_gds = m_ieq = 0;
-    m_vgs0 = m_nudge = 0;
+    m_vgs0 = 0;
     m_gmOn = false;
 }
 eMosfet::~eMosfet(){}
@@ -46,7 +46,6 @@ void eMosfet::initialize()
     m_lastCurrent = 0;
     m_gm = m_gds = m_ieq = 0;
     m_vgs0 = 0;
-    m_nudge = 0;
 }
 
 static eNode s_gndNode("");   // Node 0: a term on a node's own column goes to the diagonal
@@ -141,14 +140,22 @@ void eMosfet::voltChanged()
     // last one (as SPICE's fetlim): the model has no gate slope off and at its RDSon cap, so a
     // loop that swung the gate from off to +1000 V landed where gm = 0 and swung back (#426)
     if( m_gmOn ){
-        double lim = 1+0.5*qFabs( ( m_Pchannel ? -m_vgs0 : m_vgs0 )-m_Gth );
-        double dv = Vgs-m_vgs0;
-        bool limited = ( dv > lim ) || ( dv < -lim );
-        if( dv > lim ) Vgs = m_vgs0+lim;
-        else if( dv < -lim ) Vgs = m_vgs0-lim;
-        // Still off at the limited point the solution may not move, and no node calls it again:
-        // a 1 nA offset that flips sign at each limited step moves the drain (as the op amp's nudge)
-        m_nudge = limited ? ( ( m_nudge > 0 ) ? -1e-9 : 1e-9 ) : 0;
+        // While the limited point is still off and the gate is on, the stamps at each limited
+        // step are the same (gm 0): nothing moves and no node calls it again (a gate stepped far
+        // past the threshold, BH-025). Those steps are taken here at once, up to the first one
+        // that is on: what calling it again would give, with no re-solve between
+        double sg = m_Pchannel ? -1 : 1;
+        double vgs = m_vgs0;
+        bool onNow = sg*Vgs-m_Gth > 0;
+        for( int i=0; i<200; ++i ){
+            double l = 1+0.5*qFabs( sg*vgs-m_Gth );
+            double d = Vgs-vgs;
+            if( d > l ) vgs += l;
+            else if( d < -l ) vgs -= l;
+            else{ vgs = Vgs; break; }
+            if( !onNow || sg*vgs-m_Gth > 0 ) break;   // Off as asked, or on: this step
+        }
+        Vgs = vgs;
         m_vgs0 = Vgs;
         current = channel( Vgs, Vds );
     }
@@ -165,7 +172,7 @@ void eMosfet::voltChanged()
     if( gm != m_gm ) stampGm( gm );
     m_gm  = gm;
     m_gds = gds;
-    m_ieq = gds*Vds+gm*Vgs-current+m_nudge;   // I_D = gds*Vds + gm*Vgs - ieq through this point
+    m_ieq = gds*Vds+gm*Vgs-current;   // I_D = gds*Vds + gm*Vgs - ieq through this point
     m_lastCurrent = current;
     m_ePin[0]->stampCurrent( m_ieq );     // Into the node: -ieq into the element
     m_ePin[1]->stampCurrent(-m_ieq );
@@ -237,5 +244,4 @@ void eMosfet::simState( StateIO& s )
     s.io( m_gds );
     s.io( m_ieq );
     s.io( m_vgs0 );
-    s.io( m_nudge );
 }
