@@ -29,6 +29,8 @@
 #include "photosensor.h"
 #include "pin.h"
 #include "simulator.h"
+#include "simskip.h"
+#include "triggers.h"
 #include "updatable.h"
 
 #define AVG_LOG qDebug() << "[cli:average]"
@@ -279,7 +281,8 @@ void CliApi::registerAverage()
                 finish(); reply->fail("simulation stopped before the end of the span"); return true;
             }
             if( av->phase() == Averager::RUNNING ){   // Paused by something else before the end (#614)
-                if( !sim->isPaused() ){ *earlyFrames = 0; return false; }
+                Triggers* trig = Triggers::self();
+                if( !sim->isPaused() || ( trig && trig->busy() ) || SimSkip::self()->active() ){ *earlyFrames = 0; return false; }
                 if( ++*earlyFrames < 3 ) return false;
                 av->stopEarly( sim->circTime() );
             }
