@@ -49,6 +49,8 @@ class OpAmp : public Component, public eElement
         void setBiasCurr( double ib );
         double offsetCurr() { return m_ios; }             // A, Ib+ - Ib-
         void setOffsetCurr( double ios );
+        double iMax() { return m_iMax; }                  // A, output current limit (0 = none)
+        void setIMax( double i ) { m_iMax = ( i > 0 ) ? i : 0; m_changed = true; }
         double offsetVolt() { return m_vos; }             // V, added to V+ - V-
         void setOffsetVolt( double vos );
         double gbw() { return m_gbw; }                    // Hz, gain-bandwidth product
@@ -77,7 +79,7 @@ class OpAmp : public Component, public eElement
         uint64_t slewStep();         // ps between slew steps
         double gbwAlpha();           // GBW pole: share of the last output kept (0 without GBW)
 
-        enum { LIN=0, SAT_P, SAT_N, SLEW };   // SLEW: output a source at m_slewV, moved by events
+        enum { LIN=0, SAT_P, SAT_N, SLEW, ILIM };   // SLEW: output a source at m_slewV, moved by events; ILIM: a current source at +-I_Max
         enum { aOP=0, aON, aPO, aNO, aNum };  // Internal pins, see stamp()
 
         eElement m_aux;
@@ -121,10 +123,14 @@ class OpAmp : public Component, public eElement
         double m_grace;              // Jump allowed once after leaving SLEW (V)
         eElement m_bias;             // Bias currents: ePin 0 on V+, 1 on V-
         eElement m_sup;              // Supply currents (#506): ePins 0-2 on V+, 3 on the output; 4-7 the same for V-
+        double m_iMax;               // Output current limit, A (0 = none): ILIM above it (#431)
+        int    m_ilimDir;            // ILIM: +1 sourcing, -1 sinking
+        double m_impNow;             // The output's impedance as stamped (Out_Imped, or 1 GOhm in ILIM)
         int    m_supDir;             // Supply pin carrying the output current: 0 none, 1 V+ (sourcing), 2 V- (sinking)
         int    m_supFlips;           // Direction changes in this time step
         bool   m_supDiag[2][3];      // That column is the supply node itself: on the diagonal
         void   stampSupply( double G, double gG );
+        double loadCurrent( double ideal );   // A, delivered by the output to the rest of its node
 
         int m_region;                // Part state: -1 none, 0 linear, 1 SAT+, 2 SAT- (stepSettled)
 

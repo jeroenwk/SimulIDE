@@ -31,7 +31,7 @@ def follower(sim, vin, rl, imax):
     c("wire", "add", "RL.rPin", "G.Gnd")
     c("sim", "run", "--for", "1ms")
     p = c("probe", "U.output")[0]
-    st = c("comp", "get", "U").get("state")
+    st = c("read", "U").get("state")
     c("sim", "stop")
     return p["voltage"], -p["current"], st
 

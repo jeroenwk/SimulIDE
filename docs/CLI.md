@@ -231,7 +231,7 @@ while the simulation runs. A scripted core reports with
   **SAT** (amber, saturated: VCE < 0.2 V), and **BREAKDOWN** (red) past a
   BVceo or BVebo that is set; MOSFETs **OFF** / **ACTIVE** /
   **OHMIC**; SCRs, triacs and diacs **OFF** or **ON** (amber, conducting); op
-  amps **LINEAR** / **SAT+** / **SAT-** (amber, at a rail); voltage regulators
+  amps **LINEAR** / **SAT+** / **SAT-** (amber, at a rail) / **I LIMIT** (amber, at its `I_Max`); voltage regulators
   **REGULATING** / **DROPOUT** (amber) / **MIN LOAD** (amber, `Min_Load` > 0: load below the operating current) / **OFF**; diodes **OFF** / **ON** /
   **BREAKDOWN** / **OVER** (the averaged current above Max Current, IF(AV)) /
   **SURGE** (a peak above Surge Current, IFSM, held 100 ms), zeners **REGULATING** in breakdown, LEDs **OFF** /
