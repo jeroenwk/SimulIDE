@@ -26,6 +26,7 @@ class Diode : public LinkerComponent, public eDiode
         virtual void voltChanged() override;
 
         virtual bool setPropStr( QString prop, QString val ) override;
+        void setModelProp( QString model );   // The Model property: eDiode::setModel + value label
 
         virtual void initialize() override;
         virtual void stamp() override;

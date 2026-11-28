@@ -25,9 +25,11 @@
 #include "boolprop.h"
 #include "stringprop.h"
 
-// A value read back from its saved text ("400 µA" = 400*1e-6) can be one ulp off the model's
-// table value: compare with a relative tolerance so a reopened model doesn't turn Custom.
-static inline bool same( double a, double b ) { return qAbs( a-b ) <= 1e-9*qMax( qAbs( a ), qAbs( b ) ); }
+// A value read back from its saved text is off the model's table value: a DoubProp is saved
+// with 6 significant digits (QString::number), so up to 5e-6 relative ("8.42383e-12 A" for the
+// Solar cell's IS, 8.4238300...e-12), and a unit conversion ("400 µA" = 400*1e-6) adds an ulp.
+// Compare within the saved precision so a reopened model doesn't turn Custom.
+static inline bool same( double a, double b ) { return qAbs( a-b ) <= 1e-5*qMax( qAbs( a ), qAbs( b ) ); }
 
 #define tr(str) simulideTr("PhotoSensor",str)
 

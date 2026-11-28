@@ -71,7 +71,7 @@ Diode::Diode( QString type, QString id, bool zener )
 
     addPropGroup( { tr("Main"), {
         new StrProp<Diode>("Model", tr("Model"), m_diodes.keys().join(",")
-                          , this, &Diode::model, &Diode::setModel, 0,"enum" ),
+                          , this, &Diode::model, &Diode::setModelProp, 0,"enum" ),
         showStateProp()
     },0} );
     enableStates( zener );   // Zeners show their state, diodes only on request (many in a circuit)
@@ -115,6 +115,14 @@ Diode::Diode( QString type, QString id, bool zener )
 Diode::~Diode()
 {
     delete m_resistor;
+}
+
+// A file is loaded through each property's setValStr, not setPropStr: the value label follows the
+// model here, or a reopened 1N4007 showed "Diode Default" (its constructor's model)
+void Diode::setModelProp( QString model )
+{
+    setModel( model );
+    if( m_showVal && m_showProperty == "Model" ) setValLabelText( model );
 }
 
 bool Diode::setPropStr( QString prop, QString val )

@@ -29,7 +29,7 @@ Zener::Zener( QString type, QString id )
     removeProperty("Model");
     addProperty( tr("Main"),
         new StrProp<Diode>("Model", tr("Model"), m_zeners.keys().join(",")
-                           , this, &Diode::model, &Diode::setModel, 0,"enum" ) );
+                           , this, &Diode::model, &Diode::setModelProp, 0,"enum" ) );
 }
 Zener::~Zener(){}
 
