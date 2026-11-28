@@ -8,6 +8,7 @@
 
 //BEGIN Item includes
 #include "ampmeter.h"
+#include "powermeter.h"
 #include "adc.h"
 #include "aip31068_i2c.h"
 #include "audio_out.h"
@@ -155,6 +156,7 @@ void ItemLibrary::loadItems()
     addItem( Probe::libraryItem() );
     addItem( Voltimeter::libraryItem() );
     addItem( Amperimeter::libraryItem() );
+    addItem( PowerMeter::libraryItem() );
     addItem( FreqMeter::libraryItem() );
     addItem( Oscope::libraryItem() );
     addItem( LAnalizer::libraryItem() );

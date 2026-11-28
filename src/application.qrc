@@ -202,6 +202,7 @@
         <file alias="text.png">../src/icons/components/text.png</file>
         <file alias="voltimeter.png">../src/icons/components/voltimeter.png</file>
         <file alias="amperimeter.png">../src/icons/components/amperimeter.png</file>
+        <file alias="powermeter.png">../src/icons/components/powermeter.png</file>
         <file alias="frequencimeter.png">../src/icons/components/frequencimeter.png</file>
     
         <file alias="dcmotor.png">../src/icons/components/dcmotor.png</file>
